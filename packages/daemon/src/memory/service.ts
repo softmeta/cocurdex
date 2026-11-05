@@ -245,6 +245,7 @@ export class MemoryService {
 
   private isReadyForTurns() {
     if (!this.currentSettings().enabled) return false;
+    if (this.provider !== this.rsrs) return true;
     return (
       this.statusCache?.status.available === true ||
       this.installState?.status === "ready"
@@ -1019,6 +1020,7 @@ export class MemoryService {
       };
     }
     await writeMemoryCapture(this.options.state, sessionId, {
+      provider: this.provider.id,
       memoryId: result.id,
       savedAt: this.now().toISOString(),
       lastAssistantMessageId: assistant.id,
@@ -1101,6 +1103,7 @@ export class MemoryService {
       };
     }
     await writeMemoryCapture(this.options.state, session.id, {
+      provider: this.provider.id,
       memoryId: stored.id,
       savedAt: endedAt,
       lastAssistantMessageId: lastAssistant?.id ?? null,

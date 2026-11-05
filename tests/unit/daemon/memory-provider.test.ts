@@ -1,12 +1,17 @@
+import { AgentToolBridge } from "@cocurdex/daemon/internal/agent-tools/agent-tool-bridge";
+import { registerMemoryTools } from "@cocurdex/daemon/internal/agent-tools/groups/memory";
 import type { MemoryProvider } from "@cocurdex/daemon/internal/memory/provider";
 import { MemoryService } from "@cocurdex/daemon/internal/memory/service";
+import { parseMemoryCaptures } from "@cocurdex/daemon/internal/memory/settings";
 import {
   type CocurdexDaemonEvent,
   type MemoryEntry,
   type MemoryHistoryEntry,
+  type MemoryRecallItem,
   type MemorySettings,
   memoryPartitionOf,
   memoryPartitionProject,
+  type SessionRecord,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 
@@ -39,6 +44,8 @@ class InMemoryProvider implements MemoryProvider {
   readonly deleted = new Map<string, MemoryEntry>();
   readonly log: MemoryHistoryEntry[] = [];
   calls = 0;
+  recalled: string[] = [];
+  remembered: string[] = [];
 
   private record(entryId: string, action: string) {
     this.log.unshift({
@@ -71,8 +78,16 @@ class InMemoryProvider implements MemoryProvider {
   async policy() {
     return "policy";
   }
-  async recall() {
-    return { items: [], error: null };
+  async recall(input: { query: string }) {
+    this.recalled.push(input.query);
+    const items: MemoryRecallItem[] = [...this.live.values()].map((item) => ({
+      id: item.id,
+      title: item.title,
+      score: 0.9,
+      importance: item.importance,
+      updatedAt: null,
+    }));
+    return { items, error: null };
   }
   async show(id: string) {
     return { entry: this.live.get(id) ?? null, error: null };
@@ -82,11 +97,14 @@ class InMemoryProvider implements MemoryProvider {
       .filter((item) => !input.project || item.project === input.project)
       .slice(0, input.limit);
   }
-  async remember() {
+  async remember(input: { title: string; content: string }) {
+    const id = `m${this.live.size + 1}`;
+    this.live.set(id, { ...entry(id, null), ...input });
+    this.remembered.push(input.title);
     return {
-      action: "skipped" as const,
-      id: null,
-      title: null,
+      action: "created" as const,
+      id,
+      title: input.title,
       candidates: [],
       message: null,
     };
@@ -129,10 +147,33 @@ class InMemoryProvider implements MemoryProvider {
   }
 }
 
+function agentSession(): SessionRecord {
+  const now = "2026-11-05T10:00:00.000Z";
+  return {
+    id: "personal-1",
+    workspaceId: "personal",
+    title: "Assistant",
+    agentType: "pi",
+    sessionKind: "personal",
+    status: "idle",
+    writeMode: "read-only",
+    sessionModeId: null,
+    createdAt: now,
+    updatedAt: now,
+    lastMessageAt: now,
+    archivedAt: null,
+    providerSnapshot: null,
+    worktreePath: null,
+    peerInbound: "refuse",
+  } as SessionRecord;
+}
+
 function createService(settings: MemorySettings = ENABLED) {
   const provider = new InMemoryProvider();
   const events: CocurdexDaemonEvent[] = [];
-  const values = new Map([["memory", JSON.stringify(settings)]]);
+  const values = new Map<string, string>([
+    ["memory", JSON.stringify(settings)],
+  ]);
   const service = new MemoryService({
     userDataPath: "unused",
     state: {
@@ -147,7 +188,7 @@ function createService(settings: MemorySettings = ENABLED) {
     startRuntime: false,
     provider,
   });
-  return { service, provider, events };
+  return { service, provider, events, values };
 }
 
 describe("memory partitions", () => {
@@ -224,5 +265,62 @@ describe("MemoryService over a MemoryProvider", () => {
     await expect(service.forget("a")).rejects.toThrow();
     expect(provider.calls).toBe(0);
     expect(provider.live.has("a")).toBe(true);
+  });
+
+  it("injects recalled memories into an agent turn", async () => {
+    const { service, provider } = await createService();
+    provider.live.set("a", entry("a", null));
+
+    const context = await service.buildTurnContext(
+      agentSession(),
+      "What should I cook tonight?",
+      "agent",
+    );
+    expect(provider.recalled).toHaveLength(1);
+    expect(context?.items.map((item) => item.id)).toEqual(["a"]);
+    expect(context?.brief).toContain("Title a");
+  });
+
+  it("serves the agent memory tools from the provider", async () => {
+    const { service, provider } = await createService();
+    const session = agentSession();
+    const bridge = new AgentToolBridge({
+      url: "http://127.0.0.1:1/mcp",
+      getSession: async () => session as never,
+      memoryInstructions: (hasMemoryTools) =>
+        hasMemoryTools ? service.agentInstructions(true) : undefined,
+    });
+    registerMemoryTools(bridge.registry, {
+      isEnabled: () => service.areToolsEnabledSync(),
+      recall: (input) => service.recall(input),
+      show: (id) => service.show(id),
+      remember: (input) => service.remember(input),
+      policy: () => service.policy(),
+    });
+    const binding = bridge.bind({ id: session.id });
+    if (!binding) throw new Error("expected a session binding");
+    const catalog = await bridge.catalog(binding.binding.token);
+    expect(catalog.tools.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining(["recall", "show", "remember"]),
+    );
+
+    const stored = await service.remember({
+      title: "Likes ramen",
+      content: "The user likes ramen",
+    });
+    expect(stored).toMatchObject({ action: "created" });
+    expect(provider.remembered).toEqual(["Likes ramen"]);
+    const shown = await service.show(stored.id ?? "");
+    expect(shown?.content).toBe("The user likes ramen");
+  });
+
+  it("reads captures saved before providers existed as rsrs", async () => {
+    expect(
+      parseMemoryCaptures(
+        JSON.stringify({
+          old: { memoryId: "x", savedAt: "2026-10-01T00:00:00Z", kind: "turn" },
+        }),
+      ).old?.provider,
+    ).toBe("rsrs");
   });
 });

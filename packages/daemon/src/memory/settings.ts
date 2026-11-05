@@ -10,7 +10,10 @@ import {
 export const MEMORY_INSTALL_STATE_KEY = "memory.installState";
 export const MEMORY_CAPTURES_KEY = "memory.captures";
 
+export const LEGACY_MEMORY_PROVIDER_ID = "rsrs";
+
 export interface MemoryCaptureRecord {
+  provider: string;
   memoryId: string | null;
   savedAt: string;
   lastAssistantMessageId: string | null;
@@ -32,6 +35,10 @@ export function parseMemoryCaptures(raw: string | null): MemoryCaptureMap {
       const record = value as Partial<MemoryCaptureRecord>;
       if (typeof record.savedAt !== "string") continue;
       result[sessionId] = {
+        provider:
+          typeof record.provider === "string" && record.provider
+            ? record.provider
+            : LEGACY_MEMORY_PROVIDER_ID,
         memoryId: typeof record.memoryId === "string" ? record.memoryId : null,
         savedAt: record.savedAt,
         lastAssistantMessageId:
