@@ -1875,6 +1875,13 @@ export class CocurdexDaemonService {
     homeSessionId: string,
     role: AgentRoleRecord,
   ) {
+    const home = await this.state.getSession(homeSessionId);
+    if (home && home.title !== role.name) {
+      await this.updateSessionTitle({
+        sessionId: homeSessionId,
+        title: role.name,
+      });
+    }
     const { providerId, modelId } = role;
     if (!providerId || !modelId) return;
     const routineSessionIds = this.routines
@@ -1938,12 +1945,7 @@ export class CocurdexDaemonService {
       updatedAt: now,
     };
     await this.state.saveAgentRole(role);
-    if (this.personalAgents.ownsRole(role.id)) {
-      this.events.emit("daemon.event", {
-        type: "data.changed",
-        areas: ["personal"],
-      });
-    }
+    await this.personalAgents.roleSaved(role);
     return role;
   }
 

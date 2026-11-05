@@ -66,6 +66,13 @@ export class PersonalAgentService {
     return this.deps.repository.findByRole(roleId) !== null;
   }
 
+  async roleSaved(role: AgentRoleRecord) {
+    const row = this.deps.repository.findByRole(role.id);
+    if (!row) return;
+    await this.deps.applyRole(row.id, row.homeSessionId, role);
+    this.deps.announceChanged();
+  }
+
   ownsHomeSession(sessionId: string) {
     return this.deps.repository.findByHomeSession(sessionId) !== null;
   }
@@ -96,11 +103,7 @@ export class PersonalAgentService {
   async update(payload: UpdatePersonalAgentPayload) {
     const row = this.require(payload.id);
     if (payload.role) {
-      const role = await this.deps.saveRole({
-        ...payload.role,
-        id: row.roleId,
-      });
-      await this.deps.applyRole(row.id, row.homeSessionId, role);
+      await this.deps.saveRole({ ...payload.role, id: row.roleId });
     }
     const now = this.now();
     const pinnedAt = this.toggleStamp(row.pinnedAt, payload.pinned, now);

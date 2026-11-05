@@ -182,6 +182,24 @@ describe("personal agents over the daemon socket", () => {
         providerId: "e2e-stub",
         modelId: "e2e-other-model",
       });
+      await requestDaemon(
+        "agentRole.save",
+        {
+          ...role,
+          id: assistant.role.id,
+          name: "Explorer",
+          modelId: "e2e-agent-model",
+          modelName: "e2e-agent-model",
+        },
+        daemon.options,
+      );
+      const renamed = await requestDaemon(
+        "session.get",
+        { sessionId: assistant.homeSessionId },
+        daemon.options,
+      );
+      expect(renamed?.title).toBe("Explorer");
+      expect(renamed?.providerSnapshot?.modelId).toBe("e2e-agent-model");
     } finally {
       await daemon.dispose();
       await stub.close();
