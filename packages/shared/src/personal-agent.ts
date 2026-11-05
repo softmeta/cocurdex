@@ -1,6 +1,6 @@
 import type { AgentRoleRecord, SaveAgentRolePayload } from "./agent-role";
-import { isChatWorkspaceId } from "./chat-session";
-import type { SessionRecord } from "./contracts";
+import { CHAT_AGENT_ID, isChatWorkspaceId } from "./chat-session";
+import type { AgentId, SessionRecord } from "./contracts";
 
 export const PERSONAL_WORKSPACE_ID = "personal";
 export const PERSONAL_AGENT_SOUL_MAX_LENGTH = 20_000;
@@ -42,6 +42,27 @@ export interface UpdatePersonalAgentPayload {
 export interface DuplicatePersonalAgentPayload {
   id: string;
   name: string;
+}
+
+export function personalAgentRoleDraft(
+  name: string,
+  agentId: AgentId = CHAT_AGENT_ID,
+): PersonalAgentRolePayload {
+  return {
+    name,
+    agentId,
+    providerId: null,
+    modelId: null,
+    modelName: null,
+    permissionMode: null,
+    sessionModeId: null,
+    reasoningEffort: null,
+    serviceTier: null,
+    fastMode: null,
+    thinkingLevel: null,
+    openCodeAgent: null,
+    openCodeVariant: null,
+  };
 }
 
 export function isPersonalWorkspaceId(workspaceId: string) {

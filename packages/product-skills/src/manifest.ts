@@ -9,6 +9,7 @@ export const PRODUCT_SKILL_NAMES = [
   "cocurdex-decide",
   "cocurdex-issue",
   "cocurdex-note",
+  "cocurdex-persona",
   "cocurdex-script-run",
   "cocurdex-settings",
   "cocurdex-skills",

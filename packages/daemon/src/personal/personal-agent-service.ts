@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 import type { PersonalAgentRepository, PersonalAgentRow } from "@cocurdex/db";
 import {
   type AgentRoleRecord,
-  CHAT_AGENT_ID,
   type CreatePersonalAgentPayload,
   comparePersonalAgents,
   type DuplicatePersonalAgentPayload,
@@ -10,6 +9,7 @@ import {
   normalizePersonalAgentSoul,
   type PersonalAgentRecord,
   type PersonalAgentRolePayload,
+  personalAgentRoleDraft,
   type SaveAgentRolePayload,
   type SessionRecord,
   type UpdatePersonalAgentPayload,
@@ -25,21 +25,6 @@ export interface PersonalAgentServiceDeps {
   announceChanged(): void;
   now?: () => string;
 }
-
-const DEFAULT_ROLE: Omit<PersonalAgentRolePayload, "name"> = {
-  agentId: CHAT_AGENT_ID,
-  providerId: null,
-  modelId: null,
-  modelName: null,
-  permissionMode: null,
-  sessionModeId: null,
-  reasoningEffort: null,
-  serviceTier: null,
-  fastMode: null,
-  thinkingLevel: null,
-  openCodeAgent: null,
-  openCodeVariant: null,
-};
 
 function roleCopy(
   role: AgentRoleRecord,
@@ -137,8 +122,7 @@ export class PersonalAgentService {
     if (record) return record;
     return this.insert(
       {
-        ...DEFAULT_ROLE,
-        name: payload.name,
+        ...personalAgentRoleDraft(payload.name),
         description: payload.description ?? null,
       },
       null,
