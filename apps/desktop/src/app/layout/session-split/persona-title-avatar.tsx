@@ -12,5 +12,12 @@ export function PersonaTitleAvatar({ sessionId }: { sessionId: string }) {
     session && isPersonalSession(session) ? session.agentRoleId : null;
   const role = usePersonaRole(roleId ?? null, t("defaultName"));
   if (!role) return null;
-  return <AgentRoleAvatar role={role} showAgent={false} size="sm" />;
+  return (
+    <AgentRoleAvatar
+      className="size-6"
+      role={role}
+      showAgent={false}
+      size="md"
+    />
+  );
 }

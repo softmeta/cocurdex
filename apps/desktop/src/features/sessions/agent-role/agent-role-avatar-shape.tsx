@@ -31,26 +31,28 @@ export function AgentRoleAvatarShapeGlyph({
       viewBox={`0 0 ${AGENT_ROLE_AVATAR_VIEWBOX} ${AGENT_ROLE_AVATAR_VIEWBOX}`}
     >
       <path d={AGENT_ROLE_AVATAR_SHAPE_PATHS[shape]} fill="currentColor" />
-      {AGENT_ROLE_AVATAR_FACE_FEATURES[face].map((feature) =>
-        feature.kind === "dot" ? (
-          <circle
-            className="fill-role-avatar-face"
-            cx={feature.cx}
-            cy={feature.cy}
-            key={`${feature.cx}:${feature.cy}`}
-            r={feature.r}
-          />
-        ) : (
-          <path
-            className="stroke-role-avatar-face"
-            d={feature.d}
-            fill="none"
-            key={feature.d}
-            strokeLinecap="round"
-            strokeWidth={feature.width}
-          />
-        ),
-      )}
+      <g data-avatar-face="">
+        {AGENT_ROLE_AVATAR_FACE_FEATURES[face].map((feature) =>
+          feature.kind === "dot" ? (
+            <circle
+              className="fill-role-avatar-face"
+              cx={feature.cx}
+              cy={feature.cy}
+              key={`${feature.cx}:${feature.cy}`}
+              r={feature.r}
+            />
+          ) : (
+            <path
+              className="stroke-role-avatar-face"
+              d={feature.d}
+              fill="none"
+              key={feature.d}
+              strokeLinecap="round"
+              strokeWidth={feature.width}
+            />
+          ),
+        )}
+      </g>
     </svg>
   );
 }

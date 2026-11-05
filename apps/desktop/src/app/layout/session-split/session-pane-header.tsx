@@ -88,18 +88,26 @@ export function SessionPaneHeader({
           </TitlebarIconButton>
         ) : null}
       </div>
-      <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        {sessionId ? <PersonaTitleAvatar sessionId={sessionId} /> : null}
-        {title ? (
-          <Text
-            className="truncate"
-            size="meta"
-            tone={isFocused ? "default" : "muted"}
-            weight={isFocused ? "medium" : "normal"}
-          >
-            {title}
-          </Text>
-        ) : null}
+      <div className="flex min-w-0 flex-1 items-center">
+        <div
+          className={cn(
+            "flex min-w-0 items-center gap-1.5",
+            occupiesTitlebar && "app-no-drag relative z-[60]",
+          )}
+          data-avatar-hover=""
+        >
+          {sessionId ? <PersonaTitleAvatar sessionId={sessionId} /> : null}
+          {title ? (
+            <Text
+              className="truncate"
+              size="meta"
+              tone={isFocused ? "default" : "muted"}
+              weight={isFocused ? "medium" : "normal"}
+            >
+              {title}
+            </Text>
+          ) : null}
+        </div>
       </div>
       {trailing}
     </div>

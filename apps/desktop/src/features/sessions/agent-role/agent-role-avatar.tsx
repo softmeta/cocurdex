@@ -70,6 +70,7 @@ export function AgentRoleAvatar({
   return (
     <span
       aria-hidden
+      data-avatar=""
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center rounded-full font-medium leading-none select-none",
         sizeClassName[size],

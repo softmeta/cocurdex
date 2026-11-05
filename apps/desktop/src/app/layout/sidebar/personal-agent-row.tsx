@@ -92,6 +92,7 @@ export function PersonalAgentRow({
       <ContextMenuTrigger asChild>
         <SidebarListRow
           className="h-auto gap-2.5 py-1.5 ps-1"
+          data-avatar-hover=""
           data-personal-agent-id={agent.id}
           data-session-id={agent.homeSessionId}
           isActive={isActive}
