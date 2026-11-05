@@ -873,6 +873,11 @@ export async function handleDaemonRequest(
     case "personalAgent.delete":
       await service.personalAgents.delete(request.params.id);
       return null;
+    case "inbox.list":
+      return service.listInbox();
+    case "inbox.read":
+      await service.readInboxItem(request.params.id);
+      return null;
     case "routine.list":
       return service.routines.list(request.params.agentId);
     case "routine.get":

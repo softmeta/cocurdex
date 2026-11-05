@@ -117,6 +117,14 @@ export class RoutineService {
     );
   }
 
+  latestRuns() {
+    return new Map(
+      this.deps.repository
+        .latestFinishedRuns()
+        .map((run) => [run.routineId, run] as const),
+    );
+  }
+
   findBySession(sessionId: string) {
     return this.deps.repository.findBySession(sessionId);
   }

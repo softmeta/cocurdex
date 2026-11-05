@@ -228,5 +228,16 @@ export function createSqliteRoutineRepository(
     listRunning() {
       return runs("SELECT * FROM routine_runs WHERE status = 'running'");
     },
+    latestFinishedRuns() {
+      return runs(
+        `SELECT * FROM (
+           SELECT *, ROW_NUMBER() OVER (
+             PARTITION BY routine_id ORDER BY started_at DESC, id DESC
+           ) AS position
+           FROM routine_runs
+           WHERE status IN ('succeeded', 'failed')
+         ) WHERE position = 1`,
+      );
+    },
   };
 }

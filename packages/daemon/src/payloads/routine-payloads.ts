@@ -37,6 +37,9 @@ const accessSchema = z.enum(ROUTINE_ACCESS_VALUES);
 const deliverSchema = z.enum(ROUTINE_DELIVER_VALUES);
 
 export const routinePayloadSchemas: PayloadSchemas = {
+  "inbox.read": exact<Payload<"inbox.read">>()(
+    z.object({ id: boundedTextSchema(300) }),
+  ),
   "routine.list": exact<Payload<"routine.list">>()(
     z.object({ agentId: idSchema.nullish() }),
   ),

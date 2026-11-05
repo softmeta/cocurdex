@@ -1,4 +1,4 @@
-import { personalAgentRoleDraft } from "@cocurdex/shared";
+import { type InboxItem, personalAgentRoleDraft } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { FolderPlus, Plus, Search } from "lucide-react";
 import { type ReactNode, startTransition, useOptimistic } from "react";
@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui";
 import { chatSessionsAtom } from "@/features/chat";
+import { inboxApi } from "@/features/inbox";
 import { personalApi } from "@/features/personal";
 import {
   activeSessionIdAtom,
@@ -35,6 +36,7 @@ import {
 } from "@/features/workspaces";
 import {
   desktopApi,
+  logRendererDiagnostic,
   markSessionSwitch,
   startSessionSwitchLongTaskObserver,
 } from "@/lib";
@@ -217,6 +219,22 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
+  const openInboxItem = (item: InboxItem) => {
+    void inboxApi.read(item.id).catch((error: unknown) =>
+      logRendererDiagnostic("info", "inbox.readFailed", {
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    if (!item.sessionId) return;
+    if (item.form === "work" && item.workspaceId) {
+      setActiveTab("workspaces");
+      handleSelectSession(item.workspaceId, item.sessionId);
+      return;
+    }
+    if (item.form === "chat") setActiveTab("chat");
+    selectFormSession(item.sessionId);
+  };
+
   const isWorkspacesTab = activeTab === "workspaces";
   const createActions: Record<SidebarTab, { label: string; run(): void }> = {
     workspaces: {
@@ -393,6 +411,7 @@ export function LeftSidebar({
           >
             <PersonalAgentsPanel
               activeSessionId={optimisticActiveSessionId}
+              onOpenInboxItem={openInboxItem}
               onSelectSession={selectFormSession}
             />
           </TabsContent>

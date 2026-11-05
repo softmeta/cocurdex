@@ -12,4 +12,5 @@ export interface RoutineRepository {
   saveRun(run: RoutineRunRecord): void;
   countRunsSince(routineId: string, since: string): number;
   listRunning(): RoutineRunRecord[];
+  latestFinishedRuns(): RoutineRunRecord[];
 }

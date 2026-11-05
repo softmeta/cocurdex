@@ -97,6 +97,7 @@ import type {
   ImportDeckImagePayload,
   ImportDeckPayload,
   ImportDocImagePayload,
+  InboxItem,
   InstalledSkillDetail,
   IssueDetail,
   IssueLabel,
@@ -766,6 +767,8 @@ export type DaemonRequestPayloadByMethod = {
   "personalAgent.update": UpdatePersonalAgentPayload;
   "personalAgent.duplicate": DuplicatePersonalAgentPayload;
   "personalAgent.delete": { id: string };
+  "inbox.list": undefined;
+  "inbox.read": { id: string };
   "routine.list": { agentId?: string | null };
   "routine.get": { id: string };
   "routine.create": CreateRoutinePayload;
@@ -1105,6 +1108,8 @@ export type DaemonResultByMethod = {
   "personalAgent.update": PersonalAgentRecord;
   "personalAgent.duplicate": PersonalAgentRecord;
   "personalAgent.delete": null;
+  "inbox.list": InboxItem[];
+  "inbox.read": null;
   "routine.list": RoutineRecord[];
   "routine.get": RoutineRecord | null;
   "routine.create": RoutineRecord;
@@ -1197,6 +1202,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "provider.exportJson": true,
   "agentRole.list": true,
   "personalAgent.list": true,
+  "inbox.list": true,
   "session.list": true,
   "session.listArchived": true,
   "settings.pendingChanges.list": true,

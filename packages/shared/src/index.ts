@@ -35,6 +35,7 @@ export * from "./files";
 export * from "./git";
 export * from "./git-worktree";
 export * from "./host-access";
+export * from "./inbox";
 export * from "./issues";
 export * from "./local-session-title";
 export * from "./locales";

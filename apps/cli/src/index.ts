@@ -28,6 +28,7 @@ import {
 } from "./diagnostics-commands";
 import { handleHostCommand, hostUsageLines } from "./host-commands";
 import { handleImageCommand, imageUsageLines } from "./image-commands";
+import { handleInboxCommand, inboxUsageLines } from "./inbox-commands";
 import { handleIssueCommand } from "./issue-commands";
 import { handleLinkCommand } from "./link-commands";
 import { handleMcpCommand, mcpUsageLines } from "./mcp-commands";
@@ -157,6 +158,13 @@ async function main(rawArgs: string[]) {
 
   if (resource === "persona") {
     const handled = await handlePersonaCommand(action, args, parsed);
+    if (handled) {
+      return;
+    }
+  }
+
+  if (resource === "inbox") {
+    const handled = await handleInboxCommand(action, args, parsed);
     if (handled) {
       return;
     }
@@ -624,6 +632,7 @@ function printUsage() {
       "  cocurdex session stop <session-id>",
       ...personaUsageLines(),
       ...routineUsageLines(),
+      ...inboxUsageLines(),
       ...teamUsageLines(),
       ...scriptRunUsageLines(),
       ...providerUsageLines(),

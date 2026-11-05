@@ -1,5 +1,6 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
 import type {
+  InboxItem,
   PersonalAgentRecord,
   RoutineRecord,
   RoutineRunRecord,
@@ -173,6 +174,19 @@ describe("routines", () => {
           },
         },
       );
+
+      const inbox = await cli<InboxItem[]>(["inbox"]);
+      expect(inbox).toEqual([
+        expect.objectContaining({
+          id: `routine:${routine.id}`,
+          kind: "routine-result",
+          form: "personal",
+          sessionId,
+          detail: "Three meetings today",
+        }),
+      ]);
+      await cli(["inbox", "read", `routine:${routine.id}`]);
+      expect(await cli(["inbox"])).toEqual([]);
 
       await cli(["persona", "delete", coach.id]);
       expect(await cli(["routine", "list"])).toEqual([]);

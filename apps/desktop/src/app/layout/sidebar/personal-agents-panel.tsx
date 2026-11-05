@@ -1,14 +1,16 @@
-import type { PersonalAgentRecord } from "@cocurdex/shared";
+import type { InboxItem, PersonalAgentRecord } from "@cocurdex/shared";
 import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppConfirmDialog } from "@/components/app";
 import { SidebarMenu, TooltipProvider } from "@/components/ui";
+import { useInbox } from "@/features/inbox";
 import { MemoryOnboarding } from "@/features/memory";
 import { personalApi, usePersonalAgents } from "@/features/personal";
 import { sessionsAtom } from "@/features/sessions";
 import { AgentRoleEditDialog } from "@/features/sessions/agent-role";
+import { InboxSection } from "./inbox-section";
 import { personalAgentEditIdAtom } from "./personal-agent-edit-store";
 import {
   PersonalAgentRow,
@@ -22,13 +24,16 @@ function notifyFailure(error: unknown) {
 
 export function PersonalAgentsPanel({
   activeSessionId,
+  onOpenInboxItem,
   onSelectSession,
 }: {
   activeSessionId: string | null;
+  onOpenInboxItem(item: InboxItem): void;
   onSelectSession(sessionId: string): void;
 }) {
   const { t } = useTranslation("personal");
   const { agents } = usePersonalAgents(t("defaultName"));
+  const inbox = useInbox();
   const sessions = useAtomValue(sessionsAtom);
   const [editId, setEditId] = useAtom(personalAgentEditIdAtom);
   const [deleting, setDeleting] = useState<PersonalAgentRecord | null>(null);
@@ -67,6 +72,11 @@ export function PersonalAgentsPanel({
           className: "overflow-x-hidden [&>div]:!block [&>div]:min-w-0",
         }}
       >
+        <InboxSection
+          activeSessionId={activeSessionId}
+          items={inbox}
+          onOpen={onOpenInboxItem}
+        />
         <SidebarMenu aria-label={t("roster.label")} className="gap-0.5 pe-3">
           {agents.map((agent) => (
             <li className="list-none" key={agent.id}>

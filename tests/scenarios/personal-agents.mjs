@@ -167,6 +167,51 @@ runScenario("personal-agents", {
       },
     ],
     [
+      "a routine result lands in the inbox and opens its own thread",
+      async ({ session }) => {
+        const [assistant] = await personas(session);
+        const routine = await daemonRequest(session, "routine.create", {
+          agentId: assistant.id,
+          name: "Morning brief",
+          prompt: "Summarize today",
+          schedule: { kind: "daily", time: "08:00", weekdays: null },
+          timeZone: "UTC",
+        });
+        stub.plan = { kind: "stream", chunks: ["Two meetings today."] };
+        await daemonRequest(session, "routine.run", { id: routine.id });
+        const inboxName = await translate(session, "personal:inbox.heading");
+        const row = {
+          role: "button",
+          name: /Morning brief/,
+          within: { role: "region", name: inboxName },
+        };
+        await waitForRole(session, row, UI_TIMEOUT_MS);
+        const [run] = await daemonRequest(session, "routine.runs", {
+          routineId: routine.id,
+        });
+        check(
+          run?.status === "succeeded" && run.sessionId !== state.homeSessionId,
+          "the run used its own thread",
+          run,
+        );
+        await clickByRole(session, row);
+        await session.waitUntil(
+          (reply) =>
+            [...document.querySelectorAll("article")].some((node) =>
+              node.textContent.includes(reply),
+            ),
+          "Two meetings today.",
+          UI_TIMEOUT_MS,
+        );
+        await waitForNoRole(
+          session,
+          { role: "region", name: inboxName },
+          UI_TIMEOUT_MS,
+        );
+        return { routine: routine.id, sessionId: run.sessionId };
+      },
+    ],
+    [
       "a new assistant is named in the edit dialog",
       async ({ session }) => {
         await clickByRole(session, {

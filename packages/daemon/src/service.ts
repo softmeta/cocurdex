@@ -138,6 +138,7 @@ import {
   daemonNoiseCrypto,
   type HostKeyStore,
 } from "./host-access/host-key-store";
+import { buildInbox } from "./inbox/build-inbox";
 import { DaemonMcpService } from "./mcp-service";
 import { MemoryService } from "./memory";
 import { probeNetworkProxy } from "./network-proxy-probe";
@@ -1033,6 +1034,43 @@ export class CocurdexDaemonService {
 
   updateSessionAttention(payload: UpdateSessionAttentionPayload) {
     return this.state.sessionAttention.update(payload);
+  }
+
+  async listInbox() {
+    const pending = this.runtime.getPendingInteractions();
+    return buildInbox({
+      sessions: await this.state.listSessions(),
+      attention: await this.state.sessionAttention.list(),
+      pending: {
+        permissions: pending.permissions.map((request) => ({
+          sessionId: request.sessionId,
+          detail: request.title,
+          createdAt: request.createdAt,
+        })),
+        questions: pending.questions.map((question) => ({
+          sessionId: question.sessionId,
+          detail: question.question,
+          createdAt: question.createdAt,
+        })),
+        planApprovals: pending.planApprovals.map((approval) => ({
+          sessionId: approval.sessionId,
+          detail: null,
+          createdAt: approval.createdAt,
+        })),
+      },
+      routines: this.routines.list(),
+      latestRuns: this.routines.latestRuns(),
+    });
+  }
+
+  async readInboxItem(id: string) {
+    const item = (await this.listInbox()).find((entry) => entry.id === id);
+    if (!item?.sessionId) return;
+    await this.state.sessionAttention.update({
+      sessionId: item.sessionId,
+      action: "visited",
+      at: new Date().toISOString(),
+    });
   }
 
   async listWorkspaces() {

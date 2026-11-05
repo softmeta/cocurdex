@@ -1539,6 +1539,20 @@ export default interface Resources {
       description: "Pick an assistant on the left to continue your conversation.";
       title: "Your assistants";
     };
+    inbox: {
+      heading: "Inbox";
+      headingCount: "Inbox · {{total}}";
+      kind: {
+        approval: "Needs approval";
+        completed: "Done";
+        failed: "Failed";
+        plan: "Plan ready";
+        question: "Has a question";
+        routineFailed: "Routine failed";
+        routinePaused: "Paused after failures";
+        routineResult: "New result";
+      };
+    };
     menu: {
       delete: "Delete";
       duplicate: "Duplicate";
