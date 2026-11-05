@@ -1,9 +1,11 @@
 import { spawnSync } from "node:child_process";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { parseDisabledFeatures } from "@cocurdex/shared/build-policy";
+import { stagedLocalBuilderConfig } from "./local-builder-config.mjs";
 
 const desktopDir = fileURLToPath(new URL("../", import.meta.url));
 const require = createRequire(path.join(desktopDir, "package.json"));
@@ -59,16 +61,49 @@ function run(args) {
 
 run(["./scripts/generate-oss-licenses.mjs"]);
 run(["./scripts/ensure-fd.mjs"]);
-run(["./scripts/build-cli.mjs"]);
-run([binPath("electron-vite", "electron-vite"), "build"]);
+const stageDir = "release/.local-stage";
+const stagedOutDir = `${stageDir}/out`;
+const stagedCliDir = `${stageDir}/cli`;
+const builderConfigPath = path.join(
+  desktopDir,
+  stageDir,
+  "electron-builder.json",
+);
+rmSync(path.join(desktopDir, stageDir), { force: true, recursive: true });
+mkdirSync(path.join(desktopDir, stageDir), { recursive: true });
+
+run(["./scripts/build-cli.mjs", "--out-dir", stagedCliDir]);
+run([
+  binPath("electron-vite", "electron-vite"),
+  "build",
+  "--outDir",
+  stagedOutDir,
+]);
+
+const { build } = JSON.parse(
+  readFileSync(path.join(desktopDir, "package.json"), "utf8"),
+);
+writeFileSync(
+  builderConfigPath,
+  JSON.stringify(
+    stagedLocalBuilderConfig(build, {
+      stagedOutDir,
+      stagedCliDir,
+      outputDir: "release/local",
+    }),
+    null,
+    2,
+  ),
+  "utf8",
+);
 run([
   binPath("electron-builder", "electron-builder"),
   ...platformTargets,
   `--${process.arch}`,
   "--publish",
   "never",
-  "-c.mac.notarize=false",
-  "-c.directories.output=release/local",
+  "--config",
+  builderConfigPath,
 ]);
 
 const summary = disabledFeatures.length

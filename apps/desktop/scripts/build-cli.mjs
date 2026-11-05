@@ -15,13 +15,21 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 import { build } from "vite";
 import { buildPolicyDefine } from "./build-policy-define.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const desktopRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(desktopRoot, "../..");
-const outDir = path.join(desktopRoot, "resources", "cli");
+const committedCliDir = path.join(desktopRoot, "resources", "cli");
+const { values: cliArgs } = parseArgs({
+  args: process.argv.slice(2).filter((arg) => arg !== "--"),
+  options: { "out-dir": { type: "string" } },
+});
+const outDir = cliArgs["out-dir"]
+  ? path.resolve(desktopRoot, cliArgs["out-dir"])
+  : committedCliDir;
 const productSkillsSource = path.join(
   repoRoot,
   "packages/product-skills/skills",
@@ -228,6 +236,15 @@ await build({
   ssr: { noExternal: true },
 });
 await copyFile(quickjsWasmPath, path.join(outDir, "quickjs.wasm"));
+
+if (outDir !== committedCliDir) {
+  for (const launcher of ["cocurdex", "cocurdex.cmd"]) {
+    await copyFile(
+      path.join(committedCliDir, launcher),
+      path.join(outDir, launcher),
+    );
+  }
+}
 
 const posixLauncher = path.join(outDir, "cocurdex");
 try {
