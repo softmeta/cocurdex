@@ -112,10 +112,18 @@ function autostartEntry(target: LoginItemTarget): LoginItem {
 
 function windowsArg(arg: string) {
   if (WINDOWS_BARE_ARG.test(arg)) return arg;
-  const escaped = arg
-    .replace(/(\\*)"/g, (_match, slashes: string) => `${slashes}${slashes}\\"`)
-    .replace(/(\\+)$/, "$1$1");
-  return `"${escaped}"`;
+  let escaped = "";
+  let slashes = 0;
+  for (const char of arg) {
+    if (char === "\\") {
+      slashes += 1;
+      continue;
+    }
+    const doubled = char === '"' ? slashes * 2 + 1 : slashes;
+    escaped += `${"\\".repeat(doubled)}${char}`;
+    slashes = 0;
+  }
+  return `"${escaped}${"\\".repeat(slashes * 2)}"`;
 }
 
 function runKeyEntry(target: LoginItemTarget): LoginItem {
