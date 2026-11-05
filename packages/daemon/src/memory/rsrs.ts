@@ -209,17 +209,17 @@ export function parseRsrsJson(stdout: string): Record<string, unknown> {
   throw commandError("rsrs returned output that is not valid JSON", "bad_json");
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
+export function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
 }
 
-function stringValue(value: unknown) {
+export function stringValue(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function numberValue(value: unknown) {
+export function numberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
@@ -579,7 +579,11 @@ export function parseShowPayload(
   payload: Record<string, unknown>,
 ): MemoryEntry | null {
   const details = asRecord(payload.details);
-  const entry = asRecord(details?.entry);
+  return parseEntryRecord(details?.entry);
+}
+
+export function parseEntryRecord(value: unknown): MemoryEntry | null {
+  const entry = asRecord(value);
   if (!entry) return null;
   const id = stringValue(entry.id);
   if (!id) return null;

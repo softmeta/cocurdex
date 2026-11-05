@@ -29,3 +29,23 @@ cocurdex persona thread <persona> [--limit <n>] --json
 - Instructions describe the job; the soul describes who the persona is to the user. Keep both short and specific, and pass long text with the `-file` flags.
 - Deleting a persona also deletes its role and home thread. Confirm with the user first.
 - `list` and `show` read back what you changed; verify after every write.
+
+## Memory
+
+Long-term memory is the user's own library, shared by every persona. It is split into partitions: `me` holds what the user said about themselves, and `agent:<persona-id>` holds what one persona learned while working. Read and maintain it through the CLI; agents in a turn also have the `memory` tool group.
+
+```bash
+cocurdex memory list [--partition me|agent:<persona-id>] [--since <date>] [--limit <n>] --json
+cocurdex memory show <id> --json
+cocurdex memory update <id> [--title <title>] [--content <text>|--file <path>] [--tags a,b] [--importance important|trivial] --json
+cocurdex memory forget <id> --json
+cocurdex memory restore <full-id> --json
+cocurdex memory history [<id>] [--limit <n>] --json
+cocurdex memory export <file> --json
+cocurdex memory import <file> --json
+```
+
+- `forget` is reversible: `history` lists the deleted entry with its full id, and `restore` takes that full id.
+- Edit an entry in place with `update` instead of storing a near-duplicate; read it back with `show`.
+- `list` reports `error` when memory is off or not installed; relay the fix it names (see `/cocurdex-settings`) instead of retrying.
+- Export writes the whole library as plaintext JSON. Only export or import when the user asks, and tell them where the file is.

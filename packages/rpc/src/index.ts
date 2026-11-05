@@ -121,7 +121,12 @@ import type {
   MemoryCloudKeys,
   MemoryDoctorReport,
   MemoryEntry,
+  MemoryHistoryEntry,
+  MemoryImportResult,
   MemoryInstallResult,
+  MemoryListInput,
+  MemoryListResult,
+  MemoryProviderCapabilities,
   MemoryRecallResult,
   MemoryRememberInput,
   MemoryRememberResult,
@@ -129,6 +134,7 @@ import type {
   MemorySessionSaveResult,
   MemorySettings,
   MemoryStatus,
+  MemoryUpdateInput,
   MessageRecord,
   MoveColumnPayload,
   MoveIssuePayload,
@@ -566,6 +572,15 @@ export type DaemonRequestPayloadByMethod = {
   "memory.cloud.disconnect": undefined;
   "memory.cloud.setSync": { enabled: boolean };
   "memory.cloud.keys": undefined;
+  "memory.list": MemoryListInput;
+  "memory.update": MemoryUpdateInput;
+  "memory.forget": { id: string };
+  "memory.restore": { id: string };
+  "memory.history": { id?: string | null; limit?: number };
+  "memory.revision": undefined;
+  "memory.capabilities": undefined;
+  "memory.export": { file: string };
+  "memory.import": { file: string };
   "attention.list": undefined;
   "attention.update": UpdateSessionAttentionPayload;
   "file.readText": { filePath: string };
@@ -917,6 +932,15 @@ export type DaemonResultByMethod = {
   "memory.cloud.disconnect": MemoryStatus;
   "memory.cloud.setSync": MemoryStatus;
   "memory.cloud.keys": MemoryCloudKeys;
+  "memory.list": MemoryListResult;
+  "memory.update": MemoryEntry | null;
+  "memory.forget": null;
+  "memory.restore": null;
+  "memory.history": MemoryHistoryEntry[];
+  "memory.revision": string | null;
+  "memory.capabilities": MemoryProviderCapabilities | null;
+  "memory.export": null;
+  "memory.import": MemoryImportResult;
   "attention.list": SessionAttentionSnapshot[];
   "attention.update": SessionAttentionSnapshot;
   "file.readText": string;
@@ -1132,6 +1156,8 @@ export const DAEMON_NO_PARAM_METHODS = {
   "memory.policy": true,
   "memory.cloud.disconnect": true,
   "memory.cloud.keys": true,
+  "memory.revision": true,
+  "memory.capabilities": true,
   "scriptRun.settings.get": true,
   "mcp.readConfig": true,
   "mcp.injection.check": true,

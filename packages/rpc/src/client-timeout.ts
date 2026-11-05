@@ -45,6 +45,11 @@ const METHOD_TIMEOUTS: Partial<Record<DaemonMethod, number>> = {
   "memory.cloud.disconnect": 90_000,
   "memory.cloud.setSync": 90_000,
   "memory.cloud.keys": 90_000,
+  "memory.update": 3 * 60_000,
+  "memory.forget": 3 * 60_000,
+  "memory.restore": 3 * 60_000,
+  "memory.export": 11 * 60_000,
+  "memory.import": 11 * 60_000,
 };
 
 const DEFAULT_TIMEOUT_MS = 30_000;

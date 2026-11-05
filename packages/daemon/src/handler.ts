@@ -160,6 +160,29 @@ export async function handleDaemonRequest(
     case "memory.cloud.keys":
       assertLocalPrincipal(context, request.method);
       return service.memory.cloudKeys();
+    case "memory.list":
+      return service.memory.list(request.params);
+    case "memory.update":
+      return service.memory.update(request.params);
+    case "memory.forget":
+      await service.memory.forget(request.params.id);
+      return null;
+    case "memory.restore":
+      await service.memory.restore(request.params.id);
+      return null;
+    case "memory.history":
+      return service.memory.history(request.params);
+    case "memory.revision":
+      return service.memory.revision();
+    case "memory.capabilities":
+      return service.memory.capabilities();
+    case "memory.export":
+      assertLocalPrincipal(context, request.method);
+      await service.memory.exportTo(request.params.file);
+      return null;
+    case "memory.import":
+      assertLocalPrincipal(context, request.method);
+      return service.memory.importFrom(request.params.file);
     case "attention.list":
       return service.listSessionAttention();
     case "attention.update":

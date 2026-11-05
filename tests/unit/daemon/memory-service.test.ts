@@ -119,6 +119,20 @@ if (command === "--version") {
   send({ command: "doctor", status: "ok", summary: { total: 1, pass: 1, warn: 0, fail: 0, skip: 0, version: "1.0.0" }, items: [{ name: "store", status: "ok", value: "ok" }] });
 } else if (command === "prompt") {
   process.stdout.write("policy text");
+} else if (command === "list") {
+  send({ command: "list", status: "ok", summary: { count: 2 }, details: [
+    { id: "me-1", title: "Prefers tea", content: "Tea, not coffee", importance: "important", project: "cocurdex/me", tags: ["taste"], created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-02T00:00:00Z", recall_count: 3 },
+    { id: "other-1", title: "Repo note", content: "Use pnpm", importance: "trivial", project: "acme-shop", tags: [] },
+  ] });
+} else if (command === "history") {
+  send({ command: "history", status: "ok", summary: { count: 1 }, details: [
+    { entry_id: "me-1", action: "delete", title: "Prefers tea", content: "Tea, not", actor: "test-host", ts: "2026-10-03T00:00:00Z" },
+  ] });
+} else if (command === "memory-revision") {
+  send({ command: "memory-revision", status: "ok", summary: { profile: "/tmp/rsrs", revision: "8c1de196" } });
+} else if (command === "forget" && args[1] === "missing") {
+  send({ command: "cli", status: "fail", summary: { reason: "runtime_error" }, errors: ["not found #missing"] });
+  process.exit(1);
 } else {
   send({ command, status: "ok" });
 }
@@ -209,6 +223,48 @@ describe("MemoryService with a fake rsrs CLI", () => {
         importance: null,
         updatedAt: null,
       },
+    ]);
+  });
+
+  it("reads the library through the rsrs CLI", async () => {
+    const { service, logPath } = await createService();
+    const mine = await service.list({ partition: { kind: "me" } });
+    expect(mine).toEqual({
+      error: null,
+      items: [
+        expect.objectContaining({
+          id: "me-1",
+          content: "Tea, not coffee",
+          project: "cocurdex/me",
+          tags: ["taste"],
+          updatedAt: "2026-10-02T00:00:00Z",
+        }),
+      ],
+    });
+    expect(await service.history({ id: "me-1" })).toEqual([
+      {
+        entryId: "me-1",
+        action: "delete",
+        title: "Prefers tea",
+        excerpt: "Tea, not",
+        actor: "test-host",
+        at: "2026-10-03T00:00:00Z",
+      },
+    ]);
+    expect(await service.revision()).toBe("8c1de196");
+    await expect(service.forget("missing")).rejects.toThrow(
+      "not found #missing",
+    );
+    const calls = (await readFile(logPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as string[]);
+    expect(calls).toContainEqual([
+      "history",
+      "me-1",
+      "--limit",
+      "50",
+      "--json",
     ]);
   });
 

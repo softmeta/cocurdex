@@ -6,6 +6,10 @@ import type {
   MemorySettings,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
+import {
+  handleMemoryLibraryCommand,
+  memoryLibraryUsageLines,
+} from "./memory-library-commands";
 import type { ParsedArgs } from "./parse-args";
 import { printResult, printRows, stringFlag } from "./parse-args";
 import { createCredentialReader } from "./read-secret";
@@ -111,6 +115,7 @@ export function memoryUsageLines() {
     "  cocurdex memory recall <query> [--limit <n>] [--project <name>] [--json]",
     "  cocurdex memory show <id> [--json]",
     "  cocurdex memory remember --title <title> [--content <text> | --file <path> | <text>] [--importance important|trivial] [--parent <id>] [--tags a,b] [--force] [--json]",
+    ...memoryLibraryUsageLines(),
     "  cocurdex memory save-session <session-id> [--force] [--importance important|trivial] [--json]",
     "  cocurdex memory install [--force] [--json]",
     "  cocurdex memory doctor [--remote] [--check-update] [--json]",
@@ -250,6 +255,8 @@ export async function handleMemoryCommand(
     await handleCloudCommand(args[0], parsed);
     return true;
   }
+
+  if (await handleMemoryLibraryCommand(action, args, parsed)) return true;
 
   if (action === "policy") {
     const policy = await withDaemon(() => requestDaemon("memory.policy"));

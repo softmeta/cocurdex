@@ -18,8 +18,12 @@ import {
   type MemoryDoctorReport,
   type MemoryEntry,
   type MemoryImportance,
+  type MemoryImportResult,
   type MemoryInstallResult,
+  type MemoryListInput,
+  type MemoryListResult,
   type MemoryPlatform,
+  type MemoryProviderCapabilities,
   type MemoryRecallItem,
   type MemoryRecallOutcome,
   type MemoryRecallResult,
@@ -30,7 +34,9 @@ import {
   type MemorySessionSaveResult,
   type MemorySettings,
   type MemoryStatus,
+  type MemoryUpdateInput,
   type MessageRecord,
+  memoryPartitionProject,
   memoryPlatformSupportsRsrs,
   redactMemorySecrets,
   type SessionRecord,
@@ -49,6 +55,7 @@ import {
   compactText as compactDigestText,
   conversationTurns,
 } from "./digest";
+import type { MemoryProvider } from "./provider";
 import {
   exportRsrsKeys,
   installRsrs,
@@ -57,27 +64,13 @@ import {
   materializeNativeBinary,
   parseRsrsCloudStatus,
   type RsrsCloudSummary,
-  type RsrsExecutable,
   readRsrsDoctor,
-  readRsrsPolicy,
   readRsrsStatus,
   readRsrsVersion,
-  recallMemories,
-  recallMemoriesViaRuntime,
   registerRsrsAccount,
-  rememberMemory,
-  rememberMemoryViaRuntime,
-  resolveRsrsExecutable,
-  showMemory,
-  showMemoryViaRuntime,
   writeRsrsAutosync,
 } from "./rsrs";
-import {
-  callRuntimeTool,
-  ensureRuntime,
-  listRuntimeTools,
-  type RuntimeEndpoint,
-} from "./runtime";
+import { RsrsMemoryProvider } from "./rsrs-provider";
 import {
   type MemoryCaptureMap,
   type MemoryInstallState,
@@ -116,6 +109,7 @@ export interface MemoryServiceOptions {
   rsrsDataDir?: string;
   startRuntime?: boolean;
   turnRecallBudgetMs?: number;
+  provider?: MemoryProvider;
   now?: () => Date;
 }
 
@@ -147,6 +141,12 @@ function toCloudStatus(summary: RsrsCloudSummary | null): MemoryCloudStatus {
   };
 }
 
+function withIdentityHint(message: string) {
+  return isMissingMemoryIdentity(message)
+    ? withMemoryIdentityHint(message)
+    : message;
+}
+
 function redactSecrets(message: string, secrets: ReadonlyArray<string>) {
   let result = message;
   for (const secret of secrets) {
@@ -160,23 +160,18 @@ export class MemoryService {
   private settings: MemorySettings | null = null;
   private installState: MemoryInstallState | null = null;
   private initialization: Promise<void> | null = null;
-  private executable: RsrsExecutable | null = null;
-  private executableResolvedAt = 0;
   private statusCache: { status: MemoryStatus; at: number } | null = null;
   private installPromise: Promise<MemoryInstallResult> | null = null;
   private doctorPromise: Promise<MemoryDoctorReport> | null = null;
   private policyCache: string | null = null;
-  private writeQueue: Promise<void> = Promise.resolve();
-  private readQueue: Promise<void> = Promise.resolve();
   private startupPromise: Promise<void> | null = null;
   private readonly gateTurns = new Map<
     string,
     { stored: boolean; nudge: boolean }
   >();
   private lastRecall: MemoryRecallStatus | null = null;
-  private runtimeEndpoint: RuntimeEndpoint | null = null;
-  private runtimeCheckedAt = 0;
-  private runtimeTools: Map<string, Set<string>> | null = null;
+  private readonly rsrs: RsrsMemoryProvider;
+  private readonly provider: MemoryProvider;
   private readonly device: string;
   private readonly platform: MemoryPlatform;
   private readonly now: () => Date;
@@ -188,6 +183,13 @@ export class MemoryService {
       arch: process.arch,
     };
     this.now = options.now ?? (() => new Date());
+    this.rsrs = new RsrsMemoryProvider({
+      settings: () => this.currentSettings(),
+      dataDir: options.rsrsDataDir,
+      startRuntime: options.startRuntime,
+      now: () => this.now(),
+    });
+    this.provider = options.provider ?? this.rsrs;
   }
 
   private get supported() {
@@ -277,27 +279,14 @@ export class MemoryService {
           status: "idle",
         });
       }
-      void this.runtime().catch(() => undefined);
+      void this.rsrs.runtime().catch(() => undefined);
     })();
     return this.startupPromise;
   }
 
   private async resolveExecutable(force = false) {
     await this.ensureInitialized();
-    if (!force && this.executable) return this.executable;
-    if (
-      !force &&
-      this.now().getTime() - this.executableResolvedAt < STATUS_CACHE_MS
-    ) {
-      return this.executable;
-    }
-    const resolved = await resolveRsrsExecutable(this.currentSettings());
-    this.executable =
-      resolved?.source === "path"
-        ? ((await materializeNativeBinary(resolved)) ?? resolved)
-        : resolved;
-    this.executableResolvedAt = this.now().getTime();
-    return this.executable;
+    return this.rsrs.executable(force);
   }
 
   private async persistInstallState(state: MemoryInstallState) {
@@ -447,7 +436,8 @@ export class MemoryService {
           );
         }
         executable = (await materializeNativeBinary(executable)) ?? executable;
-        this.executable = executable;
+        this.rsrs.adoptExecutable(executable);
+        this.policyCache = null;
         const version = await readRsrsVersion(executable).catch(() => null);
         const doctor = await readRsrsDoctor(executable);
         await this.persistInstallState({
@@ -524,7 +514,7 @@ export class MemoryService {
   }
 
   private async refreshAfterCloudMutation() {
-    this.invalidateRuntime();
+    this.rsrs.invalidateRuntime();
     this.statusCache = null;
     const status = await this.getStatus(true);
     this.broadcast();
@@ -572,8 +562,7 @@ export class MemoryService {
           error: errorMessage(error),
         });
       });
-      this.executable = executable;
-      this.executableResolvedAt = this.now().getTime();
+      this.rsrs.adoptExecutable(executable);
       const status = await this.refreshAfterCloudMutation();
       return { status, recoveryKey: issued };
     } catch (error) {
@@ -625,73 +614,12 @@ export class MemoryService {
     return { content: await exportRsrsKeys(executable) };
   }
 
-  private enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
-    const run = this.writeQueue.then(task, task);
-    this.writeQueue = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    return run;
-  }
-
-  private enqueueRead<T>(task: () => Promise<T>): Promise<T> {
-    const run = this.readQueue.then(task, task);
-    this.readQueue = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    return run;
-  }
-
-  private async runtime(): Promise<RuntimeEndpoint | null> {
-    if (this.runtimeEndpoint) {
-      if (this.now().getTime() - this.runtimeCheckedAt < STATUS_CACHE_MS) {
-        return this.runtimeEndpoint;
-      }
-    }
-    const executable = await this.resolveExecutable();
-    if (!executable) return null;
-    let endpoint: RuntimeEndpoint | null = null;
-    try {
-      endpoint = await ensureRuntime({
-        command: executable.command,
-        dataDir: this.options.rsrsDataDir,
-        autoStart: this.options.startRuntime !== false,
-        now: () => this.now().getTime(),
-      });
-    } catch (error) {
-      logDaemonDiagnostic("info", "memory.runtimeUnavailable", {
-        error: errorMessage(error),
-      });
-    }
-    this.runtimeEndpoint = endpoint;
-    this.runtimeCheckedAt = this.now().getTime();
-    this.runtimeTools = endpoint
-      ? await listRuntimeTools(endpoint).catch(() => null)
-      : null;
-    return endpoint;
-  }
-
-  private runtimeSupports(tool: string, argument: string) {
-    return this.runtimeTools?.get(tool)?.has(argument) ?? false;
-  }
-
   private async runtimeStatus(
     executableCommand: string,
   ): Promise<MemoryStatus | null> {
-    const runtime = await this.runtime();
+    const runtime = await this.rsrs.runtimeStatus();
     if (!runtime) return null;
-    let payload: Record<string, unknown>;
-    try {
-      payload = await callRuntimeTool(runtime, "memory_status", {}, 5_000);
-    } catch (error) {
-      logDaemonDiagnostic("info", "memory.runtimeStatusFailed", {
-        error: errorMessage(error),
-      });
-      this.invalidateRuntime();
-      return null;
-    }
-    const cloudSummary = parseRsrsCloudStatus(payload);
+    const cloudSummary = parseRsrsCloudStatus(runtime.payload);
     const settings = this.currentSettings();
     const installState = this.currentInstallState();
     return {
@@ -714,27 +642,19 @@ export class MemoryService {
     };
   }
 
-  private invalidateRuntime() {
-    this.runtimeEndpoint = null;
-    this.runtimeCheckedAt = 0;
-    this.runtimeTools = null;
+  private async readyProvider() {
+    await this.ensureInitialized();
+    if (!this.currentSettings().enabled) return MEMORY_DISABLED_MESSAGE;
+    if (!(await this.provider.available())) {
+      return MEMORY_MISSING_EXECUTABLE_MESSAGE;
+    }
+    return null;
   }
 
-  private async viaRuntime<T>(
-    runtime: RuntimeEndpoint | null,
-    call: (endpoint: RuntimeEndpoint) => Promise<T>,
-    fallback: () => Promise<T>,
-  ): Promise<T> {
-    if (!runtime) return fallback();
-    try {
-      return await call(runtime);
-    } catch (error) {
-      logDaemonDiagnostic("info", "memory.runtimeCallFailed", {
-        error: errorMessage(error),
-      });
-      if (!isTimeoutError(error)) this.invalidateRuntime();
-      return fallback();
-    }
+  private async requireProvider() {
+    const blocked = await this.readyProvider();
+    if (blocked) throw new Error(blocked);
+    return this.provider;
   }
 
   async recall(input: {
@@ -743,83 +663,36 @@ export class MemoryService {
     project?: string | null;
     timeoutMs?: number;
   }): Promise<MemoryRecallResult> {
-    await this.ensureInitialized();
     const query = input.query.trim();
     const limit = Math.min(20, Math.max(1, Math.floor(input.limit ?? 8)));
     if (!query) {
       return { query, items: [], truncated: false, error: null };
     }
-    if (!this.currentSettings().enabled) {
-      return {
-        query,
-        items: [],
-        truncated: false,
-        error: MEMORY_DISABLED_MESSAGE,
-      };
+    const blocked = await this.readyProvider();
+    if (blocked) {
+      return { query, items: [], truncated: false, error: blocked };
     }
-    const executable = await this.resolveExecutable();
-    if (!executable) {
-      return {
-        query,
-        items: [],
-        truncated: false,
-        error: MEMORY_MISSING_EXECUTABLE_MESSAGE,
-      };
-    }
-    const budget = startBudget(input.timeoutMs);
-    return this.enqueueRead(async () => {
-      const runtime = await this.runtime();
-      const viaRuntime =
-        runtime !== null &&
-        (!input.project || this.runtimeSupports("memory_recall", "project"));
-      const result = await this.viaRuntime(
-        viaRuntime ? runtime : null,
-        (endpoint) =>
-          recallMemoriesViaRuntime(endpoint, {
-            query,
-            limit,
-            timeoutMs: budget.remaining(),
-          }),
-        () =>
-          recallMemories(executable, {
-            query,
-            limit,
-            project: input.project ?? null,
-            timeoutMs: budget.remainingOrThrow("rsrs recall"),
-          }),
-      );
-      const error = result.error
-        ? isMissingMemoryIdentity(result.error)
-          ? withMemoryIdentityHint(result.error)
-          : result.error
-        : null;
-      if (error) {
-        logDaemonDiagnostic("info", "memory.recallReportedError", {
-          error,
-        });
-      }
-      return {
-        query,
-        items: result.items.slice(0, limit),
-        truncated: result.items.length > limit,
-        error,
-      };
+    const result = await this.provider.recall({
+      query,
+      limit,
+      project: input.project ?? null,
+      timeoutMs: input.timeoutMs,
     });
+    const error = result.error ? withIdentityHint(result.error) : null;
+    if (error) {
+      logDaemonDiagnostic("info", "memory.recallReportedError", { error });
+    }
+    return {
+      query,
+      items: result.items.slice(0, limit),
+      truncated: result.items.length > limit,
+      error,
+    };
   }
 
   async show(id: string, timeoutMs?: number): Promise<MemoryEntry | null> {
-    await this.ensureInitialized();
-    if (!this.currentSettings().enabled) return null;
-    const executable = await this.resolveExecutable();
-    if (!executable) return null;
-    const result = await this.enqueueRead(async () => {
-      const runtime = await this.runtime();
-      return this.viaRuntime(
-        runtime,
-        (endpoint) => showMemoryViaRuntime(endpoint, id, timeoutMs),
-        () => showMemory(executable, id, timeoutMs),
-      );
-    });
+    if (await this.readyProvider()) return null;
+    const result = await this.provider.show(id, timeoutMs);
     if (result.error) {
       logDaemonDiagnostic("info", "memory.showReportedError", {
         error: result.error,
@@ -829,70 +702,114 @@ export class MemoryService {
   }
 
   async remember(input: MemoryRememberInput): Promise<MemoryRememberResult> {
+    const skipped = (message: string): MemoryRememberResult => ({
+      action: "skipped",
+      id: null,
+      title: null,
+      candidates: [],
+      message,
+    });
     await this.ensureInitialized();
     if (!this.currentSettings().enabled) {
-      return {
-        action: "skipped",
-        id: null,
-        title: null,
-        candidates: [],
-        message: MEMORY_DISABLED_MESSAGE,
-      };
+      return skipped(MEMORY_DISABLED_MESSAGE);
     }
     const content = redactMemorySecrets(input.content).trim();
     const title = redactMemorySecrets(input.title).trim();
     if (!content || !title) {
-      return {
-        action: "skipped",
-        id: null,
-        title: null,
-        candidates: [],
-        message: "Memory content and title are required",
-      };
+      return skipped("Memory content and title are required");
     }
-    const executable = await this.resolveExecutable();
-    if (!executable) {
-      return {
-        action: "skipped",
-        id: null,
-        title: null,
-        candidates: [],
-        message: MEMORY_MISSING_EXECUTABLE_MESSAGE,
-      };
+    const blocked = await this.readyProvider();
+    if (blocked) return skipped(blocked);
+    const result = await this.provider.remember({ ...input, content, title });
+    if (result.action === "created") this.broadcast();
+    if (result.action !== "created" && result.message) {
+      return { ...result, message: withIdentityHint(result.message) };
     }
-    return this.enqueueWrite(async () => {
-      const runtime = await this.runtime();
-      const viaRuntime =
-        runtime !== null &&
-        (!input.project ||
-          this.runtimeSupports("memory_remember", "project")) &&
-        (!input.tags?.length ||
-          this.runtimeSupports("memory_remember", "tags"));
-      const result = await this.viaRuntime(
-        viaRuntime ? runtime : null,
-        (endpoint) =>
-          rememberMemoryViaRuntime(endpoint, { ...input, content, title }),
-        () => rememberMemory(executable, { ...input, content, title }),
-      );
-      if (result.action === "created") this.broadcast();
-      if (
-        result.action !== "created" &&
-        isMissingMemoryIdentity(result.message)
-      ) {
-        return { ...result, message: withMemoryIdentityHint(result.message) };
-      }
-      return result;
-    });
+    return result;
+  }
+
+  async list(input: MemoryListInput = {}): Promise<MemoryListResult> {
+    const blocked = await this.readyProvider();
+    if (blocked) return { items: [], error: blocked };
+    const limit = Math.min(500, Math.max(1, Math.floor(input.limit ?? 50)));
+    try {
+      const items = await this.provider.list({
+        limit,
+        since: input.since ?? null,
+        project: input.partition
+          ? memoryPartitionProject(input.partition)
+          : null,
+      });
+      return { items, error: null };
+    } catch (error) {
+      return { items: [], error: withIdentityHint(errorMessage(error)) };
+    }
+  }
+
+  async update(input: MemoryUpdateInput): Promise<MemoryEntry | null> {
+    const provider = await this.requireProvider();
+    const title =
+      input.title === undefined
+        ? undefined
+        : redactMemorySecrets(input.title).trim();
+    const content =
+      input.content === undefined
+        ? undefined
+        : redactMemorySecrets(input.content).trim();
+    if (title === "" || content === "") {
+      throw new Error("Memory content and title cannot be empty");
+    }
+    await provider.update({ ...input, title, content });
+    this.broadcast();
+    return (await provider.show(input.id)).entry;
+  }
+
+  async forget(id: string) {
+    const provider = await this.requireProvider();
+    await provider.forget(id);
+    this.broadcast();
+  }
+
+  async restore(id: string) {
+    const provider = await this.requireProvider();
+    await provider.restore(id);
+    this.broadcast();
+  }
+
+  async history(input: { id?: string | null; limit?: number } = {}) {
+    const provider = await this.requireProvider();
+    const limit = Math.min(500, Math.max(1, Math.floor(input.limit ?? 50)));
+    return provider.history({ id: input.id ?? null, limit });
+  }
+
+  async revision(): Promise<string | null> {
+    if (await this.readyProvider()) return null;
+    return this.provider.revision().catch(() => null);
+  }
+
+  async capabilities(): Promise<MemoryProviderCapabilities | null> {
+    if (await this.readyProvider()) return null;
+    return this.provider.capabilities().catch(() => null);
+  }
+
+  async exportTo(file: string) {
+    const provider = await this.requireProvider();
+    await provider.exportTo(file);
+  }
+
+  async importFrom(file: string): Promise<MemoryImportResult> {
+    const provider = await this.requireProvider();
+    const result = await provider.importFrom(file);
+    this.broadcast();
+    return result;
   }
 
   async policy() {
-    await this.ensureInitialized();
-    if (!this.currentSettings().enabled) return MEMORY_DISABLED_MESSAGE;
+    const blocked = await this.readyProvider();
+    if (blocked) return blocked;
     if (this.policyCache) return this.policyCache;
-    const executable = await this.resolveExecutable();
-    if (!executable) return MEMORY_MISSING_EXECUTABLE_MESSAGE;
     try {
-      this.policyCache = await readRsrsPolicy(executable);
+      this.policyCache = await this.provider.policy();
       return this.policyCache;
     } catch (error) {
       logDaemonDiagnostic("info", "memory.policyReadFailed", {
@@ -1257,29 +1174,4 @@ export class MemoryService {
   async getTurnMessages(sessionId: string): Promise<MessageRecord[]> {
     return this.options.state.listMessagesBySessionId(sessionId);
   }
-}
-
-function isTimeoutError(error: unknown) {
-  return (
-    error instanceof Error &&
-    (error.name === "TimeoutError" || error.name === "AbortError")
-  );
-}
-
-function startBudget(timeoutMs: number | undefined) {
-  const startedAt = performance.now();
-  const remaining = () =>
-    timeoutMs === undefined
-      ? undefined
-      : Math.max(0, Math.floor(timeoutMs - (performance.now() - startedAt)));
-  return {
-    remaining,
-    remainingOrThrow(operation: string) {
-      const left = remaining();
-      if (left === 0) {
-        throw new Error(`${operation} timed out after ${timeoutMs}ms`);
-      }
-      return left;
-    },
-  };
 }
