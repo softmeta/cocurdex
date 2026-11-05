@@ -1452,6 +1452,42 @@ export default interface Resources {
     };
     title: "Welcome to cocurdex";
   };
+  personal: {
+    copyName: "{{name}} copy";
+    defaultName: "Assistant";
+    delete: {
+      cancel: "Cancel";
+      confirm: "Delete";
+      description: "This deletes the assistant and its conversation. Memories stay in the memory store.";
+      title: "Delete {{name}}?";
+    };
+    edit: {
+      title: "Edit assistant";
+    };
+    empty: {
+      description: "Pick an assistant on the left to continue your conversation.";
+      title: "Your assistants";
+    };
+    menu: {
+      delete: "Delete";
+      duplicate: "Duplicate";
+      edit: "Edit";
+      mute: "Mute";
+      pin: "Pin";
+      unmute: "Unmute";
+      unpin: "Unpin";
+    };
+    newName: "New assistant";
+    roster: {
+      label: "Assistants";
+      muted: "Muted";
+      "new": "New assistant";
+      working: "Working…";
+    };
+    sidebar: {
+      title: "Assistants";
+    };
+  };
   search: {
     categories: {
       all: "All";

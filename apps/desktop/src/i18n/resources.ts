@@ -8,6 +8,7 @@ import issuesEnUs from "../locales/en-US/issues.json";
 import memoryEnUs from "../locales/en-US/memory.json";
 import notesEnUs from "../locales/en-US/notes.json";
 import onboardingEnUs from "../locales/en-US/onboarding.json";
+import personalEnUs from "../locales/en-US/personal.json";
 import searchEnUs from "../locales/en-US/search.json";
 import sessionsEnUs from "../locales/en-US/sessions.json";
 import settingsEnUs from "../locales/en-US/settings.json";
@@ -21,6 +22,7 @@ import issuesZhCn from "../locales/zh-CN/issues.json";
 import memoryZhCn from "../locales/zh-CN/memory.json";
 import notesZhCn from "../locales/zh-CN/notes.json";
 import onboardingZhCn from "../locales/zh-CN/onboarding.json";
+import personalZhCn from "../locales/zh-CN/personal.json";
 import searchZhCn from "../locales/zh-CN/search.json";
 import sessionsZhCn from "../locales/zh-CN/sessions.json";
 import settingsZhCn from "../locales/zh-CN/settings.json";
@@ -37,6 +39,7 @@ export const resources = {
     memory: memoryEnUs,
     notes: notesEnUs,
     onboarding: onboardingEnUs,
+    personal: personalEnUs,
     search: searchEnUs,
     sessions: sessionsEnUs,
     settings: settingsEnUs,
@@ -52,6 +55,7 @@ export const resources = {
     memory: memoryZhCn,
     notes: notesZhCn,
     onboarding: onboardingZhCn,
+    personal: personalZhCn,
     search: searchZhCn,
     sessions: sessionsZhCn,
     settings: settingsZhCn,

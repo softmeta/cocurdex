@@ -1,5 +1,5 @@
 import type { SessionRecord } from "@cocurdex/shared";
-import { isChatSession } from "@cocurdex/shared";
+import { isChatSession, isPersonalSession } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { openDeckAtom } from "@/features/decks";
 import { editorPanelOpenAtom } from "@/features/editor";
@@ -25,6 +25,8 @@ export function useSearchPaletteActions(onClose: () => void) {
       onClose();
       if (isChatSession(session)) {
         setSidebarTab("chat");
+      } else if (isPersonalSession(session)) {
+        setSidebarTab("personal");
       } else {
         setSidebarTab("workspaces");
         selectWorkspace(session.workspaceId);

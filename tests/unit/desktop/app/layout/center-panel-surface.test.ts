@@ -55,4 +55,23 @@ describe("resolveCenterPanelSurface", () => {
       }),
     ).toBe("new-session");
   });
+
+  it("shows the roster prompt on the personal tab until a persona is open", () => {
+    expect(
+      resolveCenterPanelSurface({
+        sidebarTab: "personal",
+        sessionId: "deleted-home",
+        session: null,
+        sessionDataLoaded: false,
+      }),
+    ).toBe("personal-empty");
+    expect(
+      resolveCenterPanelSurface({
+        sidebarTab: "personal",
+        sessionId: "home-1",
+        session: { sessionKind: "personal" },
+        sessionDataLoaded: true,
+      }),
+    ).toBe("agent-session");
+  });
 });

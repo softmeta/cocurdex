@@ -1,4 +1,4 @@
-import { isChatSession } from "@cocurdex/shared";
+import { isChatSession, isPersonalSession } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { selectAtom, useAtomCallback } from "jotai/utils";
 import { GitFork } from "lucide-react";
@@ -21,7 +21,8 @@ export function ForkFromMessageButton({
     () =>
       selectAtom(sessionsAtom, (sessions) => {
         const session = sessions.find((item) => item.id === sessionId);
-        return session ? !isChatSession(session) : false;
+        if (!session) return false;
+        return !(isChatSession(session) || isPersonalSession(session));
       }),
     [sessionId],
   );

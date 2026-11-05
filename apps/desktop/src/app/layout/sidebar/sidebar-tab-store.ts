@@ -5,6 +5,6 @@ import { atom } from "jotai";
  * answers the tab the user is actually looking at: the workspaces tab must not
  * offer a chat composer.
  */
-export type SidebarTab = "workspaces" | "chat";
+export type SidebarTab = "workspaces" | "chat" | "personal";
 
 export const sidebarTabAtom = atom<SidebarTab>("workspaces");

@@ -13,6 +13,7 @@ import {
   hashLogValue,
   hostForLog,
   isChatSession,
+  isPersonalSession,
   type MessageAttachment,
   type MessageRecord,
   normalizeWorkspaceRootPaths,
@@ -23,6 +24,7 @@ import {
   sessionConfiguration,
   supportsInSessionRuntimeAxis,
   type ThinkingLevelOption,
+  type WorkspaceRecord,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode, Ref } from "react";
@@ -129,6 +131,7 @@ import {
   consumeBrowserAnnotations,
   useBrowserAnnotationSender,
 } from "./chat-window/chat-browser-context";
+import { PersonalEmptyState } from "./personal-empty-state";
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
 import { useQueuedInputActions } from "./use-queued-input-actions";
 
@@ -240,6 +243,19 @@ function summarizeProviderSnapshotForLog(
   };
 }
 
+function resolveCenterWorkingPath(
+  session: SessionRecord | undefined,
+  workspace: WorkspaceRecord | undefined,
+  globalWorkingPath: string | null,
+) {
+  if (session && isPersonalSession(session)) return null;
+  if (!(session && workspace)) return globalWorkingPath;
+  return resolveSessionWorkingPath({
+    workspaceRootPath: primaryWorkspaceRootPath(workspace),
+    worktreePath: session.worktreePath,
+  });
+}
+
 export function CenterPanel({
   composerRef,
   hideTitlebarSpacer,
@@ -315,7 +331,7 @@ export function CenterPanel({
     if (session.id !== activeSessionId) {
       return false;
     }
-    if (pane || isChatSession(session)) {
+    if (pane || isChatSession(session) || isPersonalSession(session)) {
       return true;
     }
     return session.workspaceId === activeWorkspaceId;
@@ -323,13 +339,17 @@ export function CenterPanel({
   const activeWorkspace = activeSession
     ? workspaces.find((workspace) => workspace.id === activeSession.workspaceId)
     : selectedWorkspace;
-  const workingPath =
-    activeSession && activeWorkspace
-      ? resolveSessionWorkingPath({
-          workspaceRootPath: primaryWorkspaceRootPath(activeWorkspace),
-          worktreePath: activeSession.worktreePath,
-        })
-      : globalWorkingPath;
+  const workingPath = resolveCenterWorkingPath(
+    activeSession,
+    activeWorkspace,
+    globalWorkingPath,
+  );
+  const sessionRootPath =
+    workingPath ??
+    (activeWorkspace ? primaryWorkspaceRootPath(activeWorkspace) : null);
+  const canDriveActiveSession = Boolean(
+    activeSession && (activeWorkspace || isPersonalSession(activeSession)),
+  );
   const composerWorkspaceRootPaths = normalizeWorkspaceRootPaths([
     ...(activeWorkspace?.rootPaths ?? []),
     ...(workingPath ? [workingPath] : []),
@@ -420,7 +440,7 @@ export function CenterPanel({
     activeSession?.providerSnapshot?.thinkingLevel ?? "default",
   );
   const selectThinkingLevel = (thinkingLevel: AgentThinkingLevel) => {
-    if (!activeSession || !activeWorkspace) {
+    if (!(activeSession && canDriveActiveSession)) {
       return;
     }
     const updatedSession = updateSessionProviderRuntime({
@@ -571,8 +591,7 @@ export function CenterPanel({
     sentAnnotations: BrowserAnnotation[] = annotations,
   ): Promise<ComposerSendOutcome> => {
     if (
-      !activeSession ||
-      !activeWorkspace ||
+      !(activeSession && canDriveActiveSession) ||
       isSubagentSession(activeSession)
     ) {
       return "kept";
@@ -592,9 +611,7 @@ export function CenterPanel({
       requestId,
       agentType: activeSession.agentType,
       sessionId: activeSession.id,
-      workspaceHash: hashLogValue(
-        workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
-      ),
+      workspaceHash: hashLogValue(sessionRootPath ?? ""),
       contentLength: message.length,
       attachmentCount: attachments.length,
     });
@@ -619,8 +636,7 @@ export function CenterPanel({
       const isQueuedFollowUp = delivery === "queue-after-run";
       const queuedInputBase = {
         sessionId: nextSession.id,
-        workspaceRootPath:
-          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
+        workspaceRootPath: sessionRootPath ?? "",
         thinkingLevel: selectedThinkingLevel ?? undefined,
       };
 
@@ -664,9 +680,7 @@ export function CenterPanel({
         },
         thinkingLevel:
           thinkingLevelOptions.length > 0 ? selectedThinkingLevel : undefined,
-        workspaceHash: hashLogValue(
-          workingPath ?? primaryWorkspaceRootPath(activeWorkspace),
-        ),
+        workspaceHash: hashLogValue(sessionRootPath ?? ""),
       });
       if (nextSession.title !== activeSession.title) {
         await desktopApi.updateSessionTitle({
@@ -998,7 +1012,7 @@ export function CenterPanel({
   };
 
   const persistSession = (session: SessionRecord) => {
-    if (!activeWorkspace) {
+    if (!canDriveActiveSession) {
       return;
     }
 
@@ -1112,6 +1126,8 @@ export function CenterPanel({
         />
       </ComposerSurface>
     );
+  } else if (centerSurface === "personal-empty") {
+    newSessionSurface = <PersonalEmptyState />;
   } else if (centerSurface === "new-chat") {
     newSessionSurface = (
       <ComposerSurface>

@@ -1669,8 +1669,9 @@ export class CocurdexDaemonService {
     return this.workflows.get(workflowRunId);
   }
 
-  listAgentRoles() {
-    return this.state.listAgentRoles();
+  async listAgentRoles() {
+    const roles = await this.state.listAgentRoles();
+    return roles.filter((role) => !this.personalAgents.ownsRole(role.id));
   }
 
   getAgentRole(id: string) {
@@ -1719,6 +1720,12 @@ export class CocurdexDaemonService {
       updatedAt: now,
     };
     await this.state.saveAgentRole(role);
+    if (this.personalAgents.ownsRole(role.id)) {
+      this.events.emit("daemon.event", {
+        type: "data.changed",
+        areas: ["personal"],
+      });
+    }
     return role;
   }
 

@@ -1,0 +1,36 @@
+{
+  "copyName": "{{name}} 副本",
+  "defaultName": "助理",
+  "delete": {
+    "cancel": "取消",
+    "confirm": "删除",
+    "description": "将删除这个助理和它的对话。记忆仍保留在记忆库中。",
+    "title": "删除 {{name}}？"
+  },
+  "edit": {
+    "title": "编辑助理"
+  },
+  "empty": {
+    "description": "在左侧选择一个助理，继续你们的对话。",
+    "title": "你的助理"
+  },
+  "menu": {
+    "delete": "删除",
+    "duplicate": "复制",
+    "edit": "编辑",
+    "mute": "免打扰",
+    "pin": "置顶",
+    "unmute": "取消免打扰",
+    "unpin": "取消置顶"
+  },
+  "newName": "新助理",
+  "roster": {
+    "label": "助理",
+    "muted": "免打扰",
+    "new": "新建助理",
+    "working": "正在处理…"
+  },
+  "sidebar": {
+    "title": "助理"
+  }
+}

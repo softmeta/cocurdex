@@ -1,3 +1,4 @@
+import { personalAgentRoleDraft } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { FolderPlus, Plus, Search } from "lucide-react";
 import { type ReactNode, startTransition, useOptimistic } from "react";
@@ -15,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui";
 import { chatSessionsAtom } from "@/features/chat";
+import { personalApi } from "@/features/personal";
 import {
   activeSessionIdAtom,
   removeSessionsByWorkspaceAtom,
@@ -40,6 +42,8 @@ import { isDetachedChatWindow } from "../chat-window/chat-window-state";
 import { searchPaletteOpenAtom } from "../search-palette/search-palette-store";
 import { ArchiveGroupDialog } from "./archive-group-dialog";
 import { ChatSessionsPanel } from "./chat-sessions-panel";
+import { personalAgentEditIdAtom } from "./personal-agent-edit-store";
+import { PersonalAgentsPanel } from "./personal-agents-panel";
 import { SessionGroupsPanel } from "./session-groups-panel";
 import { SessionListSections } from "./session-list-sections";
 import { SessionListViewMenu } from "./session-list-view-menu";
@@ -83,7 +87,7 @@ export function LeftSidebar({
   hideTitlebarSpacer,
   onAfterNavigate,
 }: LeftSidebarProps) {
-  const { t } = useTranslation(["sessions", "chat", "search"]);
+  const { t } = useTranslation(["sessions", "chat", "search", "personal"]);
   const workspaces = useAtomValue(workspacesAtom);
   const sessions = useAtomValue(sessionsAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
@@ -96,6 +100,7 @@ export function LeftSidebar({
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const chatSessions = useAtomValue(chatSessionsAtom);
+  const setPersonalAgentEditId = useSetAtom(personalAgentEditIdAtom);
   const [optimisticActiveSessionId, setOptimisticActiveSessionId] =
     useOptimistic(activeSessionId);
   const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useAtom(
@@ -142,6 +147,33 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
+  const selectFormSession = (sessionId: string) => {
+    startTransition(() => {
+      setOptimisticActiveSessionId(sessionId);
+      selectSession(sessionId);
+    });
+    onAfterNavigate?.();
+  };
+
+  const handleCreatePersonalAgent = async () => {
+    try {
+      const agents = await personalApi.list();
+      const template = agents.find((agent) => agent.isDefault)?.role;
+      const created = await personalApi.create({
+        role: {
+          ...personalAgentRoleDraft(t("personal:newName"), template?.agentId),
+          providerId: template?.providerId ?? null,
+          modelId: template?.modelId ?? null,
+          modelName: template?.modelName ?? null,
+        },
+      });
+      selectFormSession(created.homeSessionId);
+      setPersonalAgentEditId(created.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const toggleWorkspace = (workspaceId: string) => {
     setCollapsedWorkspaceIds((current) =>
       current.includes(workspaceId)
@@ -186,14 +218,19 @@ export function LeftSidebar({
   };
 
   const isWorkspacesTab = activeTab === "workspaces";
-  const createActionLabel = isWorkspacesTab
-    ? t("sessions:sidebar.newSession", {
-        defaultValue: "New session",
-      })
-    : t("chat:list.new", { defaultValue: "New chat" });
-  const onCreateAction = isWorkspacesTab
-    ? () => handleCreateAgent()
-    : handleCreateChat;
+  const createActions: Record<SidebarTab, { label: string; run(): void }> = {
+    workspaces: {
+      label: t("sessions:sidebar.newSession"),
+      run: () => handleCreateAgent(),
+    },
+    chat: { label: t("chat:list.new"), run: handleCreateChat },
+    personal: {
+      label: t("personal:roster.new"),
+      run: () => void handleCreatePersonalAgent(),
+    },
+  };
+  const createActionLabel = createActions[activeTab].label;
+  const onCreateAction = createActions[activeTab].run;
   const addWorkspaceLabel = t("sessions:sidebar.addWorkspace", {
     defaultValue: "Add workspace",
   });
@@ -235,6 +272,9 @@ export function LeftSidebar({
               </TabsTrigger>
               <TabsTrigger value="chat">
                 {t("chat:sidebar.title", { defaultValue: "Chat" })}
+              </TabsTrigger>
+              <TabsTrigger value="personal">
+                {t("personal:sidebar.title")}
               </TabsTrigger>
             </TabsList>
           </div>
@@ -342,14 +382,18 @@ export function LeftSidebar({
           <TabsContent className="flex min-h-0 flex-1 flex-col" value="chat">
             <ChatSessionsPanel
               activeSessionId={optimisticActiveSessionId}
-              onSelectSession={(sessionId) => {
-                startTransition(() => {
-                  setOptimisticActiveSessionId(sessionId);
-                  selectSession(sessionId);
-                });
-                onAfterNavigate?.();
-              }}
+              onSelectSession={selectFormSession}
               sessions={chatSessions}
+            />
+          </TabsContent>
+
+          <TabsContent
+            className="flex min-h-0 flex-1 flex-col"
+            value="personal"
+          >
+            <PersonalAgentsPanel
+              activeSessionId={optimisticActiveSessionId}
+              onSelectSession={selectFormSession}
             />
           </TabsContent>
         </Tabs>
