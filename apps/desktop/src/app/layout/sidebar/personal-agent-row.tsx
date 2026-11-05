@@ -25,6 +25,7 @@ import {
   AgentRoleAvatar,
   getAgentDisplayLabel,
   unreadSessionIdsAtom,
+  useAvatarGaze,
 } from "@/features/sessions";
 import { SessionTrailing } from "./session-sidebar-trailing";
 import { SidebarContextMenuItem } from "./sidebar-context-menu-item";
@@ -69,6 +70,7 @@ export function PersonalAgentRow({
   isActive: boolean;
 }) {
   const { t } = useTranslation("personal");
+  const gaze = useAvatarGaze();
   const { isUnread, needsAttention } = useHomeSessionState(agent.homeSessionId);
   const isRunning = homeSession?.status === "running";
   const isMuted = agent.mutedAt !== null;
@@ -93,6 +95,8 @@ export function PersonalAgentRow({
         <SidebarListRow
           className="h-auto gap-2.5 py-1.5 ps-1"
           data-avatar-hover=""
+          onPointerLeave={gaze.onPointerLeave}
+          onPointerMove={gaze.onPointerMove}
           data-personal-agent-id={agent.id}
           data-session-id={agent.homeSessionId}
           isActive={isActive}

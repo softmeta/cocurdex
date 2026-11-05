@@ -1,5 +1,6 @@
 import {
   AGENT_ROLE_AVATAR_FACE_FEATURES,
+  AGENT_ROLE_AVATAR_REST_GAZE,
   AGENT_ROLE_AVATAR_SHAPE_PATHS,
   AGENT_ROLE_AVATAR_VIEWBOX,
   type AgentId,
@@ -9,7 +10,7 @@ import {
   resolveAgentRoleAvatar,
 } from "@cocurdex/shared";
 import { StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, G, Path } from "react-native-svg";
 import { type ThemeColors, useThemeColors } from "@/theme";
 import { AgentIcon } from "./agent-icon";
 
@@ -68,26 +69,31 @@ export function RoleAvatar({
           width={size}
         >
           <Path d={AGENT_ROLE_AVATAR_SHAPE_PATHS[avatar.shape]} fill={hue} />
-          {AGENT_ROLE_AVATAR_FACE_FEATURES[avatar.face].map((feature) =>
-            feature.kind === "dot" ? (
-              <Circle
-                cx={feature.cx}
-                cy={feature.cy}
-                fill={colors.roleAvatarFace}
-                key={`${feature.cx}:${feature.cy}`}
-                r={feature.r}
-              />
-            ) : (
-              <Path
-                d={feature.d}
-                fill="none"
-                key={feature.d}
-                stroke={colors.roleAvatarFace}
-                strokeLinecap="round"
-                strokeWidth={feature.width}
-              />
-            ),
-          )}
+          <G
+            x={AGENT_ROLE_AVATAR_REST_GAZE.x}
+            y={AGENT_ROLE_AVATAR_REST_GAZE.y}
+          >
+            {AGENT_ROLE_AVATAR_FACE_FEATURES[avatar.face].map((feature) =>
+              feature.kind === "dot" ? (
+                <Circle
+                  cx={feature.cx}
+                  cy={feature.cy}
+                  fill={colors.roleAvatarFace}
+                  key={`${feature.cx}:${feature.cy}`}
+                  r={feature.r}
+                />
+              ) : (
+                <Path
+                  d={feature.d}
+                  fill="none"
+                  key={feature.d}
+                  stroke={colors.roleAvatarFace}
+                  strokeLinecap="round"
+                  strokeWidth={feature.width}
+                />
+              ),
+            )}
+          </G>
         </Svg>
       ) : (
         <Text

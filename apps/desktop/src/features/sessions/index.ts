@@ -23,6 +23,7 @@ export {
   AgentRoleAvatar,
   type AgentRoleAvatarSource,
 } from "./agent-role/agent-role-avatar";
+export { useAvatarGaze } from "./agent-role/use-avatar-gaze";
 export {
   getAgentRuntimePreferences,
   resolvePreferredPermissionMode,

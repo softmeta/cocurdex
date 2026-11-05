@@ -15,6 +15,8 @@ export type AgentRoleAvatarShape = (typeof AGENT_ROLE_AVATAR_SHAPES)[number];
 
 export const AGENT_ROLE_AVATAR_VIEWBOX = 24;
 
+export const AGENT_ROLE_AVATAR_REST_GAZE = { x: 0.9, y: -0.7 } as const;
+
 export const AGENT_ROLE_AVATAR_FACES = [
   "dots",
   "happy",
