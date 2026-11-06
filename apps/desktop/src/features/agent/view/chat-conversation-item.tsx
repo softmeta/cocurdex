@@ -41,7 +41,7 @@ import {
 import { useTurnChangeSet } from "@/features/turn-workspace-changes";
 import { TurnChangesCard } from "@/features/turn-workspace-changes/turn-changes-card";
 import { cn } from "@/lib";
-import { chatDisplaySettingsAtom } from "../chat-display";
+import { useActivityDisplay, useChatPresentation } from "../chat-display";
 import { PermissionCard } from "../permission";
 import { QuestionCard } from "../question";
 // Deep imports (not the tool-call barrel): the barrel pulls in the subagent
@@ -404,13 +404,15 @@ const AssistantMessageActions = memo(function AssistantMessageActions({
   stopped: boolean;
 }) {
   const { t } = useTranslation("agent");
+  const isAssistantPresentation = useChatPresentation() === "assistant";
   const turnStats = useAtomValue(turnStatsByMessageAtom)[message.id];
   const [hasCopied, setHasCopied] = useState(false);
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
-  const durationText = turnStats
-    ? formatDurationMs(turnStats.durationMs)
-    : null;
-  const hasTokenUsage = getTurnTokenCounts(turnStats?.usage) != null;
+  const showsTurnStats = !isAssistantPresentation;
+  const durationText =
+    showsTurnStats && turnStats ? formatDurationMs(turnStats.durationMs) : null;
+  const hasTokenUsage =
+    showsTurnStats && getTurnTokenCounts(turnStats?.usage) != null;
 
   const handleCopyMarkdown = () => {
     void navigator.clipboard
@@ -483,10 +485,12 @@ const AssistantMessageActions = memo(function AssistantMessageActions({
             </DropdownMenuGroup>
           </AppDropdownContent>
         </DropdownMenu>
-        <ForkFromMessageButton
-          messageId={message.id}
-          sessionId={message.sessionId}
-        />
+        {isAssistantPresentation ? null : (
+          <ForkFromMessageButton
+            messageId={message.id}
+            sessionId={message.sessionId}
+          />
+        )}
         {durationText || hasTokenUsage ? (
           <span className="flex items-center gap-1 text-xs tabular-nums text-chat-fg-muted">
             {durationText ? <span>{durationText}</span> : null}
@@ -523,7 +527,7 @@ const MessageArticle = memo(function MessageArticle({
   // have ended (or died) there. Reasoning is still live only while the session
   // is running, same gate the assistant body below uses.
   const isReasoningStreaming = isRunning && isStreamingLatest;
-  const { activityDisplay } = useAtomValue(chatDisplaySettingsAtom);
+  const activityDisplay = useActivityDisplay();
   const turnChangeSet = useTurnChangeSet(message.id);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const hasAssistantBody =
@@ -655,7 +659,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   runStartedAt?: number;
 }) {
   const showActivity = isRunning && isLatestConversation;
-  const { activityDisplay } = useAtomValue(chatDisplaySettingsAtom);
+  const activityDisplay = useActivityDisplay();
   const turnStats = findConversationTurnStats(
     conversationGroup,
     useAtomValue(turnStatsByMessageAtom),
