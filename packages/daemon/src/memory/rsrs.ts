@@ -561,7 +561,7 @@ export function parseRecallPayload(
   return items.flatMap((entry) => {
     const record = asRecord(entry);
     const id = stringValue(record?.name);
-    if (!id) return [];
+    if (!id || record?.status !== "ok") return [];
     const value = stringValue(record?.value) ?? "";
     const match = /^([0-9.]+)\s+(.*)$/.exec(value);
     return [

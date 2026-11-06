@@ -185,6 +185,17 @@ describe("rsrs JSON parsing", () => {
     ]);
   });
 
+  it("reads a recall without hits as empty, not as its status row", () => {
+    expect(
+      parseRecallPayload({
+        command: "recall",
+        status: "skip",
+        items: [{ name: "results", status: "skip", value: "0" }],
+        details: null,
+      }),
+    ).toEqual([]);
+  });
+
   it("parses a shown entry", () => {
     expect(
       parseShowPayload({

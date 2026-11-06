@@ -178,6 +178,7 @@ async function createService(
     identityMissing?: boolean;
     platform?: { os: string; arch: string };
     turnRecallBudgetMs?: number;
+    startRuntime?: boolean;
   } = {},
 ) {
   const directory = await temp.create("cocurdex-memory-");
@@ -198,7 +199,7 @@ async function createService(
     device: "test-host",
     platform: options.platform,
     rsrsDataDir: directory,
-    startRuntime: false,
+    startRuntime: options.startRuntime ?? false,
     turnRecallBudgetMs: options.turnRecallBudgetMs,
     now: () => new Date("2026-10-28T10:00:02.000Z"),
   });
@@ -358,6 +359,23 @@ describe("MemoryService with a fake rsrs CLI", () => {
       outcome: "failed",
     });
     expect(status.lastRecall?.error).toBeTruthy();
+  });
+
+  it("recalls through the CLI without waiting for a runtime that never starts", async () => {
+    const { service, logPath } = await createService({ startRuntime: true });
+    await service.getStatus();
+    const startedAt = performance.now();
+
+    const context = await service.buildTurnContext(
+      fakeSession(),
+      "anything",
+      "chat",
+    );
+
+    expect(performance.now() - startedAt).toBeLessThan(5_000);
+    expect(context).not.toBeNull();
+    const calls = (await readFile(logPath, "utf8")).trim().split("\n");
+    expect(calls.some((line) => line.startsWith('["recall"'))).toBe(true);
   });
 
   it("keeps a slow runtime and skips the CLI once the turn budget is spent", async () => {

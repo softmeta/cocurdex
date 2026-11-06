@@ -114,6 +114,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
   private injected: { agents: string[]; at: number } | null = null;
   private readonly reads = new TaskQueue();
   private readonly writes = new TaskQueue();
+  private startingRuntime: Promise<void> | null = null;
 
   constructor(private readonly options: RsrsMemoryProviderOptions) {}
 
@@ -163,19 +164,43 @@ export class RsrsMemoryProvider implements MemoryProvider {
     }
     const executable = await this.executable();
     if (!executable) return null;
-    let endpoint: RuntimeEndpoint | null = null;
+    const endpoint = await this.connectRuntime(executable, false);
+    if (!endpoint && this.options.startRuntime !== false) {
+      this.startRuntimeInBackground(executable);
+    }
+    return this.adoptEndpoint(endpoint);
+  }
+
+  private async connectRuntime(
+    executable: RsrsExecutable,
+    autoStart: boolean,
+  ): Promise<RuntimeEndpoint | null> {
     try {
-      endpoint = await ensureRuntime({
+      return await ensureRuntime({
         command: executable.command,
         dataDir: this.options.dataDir,
-        autoStart: this.options.startRuntime !== false,
+        autoStart,
         now: () => this.nowMs(),
       });
     } catch (error) {
       logDaemonDiagnostic("info", "memory.runtimeUnavailable", {
         error: errorMessage(error),
       });
+      return null;
     }
+  }
+
+  private startRuntimeInBackground(executable: RsrsExecutable) {
+    this.startingRuntime ??= this.connectRuntime(executable, true)
+      .then(async (endpoint) => {
+        if (endpoint) await this.adoptEndpoint(endpoint);
+      })
+      .finally(() => {
+        this.startingRuntime = null;
+      });
+  }
+
+  private async adoptEndpoint(endpoint: RuntimeEndpoint | null) {
     this.endpoint = endpoint;
     this.endpointCheckedAt = this.nowMs();
     this.tools = endpoint

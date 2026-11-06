@@ -11,7 +11,7 @@ const START_POLL_MS = 200;
 
 export interface RuntimeEndpoint {
   url: string;
-  token: string;
+  token: string | null;
   bin: string | null;
   pid: number | null;
 }
@@ -47,10 +47,10 @@ export async function readRuntimeEndpoint(
   ]);
   const url = typeof endpoint?.url === "string" ? endpoint.url.trim() : "";
   const trimmedToken = token?.trim() ?? "";
-  if (!url || !trimmedToken) return null;
+  if (!url) return null;
   return {
     url,
-    token: trimmedToken,
+    token: trimmedToken || null,
     bin: typeof endpoint?.bin === "string" ? endpoint.bin : null,
     pid: typeof endpoint?.pid === "number" ? endpoint.pid : null,
   };
@@ -63,10 +63,12 @@ async function postRpc(
 ) {
   const response = await fetch(`${endpoint.url}/mcp`, {
     method: "POST",
-    headers: {
-      authorization: `Bearer ${endpoint.token}`,
-      "content-type": "application/json",
-    },
+    headers: endpoint.token
+      ? {
+          authorization: `Bearer ${endpoint.token}`,
+          "content-type": "application/json",
+        }
+      : { "content-type": "application/json" },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
   });

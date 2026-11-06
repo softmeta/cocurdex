@@ -62,7 +62,11 @@ async function startRuntime(handler: Handler) {
   };
 }
 
-async function writeRuntimeFiles(dataDir: string, url: string) {
+async function writeRuntimeFiles(
+  dataDir: string,
+  url: string,
+  { token = true }: { token?: boolean } = {},
+) {
   const runtimeDir = path.join(dataDir, "runtime");
   await mkdir(runtimeDir, { recursive: true });
   await writeFile(
@@ -70,7 +74,9 @@ async function writeRuntimeFiles(dataDir: string, url: string) {
     JSON.stringify({ bin: "1.0.0", pid: 4242, url, v: 1 }),
     "utf8",
   );
-  await writeFile(path.join(runtimeDir, "token"), "runtime-token\n", "utf8");
+  if (token) {
+    await writeFile(path.join(runtimeDir, "token"), "runtime-token\n", "utf8");
+  }
 }
 
 function toolText(value: unknown) {
@@ -118,6 +124,25 @@ describe("rsrs runtime client", () => {
         5_000,
       );
       expect(status).toMatchObject({ command: "status", status: "ok" });
+    } finally {
+      await runtime.close();
+    }
+  });
+
+  it("reaches a runtime that writes no token file", async () => {
+    const runtime = await startRuntime((method) => {
+      if (method === "tools/list") return { tools: [] };
+      return toolText({ command: "status", status: "ok", summary: {} });
+    });
+    const dataDir = await temp.create("cocurdex-runtime-");
+    await writeRuntimeFiles(dataDir, runtime.url, { token: false });
+    try {
+      const endpoint = await readRuntimeEndpoint(dataDir);
+      expect(endpoint).toMatchObject({ url: runtime.url, token: null });
+      if (!endpoint) throw new Error("expected an endpoint");
+      await expect(
+        callRuntimeTool(endpoint, "memory_status", {}, 5_000),
+      ).resolves.toMatchObject({ status: "ok" });
     } finally {
       await runtime.close();
     }
