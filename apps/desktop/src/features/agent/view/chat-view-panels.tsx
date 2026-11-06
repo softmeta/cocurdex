@@ -24,6 +24,7 @@ import {
   type ComposerSendOutcome,
 } from "@/features/composer";
 import { ScriptRunPanel, TeamPanel } from "@/features/sessions";
+import { useChatPresentation } from "../chat-display";
 import { PermissionCard, permissionsBySessionAtom } from "../permission";
 import { PlanApprovalCard, PlanPanel, type SessionPlan } from "../plan";
 import { QuestionCard, questionsBySessionAtom } from "../question";
@@ -153,6 +154,7 @@ export function ComposerDock({
   ...composerProps
 }: ChatComposerControls) {
   const { t } = useTranslation("agent");
+  const presentation = useChatPresentation();
   const permissionsBySession = useAtomValue(permissionsBySessionAtom);
   const questionsBySession = useAtomValue(questionsBySessionAtom);
   const pausedQueueSessionIds = useAtomValue(pausedQueueSessionIdsAtom);
@@ -257,6 +259,7 @@ export function ComposerDock({
           {...composerProps}
           isRunning={isRunning}
           ref={composerRef}
+          runtimeControls={presentation !== "assistant"}
           contextChips={composerContextChips}
           {...(chatComposer
             ? {

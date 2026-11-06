@@ -48,6 +48,7 @@ interface ComposerCardProps {
   isRunning: boolean;
   canSend: boolean;
   isAgentMode: boolean;
+  runtimeControls: boolean;
   footerLeading?: ReactNode;
   footerTrailing?: ReactNode;
   runtimeMenuExtras?: ReactNode;
@@ -78,6 +79,7 @@ export function ComposerCard({
   isRunning,
   canSend,
   isAgentMode,
+  runtimeControls,
   footerLeading,
   footerTrailing,
   runtimeMenuExtras,
@@ -215,7 +217,7 @@ export function ComposerCard({
           <div className="flex min-w-0 flex-1 items-center gap-1">
             {footerLeading}
             {resolvedControls}
-            {isAgentMode ? (
+            {isAgentMode && runtimeControls ? (
               <ContextWindowIndicator
                 afterModel={footerTrailing}
                 footer={runtimeMenuExtras}

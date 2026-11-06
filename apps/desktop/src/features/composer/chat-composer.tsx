@@ -120,6 +120,7 @@ interface ChatComposerProps {
   // mode's built-in ContextWindowIndicator on the same edge.
   footerTrailing?: ReactNode;
   canSubmit?: boolean;
+  runtimeControls?: boolean;
   canSendWhileRunning?: boolean;
   placeholderOverride?: string;
   role?: AgentRoleRecord | null;
@@ -160,6 +161,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       footerLeading,
       footerTrailing,
       canSubmit,
+      runtimeControls = true,
       canSendWhileRunning = false,
       placeholderOverride,
       role = null,
@@ -513,7 +515,9 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const modelLeading = sessionRole ? (
       <SessionRoleName role={sessionRole} />
     ) : null;
-    const resolvedControls = controls ?? defaultAgentControls;
+    const resolvedControls = runtimeControls
+      ? (controls ?? defaultAgentControls)
+      : null;
 
     const attachMenuContent = (
       <AppDropdownContent side="bottom">
@@ -585,6 +589,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             sessionId={sessionId}
             attachmentError={attachmentError}
             isAgentMode={isAgentMode}
+            runtimeControls={runtimeControls}
             isRunning={isRunning}
             mentionAnchor={mentionAnchor}
             onEditorChange={handleEditorChange}
