@@ -150,14 +150,24 @@ export class PersonalAgentService {
 
   async delete(id: string) {
     const row = this.require(id);
-    if (row.isDefault) {
-      throw new Error("The default personal agent cannot be deleted");
-    }
     await this.deps.removeDependents(row.id);
     this.deps.repository.delete(row.id);
+    if (row.isDefault) await this.promoteDefault();
     await this.deps.removeSession(row.homeSessionId);
     await this.deps.deleteRole(row.roleId);
     this.deps.announceChanged();
+  }
+
+  private async promoteDefault() {
+    const [next] = await this.list();
+    const row = next ? this.deps.repository.getById(next.id) : null;
+    if (!row) return;
+    this.deps.repository.upsert({
+      ...row,
+      isDefault: true,
+      pinnedAt: null,
+      updatedAt: this.now(),
+    });
   }
 
   private async createDefault(payload: EnsureDefaultPersonalAgentPayload) {

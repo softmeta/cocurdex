@@ -64,6 +64,7 @@ export function createSqlitePersonalAgentRepository(
            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              soul = excluded.soul,
+             is_default = excluded.is_default,
              pinned_at = excluded.pinned_at,
              muted_at = excluded.muted_at,
              sort_order = excluded.sort_order,
