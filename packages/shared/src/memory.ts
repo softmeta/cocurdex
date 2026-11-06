@@ -2,8 +2,8 @@ export const MEMORY_SETTINGS_KEY = "memory";
 export const MEMORY_POLICY_TOOL_NAME = "memory_policy";
 export const MEMORY_TOOL_GROUP = "memory" as const;
 
-export const RSRS_CLI_PACKAGE = "@rsrsai/cli";
-export const RSRS_CLI_VERSION = "1.0.19";
+export const RSRS_CLI_PACKAGE = "rsrs-cli";
+export const RSRS_CLI_VERSION = "1.0.20";
 export const RSRS_SITE_URL = "https://rsrs.rs";
 export const RSRS_REPO_URL = "https://github.com/risense-ai/respire-cli";
 export const RSRS_DASHBOARD_URL = "https://dash.rsrs.rs";

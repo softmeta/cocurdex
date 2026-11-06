@@ -729,6 +729,8 @@ export async function readInjectedHosts(executable: RsrsExecutable) {
   return parseInjectedHosts(parseRsrsJson(result.stdout));
 }
 
+const LEGACY_RSRS_CLI_PACKAGE = "@rsrsai/cli";
+
 function quoteForShell(value: string) {
   return /\s/.test(value) ? JSON.stringify(value) : value;
 }
@@ -739,13 +741,30 @@ export async function installRsrs(input: {
 }): Promise<{ command: string; output: string }> {
   const timeoutMs = input.timeoutMs ?? INSTALL_TIMEOUT_MS;
   const pinned = `${RSRS_CLI_PACKAGE}@${RSRS_CLI_VERSION}`;
-  const attempts: Array<{ command: string; args: string[] }> = [
-    { command: "npm", args: ["install", "-g", pinned] },
-    { command: "pnpm", args: ["add", "-g", pinned] },
+  const attempts: Array<{
+    command: string;
+    args: string[];
+    removeLegacy: string[];
+  }> = [
+    {
+      command: "npm",
+      args: ["install", "-g", pinned],
+      removeLegacy: ["uninstall", "-g", LEGACY_RSRS_CLI_PACKAGE],
+    },
+    {
+      command: "pnpm",
+      args: ["add", "-g", pinned],
+      removeLegacy: ["remove", "-g", LEGACY_RSRS_CLI_PACKAGE],
+    },
   ];
   const failures: string[] = [];
   for (const attempt of attempts) {
     try {
+      await runRsrs(
+        { command: attempt.command, source: "path" },
+        attempt.removeLegacy,
+        { timeoutMs, env: input.env, cwd: homedir() },
+      ).catch(() => null);
       const result = await runRsrs(
         { command: attempt.command, source: "path" },
         attempt.args,
