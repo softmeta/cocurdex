@@ -14,6 +14,25 @@ function parse<M extends DaemonMethod>(method: M, params: unknown) {
 }
 
 describe("parseDaemonRequest", () => {
+  it("accepts every agent role avatar kind", () => {
+    const role = (avatar: unknown) => ({
+      id: "agent-1",
+      role: { name: "Helper", agentId: "pi", avatar },
+    });
+    expect(
+      parse(
+        "personalAgent.update",
+        role({ kind: "shape", shape: "drop", face: "dots", color: "pink" }),
+      ),
+    ).not.toThrow();
+    expect(
+      parse(
+        "personalAgent.update",
+        role({ kind: "shape", shape: "hexagon", face: "dots", color: "pink" }),
+      ),
+    ).toThrow(/Invalid personalAgent\.update payload/);
+  });
+
   it("keeps git file operations inside the workspace", () => {
     expect(
       parse("git.stageFiles", {
