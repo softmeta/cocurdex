@@ -98,7 +98,7 @@ export function ChatSessionsPanel({
           ) : null}
           <SidebarMenuItem className="flex flex-col gap-0.5">
             <SidebarSectionHeading section="chat">
-              {t("sidebar.title")}
+              {t("sessions:sidebar.sessionsHeading")}
             </SidebarSectionHeading>
             {chatSection.collapsed ? null : (
               <ChatSessionRows

@@ -17,8 +17,6 @@ import {
   type PersonalAgentRowActions,
 } from "./personal-agent-row";
 import { SidebarScrollArea } from "./sidebar-scroll-area";
-import { SidebarSectionHeading } from "./sidebar-section-heading";
-import { useSidebarSectionCollapse } from "./use-sidebar-section-collapse";
 
 function notifyFailure(error: unknown) {
   toast.error(error instanceof Error ? error.message : String(error));
@@ -39,8 +37,6 @@ export function PersonalAgentsPanel({
   const sessions = useAtomValue(sessionsAtom);
   const [editId, setEditId] = useAtom(personalAgentEditIdAtom);
   const [deleting, setDeleting] = useState<PersonalAgentRecord | null>(null);
-  const { collapsed: rosterCollapsed } =
-    useSidebarSectionCollapse("assistants");
   const editing = agents.find((agent) => agent.id === editId) ?? null;
 
   const actions: PersonalAgentRowActions = {
@@ -77,25 +73,20 @@ export function PersonalAgentsPanel({
         }}
       >
         <section aria-label={t("roster.label")} className="pe-3 pb-3">
-          <SidebarSectionHeading section="assistants">
-            {t("roster.label")}
-          </SidebarSectionHeading>
-          {rosterCollapsed ? null : (
-            <SidebarMenu className="gap-0.5">
-              {agents.map((agent) => (
-                <li className="list-none" key={agent.id}>
-                  <PersonalAgentRow
-                    actions={actions}
-                    agent={agent}
-                    homeSession={sessions.find(
-                      (session) => session.id === agent.homeSessionId,
-                    )}
-                    isActive={agent.homeSessionId === activeSessionId}
-                  />
-                </li>
-              ))}
-            </SidebarMenu>
-          )}
+          <SidebarMenu className="gap-0.5">
+            {agents.map((agent) => (
+              <li className="list-none" key={agent.id}>
+                <PersonalAgentRow
+                  actions={actions}
+                  agent={agent}
+                  homeSession={sessions.find(
+                    (session) => session.id === agent.homeSessionId,
+                  )}
+                  isActive={agent.homeSessionId === activeSessionId}
+                />
+              </li>
+            ))}
+          </SidebarMenu>
         </section>
         <InboxSection
           activeSessionId={activeSessionId}
