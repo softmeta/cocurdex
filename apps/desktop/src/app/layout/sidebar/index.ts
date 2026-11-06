@@ -6,4 +6,8 @@ export {
   ResizeSeparator,
   SidebarToggleButton,
 } from "./sidebar-frame";
-export { type SidebarTab, sidebarTabAtom } from "./sidebar-tab-store";
+export {
+  type SidebarTab,
+  sidebarTabAtom,
+  sidebarTabOf,
+} from "./sidebar-tab-store";

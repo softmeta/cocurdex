@@ -41,7 +41,11 @@ import { SessionListSections } from "./session-list-sections";
 import { SessionListViewMenu } from "./session-list-view-menu";
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarFormSwitcher } from "./sidebar-form-switcher";
-import { type SidebarTab, sidebarTabAtom } from "./sidebar-tab-store";
+import {
+  type SidebarTab,
+  sidebarTabAtom,
+  switchSidebarTabAtom,
+} from "./sidebar-tab-store";
 import { useSidebarSessionView } from "./use-sidebar-session-view";
 import { WorkspacesPanel } from "./workspaces-panel";
 
@@ -105,7 +109,8 @@ export function LeftSidebar({
   // Workspaces and chat are alternate views of the same rail, not two stacked
   // lists: only one list competes for the sidebar height at a time. The center
   // panel reads the same atom so its empty state matches the visible tab.
-  const [activeTab, setActiveTab] = useAtom(sidebarTabAtom);
+  const activeTab = useAtomValue(sidebarTabAtom);
+  const switchSidebarTab = useSetAtom(switchSidebarTabAtom);
 
   const sessionView = useSidebarSessionView(workspaces, sessions);
 
@@ -281,7 +286,7 @@ export function LeftSidebar({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <div className="flex shrink-0 items-center gap-0.5 pe-3">
             <SidebarFormSwitcher
-              onValueChange={setActiveTab}
+              onValueChange={switchSidebarTab}
               value={activeTab}
             />
             <div className="min-w-0 flex-1" />
