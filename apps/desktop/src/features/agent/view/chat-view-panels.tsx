@@ -12,24 +12,18 @@ import type {
   AgentThinkingLevel,
   MessageAttachment,
   ThinkingLevelOption,
-  WorkspaceRecord,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
-import { AppGitBranchLabel } from "@/components";
 import { JumpControls } from "@/components/chat";
 import {
   ChatComposer,
   type ChatComposerHandle,
   ComposerDockFrame,
   type ComposerSendOutcome,
-  composerFooterControlClassName,
 } from "@/features/composer";
 import { ScriptRunPanel, TeamPanel } from "@/features/sessions";
-import { WorkspaceRootsTooltip, workspaceIconFor } from "@/features/workspaces";
-import { desktopApi } from "@/lib";
 import { PermissionCard, permissionsBySessionAtom } from "../permission";
 import { PlanApprovalCard, PlanPanel, type SessionPlan } from "../plan";
 import { QuestionCard, questionsBySessionAtom } from "../question";
@@ -45,7 +39,6 @@ export { JumpControls };
 
 interface ChatComposerControls {
   chatComposer?: ChatComposerOverride;
-  activeBranch?: string | null;
   agentLabel: string;
   sessionId?: string;
   agentType?: AgentId;
@@ -72,7 +65,6 @@ interface ChatComposerControls {
   supportsSteering?: boolean;
   /** Live ACP task list (todo_write / plan update) — docked above the composer. */
   plan?: SessionPlan | null;
-  workspace?: Pick<WorkspaceRecord, "id" | "name" | "rootPaths"> | null;
   workspaceRootPath?: string | null;
   workspaceRootPaths?: string[];
   composerRef?: Ref<ChatComposerHandle>;
@@ -117,58 +109,6 @@ interface ChatComposerControls {
   onOpenParentSession?(): void;
 }
 
-function SessionWorkspaceFooterLabel({
-  workspace,
-}: {
-  workspace?: Pick<WorkspaceRecord, "id" | "name" | "rootPaths"> | null;
-}) {
-  if (!workspace) {
-    return null;
-  }
-
-  const WorkspaceIcon = workspaceIconFor(workspace);
-
-  return (
-    <WorkspaceRootsTooltip workspace={workspace}>
-      <span
-        className={composerFooterControlClassName(
-          "flex max-w-40 text-chat-fg-muted",
-        )}
-        data-workspace-id={workspace.id}
-      >
-        <WorkspaceIcon className="size-3.5 shrink-0" />
-        <span className="min-w-0 truncate">{workspace.name}</span>
-      </span>
-    </WorkspaceRootsTooltip>
-  );
-}
-
-function SessionBranchFooterLabel({ branch }: { branch?: string | null }) {
-  const { t } = useTranslation("editor");
-
-  if (!branch) {
-    return null;
-  }
-
-  return (
-    <AppGitBranchLabel
-      aria-label={t("actions.showGitChanges")}
-      branch={branch}
-      className={composerFooterControlClassName("max-w-40 text-chat-fg-muted")}
-      onClick={() => {
-        void desktopApi.chatWindow
-          .dispatchIntent({
-            surface: "shell",
-            intent: { kind: "show-panel", view: "git" },
-          })
-          .catch((error: unknown) => {
-            toast.error(error instanceof Error ? error.message : String(error));
-          });
-      }}
-    />
-  );
-}
-
 function collectPendingPrompts(
   permissionsBySession: Record<string, AgentPermissionRequestRecord[]>,
   questionsBySession: Record<string, AgentQuestionRequestRecord[]>,
@@ -187,8 +127,6 @@ function collectPendingPrompts(
 
 export function ComposerDock({
   chatComposer,
-  activeBranch,
-  workspace,
   composerRef,
   isRunning,
   pendingPermissionRequest,
@@ -320,21 +258,13 @@ export function ComposerDock({
           isRunning={isRunning}
           ref={composerRef}
           contextChips={composerContextChips}
-          variant="pill"
           {...(chatComposer
             ? {
                 mode: "chat" as const,
                 controls: chatComposer.controls,
                 footerTrailing: chatComposer.footerTrailing,
               }
-            : {
-                footerLeading: (
-                  <SessionWorkspaceFooterLabel workspace={workspace} />
-                ),
-                footerTrailing: (
-                  <SessionBranchFooterLabel branch={activeBranch} />
-                ),
-              })}
+            : {})}
         />
       )}
     </ComposerDockFrame>

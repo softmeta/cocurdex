@@ -125,7 +125,6 @@ export function NewChatCard({ onStartChat }: NewChatCardProps) {
     >
       <ChatComposer
         mode="chat"
-        variant="pill"
         draftKey={newChatComposerDraftKey()}
         controls={controls}
         canSubmit={Boolean(providerSnapshot)}

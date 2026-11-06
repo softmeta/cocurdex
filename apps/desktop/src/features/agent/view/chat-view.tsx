@@ -74,8 +74,6 @@ export function ChatView({
   providerSnapshot,
   thinkingLevel,
   thinkingLevelOptions,
-  activeBranch,
-  workspace,
   workspaceRootPath,
   workspaceRootPaths,
   composerRef,
@@ -472,8 +470,6 @@ export function ChatView({
             chatComposer={chatComposer}
             role={composerRole}
             placeholderOverride={composerPlaceholder}
-            activeBranch={activeBranch}
-            workspace={workspace}
             sessionId={sessionId}
             agentLabel={agentLabel}
             agentType={agentType}

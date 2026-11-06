@@ -240,7 +240,10 @@ export function ProviderModelMenu({
           size="sm"
           variant="ghost"
           aria-label={t("modelMenu.signIn", { agent: agentLoginLabel })}
-          className={cn("h-7 max-w-[280px] gap-1.5 px-2", triggerClassName)}
+          className={cn(
+            "h-7 max-w-[280px] gap-1.5 px-2 text-body font-normal text-muted-foreground",
+            triggerClassName,
+          )}
           disabled={disabled || isLoggingIn}
           onClick={() => void handleAgentLogin()}
         >
@@ -271,7 +274,10 @@ export function ProviderModelMenu({
         size="sm"
         variant="ghost"
         aria-label={t("modelMenu.openProviderSettings")}
-        className={cn("h-7 max-w-[280px] gap-1.5 px-2", triggerClassName)}
+        className={cn(
+          "h-7 max-w-[280px] gap-1.5 px-2 text-body font-normal text-muted-foreground",
+          triggerClassName,
+        )}
         disabled={disabled}
         onClick={() => openSettings("providers")}
       >

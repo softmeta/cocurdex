@@ -15,7 +15,7 @@ import {
   type ThinkingLevelOption,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
-import { Paperclip, Plus } from "lucide-react";
+import { Paperclip } from "lucide-react";
 import type { ChangeEvent, ClipboardEvent, DragEvent, ReactNode } from "react";
 import {
   forwardRef,
@@ -39,12 +39,14 @@ import {
   buildAgentSelectOptions,
   getAgentDisplayLabel,
   getSessionModeOptions,
+  RuntimeAxisSubmenu,
   SessionModeSubmenu,
   ThinkingLevelSubmenu,
 } from "@/features/sessions";
 import { cn } from "@/lib";
 import { AttachContextSubmenus } from "./attach-context-submenus";
 import { composerFooterControlClassName } from "./chat-composer-layout";
+import { ComposerCard } from "./composer-card";
 import {
   type ComposerDraft,
   clearComposerDraftAtom,
@@ -72,8 +74,6 @@ import type {
   MentionEditorChange,
   MentionEditorHandle,
 } from "./mention-editor";
-import { PanelComposer } from "./panel-composer";
-import { PillComposer } from "./pill-composer";
 import { sendShortcutAtom } from "./send-shortcut";
 import { SessionRoleName } from "./session-role-name";
 import {
@@ -104,11 +104,9 @@ interface ChatComposerProps {
   sessionModeId?: string | null;
   permissionMode?: AgentPermissionMode | null;
   providerSnapshot?: AgentProviderSnapshot | null;
-  variant?: "panel" | "pill";
   workspaceRootPath?: string | null;
   workspaceRootPaths?: string[];
   mode?: "agent" | "chat";
-  tone?: "chat" | "welcome";
   attachMenuExtras?: ReactNode;
   controls?: ReactNode;
   runtimeCommands?: AgentSlashCommand[] | null;
@@ -121,12 +119,10 @@ interface ChatComposerProps {
   // Right-aligned footer slot for chat mode's context meter, mirroring agent
   // mode's built-in ContextWindowIndicator on the same edge.
   footerTrailing?: ReactNode;
-  header?: ReactNode;
   canSubmit?: boolean;
   canSendWhileRunning?: boolean;
   placeholderOverride?: string;
   role?: AgentRoleRecord | null;
-  mentionMenuPlacement?: "top" | "bottom";
   onClearAttachment?(): void;
   onSelectSessionMode?(modeId: string): void;
   onSelectPermissionMode?(mode: AgentPermissionMode): void;
@@ -154,23 +150,19 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       agentLabel = "Codex",
       isRunning = false,
       sessionModeId = null,
-      variant = "panel",
       workspaceRootPath,
       workspaceRootPaths,
       mode = "agent",
-      tone = "chat",
       attachMenuExtras,
       controls,
       runtimeCommands,
       runtimeMode,
       footerLeading,
       footerTrailing,
-      header,
       canSubmit,
       canSendWhileRunning = false,
       placeholderOverride,
       role = null,
-      mentionMenuPlacement = "top",
       onClearAttachment,
       onSelectSessionMode,
       onSelectAgent,
@@ -448,52 +440,54 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       });
     };
 
-    let agentChevronClassName: string | undefined;
-    if (!canSelectAgent) {
-      agentChevronClassName = "hidden";
-    } else if (variant === "pill") {
-      agentChevronClassName = "@max-lg/composer:hidden";
-    }
-
+    const agentOptions = buildAgentSelectOptions(agents);
     const agentMenu = (
       <AgentSelect
-        appearance={variant === "pill" ? "ghost" : "outline"}
-        chevronClassName={agentChevronClassName}
+        appearance="ghost"
+        chevronClassName={canSelectAgent ? "@max-lg/composer:hidden" : "hidden"}
         disabled={!canSelectAgent}
-        options={buildAgentSelectOptions(agents)}
+        options={agentOptions}
         triggerAriaLabel={t("sessions:composer.selectAgent")}
         triggerClassName={cn(
           "max-w-45",
-          variant === "pill" &&
-            composerFooterControlClassName(
-              "@max-lg/composer:w-8 @max-lg/composer:justify-center",
-            ),
+          composerFooterControlClassName(
+            "@max-lg/composer:w-8 @max-lg/composer:justify-center",
+          ),
         )}
         triggerLabel={
-          <>
-            {variant === "panel" ? (
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground">
-                <Plus className="size-4" />
-              </span>
-            ) : null}
-            <AppDropdownTriggerLabel
-              className={cn(
-                variant === "pill" ? "@max-lg/composer:sr-only" : "font-medium",
-              )}
-            >
-              {agentLabel}
-            </AppDropdownTriggerLabel>
-          </>
+          <AppDropdownTriggerLabel className="@max-lg/composer:sr-only">
+            {agentLabel}
+          </AppDropdownTriggerLabel>
         }
         value={selectedAgent}
         onValueChange={(agentType) => onSelectAgent?.(agentType)}
       />
     );
+    const inSessionAgentSubmenu =
+      sessionId && canSelectAgent ? (
+        <RuntimeAxisSubmenu
+          label={t("sessions:composer.agent")}
+          value={selectedAgent}
+          onValueChange={(value) => onSelectAgent?.(value as AgentId)}
+          options={agentOptions
+            .filter(
+              (option) =>
+                option.statusKind !== "missing" ||
+                option.value === selectedAgent,
+            )
+            .map((option) => ({
+              value: option.value,
+              label: getAgentDisplayLabel(option.value),
+              disabled: option.selectable === false,
+            }))}
+        />
+      ) : null;
 
     // Collaboration and thinking are runtime axes, so they live beside model
     // and permission instead of inside the add-attachment menu.
     const runtimeMenuExtras = isAgentMode ? (
       <>
+        {inSessionAgentSubmenu}
         <SessionModeSubmenu
           agentType={selectedAgent}
           modeId={sessionModeId}
@@ -513,7 +507,8 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       </>
     ) : null;
 
-    const showsAgentMenu = isAgentMode && !(sessionRole && !onSelectAgent);
+    const showsAgentMenu =
+      isAgentMode && !sessionId && !(sessionRole && !onSelectAgent);
     const defaultAgentControls = showsAgentMenu ? agentMenu : null;
     const modelLeading = sessionRole ? (
       <SessionRoleName role={sessionRole} />
@@ -574,72 +569,35 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             ref={attachmentInputRef}
             type="file"
           />
-          {variant === "pill" ? (
-            <PillComposer
-              attachMenuContent={attachMenuContent}
-              canSend={canSubmitNow}
-              composerAttachments={composerAttachments}
-              contextAttachments={contextAttachments}
-              contextChips={contextChips}
-              contextFileMentions={contextFileMentions}
-              editorRef={editorRef}
-              footerLeading={footerLeading}
-              footerTrailing={footerTrailing}
-              initialEditorContent={initialDraft}
-              runtimeMenuExtras={runtimeMenuExtras}
-              modelLeading={modelLeading}
-              sessionId={sessionId}
-              attachmentError={attachmentError}
-              isAgentMode={isAgentMode}
-              isRunning={isRunning}
-              mentionAnchor={mentionAnchor}
-              mentions={mentions}
-              onEditorChange={handleEditorChange}
-              onMentionAnchorChange={setMentionAnchor}
-              onPaste={handlePaste}
-              onRemoveAttachment={removeAttachment}
-              onStop={onStop}
-              onSubmit={sendMessage}
-              placeholderOverride={placeholderOverride}
-              resolvedControls={resolvedControls}
-              slashCommands={slashCommands}
-              sendShortcut={sendShortcut}
-              text={text}
-            />
-          ) : (
-            <PanelComposer
-              attachMenuContent={attachMenuContent}
-              canSend={canSubmitNow}
-              composerAttachments={composerAttachments}
-              contextAttachments={contextAttachments}
-              contextChips={contextChips}
-              contextFileMentions={contextFileMentions}
-              editorRef={editorRef}
-              footerLeading={footerLeading}
-              footerTrailing={footerTrailing}
-              initialEditorContent={initialDraft}
-              runtimeMenuExtras={runtimeMenuExtras}
-              modelLeading={modelLeading}
-              sessionId={sessionId}
-              header={header}
-              attachmentError={attachmentError}
-              isAgentMode={isAgentMode}
-              isRunning={isRunning}
-              mentionAnchor={mentionAnchor}
-              mentionMenuPlacement={mentionMenuPlacement}
-              onEditorChange={handleEditorChange}
-              onMentionAnchorChange={setMentionAnchor}
-              onPaste={handlePaste}
-              onRemoveAttachment={removeAttachment}
-              onStop={onStop}
-              onSubmit={sendMessage}
-              placeholderOverride={placeholderOverride}
-              resolvedControls={resolvedControls}
-              slashCommands={slashCommands}
-              sendShortcut={sendShortcut}
-              tone={tone}
-            />
-          )}
+          <ComposerCard
+            attachMenuContent={attachMenuContent}
+            canSend={canSubmitNow}
+            composerAttachments={composerAttachments}
+            contextAttachments={contextAttachments}
+            contextChips={contextChips}
+            contextFileMentions={contextFileMentions}
+            editorRef={editorRef}
+            footerLeading={footerLeading}
+            footerTrailing={footerTrailing}
+            initialEditorContent={initialDraft}
+            runtimeMenuExtras={runtimeMenuExtras}
+            modelLeading={modelLeading}
+            sessionId={sessionId}
+            attachmentError={attachmentError}
+            isAgentMode={isAgentMode}
+            isRunning={isRunning}
+            mentionAnchor={mentionAnchor}
+            onEditorChange={handleEditorChange}
+            onMentionAnchorChange={setMentionAnchor}
+            onPaste={handlePaste}
+            onRemoveAttachment={removeAttachment}
+            onStop={onStop}
+            onSubmit={sendMessage}
+            placeholderOverride={placeholderOverride}
+            resolvedControls={resolvedControls}
+            slashCommands={slashCommands}
+            sendShortcut={sendShortcut}
+          />
         </form>
         {cloudDialogOpen ? (
           <CloudSyncDialog

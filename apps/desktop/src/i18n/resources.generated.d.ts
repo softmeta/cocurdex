@@ -1830,6 +1830,7 @@ export default interface Resources {
       switchFailed: "Could not switch to {{branch}}. Check the working tree and try again.";
     };
     composer: {
+      agent: "Agent";
       agentStatus: {
         detecting: "Checking…";
         error: "Unavailable";

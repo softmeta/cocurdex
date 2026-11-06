@@ -1152,8 +1152,6 @@ export function CenterPanel({
             // a flash where the previous session's scrollTop was applied to
             // the new content before the layout effect pulled it to bottom.
             key={activeSession.id}
-            activeBranch={activeBranch}
-            workspace={activeWorkspace}
             agentLabel={getAgentDisplayLabel(activeSession.agentType)}
             agentType={activeSession.agentType}
             attachment={

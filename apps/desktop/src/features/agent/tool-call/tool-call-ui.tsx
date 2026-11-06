@@ -1,5 +1,5 @@
 import type { AgentToolCallRecord } from "@cocurdex/shared";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { ChevronRight } from "lucide-react";
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
