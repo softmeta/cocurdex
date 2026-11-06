@@ -169,22 +169,6 @@ describe("rsrs JSON parsing", () => {
     ]);
   });
 
-  it("falls back to compact items when details are absent", () => {
-    expect(
-      parseRecallPayload({
-        items: [{ name: "abc", status: "ok", value: "0.7 Some title" }],
-      }),
-    ).toEqual([
-      {
-        id: "abc",
-        title: "Some title",
-        score: 0.7,
-        importance: null,
-        updatedAt: null,
-      },
-    ]);
-  });
-
   it("reads a recall without hits as empty, not as its status row", () => {
     expect(
       parseRecallPayload({

@@ -381,6 +381,11 @@ describe("MemoryService with a fake rsrs CLI", () => {
   it("keeps a slow runtime and skips the CLI once the turn budget is spent", async () => {
     const requests: string[] = [];
     const server = createServer((request, response) => {
+      if (request.method === "GET" && request.url === "/api/health") {
+        requests.push("health");
+        response.end(JSON.stringify({ server: "respire", v: 1 }));
+        return;
+      }
       let body = "";
       request.on("data", (chunk) => {
         body += chunk;
@@ -410,10 +415,8 @@ describe("MemoryService with a fake rsrs CLI", () => {
         path.join(runtimeDir, "endpoint.json"),
         JSON.stringify({ url: `http://127.0.0.1:${port}` }),
       );
-      await writeFile(path.join(runtimeDir, "token"), "token");
       await service.getStatus();
-      const probes = () =>
-        requests.filter((name) => name === "tools/list").length;
+      const probes = () => requests.filter((name) => name === "health").length;
       const recall = () =>
         service.buildTurnContext(fakeSession(), "anything", "chat");
       expect(await recall()).toBeNull();

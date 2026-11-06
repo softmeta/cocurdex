@@ -18,6 +18,7 @@ import {
   type RsrsExecutable,
   readInjectedHosts,
   readRsrsPolicy,
+  readRsrsStatus,
   recallMemories,
   recallMemoriesViaRuntime,
   rememberMemory,
@@ -39,12 +40,13 @@ import {
 } from "./rsrs-library";
 import {
   callRuntimeTool,
-  ensureRuntime,
+  findRuntime,
   listRuntimeTools,
   type RuntimeEndpoint,
 } from "./runtime";
 
 const CACHE_MS = 30_000;
+const RUNTIME_START_TIMEOUT_MS = 60_000;
 const AGENT_BY_RSRS_HOST: Record<string, string> = {
   claude: "claude-agent",
   codex: "codex",
@@ -164,36 +166,26 @@ export class RsrsMemoryProvider implements MemoryProvider {
     }
     const executable = await this.executable();
     if (!executable) return null;
-    const endpoint = await this.connectRuntime(executable, false);
+    const endpoint = await findRuntime(this.options.dataDir);
     if (!endpoint && this.options.startRuntime !== false) {
       this.startRuntimeInBackground(executable);
     }
     return this.adoptEndpoint(endpoint);
   }
 
-  private async connectRuntime(
-    executable: RsrsExecutable,
-    autoStart: boolean,
-  ): Promise<RuntimeEndpoint | null> {
-    try {
-      return await ensureRuntime({
-        command: executable.command,
-        dataDir: this.options.dataDir,
-        autoStart,
-        now: () => this.nowMs(),
-      });
-    } catch (error) {
-      logDaemonDiagnostic("info", "memory.runtimeUnavailable", {
-        error: errorMessage(error),
-      });
-      return null;
-    }
-  }
-
   private startRuntimeInBackground(executable: RsrsExecutable) {
-    this.startingRuntime ??= this.connectRuntime(executable, true)
+    this.startingRuntime ??= readRsrsStatus(
+      executable,
+      RUNTIME_START_TIMEOUT_MS,
+    )
+      .then(() => findRuntime(this.options.dataDir))
       .then(async (endpoint) => {
         if (endpoint) await this.adoptEndpoint(endpoint);
+      })
+      .catch((error: unknown) => {
+        logDaemonDiagnostic("info", "memory.runtimeUnavailable", {
+          error: errorMessage(error),
+        });
       })
       .finally(() => {
         this.startingRuntime = null;

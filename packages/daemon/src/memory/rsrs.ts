@@ -538,7 +538,7 @@ export function parseRecallPayload(
   payload: Record<string, unknown>,
 ): MemoryRecallItem[] {
   const details = Array.isArray(payload.details) ? payload.details : [];
-  const fromDetails = details.flatMap((entry) => {
+  return details.flatMap((entry) => {
     const record = asRecord(entry);
     const id = stringValue(record?.id);
     const title = stringValue(record?.title);
@@ -552,25 +552,6 @@ export function parseRecallPayload(
           ? record.importance
           : null,
         updatedAt: stringValue(record?.updatedAt),
-      },
-    ];
-  });
-  if (fromDetails.length > 0) return fromDetails;
-
-  const items = Array.isArray(payload.items) ? payload.items : [];
-  return items.flatMap((entry) => {
-    const record = asRecord(entry);
-    const id = stringValue(record?.name);
-    if (!id || record?.status !== "ok") return [];
-    const value = stringValue(record?.value) ?? "";
-    const match = /^([0-9.]+)\s+(.*)$/.exec(value);
-    return [
-      {
-        id,
-        title: match?.[2]?.trim() || value || id,
-        score: match ? Number(match[1]) : null,
-        importance: null,
-        updatedAt: null,
       },
     ];
   });
