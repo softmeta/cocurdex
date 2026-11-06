@@ -6,6 +6,7 @@ export {
 export { readCssVarPx } from "./css-length";
 export { createDaemonBlobUrlStore } from "./daemon-blob-urls";
 export { requestDaemon } from "./daemon-client";
+export { onDaemonAlert } from "./daemon-events";
 export {
   type PdfRangeReader,
   type PdfSource,

@@ -23,11 +23,8 @@ if (typeof window !== "undefined") {
   });
 }
 
-export function deliverBriefOnEntry(
-  brief: Brief | null,
-  deliver: (brief: Brief) => void,
-) {
+export function deliverBriefOnEntry(brief: Brief | null, deliver: () => void) {
   if (!entryPending) return;
   entryPending = false;
-  if (brief) deliver(brief);
+  if (brief) deliver();
 }

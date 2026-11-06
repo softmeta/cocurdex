@@ -2,6 +2,7 @@ import { createAgentCapabilityCacheSchemaSql } from "./agents/schema";
 import { createDecksSchemaSql } from "./decks/deck-schema";
 import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
 import { createHostAccessSchemaSql } from "./host-access/schema";
+import { createOutboxSchemaSql } from "./outbox/schema";
 import { createPersonalAgentsSchemaSql } from "./personal/schema";
 import { createRoutinesSchemaSql } from "./routines/schema";
 import { createScriptRunSchemaSql } from "./script-run/schema";
@@ -597,5 +598,6 @@ export function createSchemaSql() {
     ${createPersonalAgentsSchemaSql()}
 
     ${createRoutinesSchemaSql()}
+    ${createOutboxSchemaSql()}
   `;
 }

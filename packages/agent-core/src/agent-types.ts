@@ -113,6 +113,7 @@ export interface SendAgentMessagePayload {
   delivery?: AgentInputDelivery;
   systemSections?: Record<string, string>;
   runPolicy?: AgentRunPolicy | null;
+  postedMessages?: readonly string[];
 }
 
 export interface AgentSession {

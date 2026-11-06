@@ -1,5 +1,10 @@
 import { requestDaemon } from "@cocurdex/daemon/client";
-import type { Brief, InboxItem } from "@cocurdex/shared";
+import {
+  type Brief,
+  type InboxItem,
+  isSupportedLocale,
+  supportedLocales,
+} from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
 import {
   type ParsedArgs,
@@ -13,6 +18,7 @@ export function inboxUsageLines() {
     "  cocurdex inbox [list] [--json]",
     "  cocurdex inbox read <item-id> [--json]",
     "  cocurdex inbox brief [--tz <zone>] [--json]",
+    "  cocurdex inbox brief post [--tz <zone>] [--locale en-US|zh-CN] [--json]",
   ];
 }
 
@@ -60,6 +66,28 @@ export async function handleInboxCommand(
       items.map(inboxRow),
       ["kind", "form", "title", "detail", "at", "id"],
       parsed,
+    );
+    return true;
+  }
+  if (action === "brief" && args[0] === "post") {
+    const locale = stringFlag(parsed, "locale") ?? null;
+    if (locale !== null && !isSupportedLocale(locale)) {
+      throw new Error(
+        `--locale must be one of: ${supportedLocales.join(", ")}`,
+      );
+    }
+    const message = await withDaemon(() =>
+      requestDaemon("inbox.postBrief", {
+        timeZone: stringFlag(parsed, "tz"),
+        locale,
+      }),
+    );
+    if (parsed.flags.has("json")) {
+      printResult(message, parsed);
+      return true;
+    }
+    console.log(
+      message ? "Posted the brief to the assistant." : "Nothing new to post.",
     );
     return true;
   }

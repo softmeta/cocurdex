@@ -8,6 +8,7 @@ export * from "./agent-runtime-capabilities";
 export * from "./agent-session-titles";
 export * from "./agent-tools";
 export * from "./agent-versions";
+export * from "./alert";
 export * from "./assistant-session";
 export * from "./attachment-http";
 export * from "./brief";

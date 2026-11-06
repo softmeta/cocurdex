@@ -25,6 +25,7 @@ cocurdex persona thread <persona> [--limit <n>] --json
 ```
 
 - Personas always run on Pi; pick a model the user has configured (`cocurdex provider list`).
+- A muted persona (`--mute`) never notifies the desktop or the phone; its threads still reach the inbox.
 - `send` posts to the persona's home thread and returns the message id. With `--wait` it returns the reply once the turn settles, and fails with the persona's error when the turn fails. Without `--wait`, read the reply later with `thread`.
 - Instructions describe the job; the soul describes who the persona is to the user. Keep both short and specific, and pass long text with the `-file` flags.
 - Deleting a persona also deletes its role and home thread. Confirm with the user first.
@@ -85,7 +86,9 @@ The inbox gathers what needs the user across every form: pending approvals, ques
 cocurdex inbox [list] --json
 cocurdex inbox read <item-id> --json
 cocurdex inbox brief [--tz <zone>] --json
+cocurdex inbox brief post [--tz <zone>] [--locale en-US|zh-CN] --json
 ```
 
 - `read` marks the item's thread visited, which clears it; do it only after the user has seen or handled the item.
 - Use the brief to answer "what happened today" or "what needs me" instead of reading every thread.
+- `brief post` writes today's brief into the default assistant's home thread, in the given locale (the last one used otherwise), and returns the message; it returns `null` when there is no brief or nothing changed since the last post. The apps post it when the user comes back after being away.

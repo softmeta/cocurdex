@@ -1,9 +1,6 @@
 {
   "brief": {
-    "failures": "Failures",
-    "needsYou": "Needs you",
-    "open": "Today's brief",
-    "results": "Routine results"
+    "open": "Today's brief"
   },
   "copyName": "{{name}} copy",
   "defaultName": "Assistant",

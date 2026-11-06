@@ -74,6 +74,10 @@ import {
   parseJsonObject,
 } from "./pi-model-utils";
 import { getPiAgentDir } from "./pi-paths";
+import {
+  appendPostedMessages,
+  type PiCustomMessageSink,
+} from "./pi-posted-messages";
 import { listPiBuiltInProviderIds } from "./pi-provider-catalog";
 import { createPiRunPolicy } from "./pi-run-policy";
 import { forkPiProviderSession, readPiSessionFile } from "./pi-session-fork";
@@ -131,6 +135,7 @@ type PiSessionLike = {
   steer(text: string, images?: ImageContent[]): Promise<unknown>;
   setModel?(model: PiModel): Promise<void>;
   setThinkingLevel?(level: PiThinkingLevel): void;
+  sendCustomMessage?: PiCustomMessageSink["sendCustomMessage"];
   abort(): Promise<void>;
   dispose(): void;
   subscribe(listener: (event: Record<string, unknown>) => void): () => void;
@@ -1012,6 +1017,11 @@ export function createPiSdkAdapter(
               prompt,
               sessionId,
             });
+            await appendPostedMessages(
+              session,
+              messagePayload.postedMessages ?? [],
+              messagePayload.delivery === "steer-active-run",
+            );
             if (messagePayload.delivery === "steer-active-run") {
               if (images.length > 0) {
                 await session.steer(prompt, piImagesFromAttachments(images));

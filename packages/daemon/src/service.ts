@@ -38,12 +38,14 @@ import type {
   NetworkProxySettings,
   QueuedAgentInputRecord,
   RefineSessionTitlePayload,
+  RoutineRunRecord,
   SaveAgentRolePayload,
   SaveWorkflowDefinitionPayload,
   SendSessionCommand,
   SessionConfiguration,
   SessionRecord,
   SetSessionPinnedPayload,
+  SupportedLocale,
   SyncPullInput,
   SyncPullResult,
   TurnChangeDiffRequest,
@@ -76,10 +78,12 @@ import {
   isPersonalSession,
   isPersonalWorkspaceId,
   isSessionRuntimeEvent,
+  isSupportedLocale,
   isToolCallId,
   MEMORY_SETTINGS_KEY,
   type MessageAttachment,
   type MessageOrigin,
+  matchSupportedLocale,
   messageAgentLookup,
   newAssistantSessionId,
   normalizeAgentRoleAvatar,
@@ -140,6 +144,7 @@ import {
   daemonNoiseCrypto,
   type HostKeyStore,
 } from "./host-access/host-key-store";
+import { briefMarkdown } from "./inbox/brief-text";
 import { buildBrief } from "./inbox/build-brief";
 import { buildInbox } from "./inbox/build-inbox";
 import { DaemonMcpService } from "./mcp-service";
@@ -151,16 +156,17 @@ import {
   saveNetworkProxySettings,
 } from "./network-proxy-settings";
 import { removeAppManagedWorktree } from "./orchestration-workspace";
+import { OutboxService, routineRunAlert } from "./outbox";
 import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import {
-  buildPostedMessagesBlock,
   isPostedMessage,
   PersonalAgentService,
   personaMemoryScope,
   personaSystemSections,
   personaWritePartition,
+  postedMessagesSinceReply,
 } from "./personal";
 import { DaemonProviderService } from "./provider";
 import { CodexLoginSessions } from "./provider/codex-login";
@@ -170,13 +176,12 @@ import {
   ProviderCredentials,
   ProviderLoginSessions,
 } from "./provider-credentials";
-import { PushService } from "./push";
+import { PushService, pushTriggerForEvent } from "./push";
 import {
   createRoutineSessions,
   isValidTimeZone,
   ROUTINE_RUN_SECTION,
   RoutineService,
-  routinePushAllowed,
   routineRunPolicy,
   routineRunSection,
   zonedDayStart,
@@ -288,6 +293,7 @@ function errorMessage(error: unknown, fallback: string) {
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const REPORTED_SETTING_VALUES_KEY = "settings.reportedValues";
 const BRIEF_POSTED_SETTING_KEY = "personal.briefPostedAt";
+const BRIEF_LOCALE_SETTING_KEY = "personal.briefLocale";
 
 function isExistingDirectory(directoryPath: string) {
   try {
@@ -307,6 +313,7 @@ export class CocurdexDaemonService {
   readonly decks: DaemonDeckService;
   readonly personalAgents: PersonalAgentService;
   readonly routines: RoutineService;
+  private readonly outbox: OutboxService;
   readonly providerService: DaemonProviderService;
   readonly acpRegistry: AcpRegistryService;
   readonly agentAuth: AgentAuthService;
@@ -383,11 +390,6 @@ export class CocurdexDaemonService {
       settings: this.state.hostAccessStore.settings,
       signingKey: () => this.hostKeys.keys().signingPrivateKey,
       identity: () => this.hostAccess.identity(),
-      getSession: (sessionId) => this.state.getSession(sessionId),
-      allows: (session, kind) => {
-        const routine = this.routines.findBySession(session.id);
-        return !routine || routinePushAllowed(routine.deliver, kind);
-      },
       crypto: daemonNoiseCrypto,
     });
     this.background = new DaemonBackgroundService({
@@ -453,11 +455,19 @@ export class CocurdexDaemonService {
           runId: run.id,
           ...(run.sessionId ? { sessionId: run.sessionId } : {}),
         }).then(() => undefined),
+      alertRun: (run) => this.alertRoutineRun(run),
       announceChanged: () =>
         this.events.emit("daemon.event", {
           type: "data.changed",
           areas: ["routines"],
         }),
+    });
+    this.outbox = new OutboxService({
+      repository: this.state.data.pushOutbox,
+      push: this.push,
+      getSession: (sessionId) => this.state.getSession(sessionId),
+      target: (session) => this.alertTarget(session),
+      emit: (event) => this.events.emit("daemon.event", event),
     });
     this.providerCredentials = new ProviderCredentials(
       this.state,
@@ -760,11 +770,14 @@ export class CocurdexDaemonService {
         }
       }
       await this.team.onAgentEvent(event);
-      void this.push
-        .notify(event)
-        .catch((error: unknown) =>
-          logDaemonDiagnostic("warn", "push.notifyFailed", { error }),
-        );
+      const alert = pushTriggerForEvent(event, new Date());
+      if (alert) {
+        void this.outbox
+          .alert(alert, "turn")
+          .catch((error: unknown) =>
+            logDaemonDiagnostic("warn", "outbox.alertFailed", { error }),
+          );
+      }
       // Only a terminal error ends the turn; a mid-turn "error" event can be
       // followed by more tool calls whose changes still belong to this turn.
       if (event.type === "state.changed" && event.status === "error") {
@@ -817,10 +830,44 @@ export class CocurdexDaemonService {
       await this.team.recoverReports();
       await this.decks.collectUnusedImages();
       await this.personalAgents.reconcileRoles();
-      if (!this.stopping) this.routines.start();
+      if (!this.stopping) {
+        this.routines.start();
+        this.outbox.start();
+      }
     } catch {
       logDaemonDiagnostic("warn", "daemon.recoveryUnavailable");
     }
+  }
+
+  private alertTarget(session: SessionRecord) {
+    const persona = this.personalAgents.personaForSession(session);
+    const muted = persona
+      ? (this.state.data.personalAgents.getById(persona.id)?.mutedAt ?? null)
+      : null;
+    return {
+      sessionKind: session.sessionKind,
+      personaMuted: muted !== null,
+      routineDeliver: this.routines.findBySession(session.id)?.deliver ?? null,
+    };
+  }
+
+  private async alertRoutineRun(run: RoutineRunRecord) {
+    const alert = routineRunAlert(run);
+    if (!alert || !run.sessionId || !run.finishedAt) return;
+    await this.outbox
+      .alert(
+        {
+          sessionId: run.sessionId,
+          kind: alert.kind,
+          detail: alert.detail,
+          requestId: null,
+          at: run.finishedAt,
+        },
+        "routine",
+      )
+      .catch((error: unknown) =>
+        logDaemonDiagnostic("warn", "outbox.alertFailed", { error }),
+      );
   }
 
   async deleteRoutine(id: string, keepSessionId?: string) {
@@ -1116,25 +1163,42 @@ export class CocurdexDaemonService {
   }
 
   async postBrief(payload: {
-    updatedAt: string;
-    day: string;
-    content: string;
+    timeZone?: string | null;
+    locale?: SupportedLocale | null;
   }) {
-    const content = payload.content.trim();
-    if (!content) throw new Error("The brief cannot be empty.");
+    const brief = await this.getBrief(payload.timeZone);
+    const locale = await this.briefLocale(payload.locale ?? null);
+    if (!brief) return null;
     const posted = await this.state.getAppSetting(BRIEF_POSTED_SETTING_KEY);
-    if (posted && JSON.parse(posted) >= payload.updatedAt) return null;
-    const message = await this.postToHomeThread(null, content, {
-      kind: "brief",
-      day: payload.day,
-    });
+    if (posted && JSON.parse(posted) >= brief.updatedAt) return null;
+    const message = await this.postToHomeThread(
+      null,
+      briefMarkdown(brief, locale),
+      { kind: "brief", day: brief.day },
+    );
     if (message) {
       await this.state.setAppSetting(
         BRIEF_POSTED_SETTING_KEY,
-        JSON.stringify(payload.updatedAt),
+        JSON.stringify(brief.updatedAt),
       );
     }
     return message;
+  }
+
+  private async briefLocale(requested: SupportedLocale | null) {
+    if (requested) {
+      await this.state.setAppSetting(
+        BRIEF_LOCALE_SETTING_KEY,
+        JSON.stringify(requested),
+      );
+      return requested;
+    }
+    const stored = await this.state.getAppSetting(BRIEF_LOCALE_SETTING_KEY);
+    const parsed = stored ? (JSON.parse(stored) as string) : null;
+    if (isSupportedLocale(parsed)) return parsed;
+    return matchSupportedLocale([
+      Intl.DateTimeFormat().resolvedOptions().locale,
+    ]);
   }
 
   private async postToHomeThread(
@@ -3212,6 +3276,7 @@ export class CocurdexDaemonService {
     this.stopping = true;
     await this.startupRecovery;
     this.routines.stop();
+    this.outbox.stop();
     clearInterval(this.checkpointReconcileTimer);
     this.keepAwake.dispose();
     this.runCapacity.close(new Error("Daemon is shutting down"));
@@ -3413,6 +3478,7 @@ export class CocurdexDaemonService {
         contextHandoff: start.contextHandoff,
         systemSections: start.systemSections,
         runPolicy: start.runPolicy,
+        postedMessages: start.postedMessages,
       },
     );
   }
@@ -3478,16 +3544,15 @@ export class CocurdexDaemonService {
       if (pending?.kind === "fork") {
         this.consumeNativeFork(pending, session, userMessage, priorMessages);
       }
-      const posted = persona ? buildPostedMessagesBlock(priorMessages) : null;
-      const postedText = posted ? `${posted}\n\n` : "";
       return {
-        content: `${memoryText}${postedText}${userMessage.content}`,
+        content: `${memoryText}${userMessage.content}`,
         history: persona
           ? history.filter((message) => !isPostedMessage(message))
           : history,
         contextHandoff: undefined,
         systemSections,
         runPolicy,
+        postedMessages: persona ? postedMessagesSinceReply(priorMessages) : [],
       };
     }
     const sourceSessionId =
@@ -3555,6 +3620,7 @@ export class CocurdexDaemonService {
       },
       systemSections,
       runPolicy,
+      postedMessages: [],
     };
   }
 

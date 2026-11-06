@@ -40,6 +40,7 @@ export interface RoutineServiceDeps {
     run: RoutineRunRecord,
     content: string,
   ): Promise<void>;
+  alertRun?(run: RoutineRunRecord): Promise<void>;
   announceChanged(): void;
   defaultTimeZone?: () => string;
   now?: () => Date;
@@ -502,6 +503,7 @@ export class RoutineService {
     };
     this.deps.repository.upsert(updated);
     this.deps.announceChanged();
+    await this.deps.alertRun?.(run);
     const content = deliveredContent(routine, outcome, result);
     if (content) {
       await this.deps.deliverResult(routine, run, content).catch((error) =>

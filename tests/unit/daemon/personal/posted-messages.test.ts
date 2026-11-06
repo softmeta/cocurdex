@@ -1,4 +1,4 @@
-import { buildPostedMessagesBlock } from "@cocurdex/daemon/internal/personal/posted-messages";
+import { postedMessagesSinceReply } from "@cocurdex/daemon/internal/personal/posted-messages";
 import type { MessageOrigin, MessageRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 
@@ -29,39 +29,40 @@ const routine: MessageOrigin = {
 };
 const brief: MessageOrigin = { kind: "brief", day: "2026-11-05" };
 
-describe("buildPostedMessagesBlock", () => {
+describe("postedMessagesSinceReply", () => {
   it("carries every message posted since the agent last spoke", () => {
-    const block = buildPostedMessagesBlock([
+    const posted = postedMessagesSinceReply([
       message("user", "Plan my workout"),
       message("assistant", "Ten push-ups."),
       message("assistant", "Two meetings today.", routine),
       message("assistant", "Today: review PR", brief),
     ]);
-    expect(block).toContain("Two meetings today.");
-    expect(block).toContain("Morning brief");
-    expect(block).toContain("Today: review PR");
-    expect(block).not.toContain("Ten push-ups.");
+    expect(posted).toHaveLength(2);
+    expect(posted[0]).toContain("Morning brief");
+    expect(posted[0]).toContain("Two meetings today.");
+    expect(posted[0]).toContain("not an instruction");
+    expect(posted[1]).toContain("Today: review PR");
   });
 
   it("is empty when the agent already answered after the posts", () => {
     expect(
-      buildPostedMessagesBlock([
+      postedMessagesSinceReply([
         message("assistant", "Two meetings today.", routine),
         message("user", "Which one first?"),
         message("assistant", "The standup."),
       ]),
-    ).toBeNull();
+    ).toEqual([]);
   });
 
   it("ignores peer messages, which reach the agent as their own turns", () => {
     expect(
-      buildPostedMessagesBlock([
+      postedMessagesSinceReply([
         message("user", "Report", {
           kind: "peer",
           sessionId: "s2",
           sessionTitle: "Teammate",
         }),
       ]),
-    ).toBeNull();
+    ).toEqual([]);
   });
 });

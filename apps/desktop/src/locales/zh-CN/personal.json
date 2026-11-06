@@ -1,9 +1,6 @@
 {
   "brief": {
-    "failures": "失败",
-    "needsYou": "需要你处理",
-    "open": "今日简报",
-    "results": "例行任务结果"
+    "open": "今日简报"
   },
   "copyName": "{{name}} 副本",
   "defaultName": "助理",

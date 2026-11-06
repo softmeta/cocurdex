@@ -12,6 +12,11 @@ import {
 } from "./lib/locate.mjs";
 import { openAssistantsTab, translate } from "./lib/navigate.mjs";
 
+const BRIEF_RESULTS_TITLE = {
+  "en-US": "Routine results",
+  "zh-CN": "例行任务结果",
+};
+
 const require = createRequire(
   new URL("../harness/package.json", import.meta.url),
 );
@@ -256,7 +261,8 @@ runScenario("personal-agents", {
     [
       "the brief opens in the home thread, not in a dialog",
       async ({ session }) => {
-        const resultsTitle = await translate(session, "personal:brief.results");
+        const language = await session.run(() => document.documentElement.lang);
+        const resultsTitle = BRIEF_RESULTS_TITLE[language] ?? "Routine results";
         const briefButton = {
           role: "button",
           name: await translate(session, "personal:brief.open"),

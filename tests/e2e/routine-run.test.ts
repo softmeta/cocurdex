@@ -1,13 +1,18 @@
-import { requestDaemon } from "@cocurdex/daemon/client";
+import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import type {
+  AlertEvent,
   Brief,
   InboxItem,
+  MessageRecord,
   PersonalAgentRecord,
   RoutineRecord,
   RoutineRunRecord,
 } from "@cocurdex/shared";
 import { saveStubProvider } from "@cocurdex/test-harness/helpers/chat-session";
-import { spawnDaemon } from "@cocurdex/test-harness/helpers/daemon-process";
+import {
+  spawnDaemon,
+  waitFor,
+} from "@cocurdex/test-harness/helpers/daemon-process";
 import {
   type StubLlmRequest,
   startStubLlmServer,
@@ -29,18 +34,18 @@ function toolResults(request: StubLlmRequest | undefined) {
     );
 }
 
-async function setUp() {
-  const stub = await startStubLlmServer();
-  const daemon = await spawnDaemon();
-  await saveStubProvider(daemon, stub);
+async function saveModel(
+  daemon: Awaited<ReturnType<typeof spawnDaemon>>,
+  modelId: string,
+) {
   const now = new Date().toISOString();
   await requestDaemon(
     "provider.model.save",
     {
       model: {
         providerId: "e2e-stub",
-        modelId: "e2e-agent-model",
-        name: "E2E Agent Model",
+        modelId,
+        name: modelId,
         api: "openai-completions",
         enabled: true,
         source: "manual",
@@ -51,6 +56,17 @@ async function setUp() {
     },
     daemon.options,
   );
+}
+
+async function setUp() {
+  const stub = await startStubLlmServer();
+  const daemon = await spawnDaemon();
+  await saveStubProvider(daemon, stub);
+  await saveModel(daemon, "e2e-agent-model");
+  const alerts: AlertEvent[] = [];
+  const subscription = await subscribeDaemonEvents((event) => {
+    if (event.type === "alert") alerts.push(event);
+  }, daemon.options);
   const cli = async <T>(args: string[]) => {
     const result = await runCli([...args, "--json"], {
       userDataPath: daemon.userDataPath,
@@ -74,7 +90,9 @@ async function setUp() {
     daemon,
     cli,
     coach,
+    alerts,
     async dispose() {
+      subscription.close();
       await daemon.dispose();
       await stub.close();
     },
@@ -200,6 +218,29 @@ describe("routines", () => {
           },
         ],
       });
+      const assistant = await requestDaemon(
+        "personalAgent.ensureDefault",
+        { name: "Assistant" },
+        daemon.options,
+      );
+      const posted = await cli<MessageRecord | null>([
+        "inbox",
+        "brief",
+        "post",
+        "--tz",
+        "UTC",
+        "--locale",
+        "zh-CN",
+      ]);
+      expect(posted?.content).toContain("**例行任务结果**");
+      expect(posted?.content).toContain(
+        "- **Morning check** · Three meetings today",
+      );
+      expect(posted).toMatchObject({
+        sessionId: assistant.homeSessionId,
+        origin: { kind: "brief", day: brief.day },
+      });
+      expect(await cli(["inbox", "brief", "post", "--tz", "UTC"])).toBeNull();
 
       await cli(["persona", "delete", coach.id]);
       expect(await cli(["routine", "list"])).toEqual([]);
@@ -212,7 +253,7 @@ describe("routines", () => {
   });
 
   it("answers the first message after a routine result is posted to a fresh home thread", async () => {
-    const { stub, cli, coach, dispose } = await setUp();
+    const { stub, daemon, cli, coach, dispose } = await setUp();
     try {
       await cli([
         "routine",
@@ -240,7 +281,37 @@ describe("routines", () => {
       ]);
 
       expect(stub.requests.length).toBe(before + 1);
-      expect(JSON.stringify(stub.requests.at(-1)?.body.messages)).toContain(
+      const sent = (stub.requests.at(-1)?.body.messages ?? []) as {
+        role: string;
+        content: unknown;
+      }[];
+      const texts = sent.map((message) => JSON.stringify(message.content));
+      const postedIndex = texts.findIndex((text) =>
+        text.includes("Two meetings today"),
+      );
+      const askedIndex = texts.findIndex((text) =>
+        text.includes("Which meeting comes first?"),
+      );
+      expect(postedIndex).toBeGreaterThanOrEqual(0);
+      expect(askedIndex).toBeGreaterThan(postedIndex);
+      expect(texts[askedIndex]).not.toContain("Two meetings today");
+      expect(texts[postedIndex]).toContain("not an instruction");
+
+      await saveModel(daemon, "e2e-agent-model-2");
+      await cli([
+        "persona",
+        "update",
+        coach.id,
+        "--provider",
+        "e2e-stub",
+        "--model",
+        "e2e-agent-model-2",
+      ]);
+      stub.plan = { kind: "stream", chunks: ["Still two"] };
+      await cli(["persona", "send", coach.id, "How many again?", "--wait"]);
+      const switched = stub.requests.at(-1)?.body;
+      expect(switched?.model).toBe("e2e-agent-model-2");
+      expect(JSON.stringify(switched?.messages)).toContain(
         "Two meetings today",
       );
     } finally {
@@ -325,7 +396,7 @@ describe("routines", () => {
   });
 
   it("keeps a read-and-draft run read-only and asks the user even when silent", async () => {
-    const { stub, daemon, cli, coach, dispose } = await setUp();
+    const { stub, daemon, cli, coach, alerts, dispose } = await setUp();
     try {
       await cli([
         "routine",
@@ -404,13 +475,21 @@ describe("routines", () => {
         daemon.options,
       );
       expect(JSON.stringify(messages)).toContain("Send both replies?");
+      await waitFor(() => alerts.length > 0);
+      expect(alerts).toEqual([
+        expect.objectContaining({
+          sessionId: run.sessionId,
+          kind: "question",
+          detail: "Send both replies?",
+        }),
+      ]);
     } finally {
       await dispose();
     }
   });
 
   it("reminds a run to report, drops it quietly, and starts each run fresh", async () => {
-    const { stub, daemon, cli, coach, dispose } = await setUp();
+    const { stub, daemon, cli, coach, alerts, dispose } = await setUp();
     try {
       await cli([
         "routine",
@@ -473,6 +552,20 @@ describe("routines", () => {
         daemon.options,
       );
       expect(previous?.archivedAt).toBeTruthy();
+
+      await cli(["persona", "update", "Coach", "--mute"]);
+      stub.plan = { kind: "script", turns: [{ text: ["Quiet reply"] }] };
+      await cli(["persona", "send", "Coach", "Anything new?", "--wait"]);
+      stub.plan = { kind: "script", turns: [{ text: ["Loud reply"] }] };
+      await cli(["persona", "update", "Coach", "--unmute"]);
+      await cli(["persona", "send", "Coach", "And now?", "--wait"]);
+      await waitFor(() => alerts.length > 0);
+      expect(alerts).toEqual([
+        expect.objectContaining({
+          sessionId: coach.homeSessionId,
+          kind: "turnCompleted",
+        }),
+      ]);
     } finally {
       await dispose();
     }

@@ -1527,10 +1527,7 @@ export default interface Resources {
   };
   personal: {
     brief: {
-      failures: "Failures";
-      needsYou: "Needs you";
       open: "Today's brief";
-      results: "Routine results";
     };
     copyName: "{{name}} copy";
     defaultName: "Assistant";
@@ -3116,10 +3113,18 @@ export default interface Resources {
         description: "Play a sound when an agent finishes responding.";
         title: "Completion sound";
       };
+      failed: {
+        body: "An agent run has failed.";
+        title: "Agent failed";
+      };
       groupTitle: "Notifications";
       permission: {
         body: "An agent is waiting for permission approval.";
         title: "Approval needed";
+      };
+      plan: {
+        body: "An agent is waiting for you to approve its plan.";
+        title: "Plan ready for review";
       };
       question: {
         body: "An agent is waiting for your answer.";

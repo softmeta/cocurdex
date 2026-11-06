@@ -9,4 +9,4 @@ export {
   PersonalAgentService,
   type PersonalAgentServiceDeps,
 } from "./personal-agent-service";
-export { buildPostedMessagesBlock, isPostedMessage } from "./posted-messages";
+export { isPostedMessage, postedMessagesSinceReply } from "./posted-messages";

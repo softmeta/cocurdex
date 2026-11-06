@@ -1,5 +1,6 @@
 import {
   type AgentEvent,
+  type AlertEvent,
   type CocurdexDaemonEvent,
   type DaemonEventMeta,
   isAgentEvent,
@@ -21,6 +22,14 @@ export function onDaemonAgentEvent(
 ): () => void {
   return onDaemonEvent((event, meta) => {
     if (isAgentEvent(event)) listener(event, meta);
+  });
+}
+
+export function onDaemonAlert(
+  listener: (event: AlertEvent) => void,
+): () => void {
+  return onDaemonEvent((event) => {
+    if (event.type === "alert") listener(event);
   });
 }
 
