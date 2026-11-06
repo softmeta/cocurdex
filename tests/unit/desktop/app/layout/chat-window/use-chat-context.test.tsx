@@ -104,6 +104,7 @@ describe("chat context receiver", () => {
     expect(fixture.acknowledgements).toEqual([]);
     const draft: unknown[] = ["existing draft"];
     const composer = {
+      sendText: vi.fn(() => true),
       insertContextMention: vi.fn((attachment) => {
         draft.push(attachment);
         return true;
@@ -132,6 +133,7 @@ describe("chat context receiver", () => {
     ];
     const { result, reveal } = setup();
     const composer = {
+      sendText: vi.fn(() => true),
       insertContextMention: vi.fn(() => true),
       insertText: vi.fn(() => true),
     };
@@ -150,10 +152,12 @@ describe("chat context receiver", () => {
   it("uses the currently focused composer instead of the source window or an earlier pane", async () => {
     const { result } = setup();
     const first = {
+      sendText: vi.fn(() => true),
       insertContextMention: vi.fn(() => true),
       insertText: vi.fn(() => true),
     };
     const focused = {
+      sendText: vi.fn(() => true),
       insertContextMention: vi.fn(() => true),
       insertText: vi.fn(() => true),
     };
@@ -174,6 +178,7 @@ describe("chat context receiver", () => {
   it("leaves context queued during handoff and consumes it after ownership becomes ready", async () => {
     const { result, store } = setup();
     const composer = {
+      sendText: vi.fn(() => true),
       insertContextMention: vi.fn(() => true),
       insertText: vi.fn(() => true),
     };

@@ -550,8 +550,13 @@ export class CocurdexDaemonService {
       getSession: (sessionId) => this.state.getSession(sessionId),
       getTeamId: (sessionId) => this.team.teamIdForSession(sessionId),
       getLeadRoster: (sessionId) => this.team.rosterForLead(sessionId),
-      memoryInstructions: (hasMemoryTools) =>
-        hasMemoryTools ? this.memory.agentInstructions(true) : undefined,
+      memoryInstructions: (hasMemoryTools, caller) =>
+        hasMemoryTools
+          ? this.memory.agentInstructions(
+              true,
+              caller.sessionKind === "personal",
+            )
+          : undefined,
     });
     this.peerMessaging = new PeerMessagingService({
       getSession: (sessionId) => this.state.getSession(sessionId),
@@ -654,7 +659,10 @@ export class CocurdexDaemonService {
         const scope = await this.personaMemoryScopeFor(caller.sessionId);
         return this.memory.recallIn(input, scope?.read ?? null);
       },
-      show: (id) => this.memory.show(id),
+      show: async (id, caller) => {
+        const scope = await this.personaMemoryScopeFor(caller.sessionId);
+        return this.memory.showIn(id, scope?.read ?? null);
+      },
       remember: async (input, caller, target) => {
         const scope = await this.personaMemoryScopeFor(caller.sessionId);
         return this.memory.rememberIn(
@@ -662,7 +670,10 @@ export class CocurdexDaemonService {
           scope ? personaWritePartition(scope, target) : null,
         );
       },
-      policy: () => this.memory.policy(),
+      policy: (caller) =>
+        caller.sessionKind === "personal"
+          ? Promise.resolve(this.memory.agentInstructions(true, true))
+          : this.memory.policy(),
       noteToolUse: (sessionId, tool) =>
         this.memory.noteGateToolUse(sessionId, tool),
     });
@@ -2032,7 +2043,11 @@ export class CocurdexDaemonService {
       const session = await this.state.getSession(sessionId);
       if (!session || session.archivedAt) continue;
       if (session.agentType !== role.agentId) continue;
-      if (!personaRoleFromHomeThread(role, session.providerSnapshot)) continue;
+      if (
+        session.providerSnapshot &&
+        !personaRoleFromHomeThread(role, session.providerSnapshot)
+      )
+        continue;
       await this.applySessionRuntime(
         {
           sessionId,
@@ -3585,12 +3600,20 @@ export class CocurdexDaemonService {
     const chatSession = isChatSession(session);
     const sessionKind = session.sessionKind ?? "main";
     const persona = this.personalAgents.personaForSession(session);
+    if (sessionKind === "personal" && !persona)
+      throw new Error("Personal assistant memory scope is unavailable.");
     const hostInjectsMemory =
-      !chatSession && (await this.memory.injectsInto(session.agentType));
+      !persona &&
+      !chatSession &&
+      (await this.memory.injectsInto(session.agentType));
     const memoryGate = await this.memory.beginTurn({
       sessionId: session.id,
       mode: chatSession ? "chat" : "agent",
-      enforce: !chatSession && sessionKind !== "subagent" && !hostInjectsMemory,
+      enforce:
+        !chatSession &&
+        sessionKind !== "personal" &&
+        sessionKind !== "subagent" &&
+        !hostInjectsMemory,
     });
     const memoryContext =
       (!chatSession && sessionKind === "subagent") || hostInjectsMemory
@@ -3600,6 +3623,7 @@ export class CocurdexDaemonService {
             userMessage.content,
             chatSession ? "chat" : "agent",
             persona ? personaMemoryScope(persona.id).read : null,
+            priorMessages,
           );
     const resolution = resolveStartContext({
       targetAgentType: session.agentType,
@@ -3717,6 +3741,8 @@ export class CocurdexDaemonService {
     const persona = session
       ? this.personalAgents.personaForSession(session)
       : null;
+    if (session?.sessionKind === "personal" && !persona)
+      throw new Error("Personal assistant memory scope is unavailable.");
     return persona ? personaMemoryScope(persona.id) : null;
   }
 

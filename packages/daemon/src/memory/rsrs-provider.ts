@@ -117,6 +117,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
   private readonly reads = new TaskQueue();
   private readonly writes = new TaskQueue();
   private startingRuntime: Promise<void> | null = null;
+  private warming: Promise<void> | null = null;
 
   constructor(private readonly options: RsrsMemoryProviderOptions) {}
 
@@ -139,6 +140,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
   }
 
   forgetExecutable() {
+    this.warming = null;
     this.resolved = null;
     this.resolvedAt = 0;
     this.capabilitySet = null;
@@ -148,6 +150,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
   }
 
   adoptExecutable(executable: RsrsExecutable) {
+    this.warming = null;
     this.resolved = executable;
     this.resolvedAt = this.nowMs();
     this.capabilitySet = null;
@@ -252,6 +255,28 @@ export class RsrsMemoryProvider implements MemoryProvider {
     return (await this.executable()) !== null;
   }
 
+  async warmup(reset = false) {
+    if (this.options.startRuntime === false) return;
+    if (reset) this.warming = null;
+    this.warming ??= (async () => {
+      const executable = await this.requireExecutable();
+      const status = await readRsrsStatus(executable, RUNTIME_START_TIMEOUT_MS);
+      if (!status.hasKeys || status.workspaceMode === "off") return;
+      const result = await recallMemories(executable, {
+        query: "Cocurdex memory readiness",
+        project: "cocurdex/me",
+        limit: 1,
+        timeoutMs: RUNTIME_START_TIMEOUT_MS,
+      });
+      if (result.error) throw new Error(result.error);
+    })().catch((error: unknown) => {
+      logDaemonDiagnostic("info", "memory.warmupFailed", {
+        error: errorMessage(error),
+      });
+    });
+    return this.warming;
+  }
+
   async capabilities(): Promise<MemoryProviderCapabilities> {
     if (this.capabilitySet) return this.capabilitySet;
     const executable = await this.requireExecutable();
@@ -342,11 +367,15 @@ export class RsrsMemoryProvider implements MemoryProvider {
         (!input.project ||
           this.runtimeSupports("memory_remember", "project")) &&
         !input.tags?.length;
-      return this.viaRuntime(
-        useRuntime ? endpoint : null,
-        (target) => rememberMemoryViaRuntime(target, input),
-        () => rememberMemory(executable, input),
-      );
+      if (!useRuntime || !endpoint) return rememberMemory(executable, input);
+      try {
+        return await rememberMemoryViaRuntime(endpoint, input);
+      } catch (error) {
+        throw new Error(
+          `Memory write could not be confirmed; inspect the library before retrying. ${errorMessage(error)}`,
+          { cause: error },
+        );
+      }
     });
   }
 

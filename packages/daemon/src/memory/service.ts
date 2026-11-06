@@ -56,7 +56,14 @@ import {
   compactText as compactDigestText,
   conversationTurns,
 } from "./digest";
+import {
+  PARTITION_UNAVAILABLE,
+  readPartitionEntry,
+  scopeRememberCandidates,
+  validatePartitionRelations,
+} from "./partition-access";
 import { mergeRecallResults } from "./partition-recall";
+import { personaMemoryBrief, personaMemoryPolicy } from "./persona-memory";
 import type { MemoryProvider } from "./provider";
 import {
   exportRsrsKeys,
@@ -83,6 +90,7 @@ import {
   writeMemoryInstallState,
   writeMemorySettings,
 } from "./settings";
+import { memoryStatusError } from "./status-health";
 
 const STATUS_CACHE_MS = 30_000;
 const TURN_RECALL_BUDGET_MS = 8_000;
@@ -269,7 +277,8 @@ export class MemoryService {
 
   async setSettings(input: MemorySettings): Promise<MemorySettings> {
     await this.ensureInitialized();
-    const previousCliPath = this.currentSettings().cliPath;
+    const previousSettings = this.currentSettings();
+    const previousCliPath = previousSettings.cliPath;
     const settings = await writeMemorySettings(
       this.options.state,
       gateMemorySettings(input, this.platform),
@@ -278,6 +287,12 @@ export class MemoryService {
     if (settings.cliPath !== previousCliPath) this.rsrs.forgetExecutable();
     this.statusCache = null;
     this.broadcast();
+    if (
+      settings.enabled &&
+      (!previousSettings.enabled || settings.cliPath !== previousCliPath)
+    ) {
+      void this.rsrs.warmup(true);
+    }
     return settings;
   }
 
@@ -292,7 +307,7 @@ export class MemoryService {
           status: "idle",
         });
       }
-      void this.rsrs.runtime().catch(() => undefined);
+      await this.rsrs.warmup();
     })();
     return this.startupPromise;
   }
@@ -397,8 +412,9 @@ export class MemoryService {
       account: summary?.account ?? null,
       space: summary?.space ?? null,
       cloud: toCloudStatus(summary),
-      doctor: installState.doctor,
-      error,
+      doctor:
+        installState.doctor?.version === version ? installState.doctor : null,
+      error: error ?? (summary ? memoryStatusError(summary) : null),
       checkedAt: this.now().toISOString(),
       lastRecall: null,
     };
@@ -464,6 +480,7 @@ export class MemoryService {
           error: null,
           doctor: doctor.report,
         });
+        if (this.currentSettings().enabled) void this.rsrs.warmup();
         return {
           status: await this.getStatus(true),
           installed: doctor.installed,
@@ -533,6 +550,8 @@ export class MemoryService {
     this.rsrs.invalidateRuntime();
     this.statusCache = null;
     const status = await this.getStatus(true);
+    if (status.enabled && status.cloud.hasKeys && !status.error)
+      void this.rsrs.warmup(true);
     this.broadcast();
     return status;
   }
@@ -651,8 +670,11 @@ export class MemoryService {
       account: cloudSummary.account,
       space: cloudSummary.space,
       cloud: toCloudStatus(cloudSummary),
-      doctor: installState.doctor,
-      error: null,
+      doctor:
+        installState.doctor?.version === (runtime.bin ?? installState.version)
+          ? installState.doctor
+          : null,
+      error: memoryStatusError(cloudSummary),
       checkedAt: this.now().toISOString(),
       lastRecall: null,
     };
@@ -721,8 +743,16 @@ export class MemoryService {
     input: { query: string; limit?: number; timeoutMs?: number },
     partitions: MemoryPartition[] | null,
   ): Promise<MemoryRecallResult> {
-    if (!partitions?.length || !(await this.supportsPartitions())) {
+    if (!partitions?.length) {
       return this.recall(input);
+    }
+    if (!(await this.supportsPartitions())) {
+      return {
+        query: input.query.trim(),
+        items: [],
+        truncated: false,
+        error: PARTITION_UNAVAILABLE,
+      };
     }
     const results = await Promise.all(
       partitions.map((partition) =>
@@ -746,13 +776,38 @@ export class MemoryService {
     input: MemoryRememberInput,
     partition: MemoryPartition | null,
   ): Promise<MemoryRememberResult> {
-    if (!partition || !(await this.supportsPartitions())) {
+    if (!partition) {
       return this.remember(input);
     }
-    return this.remember({
-      ...input,
+    const blocked = await this.readyProvider();
+    if (blocked)
+      return {
+        action: "skipped",
+        id: null,
+        title: null,
+        candidates: [],
+        message: blocked,
+      };
+    const validated = await validatePartitionRelations(
+      this.provider,
+      input,
+      partition,
+    );
+    const result = await this.remember({
+      ...validated,
       project: memoryPartitionProject(partition),
     });
+    return scopeRememberCandidates(this.provider, result, partition);
+  }
+
+  async showIn(
+    id: string,
+    partitions: MemoryPartition[] | null,
+    timeoutMs?: number,
+  ) {
+    if (!partitions?.length) return this.show(id, timeoutMs);
+    if (await this.readyProvider()) return null;
+    return readPartitionEntry(this.provider, id, partitions, timeoutMs);
   }
 
   async injectsInto(agentType: string) {
@@ -787,7 +842,8 @@ export class MemoryService {
     const blocked = await this.readyProvider();
     if (blocked) return skipped(blocked);
     const result = await this.provider.remember({ ...input, content, title });
-    if (result.action === "created") this.broadcast();
+    if (result.action === "created" || result.action === "merged")
+      this.broadcast();
     if (result.action !== "created" && result.message) {
       return { ...result, message: withIdentityHint(result.message) };
     }
@@ -939,6 +995,7 @@ export class MemoryService {
     message: string,
     mode: "agent" | "chat",
     partitions: MemoryPartition[] | null = null,
+    recentMessages: readonly MessageRecord[] = [],
   ): Promise<MemoryTurnContext | null> {
     await this.ensureInitialized();
     const settings = this.currentSettings();
@@ -946,10 +1003,20 @@ export class MemoryService {
     if (!settings.enabled) return null;
     if (mode === "agent" && !settings.agent.injectContext) return null;
     if (mode === "chat" && !settings.chat.recall) return null;
+    const personal = session.sessionKind === "personal";
+    const messageWithContext = personal
+      ? [
+          message,
+          ...recentMessages
+            .filter((item) => item.role === "user")
+            .slice(-2)
+            .map((item) => item.content),
+        ].join("\n")
+      : message;
     const query = buildMemoryRecallQuery({
       project: null,
-      title: session.title,
-      message,
+      title: session.sessionKind === "personal" ? null : session.title,
+      message: messageWithContext,
     });
     if (!query) return null;
     let result: MemoryRecallResult;
@@ -976,13 +1043,33 @@ export class MemoryService {
         error: result.error,
         sessionId: session.id,
       });
-      return null;
+      if (result.items.length === 0) return null;
     }
     if (result.items.length === 0) {
       this.noteRecall(session.id, mode, "empty", null);
       return null;
     }
-    this.noteRecall(session.id, mode, "recalled", null);
+    if (!result.error) this.noteRecall(session.id, mode, "recalled", null);
+    if (session.sessionKind === "personal") {
+      const entries = new Map<string, MemoryEntry>();
+      const deadline = performance.now() + CHAT_EXCERPT_BUDGET_MS;
+      for (const item of result.items.slice(0, 3)) {
+        const remaining = Math.floor(deadline - performance.now());
+        if (remaining <= 0) break;
+        try {
+          const entry = await this.showIn(item.id, partitions, remaining);
+          if (entry) entries.set(item.id, entry);
+        } catch (error) {
+          logDaemonDiagnostic("info", "memory.personaBodyUnavailable", {
+            error: errorMessage(error),
+          });
+        }
+      }
+      return {
+        brief: personaMemoryBrief(result.items, entries, settings.agent.tools),
+        items: result.items,
+      };
+    }
     const excerpts = new Map<string, string>();
     if (mode === "chat") {
       const selected = result.items.slice(0, 2);
@@ -1233,9 +1320,9 @@ export class MemoryService {
     }
   }
 
-  agentInstructions(hasTools: boolean) {
+  agentInstructions(hasTools: boolean, personal = false) {
     if (!hasTools || !this.isEnabledSync()) return "";
-    return buildAgentMemoryPolicy(true);
+    return personal ? personaMemoryPolicy() : buildAgentMemoryPolicy(true);
   }
 
   async getCaptures(): Promise<MemoryCaptureMap> {

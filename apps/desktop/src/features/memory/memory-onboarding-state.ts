@@ -22,6 +22,8 @@ function onboardingStage(
 ): MemoryOnboardingStage {
   if (!status?.supported) return "hidden";
   if (working || status.installation === "installing") return "installing";
+  if (status.settings.enabled && status.available && status.error)
+    return "failed";
   if (status.settings.enabled && status.available) return "ready";
   if (status.settings.enabled && status.installation === "failed") {
     return "failed";

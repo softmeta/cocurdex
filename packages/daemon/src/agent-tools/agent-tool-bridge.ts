@@ -16,7 +16,10 @@ export interface AgentToolBridgeOptions {
   getSession(sessionId: string): Promise<SessionRecord | null>;
   getTeamId?(sessionId: string): Promise<string | null>;
   getLeadRoster?(sessionId: string): Promise<TeamRoster | null>;
-  memoryInstructions?(hasMemoryTools: boolean): string | undefined;
+  memoryInstructions?(
+    hasMemoryTools: boolean,
+    caller: AgentToolCallerContext,
+  ): string | undefined;
 }
 
 export interface AgentToolSessionBinding {
@@ -69,7 +72,7 @@ export class AgentToolBridge {
     const sections = [
       orchestrationInstructions(catalog),
       roster ? renderTeamRosterInstructions(roster) : undefined,
-      this.options.memoryInstructions?.(hasMemoryTools),
+      this.options.memoryInstructions?.(hasMemoryTools, caller),
     ].filter((section): section is string => Boolean(section));
     return sections.length > 0 ? sections.join("\n\n") : undefined;
   }

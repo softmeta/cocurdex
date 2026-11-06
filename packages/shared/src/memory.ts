@@ -13,7 +13,7 @@ export const MEMORY_INSTALL_HINT =
 export const MEMORY_ENABLE_HINT =
   "Turn memory on in Settings > Memory, or run: cocurdex memory on.";
 export const MEMORY_IDENTITY_HINT =
-  "Register or sign in from Settings > Memory > Multi-device sync, or run: cocurdex memory cloud register --user <name> (use cloud signin for an existing account).";
+  "For local-only memory, initialize rsrs with rsrs keygen. For multi-device sync, register or sign in from Settings > Memory > Multi-device sync, or run: cocurdex memory cloud register --user <name> (use cloud signin for an existing account).";
 
 export const MEMORY_MISSING_EXECUTABLE_MESSAGE = `rsrs is not installed. ${MEMORY_INSTALL_HINT}`;
 export const MEMORY_DISABLED_MESSAGE = `Memory is off. ${MEMORY_ENABLE_HINT}`;

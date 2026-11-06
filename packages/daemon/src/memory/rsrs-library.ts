@@ -166,8 +166,21 @@ export async function readRsrsLibraryCapabilities(
       (match) => match[1],
     ),
   );
+  const supportsProject = async (command: string) => {
+    const help = await runRsrs(executable, [command, "--help"], {
+      timeoutMs: LIBRARY_READ_TIMEOUT_MS,
+    });
+    return help.code === 0 && /--project\b/.test(help.stdout);
+  };
+  const scoped =
+    commands.has("recall") && commands.has("remember")
+      ? await Promise.all([
+          supportsProject("recall"),
+          supportsProject("remember"),
+        ]).catch(() => [false, false])
+      : [false, false];
   return {
-    partitions: commands.has("recall") && commands.has("remember"),
+    partitions: scoped.every(Boolean),
     list: commands.has("list"),
     update: commands.has("update"),
     forget: commands.has("forget"),

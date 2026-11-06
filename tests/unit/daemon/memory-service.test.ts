@@ -89,7 +89,7 @@ if (command === "--version") {
       autosync: false,
       offline: false,
       remote_configured: true,
-      session: { user: "local", has_session: false, has_token: false, has_local_keys: false },
+      session: { user: "local", has_session: false, has_token: false, has_local_keys: ${options.identityMissing !== true} },
       sync_live: { phase: "ok", pending: 0, conflicts: 0, error: "" },
     },
   });
@@ -207,6 +207,89 @@ async function createService(
 }
 
 describe("MemoryService with a fake rsrs CLI", () => {
+  it("does not replay a runtime write through the CLI when its outcome is unconfirmed", async () => {
+    let writes = 0;
+    const server = createServer((request, response) => {
+      if (request.url === "/api/health") {
+        response.end(JSON.stringify({ server: "respire", v: 1 }));
+        return;
+      }
+      let text = "";
+      request.on("data", (chunk) => {
+        text += chunk;
+      });
+      request.on("end", () => {
+        const body = JSON.parse(text);
+        if (body.params?.name === "memory_remember") writes += 1;
+        const result =
+          body.method === "tools/list"
+            ? { tools: [] }
+            : {
+                isError: true,
+                content: [{ type: "text", text: "Write response unavailable" }],
+              };
+        response.end(JSON.stringify({ jsonrpc: "2.0", result }));
+      });
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    try {
+      const { service, directory, logPath } = await createService();
+      const { port } = server.address() as AddressInfo;
+      await mkdir(path.join(directory, "runtime"), { recursive: true });
+      await writeFile(
+        path.join(directory, "runtime", "endpoint.json"),
+        JSON.stringify({ url: `http://127.0.0.1:${port}` }),
+      );
+      await expect(
+        service.remember({ title: "Tea", content: "Prefers tea" }),
+      ).rejects.toThrow("could not be confirmed");
+      expect(writes).toBe(1);
+      const calls = (await readFile(logPath, "utf8"))
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line) as string[]);
+      expect(calls.some((call) => call[0] === "remember")).toBe(false);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("warms the embedding path in the background rather than only probing status", async () => {
+    const { service, logPath } = await createService({ startRuntime: true });
+    await service.initializeOnStartup();
+    await service.initializeOnStartup();
+    const calls = (await readFile(logPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as string[]);
+    expect(calls.filter((call) => call[0] === "recall")).toHaveLength(1);
+  });
+
+  it("reports missing local identity without requiring a cloud account", async () => {
+    const { service } = await createService({ identityMissing: true });
+    const status = await service.getStatus(true);
+    expect(status.available).toBe(true);
+    expect(status.error).toContain("rsrs keygen");
+    expect(status.cloud.hasKeys).toBe(false);
+  });
+
+  it("invalidates a doctor report from a different executable version", async () => {
+    const { service, state } = await createService();
+    await state.setAppSetting(
+      "memory.installState",
+      JSON.stringify({
+        status: "ready",
+        version: "0.9.0",
+        doctor: { version: "0.9.0" },
+      }),
+    );
+    const status = await service.getStatus(true);
+    expect(status.version).toBe("1.0.0");
+    expect(status.doctor).toBeNull();
+  });
   it("reports status and recalls memories", async () => {
     const { service } = await createService();
     const status = await service.getStatus();

@@ -39,7 +39,15 @@ runScenario("memory-onboarding", {
   open: () => openScenarioApp(args),
   setup: async ({ session, workspaceRoot }) => {
     state.original = await daemonRequest(session, "memory.settings.get");
-    const cliPath = await writeFakeRsrs(workspaceRoot);
+    state.statePath = path.join(workspaceRoot, "memory-onboarding-state.json");
+    await writeFile(
+      state.statePath,
+      JSON.stringify({ revision: 0, live: [], deleted: [], log: [] }),
+      "utf8",
+    );
+    const cliPath = await writeFakeRsrs(workspaceRoot, {
+      statePath: state.statePath,
+    });
     await daemonRequest(session, "memory.settings.set", {
       settings: { ...state.original, enabled: false, cliPath },
     });
@@ -141,6 +149,43 @@ runScenario("memory-onboarding", {
       },
     ],
     [
+      "missing local identity is not shown as ready",
+      async ({ session }) => {
+        await writeFile(
+          state.statePath,
+          JSON.stringify({
+            revision: 0,
+            live: [],
+            deleted: [],
+            log: [],
+            identityMissing: true,
+          }),
+          "utf8",
+        );
+        const settings = await daemonRequest(session, "memory.settings.get");
+        await daemonRequest(session, "memory.settings.set", { settings });
+        await openMemoryStatus(session);
+        const label = await translate(
+          session,
+          "memory:onboarding.state.failed",
+        );
+        await session.waitUntil(
+          (text) =>
+            document.body.textContent.includes(text) &&
+            document.body.textContent.includes("rsrs keygen"),
+          label,
+          UI_TIMEOUT_MS,
+        );
+        const status = await daemonRequest(session, "memory.status", {});
+        check(
+          status.available && !status.cloud.hasKeys && Boolean(status.error),
+          "installed memory needs local setup",
+          status.error,
+        );
+        return {};
+      },
+    ],
+    [
       "renderer has no errors",
       async ({ session }) => {
         const errors = await session.run(() => window.__scenario.errors);
@@ -162,3 +207,6 @@ runScenario("memory-onboarding", {
     return {};
   },
 });
+
+import { writeFile } from "node:fs/promises";
+import path from "node:path";

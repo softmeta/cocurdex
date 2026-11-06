@@ -53,6 +53,7 @@ export interface RsrsExecutable {
 }
 
 export interface RsrsCloudSummary {
+  workspaceMode?: string | null;
   dataDir: string | null;
   server: string | null;
   account: string | null;
@@ -311,6 +312,7 @@ function parseCloudSummary(summary: Record<string, unknown>): RsrsCloudSummary {
   const lastSuccess = numberValue(scheduler.last_success_unix);
   return {
     dataDir: stringValue(summary.data_dir),
+    workspaceMode: stringValue(summary.workspace),
     server: stringValue(summary.server_addr) ?? stringValue(session.addr),
     account: user && user !== "local" ? user : null,
     space: null,
@@ -339,7 +341,11 @@ export async function readRsrsStatus(
   timeoutMs = CONFIG_TIMEOUT_MS,
 ): Promise<RsrsCloudSummary> {
   const result = await runRsrs(executable, ["status", "--json"], { timeoutMs });
-  return parseRsrsCloudStatus(parseRsrsJson(result.stdout));
+  const payload = parseRsrsJson(result.stdout);
+  const error = rsrsErrorText(payload);
+  if (result.code !== 0 || payload.status === "fail")
+    throw new Error(error ?? "Memory status is unavailable");
+  return parseRsrsCloudStatus(payload);
 }
 
 export async function writeRsrsAutosync(
@@ -596,15 +602,48 @@ export function parseRememberPayload(payload: Record<string, unknown>): {
   const id = stringValue(summary.id);
   const title = stringValue(summary.title);
   const message = rsrsErrorText(payload);
-  const candidates = parseRecallPayload(payload);
+  let candidates = parseRecallPayload(payload);
+  const pending =
+    summary.state === "candidates" ||
+    summary.state === "parent_candidates" ||
+    rawAction === "candidates";
+  if (pending && candidates.length === 0 && Array.isArray(payload.items)) {
+    candidates = payload.items.flatMap((value) => {
+      const item = asRecord(value);
+      const candidateId = stringValue(item?.name);
+      if (!candidateId || !/^[a-f\d]{8}(?:-[a-f\d-]+)?$/i.test(candidateId))
+        return [];
+      const text = stringValue(item?.value) ?? "";
+      const match = /^similarity=(\d+(?:\.\d+)?)% title=(.*)$/s.exec(text);
+      return [
+        {
+          id: candidateId,
+          title: match?.[2] ?? candidateId,
+          score: match ? Number(match[1]) / 100 : null,
+          importance: null,
+          updatedAt: null,
+        },
+      ];
+    });
+  }
   if (rawAction === "created" && id) {
     return { action: "created", id, title, candidates: [], message };
   }
   if (rawAction === "merged" || rawAction === "merge") {
     return { action: "merged", id, title, candidates: [], message };
   }
-  if (candidates.length > 0) {
-    return { action: "candidates", id, title, candidates, message };
+  if (pending || candidates.length > 0) {
+    const actions = stringArray(payload.actions).join("\n");
+    return {
+      action: "candidates",
+      id: null,
+      title,
+      candidates,
+      message:
+        message ??
+        (actions ||
+          "Nothing was saved. Read candidates and choose merge or attach before retrying."),
+    };
   }
   if (id) {
     return { action: "created", id, title, candidates: [], message };

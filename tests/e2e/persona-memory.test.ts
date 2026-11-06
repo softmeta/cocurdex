@@ -201,12 +201,16 @@ describe("personal assistant memory", () => {
       const first = lastUserText(stub.requests[0]);
       expect(first).not.toContain("Answer like a drill sergeant");
       expect(first).toContain("Allergic to peanuts");
+      expect(first).toContain("The user is allergic to peanuts");
       expect(first).not.toContain("Peanut sauce recipe");
       expect(first).not.toContain("Peanut farm visit");
 
       const afterFirst = await readState();
       expect(
-        afterFirst.recalls?.map((recall) => recall.project).sort(),
+        afterFirst.recalls
+          ?.filter((recall) => recall.query !== "Cocurdex memory readiness")
+          .map((recall) => recall.project)
+          .sort(),
       ).toEqual(["cocurdex/me", own].sort());
       expect(afterFirst.live).toEqual(
         expect.arrayContaining([
@@ -252,10 +256,53 @@ describe("personal assistant memory", () => {
       const before = stub.requests.length;
       stub.plan = { kind: "stream", chunks: ["Hosted"] };
       await cli(["persona", "send", coach.id, "Peanuts check", "--wait"]);
-      expect(lastUserText(stub.requests[before])).not.toContain(
+      expect(lastUserText(stub.requests[before])).toContain(
         "Allergic to peanuts",
       );
-      expect((await readState()).recalls).toEqual([]);
+      expect(
+        (await readState()).recalls
+          ?.filter((recall) => recall.query !== "Cocurdex memory readiness")
+          .map((recall) => recall.project)
+          .sort(),
+      ).toEqual(["cocurdex/me", own].sort());
+      const liveBeforeDeniedTools = (await readState()).live;
+      const beforeDeniedTools = stub.requests.length;
+      stub.plan = {
+        kind: "script",
+        turns: [
+          {
+            toolCalls: [
+              { name: "memory_show", arguments: { id: "m-other" } },
+              {
+                name: "memory_remember",
+                arguments: {
+                  title: "Merged recipe",
+                  content: "Must not be saved",
+                  mergeIds: ["m-other"],
+                },
+              },
+              { name: "memory_show", arguments: { id: "m-me" } },
+            ],
+          },
+          { text: ["Scope checked"] },
+        ],
+      };
+      await cli([
+        "persona",
+        "send",
+        coach.id,
+        "Check the peanut memories",
+        "--wait",
+      ]);
+      const deniedPayload = JSON.stringify(
+        stub.requests.slice(beforeDeniedTools).map((request) => request.body),
+      );
+      expect(deniedPayload).toContain("permitted partition");
+      expect(deniedPayload).toContain("The user is allergic to peanuts");
+      expect(deniedPayload).not.toContain(
+        "Another assistant keeps peanut recipes",
+      );
+      expect((await readState()).live).toEqual(liveBeforeDeniedTools);
     } finally {
       await daemon.dispose();
       await stub.close();
