@@ -8,7 +8,6 @@ import {
   type PdfAnnotationsOperation,
   type PdfDocumentAnnotations,
 } from "@cocurdex/shared";
-import { resolveAuthorizedPdfReadPath } from "@cocurdex/shared/node";
 
 const PDF_ANNOTATIONS_DIR = "pdf-annotations";
 const STORAGE_VERSION = 1;
@@ -58,7 +57,7 @@ export class DaemonPdfAnnotationsService {
 
   constructor(
     userDataPath: string,
-    private readonly listWorkspaceRootPaths: () => Promise<string[]>,
+    private readonly resolvePath: (filePath: string) => Promise<string>,
   ) {
     this.annotationsRootPath = path.join(userDataPath, PDF_ANNOTATIONS_DIR);
   }
@@ -96,13 +95,6 @@ export class DaemonPdfAnnotationsService {
       await this.persistAnnotations(resolvedPath, storagePath, next);
       return next;
     });
-  }
-
-  private async resolvePath(filePath: string): Promise<string> {
-    return resolveAuthorizedPdfReadPath(
-      filePath,
-      await this.listWorkspaceRootPaths(),
-    );
   }
 
   private async readStoredAnnotations(

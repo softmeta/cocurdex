@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { handleDaemonRequest } from "@cocurdex/daemon/internal/handler";
@@ -100,6 +100,58 @@ describe("session.send attachment access", () => {
     await expect(
       service.state.listSessionMessages("session-1"),
     ).resolves.toMatchObject({ messages: [] });
+  });
+
+  it("previews and annotates managed PDF uploads while refusing other private PDFs", async () => {
+    const { service, outside } = await setup();
+    const stored = await service.attachments.importDocument(
+      Readable.from([Buffer.from("%PDF-1.7\nsynthetic attachment")]),
+      "brief.pdf",
+    );
+    const outsidePdf = path.join(outside, "private.pdf");
+    writeFileSync(outsidePdf, "%PDF-1.7\nprivate", "utf8");
+    const readAnnotations = (filePath: string) =>
+      handleDaemonRequest<"pdf.loadAnnotations">(
+        service,
+        {
+          id: "pdf-1",
+          method: "pdf.loadAnnotations",
+          params: { filePath },
+          token: "test",
+        },
+        { principal: device, remoteAddress: "10.0.0.2" },
+      );
+    await expect(service.resolvePdfPath(stored.filePath)).resolves.toBe(
+      stored.filePath,
+    );
+    await expect(readAnnotations(stored.filePath)).resolves.toEqual({
+      bookmarks: [],
+      highlights: [],
+    });
+    await expect(service.resolvePdfPath(outsidePdf)).rejects.toThrow(
+      /outside every registered workspace/,
+    );
+    await expect(readAnnotations(outsidePdf)).rejects.toThrow(
+      /outside every registered workspace/,
+    );
+  });
+
+  it("refuses a managed PDF replaced by a symlink to a private file", async () => {
+    const { service, outside } = await setup();
+    const stored = await service.attachments.importDocument(
+      Readable.from([Buffer.from("%PDF-1.7\nupload")]),
+      "brief.pdf",
+    );
+    const outsidePdf = path.join(outside, "private.pdf");
+    writeFileSync(outsidePdf, "%PDF-1.7\nprivate", "utf8");
+    unlinkSync(stored.filePath);
+    symlinkSync(outsidePdf, stored.filePath, "file");
+    await expect(service.resolvePdfPath(stored.filePath)).rejects.toThrow(
+      /outside every registered workspace/,
+    );
+    await expect(
+      service.pdfAnnotationsService.loadAnnotations(stored.filePath),
+    ).rejects.toThrow(/outside every registered workspace/);
   });
 
   it("lets a device attach stored uploads and workspace files", async () => {

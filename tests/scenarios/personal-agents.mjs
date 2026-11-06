@@ -22,6 +22,7 @@ import {
   assistantPanelsStep,
   assistantWorkStep,
 } from "./lib/personal-overview.mjs";
+import { assistantManagedPdfStep } from "./lib/personal-pdf-upload.mjs";
 
 const BRIEF_RESULTS_TITLE = {
   "en-US": "Routine results",
@@ -219,6 +220,7 @@ runScenario("personal-agents", {
       },
     ],
     assistantFilesStep(),
+    assistantManagedPdfStep(state, () => stub),
     [
       "a routine result posts to the home thread and links its run",
       async ({ session }) => {

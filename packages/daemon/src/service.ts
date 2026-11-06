@@ -540,10 +540,7 @@ export class CocurdexDaemonService {
     });
     this.pdfAnnotationsService = new DaemonPdfAnnotationsService(
       options.userDataPath,
-      async () =>
-        (await this.state.listWorkspaces()).flatMap(
-          (workspace) => workspace.rootPaths,
-        ),
+      (filePath) => this.resolvePdfPath(filePath),
     );
     this.agentTools = new AgentToolBridge({
       url: options.agentToolsUrl ?? null,
@@ -1451,6 +1448,9 @@ export class CocurdexDaemonService {
   }
 
   async resolvePdfPath(filePath: string) {
+    const attachmentPath =
+      await this.attachments.resolveStoredDocumentPath(filePath);
+    if (attachmentPath) return attachmentPath;
     return resolveAuthorizedPdfReadPath(
       filePath,
       await this.listWorkspaceRootPaths(),
