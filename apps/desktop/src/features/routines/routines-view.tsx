@@ -1,3 +1,4 @@
+import { useAtom } from "jotai";
 import { AlarmClock, Plus } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +16,7 @@ import { EmptyState, ScrollArea } from "@/components/ui";
 import { usePersonalAgents } from "@/features/personal";
 import { RoutineForm } from "./routine-form";
 import { RoutineList } from "./routine-list";
+import { routineScopeAtom, routineSelectionAtom } from "./routine-selection";
 import { useRoutines } from "./routines-queries";
 
 const MIN_DETAIL_WIDTH_PX = 280;
@@ -29,8 +31,8 @@ export function RoutinesView({
   const { t } = useTranslation("personal");
   const { agents } = usePersonalAgents(t("defaultName"));
   const { routines, loaded } = useRoutines();
-  const [scope, setScope] = useState(ALL_AGENTS);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [scope, setScope] = useAtom(routineScopeAtom);
+  const [selectedId, setSelectedId] = useAtom(routineSelectionAtom);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const agentNames = new Map(

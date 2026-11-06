@@ -1,13 +1,17 @@
+import { isPersonalSession } from "@cocurdex/shared";
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { openPdfsAtom } from "@/features/pdf-reader/pdf-reader-store";
+import { activeSessionIdAtom, sessionsAtom } from "@/features/sessions";
 import { desktopApi, type HostCapabilities } from "@/lib";
 import {
   rightPanelHandledRevealClockAtom,
   rightPanelRevealIntentAtom,
 } from "./right-panel-reveal";
+import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
 
 export type RightPanelView =
+  | "overview"
   | "editor"
   | "notes"
   | "decks"
@@ -20,6 +24,7 @@ export type RightPanelView =
   | "terminal";
 
 export const DEFAULT_TAB_ORDER: RightPanelView[] = [
+  "overview",
   "editor",
   "git",
   "notes",
@@ -94,6 +99,21 @@ function hasStoredActiveView(): boolean {
   }
 }
 
+export const rightPanelPersonalContextAtom = atom((get) => {
+  const sessionId = get(activeSessionIdAtom);
+  const session = get(sessionsAtom).find((item) => item.id === sessionId);
+  return session
+    ? isPersonalSession(session)
+    : get(sidebarTabAtom) === "personal";
+});
+
+const personalActiveViewAtom = atomWithStorage<RightPanelView>(
+  "cocurdex.right-panel-personal-active-view",
+  "overview",
+  undefined,
+  { getOnInit: true },
+);
+
 const storedActiveViewAtom = atomWithStorage<RightPanelView>(
   RIGHT_PANEL_ACTIVE_VIEW_KEY,
   "editor",
@@ -107,14 +127,42 @@ const storedActiveViewAtom = atomWithStorage<RightPanelView>(
 // Survives both in-session remounts (panel collapse / narrow window) and full
 // app restarts via localStorage. Invalid legacy values fall back to editor.
 export const rightPanelActiveViewAtom = atom(
-  (get) => normalizeView(get(storedActiveViewAtom)),
-  (_get, set, next: RightPanelView) => {
-    set(storedActiveViewAtom, normalizeView(next));
+  (get) =>
+    normalizeView(
+      get(
+        get(rightPanelPersonalContextAtom)
+          ? personalActiveViewAtom
+          : storedActiveViewAtom,
+      ),
+    ),
+  (get, set, next: RightPanelView) => {
+    set(
+      get(rightPanelPersonalContextAtom)
+        ? personalActiveViewAtom
+        : storedActiveViewAtom,
+      normalizeView(next),
+    );
   },
 );
 // The last non-terminal view, so closing the final terminal can fall back to
 // wherever the user was before opening the terminal.
-export const rightPanelLastNonTerminalViewAtom = atom<RightPanelView>("editor");
+const workLastViewAtom = atom<RightPanelView>("editor");
+const personalLastViewAtom = atom<RightPanelView>("overview");
+export const rightPanelLastNonTerminalViewAtom = atom(
+  (get) =>
+    get(
+      get(rightPanelPersonalContextAtom)
+        ? personalLastViewAtom
+        : workLastViewAtom,
+    ),
+  (get, set, next: RightPanelView) =>
+    set(
+      get(rightPanelPersonalContextAtom)
+        ? personalLastViewAtom
+        : workLastViewAtom,
+      next,
+    ),
+);
 // False until the view is first changed (by the user, a file open, or a prior
 // session that already wrote a stored preference). Seeds true when localStorage
 // has a value so freezeRightPanelViewAtom does not overwrite a restored tab
@@ -140,7 +188,10 @@ export const freezeRightPanelViewAtom = atom(null, (get, set) => {
     return;
   }
 
-  set(rightPanelActiveViewAtom, "editor");
+  set(
+    rightPanelActiveViewAtom,
+    get(rightPanelPersonalContextAtom) ? "overview" : "editor",
+  );
   set(rightPanelViewTouchedAtom, true);
 });
 
@@ -153,15 +204,20 @@ export function isRightPanelViewAvailable(
   return true;
 }
 
-function availableView(view: RightPanelView): RightPanelView {
-  return isRightPanelViewAvailable(view, desktopApi.capabilities)
-    ? view
-    : "editor";
+function availableView(
+  view: RightPanelView,
+  personal: boolean,
+): RightPanelView {
+  if (personal && (view === "git" || view === "terminal")) return "overview";
+  if (!personal && view === "overview") return "editor";
+  if (isRightPanelViewAvailable(view, desktopApi.capabilities)) return view;
+  return personal ? "overview" : "editor";
 }
 
 export const rightPanelResolvedActiveViewAtom = atom(
   (get) => {
     const openPdfCount = get(openPdfsAtom).length;
+    const personal = get(rightPanelPersonalContextAtom);
 
     // Last explicit open (editor file or PDF) wins until the user picks a tab.
     // Never pin an empty PDF surface: closing the last doc must leave the view
@@ -172,7 +228,7 @@ export const rightPanelResolvedActiveViewAtom = atom(
       intent.clock !== get(rightPanelHandledRevealClockAtom)
     ) {
       if (intent.view !== "pdf" || openPdfCount > 0) {
-        return availableView(intent.view);
+        return availableView(intent.view, personal);
       }
     }
 
@@ -181,16 +237,16 @@ export const rightPanelResolvedActiveViewAtom = atom(
       // PDF is ephemeral (tab only while docs are open) — never fall back to it.
       const fallback = get(rightPanelLastNonTerminalViewAtom);
       if (fallback === "pdf" || fallback === "terminal") {
-        return "editor";
+        return personal ? "overview" : "editor";
       }
-      return availableView(fallback);
+      return availableView(fallback, personal);
     }
 
-    if (!get(rightPanelViewTouchedAtom)) {
+    if (!personal && !get(rightPanelViewTouchedAtom)) {
       return "editor";
     }
 
-    return availableView(activeView);
+    return availableView(activeView, personal);
   },
   (get, set, view: RightPanelView) => {
     set(rightPanelActiveViewAtom, view);

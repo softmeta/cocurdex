@@ -388,37 +388,44 @@ runScenario("pdf-reader", {
           20_000,
         );
         await rm(missingPath);
-        await session.reload();
-        await showPanelView(session, "pdf");
-        const missingTab = await labels.closeFile(MISSING_PDF_NAME);
-        await session.waitUntil(
-          (label) => Boolean(window.__scenario.byLabel(label)),
-          missingTab,
-          UI_TIMEOUT_MS,
+        let missingStatus = null;
+        const unsubscribe = session.on(
+          "Network.responseReceived",
+          ({ response }) => {
+            if (new URL(response.url).searchParams.get("path") === missingPath)
+              missingStatus = response.status;
+          },
         );
-        await session.waitUntil(
-          (fragment) =>
-            window.__scenario
-              .requests(fragment)
-              .some((entry) => entry.responseStatus === 404),
-          PDF_REQUEST_FRAGMENT,
-          UI_TIMEOUT_MS,
-        );
-        const errorTitle = await translate(
-          session,
-          "editor:pdf.loadErrorTitle",
-        );
-        await session.waitUntil(
-          (text) => document.body.innerText.includes(text),
-          errorTitle,
-          UI_TIMEOUT_MS,
-        );
-        const viewerOpen = await session.run(() =>
-          Boolean(document.querySelector(".pdfViewer canvas")),
-        );
-        check(!viewerOpen, "missing file: viewer rendered pages");
-        await closePdfTab(session, labels, MISSING_PDF_NAME);
-        return { status: 404 };
+        try {
+          await session.reload();
+          await showPanelView(session, "pdf");
+          const missingTab = await labels.closeFile(MISSING_PDF_NAME);
+          await session.waitUntil(
+            (label) => Boolean(window.__scenario.byLabel(label)),
+            missingTab,
+            UI_TIMEOUT_MS,
+          );
+          const errorTitle = await translate(
+            session,
+            "editor:pdf.loadErrorTitle",
+          );
+          await session.waitUntil(
+            (text) => document.body.innerText.includes(text),
+            errorTitle,
+            UI_TIMEOUT_MS,
+          );
+          check(missingStatus === 404, "missing PDF returned HTTP 404", {
+            missingStatus,
+          });
+          const viewerOpen = await session.run(() =>
+            Boolean(document.querySelector(".pdfViewer canvas")),
+          );
+          check(!viewerOpen, "missing file: viewer rendered pages");
+          await closePdfTab(session, labels, MISSING_PDF_NAME);
+          return { status: 404 };
+        } finally {
+          unsubscribe();
+        }
       },
     ],
     [

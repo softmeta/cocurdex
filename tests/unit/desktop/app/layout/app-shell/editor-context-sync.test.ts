@@ -5,6 +5,11 @@ import { activeFileAtom, openFilesAtom } from "@/features/editor/editor-store";
 import { activeSessionIdAtom } from "@/features/sessions";
 import { activeWorkspaceIdAtom } from "@/features/workspaces";
 
+const { personalContextAtom } = await vi.hoisted(async () => {
+  const { atom } = await import("jotai");
+  return { personalContextAtom: atom(false) };
+});
+
 const host = vi.hoisted(() => ({
   saveEditorView: vi.fn(() => Promise.resolve()),
 }));
@@ -21,7 +26,10 @@ vi.mock("@/features/workspaces", async () => {
 });
 vi.mock("@/app/layout/right-editor-panel-store", async () => {
   const { atom } = await import("jotai");
-  return { freezeRightPanelViewAtom: atom(null, () => {}) };
+  return {
+    freezeRightPanelViewAtom: atom(null, () => {}),
+    rightPanelPersonalContextAtom: personalContextAtom,
+  };
 });
 
 type Store = ReturnType<typeof createStore>;
@@ -70,6 +78,21 @@ afterEach(() => {
 });
 
 describe("editor tabs across session and workspace switches", () => {
+  it("keeps work drafts out of an empty assistant surface and restores them on return", () => {
+    const store = createStore();
+    const stop = startEditorContextSync(store);
+    enter(store, "a", null);
+    setEditorTabs(store, ["/a/work.ts"], "/a/work.ts");
+    store.set(personalContextAtom, true);
+    expect(tabs(store)).toEqual({ openFiles: [], activeFile: null });
+    store.set(personalContextAtom, false);
+    expect(tabs(store)).toEqual({
+      openFiles: ["/a/work.ts"],
+      activeFile: "/a/work.ts",
+    });
+    stop();
+  });
+
   it("keeps each workspace's draft tabs when switching between workspaces", () => {
     const store = createStore();
     const stop = startEditorContextSync(store);

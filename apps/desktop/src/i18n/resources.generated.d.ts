@@ -721,6 +721,7 @@ export default interface Resources {
       closeChatSessions: "Close session list";
       closeEditorPanel: "Close editor panel";
       closeFile: "Close file {{fileName}}";
+      conversationFiles: "Conversation files";
       detachedChatFabHint: "Show or hide the independent chat window. Drag to reposition this button. Hover and click × to hide the button; {{shortcut}} restores it.";
       dockEditorPanel: "Place panel beside chat";
       enterEditorFullscreen: "Enter full screen";
@@ -730,6 +731,7 @@ export default interface Resources {
       goForward: "Go forward";
       hideChatFab: "Hide chat button";
       hideChatFabHint: "Hide this button. {{shortcut}} to show it again.";
+      moreViews: "More views";
       navigateBack: "Back";
       navigateForward: "Forward";
       navigationHistory: "Navigation history";
@@ -744,6 +746,7 @@ export default interface Resources {
       resizeExplorer: "Resize explorer panel";
       resizeSessionList: "Resize session list";
       resizeSidebar: "Resize sidebar";
+      showAssistantOverview: "Assistant overview";
       showBrowser: "Browser";
       showDecks: "Decks";
       showEditor: "Files";
@@ -915,6 +918,7 @@ export default interface Resources {
       toc: "Table of contents";
     };
     states: {
+      conversationFilesDescription: "Attachments and files opened in this conversation";
       fileReadError: "Unable to read this file in the editor preview.";
       filesLoadError: "Failed to load workspace files.";
       gitEmptyBranchDescription: "The selected branches have no differing files, or one of the refs could not be resolved.";
@@ -939,6 +943,7 @@ export default interface Resources {
       gitNotRepoTitle: "Not a git repository";
       loadingFile: "Loading file...";
       loadingGitChanges: "Loading git changes...";
+      noConversationFiles: "No conversation files";
       noFileDescription: "Select a file from the explorer to preview it in the editor area.";
       noFileSelected: "No file selected";
       noWorkspace: "No workspace";
@@ -1575,6 +1580,34 @@ export default interface Resources {
       unpin: "Unpin";
     };
     newName: "New assistant";
+    overview: {
+      archived: "Archived";
+      cancelled: "Cancelled";
+      completed: "Turn completed";
+      connections: "Applications";
+      connectionsDescription: "Configure connections, sign in, and check available tools.";
+      description: "Coordinate work, keep context, and follow through.";
+      failed: "Failed";
+      host: "Runs on the connected host while its background service is online.";
+      idle: "Idle";
+      interrupted: "Interrupted";
+      manageConnections: "Manage applications and MCP";
+      manageRoutines: "Manage this assistant’s routines";
+      missingSession: "This work session is no longer available.";
+      needsYou: "Needs you";
+      noWork: "Work delegated by this assistant will appear here.";
+      paused: "Paused";
+      pausedFailures: "Paused after failures";
+      pickAssistant: "Select an assistant to see its work";
+      resources: "Context and resources";
+      results: "Recent results";
+      retryAssistant: "Assistant could not load. Retry";
+      retryRoutines: "Routines could not load. Retry";
+      retryWork: "Work could not load. Retry";
+      running: "Running";
+      unscheduled: "No next run scheduled";
+      work: "Delegated work";
+    };
     roster: {
       label: "Assistants";
       muted: "Muted";

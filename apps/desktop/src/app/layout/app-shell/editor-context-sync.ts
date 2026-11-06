@@ -10,13 +10,21 @@ import {
 import { activeSessionIdAtom } from "@/features/sessions";
 import { activeWorkspaceIdAtom } from "@/features/workspaces";
 import { desktopApi } from "@/lib";
-import { freezeRightPanelViewAtom } from "../right-editor-panel-store";
+import {
+  freezeRightPanelViewAtom,
+  rightPanelPersonalContextAtom,
+} from "../right-editor-panel-store";
+import {
+  rightPanelHandledRevealClockAtom,
+  rightPanelRevealIntentAtom,
+} from "../right-panel-reveal";
 
 type Store = ReturnType<typeof getDefaultStore>;
 
 const activeContextAtom = atom((get) => ({
   sessionId: get(activeSessionIdAtom),
   workspaceId: get(activeWorkspaceIdAtom),
+  personal: get(rightPanelPersonalContextAtom),
 }));
 
 const editorTabsAtom = atom((get) => ({
@@ -31,10 +39,13 @@ export function startEditorContextSync(store: Store) {
   let draftOwnerWorkspaceId: string | null = null;
 
   const syncContext = () => {
-    const { sessionId, workspaceId } = store.get(activeContextAtom);
+    const { sessionId, workspaceId, personal } = store.get(activeContextAtom);
     if (sessionId) {
       draftOwnerWorkspaceId = workspaceId;
       store.set(restoreEditorViewForSessionAtom, sessionId);
+    } else if (personal) {
+      draftOwnerWorkspaceId = null;
+      store.set(restoreEditorDraftForWorkspaceAtom, null);
     } else if (draftOwnerWorkspaceId === workspaceId && workspaceId) {
       store.set(saveEditorDraftForWorkspaceAtom, workspaceId);
     } else if (draftOwnerWorkspaceId === workspaceId) {
@@ -46,11 +57,14 @@ export function startEditorContextSync(store: Store) {
       draftOwnerWorkspaceId = workspaceId;
       store.set(restoreEditorDraftForWorkspaceAtom, workspaceId);
     }
+    const intent = store.get(rightPanelRevealIntentAtom);
+    if (intent) store.set(rightPanelHandledRevealClockAtom, intent.clock);
     store.set(freezeRightPanelViewAtom);
   };
 
   const persistTabs = () => {
-    const { sessionId, workspaceId } = store.get(activeContextAtom);
+    const { sessionId, workspaceId, personal } = store.get(activeContextAtom);
+    if (personal && !sessionId) return;
     if (sessionId) {
       const { openFiles, activeFile } = store.get(editorTabsAtom);
       store.set(saveEditorViewSnapshotAtom, sessionId);
