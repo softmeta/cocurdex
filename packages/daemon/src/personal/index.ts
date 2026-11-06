@@ -1,8 +1,8 @@
 export {
-  buildPersonaSoulBlock,
   type PersonaMemoryScope,
   type PersonaMemoryTarget,
   personaMemoryScope,
+  personaSystemSections,
   personaWritePartition,
 } from "./persona-context";
 export {

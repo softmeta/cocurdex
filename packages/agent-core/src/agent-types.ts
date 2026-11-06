@@ -105,6 +105,7 @@ export interface SendAgentMessagePayload {
   // recreating the session.
   providerConfig?: RuntimeProviderConfig | null;
   delivery?: AgentInputDelivery;
+  systemSections?: Record<string, string>;
 }
 
 export interface AgentSession {

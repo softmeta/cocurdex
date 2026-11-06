@@ -1,8 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
-  type AgentId,
-  isAgentId,
   type MessageRecord,
   type PersonalAgentRecord,
   type PersonalAgentRolePayload,
@@ -27,8 +25,8 @@ export function personaUsageLines() {
   return [
     "  cocurdex persona list [--json]",
     "  cocurdex persona show <persona> [--json]",
-    "  cocurdex persona create --name <name> [--agent <agent>] [--provider <id> --model <id>] [--description <text>] [--instructions <text>|--instructions-file <path>] [--soul <text>|--soul-file <path>] [--json]",
-    "  cocurdex persona update <persona> [--name <name>] [--agent <agent>] [--provider <id> --model <id>] [--description <text>] [--instructions <text>|--instructions-file <path>] [--soul <text>|--soul-file <path>] [--pin|--unpin] [--mute|--unmute] [--json]",
+    "  cocurdex persona create --name <name> [--provider <id> --model <id>] [--description <text>] [--instructions <text>|--instructions-file <path>] [--soul <text>|--soul-file <path>] [--json]",
+    "  cocurdex persona update <persona> [--name <name>] [--provider <id> --model <id>] [--description <text>] [--instructions <text>|--instructions-file <path>] [--soul <text>|--soul-file <path>] [--pin|--unpin] [--mute|--unmute] [--json]",
     "  cocurdex persona duplicate <persona> --name <name> [--json]",
     "  cocurdex persona delete <persona>",
     "  cocurdex persona send <persona> <message> [--wait] [--timeout <seconds>] [--json]",
@@ -77,13 +75,6 @@ async function textFlag(parsed: ParsedArgs, name: string) {
   return typeof value === "string" ? value : undefined;
 }
 
-function agentFlag(parsed: ParsedArgs): AgentId | undefined {
-  const value = stringFlag(parsed, "agent");
-  if (value === undefined) return undefined;
-  if (!isAgentId(value)) throw new Error(`Unknown agent: ${value}`);
-  return value;
-}
-
 async function roleChanges(parsed: ParsedArgs) {
   const provider = stringFlag(parsed, "provider");
   const model = stringFlag(parsed, "model");
@@ -92,11 +83,9 @@ async function roleChanges(parsed: ParsedArgs) {
   }
   const changes: Partial<PersonalAgentRolePayload> = {};
   const name = stringFlag(parsed, "name");
-  const agentId = agentFlag(parsed);
   const description = parsed.flags.get("description");
   const instructions = await textFlag(parsed, "instructions");
   if (name !== undefined) changes.name = name;
-  if (agentId !== undefined) changes.agentId = agentId;
   if (provider && model) {
     changes.providerId = provider;
     changes.modelId = model;

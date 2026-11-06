@@ -368,6 +368,7 @@ describe("createPiSdkAdapter", () => {
       { name: "codemode", builtin: true },
       { name: "tool-search", builtin: true },
       { name: "mcp", builtin: true },
+      { name: "cocurdex-system-sections", builtin: true },
     ]);
     expect(capture.createAgentSessionOptions?.resourceLoader).toBeDefined();
     expect(process.env.PI_CODING_AGENT_DIR).toBe(

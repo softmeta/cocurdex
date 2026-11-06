@@ -14,6 +14,10 @@
     "title": "删除 {{name}}？"
   },
   "edit": {
+    "instructions": "指令",
+    "instructionsPlaceholder": "这个助理负责什么、应该怎么做事",
+    "soul": "人设",
+    "soulPlaceholder": "语气、性格，以及和你说话的方式",
     "title": "编辑助理"
   },
   "empty": {

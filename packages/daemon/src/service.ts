@@ -58,6 +58,7 @@ import type {
 } from "@cocurdex/shared";
 import {
   AGENT_RUN_LIMITS_SETTING_KEY,
+  assertPersonalAgentRuntime,
   buildContextHandoffText,
   buildPolicy,
   CHAT_WORKSPACE_ID,
@@ -154,11 +155,11 @@ import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import {
-  buildPersonaSoulBlock,
   buildPostedMessagesBlock,
   isPostedMessage,
   PersonalAgentService,
   personaMemoryScope,
+  personaSystemSections,
   personaWritePartition,
 } from "./personal";
 import { DaemonProviderService } from "./provider";
@@ -811,6 +812,7 @@ export class CocurdexDaemonService {
       await this.scriptRuns.recoverInterrupted();
       await this.team.recoverReports();
       await this.decks.collectUnusedImages();
+      await this.personalAgents.reconcileRoles();
       if (!this.stopping) this.routines.start();
     } catch {
       logDaemonDiagnostic("warn", "daemon.recoveryUnavailable");
@@ -1912,6 +1914,9 @@ export class CocurdexDaemonService {
     if (!isAgentId(payload.agentId)) {
       throw new Error("Agent role adapter is invalid.");
     }
+    if (payload.id && this.personalAgents.ownsRole(payload.id)) {
+      assertPersonalAgentRuntime(payload.agentId);
+    }
 
     const now = new Date().toISOString();
     const existing = payload.id
@@ -1936,8 +1941,14 @@ export class CocurdexDaemonService {
         payload.description === undefined
           ? (existing?.description ?? null)
           : normalizeAgentRoleDescription(payload.description),
-      instructions: payload.instructions ?? null,
-      skillIds: payload.skillIds ?? null,
+      instructions:
+        payload.instructions === undefined
+          ? (existing?.instructions ?? null)
+          : payload.instructions,
+      skillIds:
+        payload.skillIds === undefined
+          ? (existing?.skillIds ?? null)
+          : payload.skillIds,
       avatar:
         payload.avatar === undefined
           ? (existing?.avatar ?? null)
@@ -3389,6 +3400,7 @@ export class CocurdexDaemonService {
         ...persistence,
         history: start.history,
         contextHandoff: start.contextHandoff,
+        systemSections: start.systemSections,
       },
     );
   }
@@ -3430,15 +3442,16 @@ export class CocurdexDaemonService {
       hasProviderThread: persistence.providerSession !== null,
       pendingFork: pending?.kind === "fork",
     });
-    const freshThread =
-      resolution.kind === "native"
-        ? persistence.providerSession === null
-        : resolution.freshProviderThread;
-    const memoryPrefix = [
-      freshThread ? buildPersonaSoulBlock(persona?.soul ?? null) : null,
-      memoryGate,
-      memoryContext?.brief,
-    ]
+    const personaRole = persona
+      ? await this.state.getAgentRole(persona.roleId)
+      : null;
+    const systemSections = persona
+      ? personaSystemSections({
+          instructions: personaRole?.instructions ?? null,
+          soul: persona.soul,
+        })
+      : undefined;
+    const memoryPrefix = [memoryGate, memoryContext?.brief]
       .filter((section): section is string => Boolean(section))
       .join("\n\n");
     const memoryText = memoryPrefix ? `${memoryPrefix}\n\n` : "";
@@ -3454,6 +3467,7 @@ export class CocurdexDaemonService {
           ? history.filter((message) => !isPostedMessage(message))
           : history,
         contextHandoff: undefined,
+        systemSections,
       };
     }
     const sourceSessionId =
@@ -3519,6 +3533,7 @@ export class CocurdexDaemonService {
         preamble: handoff.preamble,
         entries: handoff.entries,
       },
+      systemSections,
     };
   }
 

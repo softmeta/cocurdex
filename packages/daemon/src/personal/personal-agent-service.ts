@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { PersonalAgentRepository, PersonalAgentRow } from "@cocurdex/db";
 import {
   type AgentRoleRecord,
+  assertPersonalAgentRuntime,
   type CreatePersonalAgentPayload,
   comparePersonalAgents,
   type DuplicatePersonalAgentPayload,
@@ -14,6 +15,7 @@ import {
   type SessionRecord,
   type UpdatePersonalAgentPayload,
 } from "@cocurdex/shared";
+import { logDaemonDiagnostic } from "../diagnostics";
 
 export interface PersonalAgentServiceDeps {
   repository: PersonalAgentRepository;
@@ -73,20 +75,35 @@ export class PersonalAgentService {
     this.deps.announceChanged();
   }
 
+  async reconcileRoles() {
+    for (const row of this.deps.repository.list()) {
+      const role = await this.deps.getRole(row.roleId);
+      if (!role) continue;
+      try {
+        await this.deps.applyRole(row.id, row.homeSessionId, role);
+      } catch (error) {
+        logDaemonDiagnostic("warn", "personal.reconcileFailed", {
+          agentId: row.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
   ownsHomeSession(sessionId: string) {
     return this.deps.repository.findByHomeSession(sessionId) !== null;
   }
 
   personaForSession(
     session: Pick<SessionRecord, "id" | "sessionKind" | "agentRoleId">,
-  ): { id: string; soul: string | null } | null {
+  ): { id: string; roleId: string; soul: string | null } | null {
     if (session.sessionKind !== "personal") return null;
     const row =
       this.deps.repository.findByHomeSession(session.id) ??
       (session.agentRoleId
         ? this.deps.repository.findByRole(session.agentRoleId)
         : null);
-    return row ? { id: row.id, soul: row.soul } : null;
+    return row ? { id: row.id, roleId: row.roleId, soul: row.soul } : null;
   }
 
   ensureDefault(payload: EnsureDefaultPersonalAgentPayload) {
@@ -103,6 +120,7 @@ export class PersonalAgentService {
   async update(payload: UpdatePersonalAgentPayload) {
     const row = this.require(payload.id);
     if (payload.role) {
+      assertPersonalAgentRuntime(payload.role.agentId);
       await this.deps.saveRole({ ...payload.role, id: row.roleId });
     }
     const now = this.now();
@@ -161,6 +179,7 @@ export class PersonalAgentService {
     soul: string | null,
     isDefault: boolean,
   ) {
+    assertPersonalAgentRuntime(rolePayload.agentId);
     const role = await this.deps.saveRole({ ...rolePayload, id: undefined });
     let session: SessionRecord | null = null;
     try {

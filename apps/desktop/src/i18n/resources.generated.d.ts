@@ -1541,6 +1541,10 @@ export default interface Resources {
       title: "Delete {{name}}?";
     };
     edit: {
+      instructions: "Instructions";
+      instructionsPlaceholder: "What this assistant is for and how it should work";
+      soul: "Persona";
+      soulPlaceholder: "Tone, personality, and how it talks to you";
       title: "Edit assistant";
     };
     empty: {

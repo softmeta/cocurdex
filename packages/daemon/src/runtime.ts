@@ -587,6 +587,7 @@ export class AgentRuntimeManager {
     options: RuntimePersistence & {
       history: MessageRecord[];
       contextHandoff?: AgentContextHandoff;
+      systemSections?: Record<string, string>;
     },
   ) {
     const isSteering = payload.delivery === "steer-active-run";
@@ -609,6 +610,7 @@ export class AgentRuntimeManager {
         providerSnapshot: payload.session.providerSnapshot,
         providerConfig: options.providerConfig,
         delivery: payload.delivery,
+        systemSections: options.systemSections,
       });
     }
 
@@ -659,6 +661,7 @@ export class AgentRuntimeManager {
         providerSnapshot: payload.session.providerSnapshot,
         providerConfig: options.providerConfig,
         delivery: payload.delivery,
+        systemSections: options.systemSections,
       });
 
       logDaemonDiagnostic("info", "runtime.turnFinished", {

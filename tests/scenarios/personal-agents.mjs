@@ -359,6 +359,21 @@ runScenario("personal-agents", {
           return true;
         });
         await session.send("Input.insertText", { text: "Coach" });
+        for (const [label, text] of [
+          ["personal:edit.instructions", "Plan workouts"],
+          ["personal:edit.soul", "Speak briefly"],
+        ]) {
+          const [field] = await waitForRole(session, {
+            role: "textbox",
+            name: await translate(session, label),
+            within: dialog,
+          });
+          await clickPoint(
+            session,
+            await centerOf(session, field.backendNodeId),
+          );
+          await session.send("Input.insertText", { text });
+        }
         await clickByRole(session, {
           role: "button",
           name: await translate(session, "settings:agentRoles.save"),
@@ -404,6 +419,13 @@ runScenario("personal-agents", {
         check(
           coach && !coach.isDefault && coach.role.modelId === "personal-model",
           "the new assistant starts from the default assistant's model",
+          coach,
+        );
+        check(
+          coach.role.agentId === "pi" &&
+            coach.role.instructions === "Plan workouts" &&
+            coach.soul === "Speak briefly",
+          "the edit dialog saves the assistant's instructions and persona on pi",
           coach,
         );
         const roles = await daemonRequest(session, "agentRole.list");

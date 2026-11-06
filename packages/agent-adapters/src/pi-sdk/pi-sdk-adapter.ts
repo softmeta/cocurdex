@@ -81,6 +81,7 @@ import {
   logPiSkillDiagnostic,
   resolveAdditionalSkillPaths,
 } from "./pi-skill-diagnostics";
+import { createPiSystemSections } from "./pi-system-sections";
 import { renderPiWorkspaceRootsPrompt } from "./pi-workspace-roots";
 
 const PI_PROVIDER_VERSION = "pi-sdk";
@@ -413,6 +414,7 @@ export function createPiSdkAdapter(
       let activePiModelKey: string | null = null;
       let unsubscribe: (() => void) | null = null;
       let pendingThinkingLevel: PiThinkingLevel | undefined;
+      const systemSections = createPiSystemSections();
       const activeMessages = new Map<string, ActiveMessageRecord>();
       const activeToolCalls = new Map<string, AgentToolCallRecord>();
       const nativeFiles = new Map<
@@ -838,7 +840,10 @@ export function createPiSdkAdapter(
                   additionalSkillPaths: resolveAdditionalSkillPaths(
                     payload.workspaceRootPath,
                   ),
-                  extensionFactories: createPiBuiltinExtensions(),
+                  extensionFactories: [
+                    ...createPiBuiltinExtensions(),
+                    systemSections.extension,
+                  ],
                   appendSystemPromptOverride: (base) => {
                     const rootsPrompt = renderPiWorkspaceRootsPrompt(
                       payload.workspaceRootPath,
@@ -978,6 +983,9 @@ export function createPiSdkAdapter(
               ? messagePayload.thinkingLevel
               : undefined;
             pendingThinkingLevel = thinkingLevel;
+            if (messagePayload.systemSections) {
+              systemSections.set(messagePayload.systemSections);
+            }
             const session = await getPiSession();
             await applyPiModelSelection(session, messagePayload.providerConfig);
             if (thinkingLevel) {

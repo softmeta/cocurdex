@@ -156,7 +156,7 @@ export function LeftSidebar({
       const template = agents.find((agent) => agent.isDefault)?.role;
       const created = await personalApi.create({
         role: {
-          ...personalAgentRoleDraft(t("personal:newName"), template?.agentId),
+          ...personalAgentRoleDraft(t("personal:newName")),
           providerId: template?.providerId ?? null,
           modelId: template?.modelId ?? null,
           modelName: template?.modelName ?? null,

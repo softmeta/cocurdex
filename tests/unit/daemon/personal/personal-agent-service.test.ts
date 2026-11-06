@@ -12,7 +12,7 @@ const now = "2026-11-05T00:00:00.000Z";
 
 const coachRole: PersonalAgentRolePayload = {
   name: "Coach",
-  agentId: "codex",
+  agentId: "pi",
   providerId: null,
   modelId: null,
   modelName: null,
@@ -177,6 +177,22 @@ describe("PersonalAgentService", () => {
     expect(unmuted).toMatchObject({ pinnedAt: now, mutedAt: null });
   });
 
+  it("refuses to run a personal agent on another engine", async () => {
+    await expect(
+      harness.service.create({ role: { ...coachRole, agentId: "codex" } }),
+    ).rejects.toThrow("Personal agents run on pi");
+    const coach = await harness.service.create({ role: coachRole });
+    await expect(
+      harness.service.update({
+        id: coach.id,
+        role: { ...coachRole, agentId: "claude-agent" },
+      }),
+    ).rejects.toThrow("Personal agents run on pi");
+    expect(await harness.database.agentRoles.list()).toEqual([
+      expect.objectContaining({ id: coach.role.id, agentId: "pi" }),
+    ]);
+  });
+
   it("duplicates an agent with its own role and home thread", async () => {
     const coach = await harness.service.create({
       role: coachRole,
@@ -195,7 +211,7 @@ describe("PersonalAgentService", () => {
       soul: "Encouraging",
       role: {
         name: "Coach 2",
-        agentId: "codex",
+        agentId: "pi",
         instructions: "Plan workouts",
       },
     });

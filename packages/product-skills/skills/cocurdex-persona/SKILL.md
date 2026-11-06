@@ -5,17 +5,17 @@ description: Create, configure, and talk to Cocurdex personal agents (personas i
 
 # /cocurdex-persona — Personal agents
 
-The assistant form holds the user's personal agents. Each persona is an agent role (name, engine, model, instructions, avatar) plus a soul (standing personality and preferences) and one home thread, a long-lived session in the personal workspace. The default persona always exists and cannot be deleted; its home thread cannot be deleted or archived on its own.
+The assistant form holds the user's personal agents. Each persona is an agent role (name, model, instructions, avatar) on the Pi engine plus a soul (standing personality and preferences) and one home thread, a long-lived session in the personal workspace. The default persona always exists and cannot be deleted; its home thread cannot be deleted or archived on its own.
 
 Manage personas through the `cocurdex` CLI. A `<persona>` argument accepts the persona id, a unique id prefix, or its name (case-insensitive).
 
 ```bash
 cocurdex persona list --json
 cocurdex persona show <persona> --json
-cocurdex persona create --name <name> [--agent <agent>] [--provider <id> --model <id>] \
+cocurdex persona create --name <name> [--provider <id> --model <id>] \
   [--description <text>] [--instructions <text>|--instructions-file <path>] \
   [--soul <text>|--soul-file <path>] --json
-cocurdex persona update <persona> [--name <name>] [--agent <agent>] [--provider <id> --model <id>] \
+cocurdex persona update <persona> [--name <name>] [--provider <id> --model <id>] \
   [--description <text>] [--instructions <text>|--instructions-file <path>] \
   [--soul <text>|--soul-file <path>] [--pin|--unpin] [--mute|--unmute] --json
 cocurdex persona duplicate <persona> --name <name> --json
@@ -24,7 +24,7 @@ cocurdex persona send <persona> <message> [--wait] [--timeout <seconds>] --json
 cocurdex persona thread <persona> [--limit <n>] --json
 ```
 
-- `create` defaults the engine to Pi; pick `--agent` and a model the user has configured (`cocurdex provider list`).
+- Personas always run on Pi; pick a model the user has configured (`cocurdex provider list`).
 - `send` posts to the persona's home thread and returns the message id. With `--wait` it returns the reply once the turn settles, and fails with the persona's error when the turn fails. Without `--wait`, read the reply later with `thread`.
 - Instructions describe the job; the soul describes who the persona is to the user. Keep both short and specific, and pass long text with the `-file` flags.
 - Deleting a persona also deletes its role and home thread. Confirm with the user first.
@@ -45,7 +45,7 @@ cocurdex memory export <file> --json
 cocurdex memory import <file> --json
 ```
 
-- Inside a persona's thread, each turn recalls that persona's partition plus `me`, never another persona's. `memory_remember` writes to the persona's partition; pass `about: "user"` for a fact every persona should share. The soul is sent at the start of each new thread, so a soul edit applies from the next thread.
+- Inside a persona's thread, each turn recalls that persona's partition plus `me`, never another persona's. `memory_remember` writes to the persona's partition; pass `about: "user"` for a fact every persona should share. The instructions and soul are part of the persona's system prompt on every turn, so an edit applies from the next message.
 - `forget` is reversible: `history` lists the deleted entry with its full id, and `restore` takes that full id.
 - Edit an entry in place with `update` instead of storing a near-duplicate; read it back with `show`.
 - `list` reports `error` when memory is off or not installed; relay the fix it names (see `/cocurdex-settings`) instead of retrying.

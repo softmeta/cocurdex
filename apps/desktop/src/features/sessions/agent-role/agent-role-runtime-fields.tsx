@@ -33,6 +33,7 @@ import { ThinkingLevelSubmenu } from "../thinking-level-submenu";
 
 export function AgentRoleRuntimeFields({
   agentId,
+  agentLocked = false,
   agents,
   sessionModeId,
   compatibleProviders,
@@ -57,6 +58,7 @@ export function AgentRoleRuntimeFields({
   onThinkingLevelChange,
 }: {
   agentId: AgentId;
+  agentLocked?: boolean;
   agents: AgentDescriptor[];
   sessionModeId: string | null;
   compatibleProviders: CompatibleProviderModel[];
@@ -165,16 +167,18 @@ export function AgentRoleRuntimeFields({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <AgentSelect
-        appearance="outline"
-        options={agentOptions}
-        triggerLabel={
-          agentOptions.find((option) => option.value === agentId)?.label ??
-          agentId
-        }
-        value={agentId}
-        onValueChange={onAgentChange}
-      />
+      {agentLocked ? null : (
+        <AgentSelect
+          appearance="outline"
+          options={agentOptions}
+          triggerLabel={
+            agentOptions.find((option) => option.value === agentId)?.label ??
+            agentId
+          }
+          value={agentId}
+          onValueChange={onAgentChange}
+        />
+      )}
       <ProviderModelMenu
         agentId={agentId}
         appearance="outline"

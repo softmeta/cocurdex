@@ -1,7 +1,6 @@
 import type {
   CreatePersonalAgentPayload,
   DuplicatePersonalAgentPayload,
-  SaveAgentRolePayload,
   UpdatePersonalAgentPayload,
 } from "@cocurdex/shared";
 import { requestDaemon } from "@/lib";
@@ -17,6 +16,4 @@ export const personalApi = {
   duplicate: (payload: DuplicatePersonalAgentPayload) =>
     requestDaemon("personalAgent.duplicate", payload),
   remove: (id: string) => requestDaemon("personalAgent.delete", { id }),
-  saveRole: (payload: SaveAgentRolePayload) =>
-    requestDaemon("agentRole.save", payload),
 };
