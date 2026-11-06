@@ -3,7 +3,9 @@ import { formatElapsed } from "@cocurdex/shared";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";
+import { AgentRoleAvatar } from "@/features/sessions";
 import { cn, useMountEffect } from "@/lib";
+import { useChatAssistantRole, useChatPresentation } from "../chat-display";
 import { useToolCallTriggerParts } from "../tool-call/use-tool-call-trigger-parts";
 import type {
   ActivityKind,
@@ -109,7 +111,38 @@ function useElapsedLabel(runStartedAt?: number) {
   return formatElapsed(now - (runStartedAt ?? mountedAt));
 }
 
+function AssistantActivityLabel({ activity }: { activity: ActivityState }) {
+  const { t } = useTranslation("agent");
+  const role = useChatAssistantRole();
+  const isUsingTools =
+    activity.kind === "usingTools" ||
+    (activity.activeToolCalls?.length ?? 0) > 0;
+  const label = isUsingTools ? t("activity.handling") : t("activity.thinking");
+
+  return (
+    <span className="flex min-w-0 items-center gap-2 text-chat-fg-muted">
+      {role ? (
+        <AgentRoleAvatar role={role} showAgent={false} size="sm" />
+      ) : null}
+      <span className="activity-shimmer truncate">{label}</span>
+    </span>
+  );
+}
+
 export function ActivityLiveLabel({
+  activity,
+  runStartedAt,
+}: {
+  activity: ActivityState;
+  runStartedAt?: number;
+}) {
+  if (useChatPresentation() === "assistant") {
+    return <AssistantActivityLabel activity={activity} />;
+  }
+  return <WorkActivityLabel activity={activity} runStartedAt={runStartedAt} />;
+}
+
+function WorkActivityLabel({
   activity,
   runStartedAt,
 }: {

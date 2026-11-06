@@ -4,6 +4,7 @@ export default interface Resources {
     activity: {
       attention: "Attention needed";
       completed: "Completed";
+      handling: "Working on it";
       planning: "Working";
       ready: "Ready";
       replyCount_one: "{{count}} interim reply";
