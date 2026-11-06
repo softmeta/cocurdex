@@ -1,6 +1,6 @@
 ---
 name: cocurdex-persona
-description: Create, configure, and talk to Cocurdex personal agents (personas in the assistant form) through the CLI. Use when the user mentions their assistant, a persona, a personal agent, or wants to hand a message to one.
+description: Create, configure, and talk to Cocurdex personal agents (personas in the assistant form) through the CLI, and hand coding work from them to work sessions. Use when the user mentions their assistant, a persona, a personal agent, or wants to hand a message or a task to one.
 ---
 
 # /cocurdex-persona — Personal agents
@@ -77,6 +77,26 @@ cocurdex routine delete <routine> --json
 - A run is stopped and failed after 20 minutes. A run cut off by a daemon restart is recorded as failed and is not replayed; the routine waits for its next slot. A run that was missed while the machine slept runs once on wake. Failures back off, three in a row pause the routine (`paused: failures`), and `resume` clears it. Each routine runs at most 24 times a day; extra runs are recorded as `skipped`.
 - Inside a persona's thread, the `routine` tool group (`routine_list`, `routine_create`, `routine_update`, `routine_run`, `routine_runs`, `routine_delete`) manages that persona's own routines; `routine_report` exists only inside a running routine. Tools cannot grant `full` access or change or run a `full` routine.
 - Deleting a routine deletes its run threads; deleting a persona deletes its routines and their threads.
+
+## Delegated work
+
+A persona does not write code itself. It hands repository work to an ordinary work session in one of the user's workspaces, which runs on the user's coding agents and shows up in the work sidebar, where the user can follow and take it over. A `<session-id>` is the `sessionId` that `start` and `list` return.
+
+```bash
+cocurdex persona work catalog --json
+cocurdex persona work list <persona> --json
+cocurdex persona work start <persona> --workspace <id|name> --prompt <text>|--prompt-file <path> \
+  [--title <title>] [--role <role>|--team <template>] [--worktree] --json
+cocurdex persona work send <persona> <session-id> <message> --json
+cocurdex persona work stop <persona> <session-id> --json
+```
+
+- `catalog` lists the workspaces (never the chat or personal ones), saved agent roles, and team templates that `start` accepts by id or exact name.
+- Without `--role` or `--team`, the session uses the workspace's most recent agent and model. `--role` runs it as that agent role; `--team` makes it lead that team template, with the template's first member as its role. Pass one or the other, not both. `--worktree` works in a new git worktree.
+- The task arrives in the session marked as coming from the persona. Each time the session finishes a turn, its reply is posted into the persona's home thread, and the persona takes a new turn to tell the user what happened.
+- The session runs with the workspace's usual permission mode; approvals and questions reach the user through the inbox, never the persona.
+- `send` delivers a follow-up into the session's current turn when its agent supports it, otherwise after it. A persona can only see, message, and stop the sessions it delegated.
+- Inside a persona's thread, the `work` tool group (`work_catalog`, `work_start`, `work_list`, `work_send`, `work_stop`) does the same. A routine can delegate only with `full` access.
 
 ## Inbox and brief
 

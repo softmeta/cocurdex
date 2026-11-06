@@ -1,5 +1,6 @@
 export * from "./agents";
 export * from "./decks";
+export * from "./delegation";
 export * from "./entity-links";
 export * from "./host-access";
 export * from "./issues";

@@ -875,6 +875,16 @@ export async function handleDaemonRequest(
     case "personalAgent.delete":
       await service.personalAgents.delete(request.params.id);
       return null;
+    case "personalAgent.work.catalog":
+      return service.delegations.catalog();
+    case "personalAgent.work.list":
+      return service.delegations.list(request.params.personaId);
+    case "personalAgent.work.start":
+      return service.delegations.start(request.params);
+    case "personalAgent.work.send":
+      return service.delegations.send(request.params);
+    case "personalAgent.work.stop":
+      return service.delegations.stop(request.params);
     case "inbox.list":
       return service.listInbox();
     case "inbox.brief":

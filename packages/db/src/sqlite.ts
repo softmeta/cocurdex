@@ -6,6 +6,10 @@ import {
 } from "./agents";
 import { createSqliteDecksRepository, type DecksRepository } from "./decks";
 import {
+  createSqliteDelegationRepository,
+  type DelegationRepository,
+} from "./delegation";
+import {
   createSqliteEntityLinksRepository,
   type EntityLinksRepository,
 } from "./entity-links";
@@ -138,6 +142,7 @@ export interface CocurdexDatabase {
   personalAgents: PersonalAgentRepository;
   routines: RoutineRepository;
   pushOutbox: PushOutboxRepository;
+  delegations: DelegationRepository;
   /**
    * Run a set of repository writes atomically. The callback must be synchronous:
    * node:sqlite is a single synchronous connection, so awaiting inside a
@@ -244,6 +249,7 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     personalAgents: createSqlitePersonalAgentRepository(database),
     routines: createSqliteRoutineRepository(database),
     pushOutbox: createSqlitePushOutboxRepository(database),
+    delegations: createSqliteDelegationRepository(database),
     ...createProviderRepositories(database),
     transaction(fn) {
       database.exec("BEGIN");

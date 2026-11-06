@@ -116,6 +116,7 @@ import {
   registerScriptRunTools,
   registerSettingsTools,
   registerTeamTools,
+  registerWorkTools,
   requireCatalogEntry,
   WORKTREE_ENVIRONMENT_KEY,
 } from "./agent-tools";
@@ -128,6 +129,7 @@ import { DaemonBackgroundService } from "./background";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonDataService } from "./data-service";
 import { DaemonDeckService, DeckAssetStore } from "./decks";
+import { DelegationModule } from "./delegation";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { loadExecutionTree } from "./execution-tree";
 import { listHostDirectories } from "./fs-browse";
@@ -308,6 +310,7 @@ export class CocurdexDaemonService {
   readonly agentTools: AgentToolBridge;
   readonly peerMessaging: PeerMessagingService;
   readonly team: TeamModule;
+  readonly delegations: DelegationModule;
   readonly scriptRuns: ScriptRunModule;
   readonly dataService: DaemonDataService;
   readonly decks: DaemonDeckService;
@@ -424,7 +427,10 @@ export class CocurdexDaemonService {
           title: role.name,
         }),
       removeSession: (sessionId) => this.removeSession(sessionId),
-      removeDependents: (agentId) => this.removeRoutinesOf(agentId),
+      removeDependents: async (agentId) => {
+        this.delegations.forgetPersona(agentId);
+        await this.removeRoutinesOf(agentId);
+      },
       applyRole: (agentId, homeSessionId, role) =>
         this.applyPersonaRole(agentId, homeSessionId, role),
       announceChanged: () =>
@@ -596,6 +602,43 @@ export class CocurdexDaemonService {
       sendPeerMessage: (payload) => this.peerMessaging.send(payload),
     });
     registerTeamTools(this.agentTools.registry, this.team);
+    this.delegations = new DelegationModule({
+      repository: this.state.data.delegations,
+      getPersona: async (personaId) => {
+        const row = this.state.data.personalAgents.getById(personaId);
+        if (!row) return null;
+        const role = await this.state.getAgentRole(row.roleId);
+        return {
+          id: row.id,
+          name: role?.name ?? row.id,
+          homeSessionId: row.homeSessionId,
+        };
+      },
+      getSession: (sessionId) => this.state.getSession(sessionId),
+      saveSession: (session) => this.state.saveSession(session),
+      createSession: (input) => this.createSession(input),
+      listWorkspaces: () => this.state.listWorkspaces(),
+      listRoles: () => this.listAgentRoles(),
+      listTemplates: () => this.team.listTemplates(),
+      createTeam: (input) => this.team.create(input),
+      createWorktree: (input) => this.createWorktree(input),
+      sendSessionMessage: (command) => this.sendSessionMessage(command),
+      submitReport: (command, options) =>
+        this.submitSessionMessage(command, options),
+      stopSession: (sessionId) => this.stopSession(sessionId),
+      hasActiveRun: (sessionId) => this.runs.hasActiveRun(sessionId),
+      supportsSteering: (session) => this.agentSupportsSteering(session),
+      latestRun: (sessionId) => this.state.getLatestRun(sessionId),
+      getRunReply: (sessionId, runId) =>
+        this.state.getRunReply(sessionId, runId),
+      getMessage: (messageId) => this.state.getMessageById(messageId),
+      track: (work) => void this.runs.track(work),
+      onReportFailed: (error) =>
+        logDaemonDiagnostic("warn", "delegation.reportFailed", {
+          error: errorMessage(error, "Unknown error"),
+        }),
+      announceChanged: () => this.announceSessionsChanged(),
+    });
     registerHistoryTools(this.agentTools.registry, {
       readSessionActivity: (caller, sessionId) =>
         readSessionActivity(
@@ -646,13 +689,22 @@ export class CocurdexDaemonService {
       createId: () => crypto.randomUUID(),
     });
     registerScriptRunTools(this.agentTools.registry, this.scriptRuns);
+    const personaOf = async (sessionId: string) => {
+      const session = await this.state.getSession(sessionId);
+      return session
+        ? (this.personalAgents.personaForSession(session)?.id ?? null)
+        : null;
+    };
+    registerWorkTools(this.agentTools.registry, {
+      personaOf,
+      catalog: () => this.delegations.catalog(),
+      start: (payload) => this.delegations.start(payload),
+      list: (personaId) => this.delegations.list(personaId),
+      send: (payload) => this.delegations.send(payload),
+      stop: (target) => this.delegations.stop(target),
+    });
     registerRoutineTools(this.agentTools.registry, {
-      personaOf: async (sessionId) => {
-        const session = await this.state.getSession(sessionId);
-        return session
-          ? (this.personalAgents.personaForSession(session)?.id ?? null)
-          : null;
-      },
+      personaOf,
       list: (agentId) => this.routines.list(agentId),
       get: (id) => this.routines.get(id),
       create: (payload) => this.routines.create(payload),
@@ -770,6 +822,7 @@ export class CocurdexDaemonService {
         }
       }
       await this.team.onAgentEvent(event);
+      await this.delegations.onAgentEvent(event);
       const alert = pushTriggerForEvent(event, new Date());
       if (alert) {
         void this.outbox
@@ -828,6 +881,7 @@ export class CocurdexDaemonService {
       await this.state.waitForStartupRecovery();
       await this.scriptRuns.recoverInterrupted();
       await this.team.recoverReports();
+      await this.delegations.recoverReports();
       await this.decks.collectUnusedImages();
       await this.personalAgents.reconcileRoles();
       if (!this.stopping) {

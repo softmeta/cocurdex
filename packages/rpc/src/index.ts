@@ -53,6 +53,9 @@ import type {
   DeckRecord,
   DeckSummary,
   DeckWriteResult,
+  DelegatedWorkRecord,
+  DelegatedWorkTarget,
+  DelegationCatalog,
   DeleteColumnPayload,
   DeleteDeckPayload,
   DeleteIssueLabelPayload,
@@ -197,6 +200,7 @@ import type {
   ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
+  SendDelegatedWorkPayload,
   SendPeerMessagePayload,
   SendPeerMessageResult,
   SendSessionCommand,
@@ -233,6 +237,7 @@ import type {
   SkillUpdatesApplyResult,
   SpawnTeammatePayload,
   SpawnTeamTemplatePayload,
+  StartDelegatedWorkPayload,
   StartScriptRunPayload,
   SupportedLocale,
   SyncPullInput,
@@ -770,6 +775,11 @@ export type DaemonRequestPayloadByMethod = {
   "personalAgent.update": UpdatePersonalAgentPayload;
   "personalAgent.duplicate": DuplicatePersonalAgentPayload;
   "personalAgent.delete": { id: string };
+  "personalAgent.work.catalog": undefined;
+  "personalAgent.work.list": { personaId: string };
+  "personalAgent.work.start": StartDelegatedWorkPayload;
+  "personalAgent.work.send": SendDelegatedWorkPayload;
+  "personalAgent.work.stop": DelegatedWorkTarget;
   "inbox.list": undefined;
   "inbox.read": { id: string };
   "inbox.brief": { timeZone?: string | null };
@@ -1117,6 +1127,11 @@ export type DaemonResultByMethod = {
   "personalAgent.update": PersonalAgentRecord;
   "personalAgent.duplicate": PersonalAgentRecord;
   "personalAgent.delete": null;
+  "personalAgent.work.catalog": DelegationCatalog;
+  "personalAgent.work.list": DelegatedWorkRecord[];
+  "personalAgent.work.start": DelegatedWorkRecord;
+  "personalAgent.work.send": DelegatedWorkRecord;
+  "personalAgent.work.stop": DelegatedWorkRecord;
   "inbox.list": InboxItem[];
   "inbox.read": null;
   "inbox.brief": Brief | null;
@@ -1213,6 +1228,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "provider.exportJson": true,
   "agentRole.list": true,
   "personalAgent.list": true,
+  "personalAgent.work.catalog": true,
   "inbox.list": true,
   "session.list": true,
   "session.listArchived": true,
