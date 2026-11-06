@@ -1538,6 +1538,7 @@ export default interface Resources {
       title: "Delete {{name}}?";
     };
     edit: {
+      descriptionPlaceholder: "One line about this assistant, shown at the top of an empty thread";
       instructions: "Instructions";
       instructionsPlaceholder: "What this assistant is for and how it should work";
       soul: "Persona";

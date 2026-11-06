@@ -11,6 +11,7 @@
     "title": "删除 {{name}}？"
   },
   "edit": {
+    "descriptionPlaceholder": "一句话介绍这个助理，显示在空对话的开头",
     "instructions": "指令",
     "instructionsPlaceholder": "这个助理负责什么、应该怎么做事",
     "soul": "人设",

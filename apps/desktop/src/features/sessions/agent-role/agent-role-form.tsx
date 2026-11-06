@@ -49,6 +49,7 @@ import { saveAgentRoleRecord } from "./agent-role-store";
 export function AgentRoleForm({
   role,
   agentLocked = false,
+  descriptionPlaceholder,
   children,
   onCancel,
   onSaved,
@@ -56,6 +57,7 @@ export function AgentRoleForm({
 }: {
   role: SaveAgentRolePayload;
   agentLocked?: boolean;
+  descriptionPlaceholder?: string;
   children?: ReactNode;
   onCancel(): void;
   onSaved(role: AgentRoleRecord): void;
@@ -250,7 +252,10 @@ export function AgentRoleForm({
             id="agent-role-description"
             className="max-h-40 min-h-20"
             maxLength={AGENT_ROLE_DESCRIPTION_MAX_LENGTH}
-            placeholder={t("settings:agentRoles.roleDescriptionPlaceholder")}
+            placeholder={
+              descriptionPlaceholder ??
+              t("settings:agentRoles.roleDescriptionPlaceholder")
+            }
             value={description}
             onChange={(event) => setDescription(event.target.value)}
           />

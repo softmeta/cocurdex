@@ -15,6 +15,7 @@ import { AgentRoleForm } from "./agent-role-form";
 export function AgentRoleEditDialog({
   role,
   agentLocked,
+  descriptionPlaceholder,
   children,
   open,
   onOpenChange,
@@ -24,6 +25,7 @@ export function AgentRoleEditDialog({
 }: {
   role?: AgentRoleRecord | null;
   agentLocked?: boolean;
+  descriptionPlaceholder?: string;
   children?: ReactNode;
   open: boolean;
   onOpenChange(open: boolean): void;
@@ -50,6 +52,7 @@ export function AgentRoleEditDialog({
           key={role?.id ?? "new"}
           role={role ?? blankRoleDraft(agents)}
           agentLocked={agentLocked}
+          descriptionPlaceholder={descriptionPlaceholder}
           save={save}
           onCancel={() => onOpenChange(false)}
           onSaved={(saved) => {
