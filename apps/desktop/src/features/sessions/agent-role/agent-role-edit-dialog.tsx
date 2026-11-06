@@ -22,6 +22,7 @@ export function AgentRoleEditDialog({
   onSaved,
   save,
   title,
+  size = "compact",
 }: {
   role?: AgentRoleRecord | null;
   agentLocked?: boolean;
@@ -32,6 +33,7 @@ export function AgentRoleEditDialog({
   onSaved?(role: AgentRoleRecord): void;
   save?(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
   title?: string;
+  size?: "compact" | "default";
 }) {
   const { t } = useTranslation("settings");
   const agents = useAtomValue(agentsAtom);
@@ -41,7 +43,7 @@ export function AgentRoleEditDialog({
 
   return (
     <Dialog disablePointerDismissal open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="compact">
+      <DialogContent size={size}>
         <DialogHeader>
           <DialogTitle>
             {title ??
