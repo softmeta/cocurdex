@@ -35,27 +35,10 @@
 }
 
 [data-persona-hue] {
-  --color-chat-user-bubble: color-mix(
-    in oklab,
-    var(--persona-hue) 13%,
-    var(--chat-canvas)
-  );
-  --color-chat-user-bubble-fg: color-mix(
-    in oklab,
-    var(--persona-hue) 22%,
-    var(--chat-text-primary)
-  );
+  --color-chat-user-bubble: var(--persona-hue);
+  --color-chat-user-bubble-fg: var(--role-avatar-face-light);
 }
 
 [data-theme="dark"] [data-persona-hue] {
-  --color-chat-user-bubble: color-mix(
-    in oklab,
-    var(--persona-hue) 20%,
-    var(--chat-canvas)
-  );
-  --color-chat-user-bubble-fg: color-mix(
-    in oklab,
-    var(--persona-hue) 14%,
-    var(--chat-text-primary)
-  );
+  --color-chat-user-bubble: color-mix(in oklab, var(--persona-hue) 78%, black);
 }
