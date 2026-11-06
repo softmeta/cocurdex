@@ -3,6 +3,7 @@ import type {
   AcpRegistryAgentUpdate,
   AcpRegistryCatalogAgent,
   AcpRegistryInstalledAgent,
+  AddApplicationPayload,
   AgentAuthState,
   AgentDescriptor,
   AgentId,
@@ -20,6 +21,8 @@ import type {
   AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
+  ApplicationConnection,
+  ApplicationTool,
   ApplyNoteDocUpdatePayload,
   ArchiveSessionsResult,
   Brief,
@@ -53,6 +56,9 @@ import type {
   DeckRecord,
   DeckSummary,
   DeckWriteResult,
+  DelegatedWorkRecord,
+  DelegatedWorkTarget,
+  DelegationCatalog,
   DeleteColumnPayload,
   DeleteDeckPayload,
   DeleteIssueLabelPayload,
@@ -197,6 +203,7 @@ import type {
   ScriptRunSnapshot,
   SearchDocumentResult,
   SearchDocumentsPayload,
+  SendDelegatedWorkPayload,
   SendPeerMessagePayload,
   SendPeerMessageResult,
   SendSessionCommand,
@@ -233,6 +240,7 @@ import type {
   SkillUpdatesApplyResult,
   SpawnTeammatePayload,
   SpawnTeamTemplatePayload,
+  StartDelegatedWorkPayload,
   StartScriptRunPayload,
   SupportedLocale,
   SyncPullInput,
@@ -250,6 +258,7 @@ import type {
   TurnChangeSet,
   UndoTurnChangesInput,
   UndoTurnChangesResult,
+  UpdateApplicationPayload,
   UpdateColumnPayload,
   UpdateDeckPayload,
   UpdateIssueLabelPayload,
@@ -604,6 +613,27 @@ export type DaemonRequestPayloadByMethod = {
   "terminal.kill": PtyKillPayload;
   "search.start": WorkspaceSearchStartPayload;
   "search.cancel": { searchId: string };
+  "application.list": undefined;
+  "application.add": AddApplicationPayload;
+  "application.update": UpdateApplicationPayload;
+  "application.remove": { id: string };
+  "application.check": { id: string };
+  "application.logout": { id: string };
+  "application.login.start": { id: string };
+  "application.login.wait": { id: string; loginId: string };
+  "application.login.cancel": { id: string; loginId: string };
+  "application.login.return": { id: string; loginId: string; url: string };
+  "application.tools": { id: string };
+  "application.read": {
+    id: string;
+    tool: string;
+    args: Record<string, unknown>;
+  };
+  "application.call": {
+    id: string;
+    tool: string;
+    args: Record<string, unknown>;
+  };
   "mcp.readConfig": undefined;
   "mcp.saveConfig": { content: string };
   "mcp.readProjectConfig": { workspaceId: string };
@@ -770,6 +800,11 @@ export type DaemonRequestPayloadByMethod = {
   "personalAgent.update": UpdatePersonalAgentPayload;
   "personalAgent.duplicate": DuplicatePersonalAgentPayload;
   "personalAgent.delete": { id: string };
+  "personalAgent.work.catalog": undefined;
+  "personalAgent.work.list": { personaId: string };
+  "personalAgent.work.start": StartDelegatedWorkPayload;
+  "personalAgent.work.send": SendDelegatedWorkPayload;
+  "personalAgent.work.stop": DelegatedWorkTarget;
   "inbox.list": undefined;
   "inbox.read": { id: string };
   "inbox.brief": { timeZone?: string | null };
@@ -979,6 +1014,19 @@ export type DaemonResultByMethod = {
   "terminal.kill": null;
   "search.start": null;
   "search.cancel": null;
+  "application.list": ApplicationConnection[];
+  "application.add": ApplicationConnection;
+  "application.update": ApplicationConnection;
+  "application.remove": null;
+  "application.check": ApplicationConnection;
+  "application.logout": ApplicationConnection;
+  "application.login.start": McpLoginStartResult;
+  "application.login.wait": McpLoginOutcome;
+  "application.login.cancel": null;
+  "application.login.return": null;
+  "application.tools": ApplicationTool[];
+  "application.read": unknown;
+  "application.call": unknown;
   "mcp.readConfig": McpConfigFile;
   "mcp.saveConfig": McpConfigFile;
   "mcp.readProjectConfig": McpProjectConfigFile;
@@ -1117,6 +1165,11 @@ export type DaemonResultByMethod = {
   "personalAgent.update": PersonalAgentRecord;
   "personalAgent.duplicate": PersonalAgentRecord;
   "personalAgent.delete": null;
+  "personalAgent.work.catalog": DelegationCatalog;
+  "personalAgent.work.list": DelegatedWorkRecord[];
+  "personalAgent.work.start": DelegatedWorkRecord;
+  "personalAgent.work.send": DelegatedWorkRecord;
+  "personalAgent.work.stop": DelegatedWorkRecord;
   "inbox.list": InboxItem[];
   "inbox.read": null;
   "inbox.brief": Brief | null;
@@ -1193,6 +1246,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "memory.revision": true,
   "memory.capabilities": true,
   "scriptRun.settings.get": true,
+  "application.list": true,
   "mcp.readConfig": true,
   "mcp.injection.check": true,
   "skills.catalog.sources": true,
@@ -1213,6 +1267,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "provider.exportJson": true,
   "agentRole.list": true,
   "personalAgent.list": true,
+  "personalAgent.work.catalog": true,
   "inbox.list": true,
   "session.list": true,
   "session.listArchived": true,

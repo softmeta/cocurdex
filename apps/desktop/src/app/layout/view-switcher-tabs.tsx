@@ -1,20 +1,26 @@
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   AlarmClock,
   Brain,
+  Ellipsis,
   FileText,
   FolderTree,
   GitCompare,
   Globe,
+  LayoutDashboard,
   ListTodo,
   type LucideIcon,
   NotebookPen,
+  Plug,
   Presentation,
   TerminalSquare,
 } from "lucide-react";
 import { type ReactNode, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { AppDropdownContent, AppDropdownItem } from "@/components";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
   Separator,
   ToggleGroup,
   ToggleGroupItem,
@@ -33,11 +39,17 @@ import {
 import {
   isRightPanelViewAvailable,
   type RightPanelView,
+  rightPanelPersonalContextAtom,
   rightPanelTabOrderAtom,
 } from "./right-editor-panel-store";
-import { titlebarIconButtonClassName } from "./titlebar-icon-button";
+import {
+  TitlebarIconButton,
+  titlebarIconButtonClassName,
+} from "./titlebar-icon-button";
 
 type ViewTabLabelKey =
+  | "actions.showApplications"
+  | "actions.showAssistantOverview"
   | "actions.showGitChanges"
   | "actions.showEditor"
   | "actions.showNotes"
@@ -56,6 +68,16 @@ interface TabDef {
 }
 
 const TAB_REGISTRY: Record<RightPanelView, TabDef> = {
+  applications: {
+    id: "applications",
+    icon: Plug,
+    labelKey: "actions.showApplications",
+  },
+  overview: {
+    id: "overview",
+    icon: LayoutDashboard,
+    labelKey: "actions.showAssistantOverview",
+  },
   git: { id: "git", icon: GitCompare, labelKey: "actions.showGitChanges" },
   editor: { id: "editor", icon: FolderTree, labelKey: "actions.showEditor" },
   notes: { id: "notes", icon: NotebookPen, labelKey: "actions.showNotes" },
@@ -104,9 +126,27 @@ export function ViewSwitcherTabs({
   const { t } = useTranslation("editor");
   const [tabOrder, setTabOrder] = useAtom(rightPanelTabOrderAtom);
 
-  const visibleTabs = tabOrder.filter(
+  const personal = useAtomValue(rightPanelPersonalContextAtom);
+  const personalPrimary: RightPanelView[] = [
+    "overview",
+    "applications",
+    "memory",
+    "notes",
+    "issues",
+    "routines",
+  ];
+  const personalSecondary: RightPanelView[] = ["editor", "browser", "decks"];
+  const orderedTabs = personal
+    ? [...personalPrimary, ...personalSecondary, "pdf" as const]
+    : tabOrder;
+  const secondaryTabs = personalSecondary.filter((id) =>
+    isRightPanelViewAvailable(id, desktopApi.capabilities),
+  );
+  const visibleTabs = orderedTabs.filter(
     (id) =>
+      (personal || id !== "overview") &&
       (id !== "pdf" || hasPdfsOpen) &&
+      (!personal || !personalSecondary.includes(id) || id === activeView) &&
       isRightPanelViewAvailable(id, desktopApi.capabilities),
   );
 
@@ -308,7 +348,16 @@ export function ViewSwitcherTabs({
           {visibleTabs.map((id) => {
             const def = TAB_REGISTRY[id];
             const Icon = def.icon;
-            const label = t(def.labelKey);
+            const label =
+              id === "applications"
+                ? t("actions.showApplications", {
+                    defaultValue: "Applications",
+                  })
+                : personal && id === "editor"
+                  ? t("actions.conversationFiles", {
+                      defaultValue: "Conversation files",
+                    })
+                  : t(def.labelKey);
             return (
               <Tooltip key={id}>
                 <TooltipTrigger asChild>
@@ -323,7 +372,17 @@ export function ViewSwitcherTabs({
                     aria-label={label}
                     className={tabClassName(id)}
                     value={id}
-                    onPointerDown={(e) => handlePointerDown(e, id)}
+                    onClick={() => {
+                      if (
+                        personal &&
+                        id === "editor" &&
+                        activeView === "editor"
+                      )
+                        onViewChange("editor");
+                    }}
+                    onPointerDown={
+                      personal ? undefined : (e) => handlePointerDown(e, id)
+                    }
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                   >
@@ -337,6 +396,35 @@ export function ViewSwitcherTabs({
             );
           })}
         </ToggleGroup>
+        {personal ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <TitlebarIconButton
+                aria-label={t("actions.moreViews", {
+                  defaultValue: "More views",
+                })}
+              >
+                <Ellipsis className="size-3.5" />
+              </TitlebarIconButton>
+            </DropdownMenuTrigger>
+            <AppDropdownContent align="start" side="bottom">
+              {secondaryTabs.map((id) => {
+                const def = TAB_REGISTRY[id];
+                const Icon = def.icon;
+                return (
+                  <AppDropdownItem key={id} onClick={() => onViewChange(id)}>
+                    <Icon className="size-3.5" />
+                    {id === "editor"
+                      ? t("actions.conversationFiles", {
+                          defaultValue: "Conversation files",
+                        })
+                      : t(def.labelKey)}
+                  </AppDropdownItem>
+                );
+              })}
+            </AppDropdownContent>
+          </DropdownMenu>
+        ) : null}
         {trailing ? (
           <>
             <Separator

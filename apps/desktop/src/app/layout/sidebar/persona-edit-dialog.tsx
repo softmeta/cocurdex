@@ -36,6 +36,8 @@ export function PersonaEditDialog({
   return (
     <AgentRoleEditDialog
       agentLocked
+      size="default"
+      descriptionPlaceholder={t("edit.descriptionPlaceholder")}
       onOpenChange={onOpenChange}
       open={agent !== null}
       role={agent?.role ?? null}
@@ -48,7 +50,7 @@ export function PersonaEditDialog({
         </FieldLabel>
         <Textarea
           id="persona-instructions"
-          className="max-h-60 min-h-24"
+          className="max-h-60"
           placeholder={t("edit.instructionsPlaceholder")}
           value={instructions}
           onChange={(event) => setInstructions(event.target.value)}
@@ -58,7 +60,7 @@ export function PersonaEditDialog({
         <FieldLabel htmlFor="persona-soul">{t("edit.soul")}</FieldLabel>
         <Textarea
           id="persona-soul"
-          className="max-h-60 min-h-24"
+          className="max-h-60"
           maxLength={PERSONAL_AGENT_SOUL_MAX_LENGTH}
           placeholder={t("edit.soulPlaceholder")}
           value={soul}

@@ -1,5 +1,6 @@
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
+import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import { clickByRole, waitForNoRole, waitForRole } from "./lib/locate.mjs";
 import { translate } from "./lib/navigate.mjs";
 
@@ -12,9 +13,10 @@ const POINTER_PARK = { x: 900, y: 300 };
 
 const args = readScenarioArgs();
 
-function readComposerWorkspaceId() {
+function readActiveSessionId() {
   return (
-    document.querySelector("[data-workspace-id]")?.dataset.workspaceId ?? null
+    document.querySelector("[data-session-id][data-active]")?.dataset
+      .sessionId ?? null
   );
 }
 
@@ -26,8 +28,9 @@ async function openSession(session, title) {
   );
   await session.waitUntil(
     (title) =>
-      Boolean(document.querySelector("[data-workspace-id]")) &&
-      document.body.innerText.includes(title),
+      [...document.querySelectorAll("[data-session-id][data-active]")].some(
+        (row) => row.textContent.includes(title),
+      ) && document.body.innerText.includes(title),
     title,
     UI_TIMEOUT_MS,
   );
@@ -167,13 +170,17 @@ runScenario("workspace-sidebar", {
       async ({ session }) => {
         await setExpanded(session, OTHER_WORKSPACE, false);
         await setExpanded(session, OTHER_WORKSPACE, true);
-        const composerWorkspaceId = await session.run(readComposerWorkspaceId);
+        const activeSessionId = await session.run(readActiveSessionId);
+        const active = await daemonRequest(session, "session.get", {
+          sessionId: activeSessionId,
+        });
         check(
-          composerWorkspaceId === SESSION_WORKSPACE.id,
-          "composer shows another workspace",
-          { composerWorkspaceId },
+          active?.workspaceId === SESSION_WORKSPACE.id &&
+            active.title === PINNED_SESSION,
+          "another workspace toggle changed the active session",
+          { activeSessionId, workspaceId: active?.workspaceId },
         );
-        return { composerWorkspaceId };
+        return { activeSessionId };
       },
     ],
     [

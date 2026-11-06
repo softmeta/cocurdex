@@ -1,17 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
-import { spawnCommand } from "@cocurdex/agent-adapters";
 
 const ENDPOINT_FILE = "endpoint.json";
-const TOKEN_FILE = "token";
+const RUNTIME_PROTOCOL_VERSION = 1;
 const PROBE_TIMEOUT_MS = 3_000;
-const START_TIMEOUT_MS = 20_000;
-const START_POLL_MS = 200;
 
 export interface RuntimeEndpoint {
   url: string;
-  token: string;
   bin: string | null;
   pid: number | null;
 }
@@ -25,35 +21,53 @@ function runtimeDir(dataDir?: string) {
   return path.join(dataDir ?? path.join(homedir(), ".rsrs"), "runtime");
 }
 
-async function readJsonFile(filePath: string) {
+function asObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+async function readEndpointUrl(dataDir?: string) {
   try {
-    const raw = await readFile(filePath, "utf8");
-    const parsed: unknown = JSON.parse(raw);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null;
+    const raw = await readFile(
+      path.join(runtimeDir(dataDir), ENDPOINT_FILE),
+      "utf8",
+    );
+    const url = asObject(JSON.parse(raw))?.url;
+    return typeof url === "string" && url.trim() ? url.trim() : null;
   } catch {
     return null;
   }
 }
 
-export async function readRuntimeEndpoint(
+export async function probeRuntime(
+  url: string,
+  timeoutMs = PROBE_TIMEOUT_MS,
+): Promise<RuntimeEndpoint | null> {
+  try {
+    const response = await fetch(`${url}/api/health`, {
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) return null;
+    const health = asObject(await response.json());
+    if (health?.server !== "respire") return null;
+    if (health.v !== RUNTIME_PROTOCOL_VERSION) return null;
+    const version = health.runtime_version ?? health.bin;
+    return {
+      url,
+      bin: typeof version === "string" ? version : null,
+      pid: typeof health.pid === "number" ? health.pid : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function findRuntime(
   dataDir?: string,
 ): Promise<RuntimeEndpoint | null> {
-  const directory = runtimeDir(dataDir);
-  const [endpoint, token] = await Promise.all([
-    readJsonFile(path.join(directory, ENDPOINT_FILE)),
-    readFile(path.join(directory, TOKEN_FILE), "utf8").catch(() => null),
-  ]);
-  const url = typeof endpoint?.url === "string" ? endpoint.url.trim() : "";
-  const trimmedToken = token?.trim() ?? "";
-  if (!url || !trimmedToken) return null;
-  return {
-    url,
-    token: trimmedToken,
-    bin: typeof endpoint?.bin === "string" ? endpoint.bin : null,
-    pid: typeof endpoint?.pid === "number" ? endpoint.pid : null,
-  };
+  const url = await readEndpointUrl(dataDir);
+  return url ? probeRuntime(url) : null;
 }
 
 async function postRpc(
@@ -63,10 +77,7 @@ async function postRpc(
 ) {
   const response = await fetch(`${endpoint.url}/mcp`, {
     method: "POST",
-    headers: {
-      authorization: `Bearer ${endpoint.token}`,
-      "content-type": "application/json",
-    },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -111,6 +122,9 @@ export async function callRuntimeTool(
   );
   const text = toolText(result);
   if (!text) throw new Error(`rsrs runtime tool ${name} returned no payload`);
+  if ((result as { isError?: unknown })?.isError === true) {
+    throw new Error(text);
+  }
   const parsed: unknown = JSON.parse(text);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(`rsrs runtime tool ${name} returned an unexpected payload`);
@@ -142,42 +156,4 @@ export async function listRuntimeTools(
     catalog.set(name, args);
   }
   return catalog;
-}
-
-export async function runtimeIsAlive(endpoint: RuntimeEndpoint) {
-  try {
-    await listRuntimeTools(endpoint);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function ensureRuntime(input: {
-  command: string;
-  dataDir?: string;
-  timeoutMs?: number;
-  autoStart?: boolean;
-  now?: () => number;
-}): Promise<RuntimeEndpoint | null> {
-  const existing = await readRuntimeEndpoint(input.dataDir);
-  if (existing && (await runtimeIsAlive(existing))) return existing;
-  if (input.autoStart === false) return null;
-
-  const child = spawnCommand(input.command, ["--runtime-internal"], {
-    detached: true,
-    stdio: "ignore",
-    windowsHide: true,
-  });
-  child.unref();
-
-  const timeoutMs = input.timeoutMs ?? START_TIMEOUT_MS;
-  const now = input.now ?? Date.now;
-  const deadline = now() + timeoutMs;
-  while (now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, START_POLL_MS));
-    const endpoint = await readRuntimeEndpoint(input.dataDir);
-    if (endpoint && (await runtimeIsAlive(endpoint))) return endpoint;
-  }
-  return null;
 }

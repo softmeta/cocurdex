@@ -1,3 +1,4 @@
+import { isManagedApplicationServer } from "./applications";
 import type { AgentId } from "./contracts";
 import type { McpServerConfig } from "./mcp";
 
@@ -34,6 +35,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function mcpServerAgents(config: McpServerConfig): AgentId[] {
+  if (isManagedApplicationServer(config)) return [];
   const extension = config.cocurdex;
   if (!isRecord(extension) || !Array.isArray(extension.agents)) {
     return [PI_MCP_AGENT_ID];
@@ -58,7 +60,11 @@ export function mcpServerTargetsAgent(
   config: McpServerConfig,
   agentId: AgentId,
 ) {
-  return config.enabled !== false && mcpServerAgents(config).includes(agentId);
+  return (
+    !isManagedApplicationServer(config) &&
+    config.enabled !== false &&
+    mcpServerAgents(config).includes(agentId)
+  );
 }
 
 const ENV_REFERENCE =

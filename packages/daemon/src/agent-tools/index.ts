@@ -14,6 +14,7 @@ export {
   WORKTREE_ENVIRONMENT_KEY,
 } from "./groups/settings";
 export { registerTeamTools } from "./groups/team";
+export { registerWorkTools } from "./groups/work";
 export {
   createAgentToolHttpHandler,
   isAgentToolHttpRequest,

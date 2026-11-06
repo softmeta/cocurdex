@@ -10,6 +10,9 @@ const READ_AND_DRAFT_TOOLS = [
   "find",
   "ls",
   "history_read",
+  "applications_list",
+  "applications_tools",
+  "applications_read",
   "memory_recall",
   "memory_show",
   "memory_remember",
@@ -31,7 +34,7 @@ const REPORT_GUIDE = [
 
 const ACCESS_GUIDE: Record<RoutineAccess, string> = {
   "read-and-draft":
-    "You may read files and your memory, but you cannot change files, run commands, or use other tools. When the task needs one of those, describe what you would do and report needs_you.",
+    "You may read files, your memory, and provider-declared read-only tools in allowed applications. You cannot change files, run commands, or use mutating application tools. When the task needs one of those, describe what you would do and report needs_you.",
   full: "You may use every tool. Act only within what the routine asks for.",
 };
 

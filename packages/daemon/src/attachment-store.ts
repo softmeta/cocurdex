@@ -9,7 +9,9 @@ import {
   type ImageAttachment,
   isStoredImageFileName,
   storedImageExtension,
+  workspacePathsEqual,
 } from "@cocurdex/shared";
+import { resolveAuthorizedPdfReadPath } from "@cocurdex/shared/node";
 import {
   IMAGE_ATTACHMENT_MIME_TYPE_BY_EXTENSION,
   readAttachmentImageInfo,
@@ -194,6 +196,16 @@ export class DaemonAttachmentStore {
     return (
       path.dirname(filePath) === rootPath && pattern(path.basename(filePath))
     );
+  }
+
+  async resolveStoredDocumentPath(filePath: string): Promise<string | null> {
+    const resolvedPath = path.resolve(filePath);
+    if (
+      !workspacePathsEqual(path.dirname(resolvedPath), this.documentRootPath) ||
+      !isStoredDocumentFileName(path.basename(resolvedPath))
+    )
+      return null;
+    return resolveAuthorizedPdfReadPath(resolvedPath, [this.documentRootPath]);
   }
 
   async locateImage(fileName: string) {

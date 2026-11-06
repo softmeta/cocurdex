@@ -29,7 +29,10 @@ import {
   measureSessionSwitch,
 } from "@/lib";
 import { useChatReadingPosition } from "@/lib/use-chat-reading-position";
-import { ChatPresentationContext } from "../chat-display";
+import {
+  ChatAssistantRoleContext,
+  ChatPresentationContext,
+} from "../chat-display";
 import type { ToolCallPreviewLocation } from "../tool-call";
 import { getActivityState } from "./chat-activity-state";
 import { isDisclosureToggle } from "./chat-scroll";
@@ -71,8 +74,6 @@ export function ChatView({
   providerSnapshot,
   thinkingLevel,
   thinkingLevelOptions,
-  activeBranch,
-  workspace,
   workspaceRootPath,
   workspaceRootPaths,
   composerRef,
@@ -376,147 +377,150 @@ export function ChatView({
 
   return (
     <ChatPresentationContext value={presentation}>
-      <section className="@container/chat flex h-full flex-col bg-chat-canvas">
-        <div className="relative flex-1 overflow-hidden">
-          {presentation === "assistant" ? null : (
-            <UserMessageNavigation
-              activeMessageId={activeUserNavigationMessageId}
-              messages={stickyUserMessages}
-              onSelect={scrollToUserMessage}
-            />
-          )}
-          <RenderReadinessContext value={renderReadiness}>
-            <ScrollArea
-              className={cn(
-                "h-full px-2 @lg/chat:px-3 @3xl/chat:px-6",
-                !isInitialBottomSettled && "opacity-0",
-              )}
-              scrollbarProps={{
-                onPointerDownCapture: markUserScrollIntent,
-              }}
-              viewportProps={{
-                className: "[overflow-anchor:none]",
-                onClickCapture: (event) => {
-                  if (isDisclosureToggle(event.target)) {
-                    holdForDisclosure();
-                  }
-                },
-                onKeyDownCapture: () => handleUserScrollIntent(),
-                onPointerDown: markUserScrollIntent,
-                onPointerDownCapture: markUserScrollIntent,
-                onScroll: () => syncScrollState(stickyUserMessages),
-                onTouchMoveCapture: () => handleUserScrollIntent(),
-                onWheelCapture: (event) => handleUserScrollIntent(event.deltaY),
-                tabIndex: 0,
-              }}
-              viewportRef={attachViewport}
-            >
-              <ChatContentColumn
-                className={cn("pt-6", timelineGroups.length === 0 && "pb-6")}
-                ref={chatContentRef}
-              >
-                {showsEmptyState ? null : timelineGroups.length === 0 ? (
-                  <div className="text-chat-fg-muted text-meta">
-                    {t("toolCalls.subagentEmpty")}
-                  </div>
-                ) : (
-                  <>
-                    <ChatVirtualTimeline
-                      activity={activity}
-                      anchoredPromptId={anchoredPromptId}
-                      groups={conversationGroups}
-                      isRunning={isRunning}
-                      latestMessageId={latestMessage?.id ?? null}
-                      onAnswerQuestion={stableOnAnswerQuestion}
-                      onOpenToolLocation={stableOnOpenToolLocation}
-                      onResolvePermission={stableOnResolvePermission}
-                      runStartedAt={runStartedAt}
-                      scrollRef={timelineScrollRef}
-                      setUserMessageRef={setUserMessageRef}
-                      showMessageActions={!readOnly}
-                      userMessageRefs={userMessageRefs}
-                      viewportElement={viewportElement}
-                    />
-                    {sessionId && !readOnly ? (
-                      <ScriptRunProposals
-                        key={sessionId}
-                        sessionId={sessionId}
-                      />
-                    ) : null}
-                  </>
+      <ChatAssistantRoleContext value={composerRole ?? null}>
+        <section className="@container/chat flex h-full flex-col bg-chat-canvas">
+          <div className="relative flex-1 overflow-hidden">
+            {presentation === "assistant" ? null : (
+              <UserMessageNavigation
+                activeMessageId={activeUserNavigationMessageId}
+                messages={stickyUserMessages}
+                onSelect={scrollToUserMessage}
+              />
+            )}
+            <RenderReadinessContext value={renderReadiness}>
+              <ScrollArea
+                className={cn(
+                  "h-full px-2 @lg/chat:px-3 @3xl/chat:px-6",
+                  !isInitialBottomSettled && "opacity-0",
                 )}
-              </ChatContentColumn>
-            </ScrollArea>
-          </RenderReadinessContext>
-          {showsEmptyState ? (
-            <div className="absolute inset-0 flex flex-col overflow-y-auto px-2 @lg/chat:px-3 @3xl/chat:px-6">
-              <ChatContentColumn className="my-auto py-10">
-                {emptyState ?? <StageIdentity />}
-              </ChatContentColumn>
-            </div>
-          ) : null}
-          <JumpControls
-            streaming={isRunning && shouldShowJumpToLatest}
-            onJumpToLatest={() => scrollToLatest(true)}
-            onJumpToTop={scrollToTop}
-            showJumpToLatest={shouldShowJumpToLatest}
-            showJumpToTop={shouldShowJumpToTop}
+                scrollbarProps={{
+                  onPointerDownCapture: markUserScrollIntent,
+                }}
+                viewportProps={{
+                  className: "[overflow-anchor:none]",
+                  onClickCapture: (event) => {
+                    if (isDisclosureToggle(event.target)) {
+                      holdForDisclosure();
+                    }
+                  },
+                  onKeyDownCapture: () => handleUserScrollIntent(),
+                  onPointerDown: markUserScrollIntent,
+                  onPointerDownCapture: markUserScrollIntent,
+                  onScroll: () => syncScrollState(stickyUserMessages),
+                  onTouchMoveCapture: () => handleUserScrollIntent(),
+                  onWheelCapture: (event) =>
+                    handleUserScrollIntent(event.deltaY),
+                  tabIndex: 0,
+                }}
+                viewportRef={attachViewport}
+              >
+                <ChatContentColumn
+                  className={cn("pt-6", timelineGroups.length === 0 && "pb-6")}
+                  ref={chatContentRef}
+                >
+                  {showsEmptyState ? null : timelineGroups.length === 0 ? (
+                    <div className="text-chat-fg-muted text-meta">
+                      {t("toolCalls.subagentEmpty")}
+                    </div>
+                  ) : (
+                    <>
+                      <ChatVirtualTimeline
+                        activity={activity}
+                        anchoredPromptId={anchoredPromptId}
+                        groups={conversationGroups}
+                        isRunning={isRunning}
+                        latestMessageId={latestMessage?.id ?? null}
+                        onAnswerQuestion={stableOnAnswerQuestion}
+                        onOpenToolLocation={stableOnOpenToolLocation}
+                        onResolvePermission={stableOnResolvePermission}
+                        runStartedAt={runStartedAt}
+                        scrollRef={timelineScrollRef}
+                        setUserMessageRef={setUserMessageRef}
+                        showMessageActions={!readOnly}
+                        userMessageRefs={userMessageRefs}
+                        viewportElement={viewportElement}
+                      />
+                      {sessionId && !readOnly ? (
+                        <ScriptRunProposals
+                          key={sessionId}
+                          sessionId={sessionId}
+                        />
+                      ) : null}
+                    </>
+                  )}
+                </ChatContentColumn>
+              </ScrollArea>
+            </RenderReadinessContext>
+            {showsEmptyState ? (
+              <div className="absolute inset-0 flex flex-col overflow-y-auto px-2 @lg/chat:px-3 @3xl/chat:px-6">
+                <ChatContentColumn className="my-auto py-10">
+                  {emptyState ?? <StageIdentity />}
+                </ChatContentColumn>
+              </div>
+            ) : null}
+            <JumpControls
+              streaming={isRunning && shouldShowJumpToLatest}
+              onJumpToLatest={() => scrollToLatest(true)}
+              onJumpToTop={scrollToTop}
+              showJumpToLatest={shouldShowJumpToLatest}
+              showJumpToTop={shouldShowJumpToTop}
+            />
+          </div>
+          <ComposerDock
+            chatComposer={chatComposer}
+            role={composerRole}
+            placeholderOverride={composerPlaceholder}
+            sessionId={sessionId}
+            agentLabel={agentLabel}
+            agentType={agentType}
+            attachment={attachment}
+            composerContextChips={composerContextChips}
+            draftKey={
+              sessionId ? sessionComposerDraftKey(sessionId) : undefined
+            }
+            sessionModeId={sessionModeId}
+            composerRef={composerRef}
+            permissionMode={permissionMode}
+            providerSnapshot={providerSnapshot}
+            thinkingLevel={thinkingLevel}
+            thinkingLevelOptions={thinkingLevelOptions}
+            isRunning={isRunning}
+            canSendWhileRunning={canSendWhileRunning}
+            runtimeCommands={runtime?.commands}
+            runtimeMode={runtime?.mode}
+            queuedInputs={queuedInputs}
+            supportsSteering={supportsSteering}
+            onClearAttachment={onClearAttachment}
+            onSelectSessionMode={onSelectSessionMode}
+            onSelectPermissionMode={onSelectPermissionMode}
+            onSelectThinkingLevel={onSelectThinkingLevel}
+            onSelectRuntimeMode={onSelectRuntimeMode}
+            onSelectAgent={onSelectAgent}
+            onSend={stableOnSend}
+            onStop={onStop}
+            onDeleteQueuedInput={onDeleteQueuedInput}
+            onSendNowQueuedInput={onSendNowQueuedInput}
+            onResumeQueuedInputs={onResumeQueuedInputs}
+            onSteerQueuedInput={onSteerQueuedInput}
+            onUpdateQueuedInput={onUpdateQueuedInput}
+            onResolvePermission={onResolvePermission}
+            onResolvePlanApproval={onResolvePlanApproval}
+            onDismissPlan={onDismissPlan}
+            onTogglePlanCollapsed={onTogglePlanCollapsed}
+            pendingPermissionRequest={pendingPermissionRequest}
+            pendingPlanApproval={pendingPlanApproval}
+            pendingQuestion={pendingQuestion}
+            onAnswerQuestion={stableOnAnswerQuestion}
+            plan={plan}
+            planCollapsed={planCollapsed}
+            workspaceRootPath={workspaceRootPath}
+            workspaceRootPaths={workspaceRootPaths}
+            hideComposer={readOnly}
+            parentSessionTitle={parentSessionTitle}
+            onOpenParentSession={onOpenParentSession}
           />
-        </div>
-        <ComposerDock
-          chatComposer={chatComposer}
-          role={composerRole}
-          placeholderOverride={composerPlaceholder}
-          activeBranch={activeBranch}
-          workspace={workspace}
-          sessionId={sessionId}
-          agentLabel={agentLabel}
-          agentType={agentType}
-          attachment={attachment}
-          composerContextChips={composerContextChips}
-          draftKey={sessionId ? sessionComposerDraftKey(sessionId) : undefined}
-          sessionModeId={sessionModeId}
-          composerRef={composerRef}
-          permissionMode={permissionMode}
-          providerSnapshot={providerSnapshot}
-          thinkingLevel={thinkingLevel}
-          thinkingLevelOptions={thinkingLevelOptions}
-          isRunning={isRunning}
-          canSendWhileRunning={canSendWhileRunning}
-          runtimeCommands={runtime?.commands}
-          runtimeMode={runtime?.mode}
-          queuedInputs={queuedInputs}
-          supportsSteering={supportsSteering}
-          onClearAttachment={onClearAttachment}
-          onSelectSessionMode={onSelectSessionMode}
-          onSelectPermissionMode={onSelectPermissionMode}
-          onSelectThinkingLevel={onSelectThinkingLevel}
-          onSelectRuntimeMode={onSelectRuntimeMode}
-          onSelectAgent={onSelectAgent}
-          onSend={stableOnSend}
-          onStop={onStop}
-          onDeleteQueuedInput={onDeleteQueuedInput}
-          onSendNowQueuedInput={onSendNowQueuedInput}
-          onResumeQueuedInputs={onResumeQueuedInputs}
-          onSteerQueuedInput={onSteerQueuedInput}
-          onUpdateQueuedInput={onUpdateQueuedInput}
-          onResolvePermission={onResolvePermission}
-          onResolvePlanApproval={onResolvePlanApproval}
-          onDismissPlan={onDismissPlan}
-          onTogglePlanCollapsed={onTogglePlanCollapsed}
-          pendingPermissionRequest={pendingPermissionRequest}
-          pendingPlanApproval={pendingPlanApproval}
-          pendingQuestion={pendingQuestion}
-          onAnswerQuestion={stableOnAnswerQuestion}
-          plan={plan}
-          planCollapsed={planCollapsed}
-          workspaceRootPath={workspaceRootPath}
-          workspaceRootPaths={workspaceRootPaths}
-          hideComposer={readOnly}
-          parentSessionTitle={parentSessionTitle}
-          onOpenParentSession={onOpenParentSession}
-        />
-      </section>
+        </section>
+      </ChatAssistantRoleContext>
     </ChatPresentationContext>
   );
 }

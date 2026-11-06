@@ -10,8 +10,10 @@ export {
   normalizeChatDisplaySettings,
 } from "./chat-display-types";
 export {
+  ChatAssistantRoleContext,
   type ChatPresentation,
   ChatPresentationContext,
   useActivityDisplay,
+  useChatAssistantRole,
   useChatPresentation,
 } from "./chat-presentation";

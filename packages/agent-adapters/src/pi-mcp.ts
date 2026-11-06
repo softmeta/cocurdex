@@ -1,3 +1,4 @@
+export { createPiApplicationClient } from "./pi-sdk/pi-application-client";
 export {
   inspectPiMcpServers,
   type PiMcpLocation,

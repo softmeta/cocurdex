@@ -217,8 +217,8 @@ describe("PersonalAgentService", () => {
     });
   });
 
-  it("deletes an agent with its role and home thread but keeps the default", async () => {
-    const assistant = await harness.service.ensureDefault({ name: "助理" });
+  it("deletes an agent with its role and home thread", async () => {
+    await harness.service.ensureDefault({ name: "助理" });
     const coach = await harness.service.create({ role: coachRole });
 
     await harness.service.delete(coach.id);
@@ -227,11 +227,37 @@ describe("PersonalAgentService", () => {
     expect(
       await harness.database.sessions.getById(coach.homeSessionId),
     ).toBeNull();
-    await expect(harness.service.delete(assistant.id)).rejects.toThrow(
-      "default personal agent",
-    );
-    expect(harness.service.ownsHomeSession(assistant.homeSessionId)).toBe(true);
-    expect(harness.service.ownsRole(assistant.role.id)).toBe(true);
     expect(harness.announcements()).toBe(3);
+  });
+
+  it("hands the default to the next agent when the default is deleted", async () => {
+    const assistant = await harness.service.ensureDefault({ name: "助理" });
+    const coach = await harness.service.create({ role: coachRole });
+    const writer = await harness.service.create({
+      role: { ...coachRole, name: "Writer" },
+    });
+    await harness.service.update({ id: writer.id, pinned: true });
+
+    await harness.service.delete(assistant.id);
+
+    expect(harness.service.ownsHomeSession(assistant.homeSessionId)).toBe(
+      false,
+    );
+    const remaining = await harness.service.list();
+    expect(remaining.map((agent) => [agent.id, agent.isDefault])).toEqual([
+      [writer.id, true],
+      [coach.id, false],
+    ]);
+  });
+
+  it("leaves no default when the last agent is deleted", async () => {
+    const assistant = await harness.service.ensureDefault({ name: "助理" });
+
+    await harness.service.delete(assistant.id);
+
+    expect(await harness.service.list()).toEqual([]);
+    const fresh = await harness.service.ensureDefault({ name: "助理" });
+    expect(fresh.id).not.toBe(assistant.id);
+    expect(fresh.isDefault).toBe(true);
   });
 });

@@ -22,6 +22,18 @@ describe("onlyPiMcpServers", () => {
           command: "c",
           cocurdex: { agents: ["claude-agent"] },
         }),
+        entry("managed", {
+          url: "https://mcp.notion.com/mcp",
+          cocurdex: { application: null, agents: ["pi"] },
+        }),
+        entry(
+          "project-managed",
+          {
+            url: "https://mcp.notion.com/mcp",
+            cocurdex: { application: null },
+          },
+          "project",
+        ),
         entry("repo", { command: "d" }, "project"),
       ],
       errors: [],

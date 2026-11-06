@@ -210,6 +210,11 @@ if (command === "--version" || command === "v") {
   process.stdout.write("rsrs 1.0.0\n");
 } else if (command === "--help") {
   process.stdout.write(HELP);
+} else if (
+  args.includes("--help") &&
+  ["recall", "remember"].includes(command)
+) {
+  process.stdout.write(`Usage: rsrs ${command} --project <PROJECT>\n`);
 } else if (command === "status") {
   send({
     command: "status",
@@ -223,7 +228,7 @@ if (command === "--version" || command === "v") {
         user: "local",
         has_session: false,
         has_token: false,
-        has_local_keys: true,
+        has_local_keys: readState().identityMissing !== true,
       },
       sync_live: { phase: "ok", pending: 0, conflicts: 0, error: "" },
     },

@@ -116,18 +116,23 @@ import {
   registerScriptRunTools,
   registerSettingsTools,
   registerTeamTools,
+  registerWorkTools,
   requireCatalogEntry,
   WORKTREE_ENVIRONMENT_KEY,
 } from "./agent-tools";
+import { registerApplicationTools } from "./agent-tools/groups/applications";
 import {
   discoverAgentSessionModes,
   discoverInstalledAgentCapabilities,
 } from "./agents";
+import { resolveApplicationPrincipal } from "./application-principal";
+import { ApplicationService } from "./application-service";
 import { DaemonAttachmentStore } from "./attachment-store";
 import { DaemonBackgroundService } from "./background";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonDataService } from "./data-service";
 import { DaemonDeckService, DeckAssetStore } from "./decks";
+import { DelegationModule } from "./delegation";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { loadExecutionTree } from "./execution-tree";
 import { listHostDirectories } from "./fs-browse";
@@ -164,6 +169,7 @@ import {
   isPostedMessage,
   PersonalAgentService,
   personaMemoryScope,
+  personaRoleFromHomeThread,
   personaSystemSections,
   personaWritePartition,
   postedMessagesSinceReply,
@@ -308,6 +314,7 @@ export class CocurdexDaemonService {
   readonly agentTools: AgentToolBridge;
   readonly peerMessaging: PeerMessagingService;
   readonly team: TeamModule;
+  readonly delegations: DelegationModule;
   readonly scriptRuns: ScriptRunModule;
   readonly dataService: DaemonDataService;
   readonly decks: DaemonDeckService;
@@ -324,6 +331,7 @@ export class CocurdexDaemonService {
   readonly commitMessageService: DaemonCommitMessageService;
   readonly memory: MemoryService;
   readonly mcp: DaemonMcpService;
+  readonly applications: ApplicationService;
   readonly pdfAnnotationsService: DaemonPdfAnnotationsService;
   readonly attachments: DaemonAttachmentStore;
   readonly codexLogins = new CodexLoginSessions();
@@ -424,7 +432,10 @@ export class CocurdexDaemonService {
           title: role.name,
         }),
       removeSession: (sessionId) => this.removeSession(sessionId),
-      removeDependents: (agentId) => this.removeRoutinesOf(agentId),
+      removeDependents: async (agentId) => {
+        this.delegations.forgetPersona(agentId);
+        await this.removeRoutinesOf(agentId);
+      },
       applyRole: (agentId, homeSessionId, role) =>
         this.applyPersonaRole(agentId, homeSessionId, role),
       announceChanged: () =>
@@ -533,18 +544,20 @@ export class CocurdexDaemonService {
     });
     this.pdfAnnotationsService = new DaemonPdfAnnotationsService(
       options.userDataPath,
-      async () =>
-        (await this.state.listWorkspaces()).flatMap(
-          (workspace) => workspace.rootPaths,
-        ),
+      (filePath) => this.resolvePdfPath(filePath),
     );
     this.agentTools = new AgentToolBridge({
       url: options.agentToolsUrl ?? null,
       getSession: (sessionId) => this.state.getSession(sessionId),
       getTeamId: (sessionId) => this.team.teamIdForSession(sessionId),
       getLeadRoster: (sessionId) => this.team.rosterForLead(sessionId),
-      memoryInstructions: (hasMemoryTools) =>
-        hasMemoryTools ? this.memory.agentInstructions(true) : undefined,
+      memoryInstructions: (hasMemoryTools, caller) =>
+        hasMemoryTools
+          ? this.memory.agentInstructions(
+              true,
+              caller.sessionKind === "personal",
+            )
+          : undefined,
     });
     this.peerMessaging = new PeerMessagingService({
       getSession: (sessionId) => this.state.getSession(sessionId),
@@ -596,6 +609,43 @@ export class CocurdexDaemonService {
       sendPeerMessage: (payload) => this.peerMessaging.send(payload),
     });
     registerTeamTools(this.agentTools.registry, this.team);
+    this.delegations = new DelegationModule({
+      repository: this.state.data.delegations,
+      getPersona: async (personaId) => {
+        const row = this.state.data.personalAgents.getById(personaId);
+        if (!row) return null;
+        const role = await this.state.getAgentRole(row.roleId);
+        return {
+          id: row.id,
+          name: role?.name ?? row.id,
+          homeSessionId: row.homeSessionId,
+        };
+      },
+      getSession: (sessionId) => this.state.getSession(sessionId),
+      saveSession: (session) => this.state.saveSession(session),
+      createSession: (input) => this.createSession(input),
+      listWorkspaces: () => this.state.listWorkspaces(),
+      listRoles: () => this.listAgentRoles(),
+      listTemplates: () => this.team.listTemplates(),
+      createTeam: (input) => this.team.create(input),
+      createWorktree: (input) => this.createWorktree(input),
+      sendSessionMessage: (command) => this.sendSessionMessage(command),
+      submitReport: (command, options) =>
+        this.submitSessionMessage(command, options),
+      stopSession: (sessionId) => this.stopSession(sessionId),
+      hasActiveRun: (sessionId) => this.runs.hasActiveRun(sessionId),
+      supportsSteering: (session) => this.agentSupportsSteering(session),
+      latestRun: (sessionId) => this.state.getLatestRun(sessionId),
+      getRunReply: (sessionId, runId) =>
+        this.state.getRunReply(sessionId, runId),
+      getMessage: (messageId) => this.state.getMessageById(messageId),
+      track: (work) => void this.runs.track(work),
+      onReportFailed: (error) =>
+        logDaemonDiagnostic("warn", "delegation.reportFailed", {
+          error: errorMessage(error, "Unknown error"),
+        }),
+      announceChanged: () => this.announceSessionsChanged(),
+    });
     registerHistoryTools(this.agentTools.registry, {
       readSessionActivity: (caller, sessionId) =>
         readSessionActivity(
@@ -610,7 +660,10 @@ export class CocurdexDaemonService {
         const scope = await this.personaMemoryScopeFor(caller.sessionId);
         return this.memory.recallIn(input, scope?.read ?? null);
       },
-      show: (id) => this.memory.show(id),
+      show: async (id, caller) => {
+        const scope = await this.personaMemoryScopeFor(caller.sessionId);
+        return this.memory.showIn(id, scope?.read ?? null);
+      },
       remember: async (input, caller, target) => {
         const scope = await this.personaMemoryScopeFor(caller.sessionId);
         return this.memory.rememberIn(
@@ -618,7 +671,10 @@ export class CocurdexDaemonService {
           scope ? personaWritePartition(scope, target) : null,
         );
       },
-      policy: () => this.memory.policy(),
+      policy: (caller) =>
+        caller.sessionKind === "personal"
+          ? Promise.resolve(this.memory.agentInstructions(true, true))
+          : this.memory.policy(),
       noteToolUse: (sessionId, tool) =>
         this.memory.noteGateToolUse(sessionId, tool),
     });
@@ -646,13 +702,40 @@ export class CocurdexDaemonService {
       createId: () => crypto.randomUUID(),
     });
     registerScriptRunTools(this.agentTools.registry, this.scriptRuns);
+    const personaOf = async (sessionId: string) => {
+      const session = await this.state.getSession(sessionId);
+      return session
+        ? (this.personalAgents.personaForSession(session)?.id ?? null)
+        : null;
+    };
+    this.applications = new ApplicationService(
+      this.mcp,
+      async (id) => (await this.personalAgents.get(id)) !== null,
+    );
+    registerApplicationTools(
+      this.agentTools.registry,
+      this.applications,
+      (sessionId) =>
+        resolveApplicationPrincipal(sessionId, {
+          getSession: (id) => this.state.getSession(id),
+          persona: (session) =>
+            this.personalAgents.personaForSession(session)?.id ?? null,
+          delegation: (id) =>
+            this.state.data.delegations.get(id)?.personaId ?? null,
+          teamLead: async (id) =>
+            (await this.team.findForSession(id))?.team.leadSessionId ?? null,
+        }),
+    );
+    registerWorkTools(this.agentTools.registry, {
+      personaOf,
+      catalog: () => this.delegations.catalog(),
+      start: (payload) => this.delegations.start(payload),
+      list: (personaId) => this.delegations.list(personaId),
+      send: (payload) => this.delegations.send(payload),
+      stop: (target) => this.delegations.stop(target),
+    });
     registerRoutineTools(this.agentTools.registry, {
-      personaOf: async (sessionId) => {
-        const session = await this.state.getSession(sessionId);
-        return session
-          ? (this.personalAgents.personaForSession(session)?.id ?? null)
-          : null;
-      },
+      personaOf,
       list: (agentId) => this.routines.list(agentId),
       get: (id) => this.routines.get(id),
       create: (payload) => this.routines.create(payload),
@@ -770,6 +853,7 @@ export class CocurdexDaemonService {
         }
       }
       await this.team.onAgentEvent(event);
+      await this.delegations.onAgentEvent(event);
       const alert = pushTriggerForEvent(event, new Date());
       if (alert) {
         void this.outbox
@@ -828,6 +912,7 @@ export class CocurdexDaemonService {
       await this.state.waitForStartupRecovery();
       await this.scriptRuns.recoverInterrupted();
       await this.team.recoverReports();
+      await this.delegations.recoverReports();
       await this.decks.collectUnusedImages();
       await this.personalAgents.reconcileRoles();
       if (!this.stopping) {
@@ -1385,6 +1470,9 @@ export class CocurdexDaemonService {
   }
 
   async resolvePdfPath(filePath: string) {
+    const attachmentPath =
+      await this.attachments.resolveStoredDocumentPath(filePath);
+    if (attachmentPath) return attachmentPath;
     return resolveAuthorizedPdfReadPath(
       filePath,
       await this.listWorkspaceRootPaths(),
@@ -1961,7 +2049,14 @@ export class CocurdexDaemonService {
       });
     }
     const { providerId, modelId } = role;
-    if (!providerId || !modelId) return;
+    if (!providerId || !modelId) {
+      const adopted =
+        home?.agentType === role.agentId
+          ? personaRoleFromHomeThread(role, home.providerSnapshot)
+          : null;
+      if (adopted) await this.saveAgentRole(adopted);
+      return;
+    }
     const routineSessionIds = this.routines
       .list(agentId)
       .map((routine) => routine.sessionId);
@@ -1970,15 +2065,36 @@ export class CocurdexDaemonService {
       const session = await this.state.getSession(sessionId);
       if (!session || session.archivedAt) continue;
       if (session.agentType !== role.agentId) continue;
-      const current = session.providerSnapshot;
-      if (current?.providerId === providerId && current.modelId === modelId) {
+      if (
+        session.providerSnapshot &&
+        !personaRoleFromHomeThread(role, session.providerSnapshot)
+      )
         continue;
-      }
-      await this.updateSessionRuntime(
-        { sessionId, model: { providerId, modelId } },
+      await this.applySessionRuntime(
+        {
+          sessionId,
+          model: { providerId, modelId },
+          runtime: {
+            reasoningEffort: role.reasoningEffort,
+            thinkingLevel: role.thinkingLevel,
+            serviceTier: role.serviceTier,
+            fastMode: role.fastMode,
+          },
+        },
         LOCAL_REQUEST_CONTEXT.principal,
       );
     }
+  }
+
+  private async adoptHomeThreadRuntime(session: SessionRecord) {
+    const persona = this.state.data.personalAgents.findByHomeSession(
+      session.id,
+    );
+    if (!persona) return;
+    const role = await this.state.getAgentRole(persona.roleId);
+    if (!role || role.agentId !== session.agentType) return;
+    const adopted = personaRoleFromHomeThread(role, session.providerSnapshot);
+    if (adopted) await this.saveAgentRole(adopted);
   }
 
   async saveAgentRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord> {
@@ -2155,6 +2271,15 @@ export class CocurdexDaemonService {
   }
 
   async updateSessionRuntime(
+    input: UpdateSessionRuntimePayload,
+    principal: HostPrincipal,
+  ) {
+    const saved = await this.applySessionRuntime(input, principal);
+    await this.adoptHomeThreadRuntime(saved);
+    return saved;
+  }
+
+  private async applySessionRuntime(
     input: UpdateSessionRuntimePayload,
     principal: HostPrincipal,
   ) {
@@ -3293,6 +3418,7 @@ export class CocurdexDaemonService {
         schedulerClose,
         this.acpRegistry.ready,
         Promise.resolve().then(() => this.searchService.dispose()),
+        this.applications.dispose(),
         Promise.resolve().then(() => this.mcp.dispose()),
         this.terminals.dispose(),
         Promise.resolve().then(() => this.workspaceWatch.close()),
@@ -3497,12 +3623,20 @@ export class CocurdexDaemonService {
     const chatSession = isChatSession(session);
     const sessionKind = session.sessionKind ?? "main";
     const persona = this.personalAgents.personaForSession(session);
+    if (sessionKind === "personal" && !persona)
+      throw new Error("Personal assistant memory scope is unavailable.");
     const hostInjectsMemory =
-      !chatSession && (await this.memory.injectsInto(session.agentType));
+      !persona &&
+      !chatSession &&
+      (await this.memory.injectsInto(session.agentType));
     const memoryGate = await this.memory.beginTurn({
       sessionId: session.id,
       mode: chatSession ? "chat" : "agent",
-      enforce: !chatSession && sessionKind !== "subagent" && !hostInjectsMemory,
+      enforce:
+        !chatSession &&
+        sessionKind !== "personal" &&
+        sessionKind !== "subagent" &&
+        !hostInjectsMemory,
     });
     const memoryContext =
       (!chatSession && sessionKind === "subagent") || hostInjectsMemory
@@ -3512,6 +3646,7 @@ export class CocurdexDaemonService {
             userMessage.content,
             chatSession ? "chat" : "agent",
             persona ? personaMemoryScope(persona.id).read : null,
+            priorMessages,
           );
     const resolution = resolveStartContext({
       targetAgentType: session.agentType,
@@ -3629,6 +3764,8 @@ export class CocurdexDaemonService {
     const persona = session
       ? this.personalAgents.personaForSession(session)
       : null;
+    if (session?.sessionKind === "personal" && !persona)
+      throw new Error("Personal assistant memory scope is unavailable.");
     return persona ? personaMemoryScope(persona.id) : null;
   }
 

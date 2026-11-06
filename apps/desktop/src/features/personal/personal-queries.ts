@@ -14,7 +14,7 @@ async function loadPersonalAgents(defaultName: string) {
 }
 
 export function usePersonalAgents(defaultName: string) {
-  const { data, mutate } = useSWR(
+  const { data, error, mutate } = useSWR(
     PERSONAL_AGENTS_KEY,
     () => loadPersonalAgents(defaultName),
     { dedupingInterval: 0 },
@@ -28,6 +28,7 @@ export function usePersonalAgents(defaultName: string) {
 
   return {
     agents: data ?? NO_AGENTS,
+    error,
     loaded: data !== undefined,
     revalidate: () => mutate(),
   };

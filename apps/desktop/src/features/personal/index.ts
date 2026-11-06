@@ -6,3 +6,5 @@ export {
   usePersonalAgents,
   usePersonaRole,
 } from "./personal-queries";
+
+export { usePersonalWork } from "./personal-work-queries";

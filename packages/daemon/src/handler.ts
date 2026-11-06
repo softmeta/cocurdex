@@ -372,6 +372,53 @@ export async function handleDaemonRequest(
     case "search.cancel":
       service.searchService.cancel(request.params.searchId);
       return null;
+    case "application.list":
+      return service.applications.list();
+    case "application.add":
+      return service.applications.add(request.params);
+    case "application.update":
+      return service.applications.update(request.params);
+    case "application.remove":
+      await service.applications.remove(request.params.id);
+      return null;
+    case "application.check":
+      return service.applications.check(request.params.id);
+    case "application.logout":
+      return service.applications.logout(request.params.id);
+    case "application.login.start":
+      return service.applications.startLogin(request.params.id);
+    case "application.login.wait":
+      return service.applications.waitLogin(
+        request.params.id,
+        request.params.loginId,
+      );
+    case "application.login.cancel":
+      service.applications.cancelLogin(
+        request.params.id,
+        request.params.loginId,
+      );
+      return null;
+    case "application.login.return":
+      service.applications.submitRedirect(
+        request.params.id,
+        request.params.loginId,
+        request.params.url,
+      );
+      return null;
+    case "application.tools":
+      return service.applications.tools(request.params.id);
+    case "application.read":
+      return service.applications.read(
+        request.params.id,
+        request.params.tool,
+        request.params.args,
+      );
+    case "application.call":
+      return service.applications.call(
+        request.params.id,
+        request.params.tool,
+        request.params.args,
+      );
     case "mcp.readConfig":
       return service.mcp.config.readConfig();
     case "mcp.saveConfig":
@@ -875,6 +922,16 @@ export async function handleDaemonRequest(
     case "personalAgent.delete":
       await service.personalAgents.delete(request.params.id);
       return null;
+    case "personalAgent.work.catalog":
+      return service.delegations.catalog();
+    case "personalAgent.work.list":
+      return service.delegations.list(request.params.personaId);
+    case "personalAgent.work.start":
+      return service.delegations.start(request.params);
+    case "personalAgent.work.send":
+      return service.delegations.send(request.params);
+    case "personalAgent.work.stop":
+      return service.delegations.stop(request.params);
     case "inbox.list":
       return service.listInbox();
     case "inbox.brief":

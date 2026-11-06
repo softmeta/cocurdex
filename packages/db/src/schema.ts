@@ -1,5 +1,6 @@
 import { createAgentCapabilityCacheSchemaSql } from "./agents/schema";
 import { createDecksSchemaSql } from "./decks/deck-schema";
+import { createDelegationsSchemaSql } from "./delegation/schema";
 import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
 import { createHostAccessSchemaSql } from "./host-access/schema";
 import { createOutboxSchemaSql } from "./outbox/schema";
@@ -599,5 +600,6 @@ export function createSchemaSql() {
 
     ${createRoutinesSchemaSql()}
     ${createOutboxSchemaSql()}
+    ${createDelegationsSchemaSql()}
   `;
 }

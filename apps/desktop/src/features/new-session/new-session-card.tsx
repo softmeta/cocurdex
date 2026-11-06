@@ -419,12 +419,10 @@ export function NewSessionCard({
     }
   };
 
-  // Workspace and branch remain editable until the session starts. Branch
-  // selection performs a real checkout; active sessions render it read-only.
   const header = (
     <div className="flex flex-1 flex-wrap items-center gap-1.5">
       <WorkspacePicker
-        appearance="outline"
+        appearance="ghost"
         showChevron={false}
         triggerClassName="max-w-60 h-7 gap-1.5 rounded-control px-2 text-muted-foreground hover:text-foreground aria-expanded:text-foreground hover:bg-welcome-surface-strong-hover aria-expanded:bg-welcome-surface-strong-hover data-[state=open]:bg-welcome-surface-strong-hover dark:hover:bg-welcome-surface-strong-hover"
         activeWorkspaceId={activeWorkspaceId}
@@ -437,7 +435,7 @@ export function NewSessionCard({
 
       {hasWorkspace ? (
         <WorktreePicker
-          appearance="outline"
+          appearance="ghost"
           disabled={createWorktree}
           showChevron={false}
           selectedPath={selectedWorktreePath}
@@ -453,7 +451,7 @@ export function NewSessionCard({
 
       {hasWorkspace ? (
         <AppSearchableSelect
-          appearance="outline"
+          appearance="ghost"
           showChevron={false}
           disabled={isSwitchingBranch || branchOptions.length === 0}
           emptyText={t("sessions:branch.empty")}
@@ -507,7 +505,6 @@ export function NewSessionCard({
       <ChatComposer
         ref={composerRef}
         mode="agent"
-        variant="pill"
         sessionId={null}
         draftKey={newSessionComposerDraftKey(activeWorkspaceId)}
         agentType={effectiveSelectedAgent}

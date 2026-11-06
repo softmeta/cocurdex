@@ -6,6 +6,7 @@ import {
   type MessageRecord,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
+import type { ActivityDisplayMode } from "../chat-display/chat-display-types";
 import {
   isAssistantEchoOfPrompt,
   isReasoningMessage,
@@ -453,7 +454,15 @@ export function getTurnEndMessageId(
   return items[replyIndex]?.id ?? null;
 }
 
-export function withoutInterimReplies(
+function withoutHiddenActivity(items: TimelineGroup[]) {
+  return items.filter(
+    (item) =>
+      item.kind !== "toolCalls" &&
+      !(item.kind === "message" && isReasoningMessage(item.message)),
+  );
+}
+
+function withoutInterimReplies(
   items: TimelineGroup[],
   phase: Exclude<TurnPhase, "live">,
 ) {
@@ -489,6 +498,18 @@ function moveTrailingWorkBeforeTurnEnd(
     items[turnEndIndex],
     ...trailingItems.filter((item) => !isFoldableTrailingItem(item)),
   ];
+}
+
+export function getDisplayedItems(
+  items: TimelineGroup[],
+  activityDisplay: ActivityDisplayMode,
+  phase: TurnPhase,
+) {
+  if (activityDisplay !== "hidden") {
+    return items;
+  }
+  const shown = withoutHiddenActivity(items);
+  return phase === "live" ? shown : withoutInterimReplies(shown, phase);
 }
 
 export function segmentConversationItems(

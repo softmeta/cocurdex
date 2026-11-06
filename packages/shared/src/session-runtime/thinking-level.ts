@@ -2,6 +2,7 @@ import type {
   AgentId,
   AgentSessionConfigOption,
   AgentThinkingLevel,
+  PiThinkingLevel,
   ReasoningEffort,
   ReasoningEffortOption,
 } from "../contracts";
@@ -27,6 +28,8 @@ export interface ThinkingLevelSource {
   supportedReasoningEfforts?: ReasoningEffortOption[];
   defaultReasoningEffort?: Exclude<AgentThinkingLevel, "default"> | null;
 }
+
+const PI_DEFAULT_THINKING_LEVEL: PiThinkingLevel = "medium";
 
 function getPiThinkingLevels(
   source: ThinkingLevelSource,
@@ -54,7 +57,10 @@ function getPiThinkingLevels(
       if (level === "xhigh") return mapped !== undefined;
       return true;
     })
-    .map((level) => ({ level }));
+    .map((level) => ({
+      level,
+      isDefault: level === PI_DEFAULT_THINKING_LEVEL,
+    }));
 }
 
 function getReportedThinkingLevels(

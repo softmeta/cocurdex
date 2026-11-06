@@ -104,8 +104,18 @@ export function MemoryStatusButton() {
                 </Button>
               ) : null}
               {stage === "failed" ? (
-                <Button onClick={() => void enable()} size="sm" variant="ghost">
-                  {t("onboarding.retry")}
+                <Button
+                  onClick={
+                    status?.available && !cloud?.hasKeys
+                      ? openSync
+                      : () => void enable()
+                  }
+                  size="sm"
+                  variant="ghost"
+                >
+                  {status?.available && !cloud?.hasKeys
+                    ? t("onboarding.sync")
+                    : t("onboarding.retry")}
                 </Button>
               ) : null}
               {stage === "ready" && !cloud?.connected ? (

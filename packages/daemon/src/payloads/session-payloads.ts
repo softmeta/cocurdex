@@ -1,5 +1,7 @@
 import {
   AGENT_ROLE_AVATAR_COLORS,
+  AGENT_ROLE_AVATAR_FACES,
+  AGENT_ROLE_AVATAR_SHAPES,
   type AgentPermissionMode,
   reasoningEfforts,
   SCRIPT_RUN_HARD_MAX_AGENTS,
@@ -46,6 +48,12 @@ export const agentRoleAvatarSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("initial"),
+    color: z.enum(AGENT_ROLE_AVATAR_COLORS),
+  }),
+  z.object({
+    kind: z.literal("shape"),
+    shape: z.enum(AGENT_ROLE_AVATAR_SHAPES),
+    face: z.enum(AGENT_ROLE_AVATAR_FACES),
     color: z.enum(AGENT_ROLE_AVATAR_COLORS),
   }),
 ]);

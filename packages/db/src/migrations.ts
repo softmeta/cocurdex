@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { createDecksSchemaSql } from "./decks/deck-schema";
+import { createDelegationsSchemaSql } from "./delegation/schema";
 import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
 import {
   ADD_HOST_DEVICE_APPROVED_AT_SQL,
@@ -34,7 +35,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 43;
+export const CURRENT_SCHEMA_VERSION = 44;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -457,6 +458,10 @@ function createPushOutboxTable(database: DatabaseSync): void {
   database.exec(createOutboxSchemaSql());
 }
 
+function createDelegationsTable(database: DatabaseSync): void {
+  database.exec(createDelegationsSchemaSql());
+}
+
 function createRoutinesTables(database: DatabaseSync): void {
   database.exec(createRoutinesSchemaSql());
 }
@@ -639,6 +644,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [40, migratePersonasToPi],
   [41, migrateRoutineReports],
   [42, createPushOutboxTable],
+  [43, createDelegationsTable],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

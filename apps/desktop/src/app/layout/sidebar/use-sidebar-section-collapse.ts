@@ -2,7 +2,6 @@ import { useAtom } from "jotai";
 import { collapsedSessionGroupKeysAtom } from "@/features/sessions/session-list-view";
 
 export type SidebarSection =
-  | "assistants"
   | "chat"
   | "chatPinned"
   | "inbox"

@@ -11,6 +11,7 @@ import {
   rightPanelHandledRevealClockAtom,
   rightPanelRevealIntentAtom,
 } from "@/app/layout/right-panel-reveal";
+import { sidebarTabAtom } from "@/app/layout/sidebar/sidebar-tab-store";
 import { openFileAtom } from "@/features/editor/editor-store";
 import {
   closePdfAtom,
@@ -30,6 +31,29 @@ beforeEach(() => {
 });
 
 describe("rightPanelResolvedActiveViewAtom reveal", () => {
+  it("keeps assistant and work selections independent", () => {
+    const store = createStore();
+    store.set(rightPanelResolvedActiveViewAtom, "git");
+    store.set(sidebarTabAtom, "personal");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("overview");
+    store.set(rightPanelResolvedActiveViewAtom, "notes");
+    store.set(sidebarTabAtom, "workspaces");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("git");
+    store.set(sidebarTabAtom, "personal");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("notes");
+  });
+
+  it("refuses work-only surfaces in assistant context while allowing file reveals", () => {
+    const store = createStore();
+    store.set(sidebarTabAtom, "personal");
+    store.set(rightPanelResolvedActiveViewAtom, "terminal");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("overview");
+    store.set(rightPanelActiveViewAtom, "git");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("overview");
+    store.set(openFileAtom, "/workspace/result.md");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("editor");
+  });
+
   it("switches to pdf after opening a non-pdf file then a pdf (last open wins)", () => {
     const store = createStore();
     store.set(rightPanelActiveViewAtom, "editor");

@@ -26,6 +26,6 @@ export function mergeRecallResults(
     items: items.slice(0, limit),
     truncated:
       items.length > limit || results.some((result) => result.truncated),
-    error: null,
+    error: failed[0]?.error ?? null,
   };
 }

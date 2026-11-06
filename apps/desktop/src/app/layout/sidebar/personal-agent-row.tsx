@@ -1,8 +1,9 @@
 import type { PersonalAgentRecord, SessionRecord } from "@cocurdex/shared";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   BellOff,
   BellRing,
+  CircleDot,
   Copy,
   Pencil,
   Pin,
@@ -23,7 +24,10 @@ import { questionsBySessionAtom } from "@/features/agent/question";
 import { useLatestReply } from "@/features/personal";
 import {
   AgentRoleAvatar,
+  canMarkSessionUnread,
   getAgentDisplayLabel,
+  markSessionUnreadAtom,
+  sessionResultAttentionAtom,
   unreadSessionIdsAtom,
   useAvatarGaze,
 } from "@/features/sessions";
@@ -44,11 +48,14 @@ function useHomeSessionState(sessionId: string) {
   const permissions = useAtomValue(permissionsBySessionAtom)[sessionId];
   const questions = useAtomValue(questionsBySessionAtom)[sessionId];
   const isUnread = useAtomValue(unreadSessionIdsAtom).has(sessionId);
+  const canMarkUnread = canMarkSessionUnread(
+    useAtomValue(sessionResultAttentionAtom)[sessionId],
+  );
   const needsAttention = Boolean(
     permissions?.some((permission) => permission.status === "pending") ||
       questions?.some((question) => question.status === "pending"),
   );
-  return { isUnread, needsAttention };
+  return { canMarkUnread, isUnread, needsAttention };
 }
 
 function previewLine(content: string) {
@@ -69,9 +76,12 @@ export function PersonalAgentRow({
   homeSession: SessionRecord | undefined;
   isActive: boolean;
 }) {
-  const { t } = useTranslation("personal");
+  const { t } = useTranslation(["personal", "sessions"]);
   const gaze = useAvatarGaze();
-  const { isUnread, needsAttention } = useHomeSessionState(agent.homeSessionId);
+  const { canMarkUnread, isUnread, needsAttention } = useHomeSessionState(
+    agent.homeSessionId,
+  );
+  const markSessionUnread = useSetAtom(markSessionUnreadAtom);
   const isRunning = homeSession?.status === "running";
   const isMuted = agent.mutedAt !== null;
   const activityAt =
@@ -152,24 +162,28 @@ export function PersonalAgentRow({
         >
           {isMuted ? t("menu.unmute") : t("menu.mute")}
         </SidebarContextMenuItem>
+        {!isActive && canMarkUnread ? (
+          <SidebarContextMenuItem
+            icon={CircleDot}
+            onClick={() => markSessionUnread(agent.homeSessionId)}
+          >
+            {t("sessions:sidebar.markUnread")}
+          </SidebarContextMenuItem>
+        ) : null}
         <SidebarContextMenuItem
           icon={Copy}
           onClick={() => actions.onDuplicate(agent)}
         >
           {t("menu.duplicate")}
         </SidebarContextMenuItem>
-        {agent.isDefault ? null : (
-          <>
-            <ContextMenuSeparator />
-            <SidebarContextMenuItem
-              destructive
-              icon={Trash2}
-              onClick={() => actions.onDelete(agent)}
-            >
-              {t("menu.delete")}
-            </SidebarContextMenuItem>
-          </>
-        )}
+        <ContextMenuSeparator />
+        <SidebarContextMenuItem
+          destructive
+          icon={Trash2}
+          onClick={() => actions.onDelete(agent)}
+        >
+          {t("menu.delete")}
+        </SidebarContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   );

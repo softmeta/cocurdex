@@ -2,6 +2,7 @@
   "activity": {
     "attention": "需要注意",
     "completed": "已完成",
+    "handling": "正在处理",
     "planning": "工作中",
     "ready": "就绪",
     "replyCount_other": "{{count}} 条中间回复",

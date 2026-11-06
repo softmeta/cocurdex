@@ -4,6 +4,7 @@ import {
   DaemonPdfAnnotationsService,
   pdfAnnotationsStorageKey,
 } from "@cocurdex/daemon/internal/pdf-annotations";
+import { resolveAuthorizedPdfReadPath } from "@cocurdex/shared/node";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -12,9 +13,9 @@ const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());
 
 function createService(userDataPath: string, workspaceRootPath: string) {
-  return new DaemonPdfAnnotationsService(userDataPath, async () => [
-    workspaceRootPath,
-  ]);
+  return new DaemonPdfAnnotationsService(userDataPath, (filePath) =>
+    resolveAuthorizedPdfReadPath(filePath, [workspaceRootPath]),
+  );
 }
 
 describe("pdf annotations storage", () => {

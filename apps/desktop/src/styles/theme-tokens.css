@@ -404,12 +404,12 @@
   --sidebar: color-mix(in srgb, black 22%, var(--background));
   --sidebar-surface-hover: color-mix(
     in srgb,
-    var(--sidebar-foreground) 7%,
+    var(--sidebar-foreground) 4.5%,
     var(--sidebar)
   );
   --sidebar-surface-active: color-mix(
     in srgb,
-    var(--sidebar-foreground) 11%,
+    var(--sidebar-foreground) 7.5%,
     var(--sidebar)
   );
   --editor-canvas: var(--background);

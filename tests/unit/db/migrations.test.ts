@@ -1290,6 +1290,40 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds delegations from version 43 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("DROP TABLE delegations;");
+    const now = "2026-11-06T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Personal', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Coach', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO push_outbox (id, target_handle, plaintext, collapse_id, expires_at, attempts, next_attempt_at, created_at)
+      VALUES ('o1', 'h1', '{}', 'c1', 1, 0, '${now}', '${now}');
+      PRAGMA user_version = 43;
+    `);
+
+    initializeDatabase(database);
+
+    database.exec(`
+      INSERT INTO delegations (work_session_id, persona_id, requester_session_id, team_template_id, created_at)
+      VALUES ('s2', 'p1', 's1', NULL, '${now}');
+    `);
+    expect(
+      database.prepare("SELECT work_session_id FROM delegations").all(),
+    ).toEqual([{ work_session_id: "s2" }]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT id FROM push_outbox").all()).toEqual([
+      { id: "o1" },
+    ]);
+  });
+
   it("adds the push outbox from version 42 and keeps user data", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

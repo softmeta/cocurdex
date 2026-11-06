@@ -1,5 +1,6 @@
 import {
   type AgentId,
+  isManagedApplicationServer,
   type McpConfigFile,
   type McpServerConfig,
   mcpServerAgents,
@@ -118,6 +119,16 @@ export function McpAgentsSection({
       setPending(null);
     }
   };
+
+  if (isManagedApplicationServer(config))
+    return (
+      <Text size="body" tone="muted">
+        {t("mcp.agents.managedApplication", {
+          defaultValue:
+            "This connection is managed in Applications. Choose assistant access there; engine-level MCP assignment does not apply.",
+        })}
+      </Text>
+    );
 
   return (
     <section aria-label={t("mcp.agents.title")} data-mcp-agents={name}>

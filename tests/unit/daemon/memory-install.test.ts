@@ -40,7 +40,7 @@ appendFileSync(${JSON.stringify(logPath)}, JSON.stringify(process.argv.slice(2))
 }
 
 describe("installRsrs", () => {
-  it("installs the pinned rsrs CLI version", async () => {
+  it("replaces the retired @rsrsai/cli package with the pinned rsrs-cli", async () => {
     const directory = await temp.create("cocurdex-rsrs-install-");
     const logPath = path.join(directory, "npm.log");
     const env = await createFakeNpm(directory, logPath);
@@ -53,7 +53,10 @@ describe("installRsrs", () => {
       .trim()
       .split("\n")
       .map((line) => JSON.parse(line) as string[]);
-    expect(calls).toContainEqual(["install", "-g", pinned]);
+    expect(calls).toEqual([
+      ["uninstall", "-g", "@rsrsai/cli"],
+      ["install", "-g", pinned],
+    ]);
     expect(calls.flat()).not.toContain(`${RSRS_CLI_PACKAGE}@latest`);
   });
 });

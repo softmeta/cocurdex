@@ -82,7 +82,7 @@ function toScope(entry: McpServerEntry): McpServerScope {
   return entry.scope === "project" ? "project" : "global";
 }
 
-function createConnection(
+export function createConnection(
   entry: McpServerEntry,
   cwd: string,
   agentDir: string,
@@ -258,9 +258,14 @@ export interface PiMcpSignIn {
   readonly authUrl: Promise<string | null>;
   readonly done: Promise<void>;
   cancel(): void;
+  submitRedirectUrl(url: string): void;
 }
 
-function findEntry(location: PiMcpLocation, name: string) {
+export function findEntry(
+  location: PiMcpLocation,
+  name: string,
+  expectedConfig?: McpServerConfig,
+) {
   const agentDir = useAgentDir(location.userDataPath);
   const entry = loadMcpConfig({
     agentDir,
@@ -270,6 +275,11 @@ function findEntry(location: PiMcpLocation, name: string) {
   if (!entry) {
     throw new Error(`No MCP server named "${name}"`);
   }
+  if (
+    expectedConfig &&
+    JSON.stringify(entry.config) !== JSON.stringify(expectedConfig)
+  )
+    throw new Error("Application configuration changed. Try again.");
   return { agentDir, entry };
 }
 
@@ -277,8 +287,9 @@ export function startPiMcpSignIn(
   location: PiMcpLocation,
   name: string,
   timeoutMs: number,
+  expectedConfig?: McpServerConfig,
 ): PiMcpSignIn {
-  const { agentDir, entry } = findEntry(location, name);
+  const { agentDir, entry } = findEntry(location, name, expectedConfig);
   const credentials = new McpOAuthCredentialStore();
   const connection = createConnection(
     entry,
@@ -299,6 +310,7 @@ export function startPiMcpSignIn(
     resolveAuthUrl = resolve;
   });
 
+  let submitRedirect: ((url: string) => void) | null = null;
   const run = async () => {
     try {
       await connection.getClient();
@@ -317,11 +329,21 @@ export function startPiMcpSignIn(
         showAuthorizationUrl: (authorizationUrl) =>
           resolveAuthUrl(authorizationUrl.href),
         promptForRedirectUrl: (signal) =>
-          new Promise<undefined>((resolve) => {
-            if (signal.aborted) resolve(undefined);
-            signal.addEventListener("abort", () => resolve(undefined), {
-              once: true,
-            });
+          new Promise<string | undefined>((resolve) => {
+            const aborted = () => {
+              submitRedirect = null;
+              resolve(undefined);
+            };
+            if (signal.aborted) {
+              aborted();
+              return;
+            }
+            submitRedirect = (value) => {
+              signal.removeEventListener("abort", aborted);
+              submitRedirect = null;
+              resolve(value);
+            };
+            signal.addEventListener("abort", aborted, { once: true });
           }),
       },
       signal: controller.signal,
@@ -338,6 +360,7 @@ export function startPiMcpSignIn(
       throw error;
     })
     .finally(() => {
+      submitRedirect = null;
       clearTimeout(timeout);
       resolveAuthUrl(null);
       void connection.close();
@@ -348,6 +371,11 @@ export function startPiMcpSignIn(
     authUrl,
     done,
     cancel: () => controller.abort(),
+    submitRedirectUrl: (value) => {
+      if (!submitRedirect)
+        throw new Error("Sign-in is not waiting for a return URL");
+      submitRedirect(value);
+    },
   };
 }
 

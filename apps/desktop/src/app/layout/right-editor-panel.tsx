@@ -8,6 +8,7 @@ import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ResizeSeparator } from "@/components/resize-separator";
 import { beginColumnResize } from "@/components/use-column-resize";
+import { ApplicationsView } from "@/features/applications";
 import { BrowserPanel } from "@/features/browser";
 import { DecksView } from "@/features/decks";
 import {
@@ -43,6 +44,8 @@ import {
   workspacesAtom,
 } from "@/features/workspaces";
 import { cn, desktopApi, useMountEffect } from "@/lib";
+import { AssistantOverview } from "./assistant-overview";
+import { ConversationFiles } from "./conversation-files";
 import { PanScrollbar } from "./pan-scrollbar";
 import { PanelToolbar } from "./panel-toolbar";
 import { PdfReaderView } from "./pdf-reader-view";
@@ -50,6 +53,7 @@ import {
   fileTreeWidthAtom,
   type RightPanelView,
   rightPanelLastNonTerminalViewAtom,
+  rightPanelPersonalContextAtom,
   rightPanelResolvedActiveViewAtom,
   rightPanelTerminalEverActiveAtom,
   rightPanelViewTouchedAtom,
@@ -119,6 +123,7 @@ export function RightEditorPanel({
   const { t } = useTranslation("editor");
   const { t: tSearch } = useTranslation("search");
   const store = useStore();
+  const personal = useAtomValue(rightPanelPersonalContextAtom);
   const openRoutineSession = useOpenPersonalSession();
   // Atom-backed so a drag-resized width survives panel collapse/remount.
   const [fileTreeWidth, setFileTreeWidth] = useAtom(fileTreeWidthAtom);
@@ -202,6 +207,7 @@ export function RightEditorPanel({
 
   useAppShortcuts({
     toggleWorkspaceSearch: () => {
+      if (personal) return;
       setActiveView("editor");
       setSearchPanelVisible((prev) => {
         const next = !prev;
@@ -363,13 +369,15 @@ export function RightEditorPanel({
             open={fileTreeVisible && !searchPanelVisible}
             onToggle={showFileTreePanel}
           />
-          <TitlebarIconButton
-            active={searchPanelVisible}
-            aria-label={tSearch("searchFiles")}
-            onClick={toggleSearchPanel}
-          >
-            <Search className="size-3.5" />
-          </TitlebarIconButton>
+          {!personal ? (
+            <TitlebarIconButton
+              active={searchPanelVisible}
+              aria-label={tSearch("searchFiles")}
+              onClick={toggleSearchPanel}
+            >
+              <Search className="size-3.5" />
+            </TitlebarIconButton>
+          ) : null}
           <div className="min-w-0 flex-1">
             <EditorTabs />
           </div>
@@ -398,6 +406,8 @@ export function RightEditorPanel({
                 : undefined
             }
           >
+            {activeView === "overview" ? <AssistantOverview /> : null}
+            {activeView === "applications" ? <ApplicationsView /> : null}
             {activeView === "editor" ? (
               <div
                 className="flex min-h-0 flex-1"
@@ -411,7 +421,8 @@ export function RightEditorPanel({
                       data-testid="editor-sidebar-pane"
                       style={{ width: sidebarWidth }}
                     >
-                      {searchPanelVisible ? (
+                      {personal ? <ConversationFiles /> : null}
+                      {!personal && searchPanelVisible ? (
                         <div className="flex min-h-0 flex-1 flex-col">
                           <div className="border-b border-editor-border p-2">
                             <SearchPanel
@@ -430,9 +441,8 @@ export function RightEditorPanel({
                             }
                           />
                         </div>
-                      ) : (
-                        <FileTree />
-                      )}
+                      ) : null}
+                      {!personal && !searchPanelVisible ? <FileTree /> : null}
                     </div>
                     <ResizeSeparator
                       ariaLabel={t("actions.resizeExplorer")}

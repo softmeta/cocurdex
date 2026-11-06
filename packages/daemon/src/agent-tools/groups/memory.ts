@@ -15,13 +15,13 @@ export interface MemoryToolDependencies {
     input: { query: string; limit?: number },
     caller: AgentToolCallerContext,
   ): Promise<MemoryRecallResult>;
-  show(id: string): Promise<MemoryEntry | null>;
+  show(id: string, caller: AgentToolCallerContext): Promise<MemoryEntry | null>;
   remember(
     input: MemoryRememberInput,
     caller: AgentToolCallerContext,
     target: MemoryWriteTarget,
   ): Promise<MemoryRememberResult>;
-  policy(): Promise<string>;
+  policy(caller: AgentToolCallerContext): Promise<string>;
   noteToolUse?(sessionId: string, tool: "recall" | "show" | "remember"): void;
 }
 
@@ -56,7 +56,7 @@ export function registerMemoryTools(
       group: "memory",
       name: "recall",
       description:
-        "Search the user's long-term memory through Respire (rsrs). Returns compact ids and titles; use memory_show to read a full entry before relying on it. Memory is shared across every project, so query with concrete keywords and the name of the thing you are looking for, not pronouns. Empty results are normal; try different terms before concluding there is no memory. A non-null error is a setup problem, not an empty store: relay its fix to the user instead of retrying.",
+        "Search long-term memory through Respire (rsrs). Personal assistants search their own partition and shared about-me facts; other agent sessions search user-wide memory. Returns compact ids and titles; use memory_show before relying on an entry. Query with concrete keywords, not pronouns. Empty results are normal. A non-null error signals unavailable or incomplete recall; relay it instead of treating it as an empty store.",
       inputSchema: {
         type: "object",
         properties: {
@@ -101,7 +101,7 @@ export function registerMemoryTools(
     isAvailable: (caller) => deps.isEnabled() && canRead(caller),
     execute: async (caller, input) => {
       deps.noteToolUse?.(caller.sessionId, "show");
-      return deps.show(String(input.id));
+      return deps.show(String(input.id), caller);
     },
   });
 
@@ -117,7 +117,7 @@ export function registerMemoryTools(
           content: {
             type: "string",
             description:
-              "The memory body. For important entries use three lines starting with 【前因】【行为】【后果】.",
+              "The memory body. For a personal fact or preference, state it plainly with its source and date when relevant. For a reusable procedure, include cause, action and result.",
           },
           title: {
             type: "string",
@@ -176,10 +176,9 @@ export function registerMemoryTools(
     },
     isAvailable: (caller) => deps.isEnabled() && canWrite(caller),
     execute: async (caller, input) => {
-      deps.noteToolUse?.(caller.sessionId, "remember");
       const target: MemoryWriteTarget =
         input.about === "user" ? "user" : "assistant";
-      return deps.remember(
+      const result = await deps.remember(
         {
           content: String(input.content),
           title: String(input.title),
@@ -196,6 +195,13 @@ export function registerMemoryTools(
         caller,
         target,
       );
+      if (
+        (result.action === "created" || result.action === "merged") &&
+        result.id
+      ) {
+        deps.noteToolUse?.(caller.sessionId, "remember");
+      }
+      return result;
     },
   });
 
@@ -212,6 +218,6 @@ export function registerMemoryTools(
       },
     },
     isAvailable: (caller) => deps.isEnabled() && canRead(caller),
-    execute: async () => deps.policy(),
+    execute: async (caller) => deps.policy(caller),
   });
 }

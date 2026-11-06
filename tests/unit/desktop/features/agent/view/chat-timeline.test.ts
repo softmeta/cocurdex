@@ -7,10 +7,10 @@ import {
 import { describe, expect, it } from "vitest";
 import {
   createTimelineGroups,
+  getDisplayedItems,
   segmentConversationItems,
   type TimelineGroup,
   type TurnPhase,
-  withoutInterimReplies,
 } from "@/features/agent/view/chat-timeline";
 
 function reply(id: string, kind?: MessageRecord["kind"]): TimelineGroup {
@@ -113,18 +113,30 @@ describe("segmentConversationItems", () => {
   });
 });
 
-describe("withoutInterimReplies", () => {
-  it("drops interim replies and keeps process items and the final reply", () => {
-    const items = [
-      reply("think", "reasoning"),
-      reply("interim"),
-      tools("tools"),
-      reply("final"),
-    ];
+describe("getDisplayedItems", () => {
+  const items = [
+    reply("think", "reasoning"),
+    reply("interim"),
+    tools("tools"),
+    reply("final"),
+  ];
 
+  function displayedIds(phase: TurnPhase) {
+    return getDisplayedItems(items, "hidden", phase).map((item) => item.id);
+  }
+
+  it("shows only the replies of a live turn when activity is hidden", () => {
+    expect(displayedIds("live")).toEqual(["interim", "final"]);
+  });
+
+  it("shows only the final reply of a finished turn when activity is hidden", () => {
+    expect(displayedIds("completed")).toEqual(["final"]);
+  });
+
+  it("keeps every item when activity is shown", () => {
     expect(
-      withoutInterimReplies(items, "completed").map((item) => item.id),
-    ).toEqual(["think", "tools", "final"]);
+      getDisplayedItems(items, "condensed", "completed").map((item) => item.id),
+    ).toEqual(["think", "interim", "tools", "final"]);
   });
 });
 

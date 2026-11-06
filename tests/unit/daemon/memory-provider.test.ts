@@ -210,6 +210,40 @@ describe("memory partitions", () => {
 });
 
 describe("MemoryService over a MemoryProvider", () => {
+  it("refuses scoped recall when partition support is unavailable", async () => {
+    const { service, provider } = createService();
+    const capabilities = await provider.capabilities();
+    provider.capabilities = async () => ({
+      ...capabilities,
+      partitions: false,
+    });
+    const result = await service.recallIn({ query: "private" }, [
+      { kind: "me" },
+    ]);
+    expect(result.error).toContain("partition");
+    expect(provider.recalled).toEqual([]);
+  });
+
+  it("refuses reading or merging a memory outside the writable partition", async () => {
+    const { service, provider } = createService();
+    provider.live.set("foreign", entry("foreign", "cocurdex/agent/other"));
+    await expect(service.showIn("foreign", [{ kind: "me" }])).rejects.toThrow(
+      "partition",
+    );
+    await expect(
+      service.rememberIn(
+        {
+          title: "Combined",
+          content: "Combined facts",
+          mergeIds: ["foreign"],
+        },
+        { kind: "me" },
+      ),
+    ).rejects.toThrow("partition");
+    expect(provider.remembered).toEqual([]);
+    expect(provider.live.has("foreign")).toBe(true);
+  });
+
   it("lists one partition without entries from other partitions", async () => {
     const { service, provider } = await createService();
     const me = memoryPartitionProject({ kind: "me" });

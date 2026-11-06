@@ -147,7 +147,8 @@ appId: dev.cocurdex.mobile
       - tapOn:
           id: settings-computers
       - extendedWaitUntil:
-          visible: ".*${HOST_ADDRESS}.*"
+          visible:
+            id: "host-row-.*"
           timeout: 5000
 - takeScreenshot: paired
 - longPressOn:

@@ -18,6 +18,7 @@ import {
   type RsrsExecutable,
   readInjectedHosts,
   readRsrsPolicy,
+  readRsrsStatus,
   recallMemories,
   recallMemoriesViaRuntime,
   rememberMemory,
@@ -39,12 +40,13 @@ import {
 } from "./rsrs-library";
 import {
   callRuntimeTool,
-  ensureRuntime,
+  findRuntime,
   listRuntimeTools,
   type RuntimeEndpoint,
 } from "./runtime";
 
 const CACHE_MS = 30_000;
+const RUNTIME_START_TIMEOUT_MS = 60_000;
 const AGENT_BY_RSRS_HOST: Record<string, string> = {
   claude: "claude-agent",
   codex: "codex",
@@ -114,6 +116,8 @@ export class RsrsMemoryProvider implements MemoryProvider {
   private injected: { agents: string[]; at: number } | null = null;
   private readonly reads = new TaskQueue();
   private readonly writes = new TaskQueue();
+  private startingRuntime: Promise<void> | null = null;
+  private warming: Promise<void> | null = null;
 
   constructor(private readonly options: RsrsMemoryProviderOptions) {}
 
@@ -136,6 +140,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
   }
 
   forgetExecutable() {
+    this.warming = null;
     this.resolved = null;
     this.resolvedAt = 0;
     this.capabilitySet = null;
@@ -145,6 +150,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
   }
 
   adoptExecutable(executable: RsrsExecutable) {
+    this.warming = null;
     this.resolved = executable;
     this.resolvedAt = this.nowMs();
     this.capabilitySet = null;
@@ -163,19 +169,33 @@ export class RsrsMemoryProvider implements MemoryProvider {
     }
     const executable = await this.executable();
     if (!executable) return null;
-    let endpoint: RuntimeEndpoint | null = null;
-    try {
-      endpoint = await ensureRuntime({
-        command: executable.command,
-        dataDir: this.options.dataDir,
-        autoStart: this.options.startRuntime !== false,
-        now: () => this.nowMs(),
-      });
-    } catch (error) {
-      logDaemonDiagnostic("info", "memory.runtimeUnavailable", {
-        error: errorMessage(error),
-      });
+    const endpoint = await findRuntime(this.options.dataDir);
+    if (!endpoint && this.options.startRuntime !== false) {
+      this.startRuntimeInBackground(executable);
     }
+    return this.adoptEndpoint(endpoint);
+  }
+
+  private startRuntimeInBackground(executable: RsrsExecutable) {
+    this.startingRuntime ??= readRsrsStatus(
+      executable,
+      RUNTIME_START_TIMEOUT_MS,
+    )
+      .then(() => findRuntime(this.options.dataDir))
+      .then(async (endpoint) => {
+        if (endpoint) await this.adoptEndpoint(endpoint);
+      })
+      .catch((error: unknown) => {
+        logDaemonDiagnostic("info", "memory.runtimeUnavailable", {
+          error: errorMessage(error),
+        });
+      })
+      .finally(() => {
+        this.startingRuntime = null;
+      });
+  }
+
+  private async adoptEndpoint(endpoint: RuntimeEndpoint | null) {
     this.endpoint = endpoint;
     this.endpointCheckedAt = this.nowMs();
     this.tools = endpoint
@@ -233,6 +253,28 @@ export class RsrsMemoryProvider implements MemoryProvider {
 
   async available() {
     return (await this.executable()) !== null;
+  }
+
+  async warmup(reset = false) {
+    if (this.options.startRuntime === false) return;
+    if (reset) this.warming = null;
+    this.warming ??= (async () => {
+      const executable = await this.requireExecutable();
+      const status = await readRsrsStatus(executable, RUNTIME_START_TIMEOUT_MS);
+      if (!status.hasKeys || status.workspaceMode === "off") return;
+      const result = await recallMemories(executable, {
+        query: "Cocurdex memory readiness",
+        project: "cocurdex/me",
+        limit: 1,
+        timeoutMs: RUNTIME_START_TIMEOUT_MS,
+      });
+      if (result.error) throw new Error(result.error);
+    })().catch((error: unknown) => {
+      logDaemonDiagnostic("info", "memory.warmupFailed", {
+        error: errorMessage(error),
+      });
+    });
+    return this.warming;
   }
 
   async capabilities(): Promise<MemoryProviderCapabilities> {
@@ -325,11 +367,15 @@ export class RsrsMemoryProvider implements MemoryProvider {
         (!input.project ||
           this.runtimeSupports("memory_remember", "project")) &&
         !input.tags?.length;
-      return this.viaRuntime(
-        useRuntime ? endpoint : null,
-        (target) => rememberMemoryViaRuntime(target, input),
-        () => rememberMemory(executable, input),
-      );
+      if (!useRuntime || !endpoint) return rememberMemory(executable, input);
+      try {
+        return await rememberMemoryViaRuntime(endpoint, input);
+      } catch (error) {
+        throw new Error(
+          `Memory write could not be confirmed; inspect the library before retrying. ${errorMessage(error)}`,
+          { cause: error },
+        );
+      }
     });
   }
 

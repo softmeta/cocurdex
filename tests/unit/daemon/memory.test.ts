@@ -16,6 +16,7 @@ import {
   buildMemoryRecallQuery,
   DEFAULT_MEMORY_SETTINGS,
   gateMemorySettings,
+  type MemoryRememberResult,
   memoryPlatformSupportsRsrs,
   normalizeMemorySettings,
   parseMemorySettings,
@@ -49,13 +50,15 @@ function registryWith(enabled: boolean) {
       error: null,
     })),
     show: vi.fn(async () => null),
-    remember: vi.fn(async () => ({
-      action: "created" as const,
-      id: "memory-2",
-      title: "New",
-      candidates: [],
-      message: null,
-    })),
+    remember: vi.fn(
+      async (): Promise<MemoryRememberResult> => ({
+        action: "created" as const,
+        id: "memory-2",
+        title: "New",
+        candidates: [],
+        message: null,
+      }),
+    ),
     policy: vi.fn(async () => "policy text"),
     noteToolUse: vi.fn(),
   };
@@ -169,20 +172,15 @@ describe("rsrs JSON parsing", () => {
     ]);
   });
 
-  it("falls back to compact items when details are absent", () => {
+  it("reads a recall without hits as empty, not as its status row", () => {
     expect(
       parseRecallPayload({
-        items: [{ name: "abc", status: "ok", value: "0.7 Some title" }],
+        command: "recall",
+        status: "skip",
+        items: [{ name: "results", status: "skip", value: "0" }],
+        details: null,
       }),
-    ).toEqual([
-      {
-        id: "abc",
-        title: "Some title",
-        score: 0.7,
-        importance: null,
-        updatedAt: null,
-      },
-    ]);
+    ).toEqual([]);
   });
 
   it("parses a shown entry", () => {
@@ -225,6 +223,29 @@ describe("rsrs JSON parsing", () => {
     });
   });
 
+  it("preserves real rsrs pending candidates without treating them as recall rows", () => {
+    expect(
+      parseRememberPayload({
+        status: "pending",
+        summary: { state: "candidates", written: false, merge_count: 1 },
+        items: [
+          {
+            name: "1234abcd",
+            status: "pending",
+            value: "similarity=90% title=Prefers tea",
+          },
+        ],
+        details: null,
+        actions: ["Read candidate bodies before choosing merge or attach."],
+      }),
+    ).toMatchObject({
+      action: "candidates",
+      id: null,
+      candidates: [{ id: "1234abcd", title: "Prefers tea", score: 0.9 }],
+      message: expect.stringContaining("Read candidate bodies"),
+    });
+  });
+
   it("parses JSON with a leading progress line", () => {
     expect(
       parseRsrsJson('loading\n{"command":"list","status":"ok"}'),
@@ -233,6 +254,24 @@ describe("rsrs JSON parsing", () => {
 });
 
 describe("memory agent tools", () => {
+  it("does not count pending or skipped writes as saved", async () => {
+    const { registry, deps } = registryWith(true);
+    deps.remember.mockResolvedValue({
+      action: "candidates",
+      id: null,
+      title: null,
+      candidates: [],
+      message: "Pending",
+    });
+    await registry.call(caller, "memory_remember", {
+      title: "Tea",
+      content: "Likes tea",
+    });
+    expect(deps.noteToolUse).not.toHaveBeenCalledWith(
+      caller.sessionId,
+      "remember",
+    );
+  });
   it("exposes reads and writes to a main session when enabled", () => {
     const { registry } = registryWith(true);
     const names = registry.catalog(caller).tools.map((tool) => tool.name);

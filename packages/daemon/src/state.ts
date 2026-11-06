@@ -278,6 +278,7 @@ export class DaemonState {
       personalAgents: this.database.personalAgents,
       routines: this.database.routines,
       pushOutbox: this.database.pushOutbox,
+      delegations: this.database.delegations,
       search: this.database.search,
     };
   }

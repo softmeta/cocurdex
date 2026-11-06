@@ -51,7 +51,7 @@ Only delegated runs (teammates and spawned subagents) wait for capacity, in arri
 
 ## Long-term memory
 
-Long-term memory runs on the rsrs CLI (`@rsrsai/cli`) and keeps its store in `~/.rsrs`. Agents use it through the `memory` tool group (recall, show, remember, policy); the user uses Settings → Memory or `cocurdex memory`. Memory stays on while rsrs is missing or has no identity, so a memory tool result may report a setup error instead of data: relay the fix it names, do not retry the same call.
+Long-term memory runs on the rsrs CLI (`rsrs-cli`) and keeps its store in `~/.rsrs`. Agents use it through the `memory` tool group (recall, show, remember, policy); the user uses Settings → Memory or `cocurdex memory`. Memory stays on while rsrs is missing or has no identity, so a memory tool result may report a setup error instead of data: relay the fix it names, do not retry the same call.
 
 - Inspect: `cocurdex memory status [--refresh] [--json]` reports whether rsrs is installed (`available`, `version`, `executable`, `dataDir`), the settings, `doctor`, and the account (`cloud.connected`, `cloud.user`, `cloud.autosync`). `cocurdex memory recall <query> [--json]` adds `error` when memory cannot read, `cocurdex memory doctor [--remote]`, and `cocurdex memory policy` prints the full rsrs workflow.
 - Browse and edit memories: `cocurdex memory list|update|forget|restore|history`; see `/cocurdex-persona` for partitions.

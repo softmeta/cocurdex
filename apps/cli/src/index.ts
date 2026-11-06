@@ -17,6 +17,10 @@ import {
 } from "@cocurdex/shared";
 import { agentAuthUsageLines, handleAgentCommand } from "./agent-auth-commands";
 import {
+  applicationUsageLines,
+  handleApplicationCommand,
+} from "./application-commands";
+import {
   daemonBackgroundUsageLines,
   handleDaemonBackgroundCommand,
 } from "./daemon-background-command";
@@ -51,6 +55,10 @@ import {
   stringFlag,
 } from "./parse-args";
 import { handlePersonaCommand, personaUsageLines } from "./persona-commands";
+import {
+  handlePersonaWorkCommand,
+  personaWorkUsageLines,
+} from "./persona-work-commands";
 import { handleProviderCommand, providerUsageLines } from "./provider-commands";
 import { handleRoutineCommand, routineUsageLines } from "./routine-commands";
 import {
@@ -155,6 +163,11 @@ async function main(rawArgs: string[]) {
     if (handled) {
       return;
     }
+  }
+
+  if (resource === "persona" && action === "work") {
+    await handlePersonaWorkCommand(args, parsed);
+    return;
   }
 
   if (resource === "persona") {
@@ -425,6 +438,12 @@ async function main(rawArgs: string[]) {
     return;
   }
 
+  if (
+    resource === "apps" &&
+    (await handleApplicationCommand(rawArgs.slice(rawArgs.indexOf("apps") + 1)))
+  )
+    return;
+
   if (resource === "mcp") {
     const handled = await handleMcpCommand(
       rawArgs.slice(rawArgs.indexOf("mcp") + 1),
@@ -632,6 +651,7 @@ function printUsage() {
       "  cocurdex session peer-inbound <session-id> deliver|refuse",
       "  cocurdex session stop <session-id>",
       ...personaUsageLines(),
+      ...personaWorkUsageLines(),
       ...routineUsageLines(),
       ...inboxUsageLines(),
       ...teamUsageLines(),
@@ -639,6 +659,7 @@ function printUsage() {
       ...providerUsageLines(),
       ...agentAuthUsageLines(),
       ...mcpUsageLines(),
+      ...applicationUsageLines(),
       "  cocurdex workflow list",
       "  cocurdex workflow definitions",
       "  cocurdex workflow tui [run-id]",

@@ -12,8 +12,8 @@ import {
 } from "@cocurdex/daemon/internal/memory/rsrs";
 import {
   callRuntimeTool,
+  findRuntime,
   listRuntimeTools,
-  readRuntimeEndpoint,
 } from "@cocurdex/daemon/internal/memory/runtime";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
@@ -36,9 +36,25 @@ function readBody(request: IncomingMessage) {
   });
 }
 
-async function startRuntime(handler: Handler) {
+async function startRuntime(
+  handler: Handler,
+  health: Record<string, unknown> = {},
+) {
   const server = createServer(
     async (request: IncomingMessage, response: ServerResponse) => {
+      if (request.method === "GET" && request.url === "/api/health") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(
+          JSON.stringify({
+            server: "respire",
+            v: 1,
+            pid: 4242,
+            runtime_version: "1.0.0",
+            ...health,
+          }),
+        );
+        return;
+      }
       const body = JSON.parse(await readBody(request)) as {
         method?: string;
         params?: Record<string, unknown>;
@@ -62,7 +78,7 @@ async function startRuntime(handler: Handler) {
   };
 }
 
-async function writeRuntimeFiles(dataDir: string, url: string) {
+async function writeEndpointFile(dataDir: string, url: string) {
   const runtimeDir = path.join(dataDir, "runtime");
   await mkdir(runtimeDir, { recursive: true });
   await writeFile(
@@ -70,7 +86,6 @@ async function writeRuntimeFiles(dataDir: string, url: string) {
     JSON.stringify({ bin: "1.0.0", pid: 4242, url, v: 1 }),
     "utf8",
   );
-  await writeFile(path.join(runtimeDir, "token"), "runtime-token\n", "utf8");
 }
 
 function toolText(value: unknown) {
@@ -99,15 +114,10 @@ describe("rsrs runtime client", () => {
       throw new Error(`unexpected tool ${method} ${JSON.stringify(params)}`);
     });
     const dataDir = await temp.create("cocurdex-runtime-");
-    await writeRuntimeFiles(dataDir, runtime.url);
+    await writeEndpointFile(dataDir, runtime.url);
     try {
-      const endpoint = await readRuntimeEndpoint(dataDir);
-      expect(endpoint).toMatchObject({
-        url: runtime.url,
-        token: "runtime-token",
-        bin: "1.0.0",
-        pid: 4242,
-      });
+      const endpoint = await findRuntime(dataDir);
+      expect(endpoint).toEqual({ url: runtime.url, bin: "1.0.0", pid: 4242 });
       if (!endpoint) throw new Error("expected an endpoint");
       const catalog = await listRuntimeTools(endpoint);
       expect(catalog.get("memory_recall")).toEqual(new Set(["query"]));
@@ -118,6 +128,36 @@ describe("rsrs runtime client", () => {
         5_000,
       );
       expect(status).toMatchObject({ command: "status", status: "ok" });
+    } finally {
+      await runtime.close();
+    }
+  });
+
+  it("ignores a runtime that speaks another protocol version", async () => {
+    const runtime = await startRuntime(() => ({ tools: [] }), { v: 2 });
+    const dataDir = await temp.create("cocurdex-runtime-");
+    await writeEndpointFile(dataDir, runtime.url);
+    try {
+      await expect(findRuntime(dataDir)).resolves.toBeNull();
+    } finally {
+      await runtime.close();
+    }
+  });
+
+  it("reports a failed tool call with the runtime's diagnostic", async () => {
+    const runtime = await startRuntime(() => ({
+      content: [{ type: "text", text: "tool failed: entry: not found" }],
+      isError: true,
+    }));
+    try {
+      await expect(
+        callRuntimeTool(
+          { url: runtime.url, bin: null, pid: null },
+          "memory_show",
+          { id: "missing" },
+          5_000,
+        ),
+      ).rejects.toThrow("tool failed: entry: not found");
     } finally {
       await runtime.close();
     }
@@ -143,7 +183,7 @@ describe("rsrs runtime client", () => {
     );
     try {
       const result = await recallMemoriesViaRuntime(
-        { url: runtime.url, token: "runtime-token", bin: null, pid: null },
+        { url: runtime.url, bin: null, pid: null },
         { query: "anything", limit: 5 },
       );
       expect(result.items).toEqual([
@@ -185,12 +225,7 @@ describe("rsrs runtime client", () => {
       });
     });
     try {
-      const endpoint = {
-        url: runtime.url,
-        token: "runtime-token",
-        bin: null,
-        pid: null,
-      };
+      const endpoint = { url: runtime.url, bin: null, pid: null };
       const shown = await showMemoryViaRuntime(endpoint, "memory-1", 5_000);
       expect(shown.entry).toMatchObject({ id: "memory-1", title: "Shown" });
       const remembered = await rememberMemoryViaRuntime(

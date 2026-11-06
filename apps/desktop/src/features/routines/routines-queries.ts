@@ -25,11 +25,20 @@ function useRoutineChanges() {
 }
 
 export function useRoutines() {
-  const { data } = useSWR("routine.list", routinesApi.list, {
+  const {
+    data,
+    error,
+    mutate: revalidate,
+  } = useSWR("routine.list", routinesApi.list, {
     dedupingInterval: 0,
   });
   useRoutineChanges();
-  return { routines: data ?? NO_ROUTINES, loaded: data !== undefined };
+  return {
+    routines: data ?? NO_ROUTINES,
+    loaded: data !== undefined,
+    error,
+    revalidate,
+  };
 }
 
 export function useRoutineRuns(routineId: string | null) {

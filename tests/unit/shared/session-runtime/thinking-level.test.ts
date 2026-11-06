@@ -2,6 +2,7 @@ import {
   getConfigOptionThinkingLevels,
   getEffectiveThinkingLevel,
   getThinkingLevelOptions,
+  resolveThinkingLevel,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 
@@ -14,6 +15,14 @@ const claudeEfforts = [
 ] as const;
 
 describe("getThinkingLevelOptions", () => {
+  it("selects pi's own default level when no level is chosen", () => {
+    const options = getThinkingLevelOptions({
+      agentType: "pi",
+      supportsReasoning: true,
+    });
+    expect(resolveThinkingLevel(options, "default")).toBe("medium");
+  });
+
   it("uses the model-reported effort levels for Claude Agent", () => {
     expect(
       getThinkingLevelOptions({

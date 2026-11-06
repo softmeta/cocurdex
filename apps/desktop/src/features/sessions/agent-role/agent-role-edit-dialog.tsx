@@ -15,21 +15,25 @@ import { AgentRoleForm } from "./agent-role-form";
 export function AgentRoleEditDialog({
   role,
   agentLocked,
+  descriptionPlaceholder,
   children,
   open,
   onOpenChange,
   onSaved,
   save,
   title,
+  size = "compact",
 }: {
   role?: AgentRoleRecord | null;
   agentLocked?: boolean;
+  descriptionPlaceholder?: string;
   children?: ReactNode;
   open: boolean;
   onOpenChange(open: boolean): void;
   onSaved?(role: AgentRoleRecord): void;
   save?(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
   title?: string;
+  size?: "compact" | "default";
 }) {
   const { t } = useTranslation("settings");
   const agents = useAtomValue(agentsAtom);
@@ -39,7 +43,7 @@ export function AgentRoleEditDialog({
 
   return (
     <Dialog disablePointerDismissal open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="compact">
+      <DialogContent size={size}>
         <DialogHeader>
           <DialogTitle>
             {title ??
@@ -50,6 +54,7 @@ export function AgentRoleEditDialog({
           key={role?.id ?? "new"}
           role={role ?? blankRoleDraft(agents)}
           agentLocked={agentLocked}
+          descriptionPlaceholder={descriptionPlaceholder}
           save={save}
           onCancel={() => onOpenChange(false)}
           onSaved={(saved) => {

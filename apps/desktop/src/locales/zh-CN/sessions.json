@@ -69,6 +69,7 @@
     "switchFailed": "无法切换到 {{branch}}。请检查工作区状态后重试。"
   },
   "composer": {
+    "agent": "Agent",
     "agentStatus": {
       "detecting": "检测中",
       "error": "不可用",

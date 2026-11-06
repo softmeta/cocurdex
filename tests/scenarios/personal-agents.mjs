@@ -1,4 +1,6 @@
+import { writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import path from "node:path";
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
@@ -10,7 +12,18 @@ import {
   waitForNoRole,
   waitForRole,
 } from "./lib/locate.mjs";
-import { openAssistantsTab, translate } from "./lib/navigate.mjs";
+import {
+  openAssistantsTab,
+  showPanelView,
+  translate,
+} from "./lib/navigate.mjs";
+import { assistantApplicationsStep } from "./lib/personal-applications.mjs";
+import {
+  assistantFilesStep,
+  assistantPanelsStep,
+  assistantWorkStep,
+} from "./lib/personal-overview.mjs";
+import { assistantManagedPdfStep } from "./lib/personal-pdf-upload.mjs";
 
 const BRIEF_RESULTS_TITLE = {
   "en-US": "Routine results",
@@ -85,8 +98,10 @@ async function seedStubModel(session) {
 }
 
 runScenario("personal-agents", {
-  open: () => openScenarioApp(args),
-  setup: async ({ session }) => {
+  open: () => openScenarioApp(args, { isolated: true }),
+  setup: async ({ session, workspaceRoot }) => {
+    state.outputPath = path.join(workspaceRoot, "assistant-result.txt");
+    await writeFile(state.outputPath, "Assistant result content", "utf8");
     stub = await startStubLlmServer();
     await seedStubModel(session);
     return {};
@@ -139,26 +154,32 @@ runScenario("personal-agents", {
         );
         check(selected, "the default assistant row is selected");
         state.homeSessionId = assistant.homeSessionId;
+        state.personaId = assistant.id;
         return { homeSessionId: assistant.homeSessionId };
       },
     ],
+    assistantPanelsStep(),
+    assistantApplicationsStep(state),
     [
       "the assistant answers in its home thread",
       async ({ session }) => {
         const { homeSessionId } = state;
         stub.plan = {
           kind: "stream",
-          chunks: ["Ten push-ups,", " then stretch."],
+          chunks: [
+            "Ten push-ups,",
+            ` then stretch.\n\n[Assistant result](${state.outputPath})`,
+          ],
         };
-        const [composer] = await waitForRole(
+        const suggestion = await translate(
           session,
-          await composerQuery(session),
+          "personal:thread.suggestions.attention",
         );
-        await typeInto(session, composer, "Plan my workout");
-        await clickByRole(session, {
-          role: "button",
-          name: await translate(session, "common:actions.send"),
-        });
+        await clickByRole(
+          session,
+          { role: "button", name: suggestion },
+          UI_TIMEOUT_MS,
+        );
         const shown = await session
           .waitUntil(
             (reply) =>
@@ -192,13 +213,16 @@ runScenario("personal-agents", {
           })),
         });
         check(
-          contents.includes("Plan my workout") && contents.includes(REPLY),
+          contents.includes(suggestion) &&
+            contents.some((content) => content.startsWith(REPLY)),
           "the exchange is stored in the assistant's home thread",
           contents,
         );
         return {};
       },
     ],
+    assistantFilesStep(),
+    assistantManagedPdfStep(state, () => stub),
     [
       "a routine result posts to the home thread and links its run",
       async ({ session }) => {
@@ -339,6 +363,7 @@ runScenario("personal-agents", {
         return {};
       },
     ],
+    assistantWorkStep(state, () => stub),
     [
       "a new assistant is named in the edit dialog",
       async ({ session }) => {
@@ -439,6 +464,33 @@ runScenario("personal-agents", {
           !roles.some((role) => role.id === coach.role.id),
           "assistant roles stay out of the agent role list",
           roles.map((role) => role.name),
+        );
+        await showPanelView(session, "overview");
+        const overview = {
+          role: "region",
+          name: await translate(
+            session,
+            "editor:actions.showAssistantOverview",
+          ),
+        };
+        await waitForRole(session, {
+          role: "region",
+          name: await translate(session, "personal:overview.work"),
+          within: overview,
+        });
+        const foreignWork = await queryAllByRole(session, {
+          role: "button",
+          name: /Overview code review/,
+          within: overview,
+        });
+        const foreignRoutines = await queryAllByRole(session, {
+          role: "button",
+          name: /Morning brief/,
+          within: overview,
+        });
+        check(
+          foreignWork.length === 0 && foreignRoutines.length === 0,
+          "a new assistant's overview excludes another assistant's work and routines",
         );
         state.coach = coach;
         return { coach: coach.id };

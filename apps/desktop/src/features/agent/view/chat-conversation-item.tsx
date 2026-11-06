@@ -66,11 +66,11 @@ import {
 import type { ConversationGroup, TimelineGroup } from "./chat-timeline";
 import {
   findConversationTurnStats,
+  getDisplayedItems,
   getTurnEndMessageId,
   getVisibleConversationItems,
   segmentConversationItems,
   type TurnPhase,
-  withoutInterimReplies,
 } from "./chat-timeline";
 import { ContextCompactionDivider } from "./context-compaction-divider";
 import { MessageOriginLine } from "./message-origin-line";
@@ -666,10 +666,11 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   );
   const phase = getTurnPhase(showActivity, turnStats);
   const conversationItems = getVisibleConversationItems(conversationGroup);
-  const visibleItems =
-    activityDisplay === "hidden" && phase !== "live"
-      ? withoutInterimReplies(conversationItems, phase)
-      : conversationItems;
+  const visibleItems = getDisplayedItems(
+    conversationItems,
+    activityDisplay,
+    phase,
+  );
   const segments = segmentConversationItems(
     visibleItems,
     activityDisplay === "condensed",

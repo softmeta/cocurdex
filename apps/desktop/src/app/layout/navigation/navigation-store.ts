@@ -1,4 +1,3 @@
-import { isChatSession, isPersonalSession } from "@cocurdex/shared";
 import { atom, type createStore, type Getter, type Setter } from "jotai";
 import { activeDeckIdAtom, openDeckAtom } from "@/features/decks";
 import { editorPanelOpenAtom } from "@/features/editor";
@@ -22,7 +21,7 @@ import {
   type RightPanelView,
   rightPanelResolvedActiveViewAtom,
 } from "../right-editor-panel-store";
-import { sidebarTabAtom } from "../sidebar";
+import { sidebarTabAtom, sidebarTabOf } from "../sidebar";
 import {
   type AppLocation,
   currentLocation,
@@ -94,14 +93,9 @@ function applySession(get: Getter, set: Setter, sessionId: string | null) {
     (candidate) => candidate.id === sessionId,
   );
   if (!session) return;
-  if (isChatSession(session)) {
-    set(sidebarTabAtom, "chat");
-  } else if (isPersonalSession(session)) {
-    set(sidebarTabAtom, "personal");
-  } else {
-    set(sidebarTabAtom, "workspaces");
-    set(selectWorkspaceAtom, session.workspaceId);
-  }
+  const tab = sidebarTabOf(session);
+  set(sidebarTabAtom, tab);
+  if (tab === "workspaces") set(selectWorkspaceAtom, session.workspaceId);
   set(selectSessionAtom, session.id);
 }
 

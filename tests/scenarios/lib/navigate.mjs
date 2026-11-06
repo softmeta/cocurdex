@@ -10,6 +10,8 @@ import {
 const NAVIGATION_TIMEOUT_MS = 30_000;
 
 const PANEL_VIEW_KEYS = {
+  applications: "editor:actions.showApplications",
+  overview: "editor:actions.showAssistantOverview",
   files: "editor:actions.showEditor",
   git: "editor:actions.showGitChanges",
   terminal: "editor:actions.showTerminal",
@@ -77,18 +79,36 @@ export async function showPanelView(session, view) {
   const key = PANEL_VIEW_KEYS[view];
   if (!key) throw new Error(`Unknown panel view "${view}"`);
   const panel = await openEditorPanel(session);
-  await clickByRole(
-    session,
-    {
-      role: "button",
-      name: await translate(session, key),
-      within: {
-        role: "group",
-        name: await translate(session, "editor:actions.panelViews"),
-      },
-    },
-    NAVIGATION_TIMEOUT_MS,
-  );
+  const group = {
+    role: "group",
+    name: await translate(session, "editor:actions.panelViews"),
+  };
+  let name = await translate(session, key);
+  const [more] = await queryAllByRole(session, {
+    role: "button",
+    name: await translate(session, "editor:actions.moreViews"),
+  });
+  if (more && view === "files")
+    name = await translate(session, "editor:actions.conversationFiles");
+  const [tab] = await queryAllByRole(session, {
+    role: "button",
+    name,
+    within: group,
+  });
+  if (!tab && more) {
+    await clickByRole(session, { role: "button", name: more.name });
+    await clickByRole(
+      session,
+      { role: "menuitem", name },
+      NAVIGATION_TIMEOUT_MS,
+    );
+  } else {
+    await clickByRole(
+      session,
+      { role: "button", name, within: group },
+      NAVIGATION_TIMEOUT_MS,
+    );
+  }
   return panel;
 }
 

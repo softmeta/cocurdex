@@ -4,6 +4,7 @@ export default interface Resources {
     activity: {
       attention: "Attention needed";
       completed: "Completed";
+      handling: "Working on it";
       planning: "Working";
       ready: "Ready";
       replyCount_one: "{{count}} interim reply";
@@ -720,6 +721,7 @@ export default interface Resources {
       closeChatSessions: "Close session list";
       closeEditorPanel: "Close editor panel";
       closeFile: "Close file {{fileName}}";
+      conversationFiles: "Conversation files";
       detachedChatFabHint: "Show or hide the independent chat window. Drag to reposition this button. Hover and click × to hide the button; {{shortcut}} restores it.";
       dockEditorPanel: "Place panel beside chat";
       enterEditorFullscreen: "Enter full screen";
@@ -729,6 +731,7 @@ export default interface Resources {
       goForward: "Go forward";
       hideChatFab: "Hide chat button";
       hideChatFabHint: "Hide this button. {{shortcut}} to show it again.";
+      moreViews: "More views";
       navigateBack: "Back";
       navigateForward: "Forward";
       navigationHistory: "Navigation history";
@@ -743,6 +746,8 @@ export default interface Resources {
       resizeExplorer: "Resize explorer panel";
       resizeSessionList: "Resize session list";
       resizeSidebar: "Resize sidebar";
+      showApplications: "Applications";
+      showAssistantOverview: "Assistant overview";
       showBrowser: "Browser";
       showDecks: "Decks";
       showEditor: "Files";
@@ -914,6 +919,7 @@ export default interface Resources {
       toc: "Table of contents";
     };
     states: {
+      conversationFilesDescription: "Attachments and files opened in this conversation";
       fileReadError: "Unable to read this file in the editor preview.";
       filesLoadError: "Failed to load workspace files.";
       gitEmptyBranchDescription: "The selected branches have no differing files, or one of the refs could not be resolved.";
@@ -938,6 +944,7 @@ export default interface Resources {
       gitNotRepoTitle: "Not a git repository";
       loadingFile: "Loading file...";
       loadingGitChanges: "Loading git changes...";
+      noConversationFiles: "No conversation files";
       noFileDescription: "Select a file from the explorer to preview it in the editor area.";
       noFileSelected: "No file selected";
       noWorkspace: "No workspace";
@@ -1526,6 +1533,58 @@ export default interface Resources {
     title: "Welcome to cocurdex";
   };
   personal: {
+    apps: {
+      add: "Add";
+      added: "Added connections";
+      advanced: "Custom MCP";
+      assistants: "assistants";
+      authorize: "Authorize";
+      back: "Back to applications";
+      browserOAuth: "Authorize in your browser";
+      callbackPort: "Callback port";
+      cancel: "Cancel";
+      catalog: "Available applications";
+      check: "Check connection";
+      clientId: "Client ID";
+      clientSecret: "Client secret (leave blank to keep existing)";
+      connected: "Connected";
+      connection: "Connection";
+      delegated: "Allow delegated work";
+      delegatedDescription: "Work sessions and teammates delegated by these assistants can also use this account. Other work sessions receive no access.";
+      description: "Connect your accounts on this host, then choose which assistants may use them. Custom MCP connections remain available in advanced settings.";
+      disabled: "Disabled";
+      enabled: "Enabled";
+      failed: "Connection failed";
+      hostCredentials: "Credentials stay on this host. The provider controls account and workspace access during authorization. Adding a connection does not authorize it.";
+      inspectTools: "Inspect tools";
+      invalidPort: "Choose a callback port between 1024 and 65535";
+      name: "Connection name";
+      needsAuth: "Authorization required";
+      noConnections: "No matching connections";
+      notChecked: "Not checked";
+      oauthDescription: "Register an OAuth application owned by you. Use the callback URL below and enter its client credentials. Secrets are never shown again.";
+      oauthSetup: "GitHub OAuth application";
+      openAuthorization: "Open authorization page";
+      ownOAuth: "Requires your own OAuth application";
+      permissionDescription: "Only selected assistants can use this connection. Save changes before connecting.";
+      permissions: "Assistant access";
+      providerDocs: "Provider instructions";
+      registerOAuth: "Register OAuth application";
+      remoteReturn: "Using another device? After authorization, copy the complete localhost return URL from the browser and paste it here. Treat it as a secret; do not send it in chat.";
+      remove: "Remove connection";
+      removeDescription: "Remove this host connection and its saved authorization? Provider-side authorization may also need revoking in the provider's account settings.";
+      retry: "Retry";
+      returnUrl: "Authorization return URL";
+      save: "Save access";
+      search: "Search applications";
+      setupRequired: "Setup required";
+      signOut: "Sign out";
+      starting: "Preparing authorization…";
+      submitReturn: "Complete authorization";
+      title: "Applications";
+      tools: "Available tools";
+      waiting: "Waiting for authorization";
+    };
     brief: {
       open: "Today's brief";
     };
@@ -1538,6 +1597,7 @@ export default interface Resources {
       title: "Delete {{name}}?";
     };
     edit: {
+      descriptionPlaceholder: "One line about this assistant, shown at the top of an empty thread";
       instructions: "Instructions";
       instructionsPlaceholder: "What this assistant is for and how it should work";
       soul: "Persona";
@@ -1573,6 +1633,34 @@ export default interface Resources {
       unpin: "Unpin";
     };
     newName: "New assistant";
+    overview: {
+      archived: "Archived";
+      cancelled: "Cancelled";
+      completed: "Turn completed";
+      connections: "Applications";
+      connectionsDescription: "Connect accounts, choose assistant access, and inspect available tools.";
+      description: "Coordinate work, keep context, and follow through.";
+      failed: "Failed";
+      host: "Runs on the connected host while its background service is online.";
+      idle: "Idle";
+      interrupted: "Interrupted";
+      manageConnections: "Connect applications";
+      manageRoutines: "Manage this assistant’s routines";
+      missingSession: "This work session is no longer available.";
+      needsYou: "Needs you";
+      noWork: "Work delegated by this assistant will appear here.";
+      paused: "Paused";
+      pausedFailures: "Paused after failures";
+      pickAssistant: "Select an assistant to see its work";
+      resources: "Context and resources";
+      results: "Recent results";
+      retryAssistant: "Assistant could not load. Retry";
+      retryRoutines: "Routines could not load. Retry";
+      retryWork: "Work could not load. Retry";
+      running: "Running";
+      unscheduled: "No next run scheduled";
+      work: "Delegated work";
+    };
     roster: {
       label: "Assistants";
       muted: "Muted";
@@ -1828,6 +1916,7 @@ export default interface Resources {
       switchFailed: "Could not switch to {{branch}}. Check the working tree and try again.";
     };
     composer: {
+      agent: "Agent";
       agentStatus: {
         detecting: "Checking…";
         error: "Unavailable";
@@ -2373,6 +2462,7 @@ export default interface Resources {
       empty: "No roles yet";
       emptyDescription: "Click New role, or choose Save as role from the model menu when starting a session.";
       listTitle: "Saved roles";
+      model: "Model";
       name: "Name";
       namePlaceholder: "Role name";
       roleDescription: "Description";
@@ -2893,6 +2983,7 @@ export default interface Resources {
           native: "Connects through Cocurdex, including sign-in and project servers.";
         };
         description: "Cocurdex adds this server to the selected agents when their sessions start. Their own MCP configs stay untouched.";
+        managedApplication: "This connection is managed in Applications. Choose assistant access there; engine-level MCP assignment does not apply.";
         serverUnsupported: {
           "command-value": "Only Pi can use this server: a value runs a command (!cmd).";
           cwd: "Only Pi can use this server: it sets a working directory.";
