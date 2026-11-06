@@ -166,6 +166,7 @@ import {
   isPostedMessage,
   PersonalAgentService,
   personaMemoryScope,
+  personaRoleFromHomeThread,
   personaSystemSections,
   personaWritePartition,
   postedMessagesSinceReply,
@@ -2015,7 +2016,14 @@ export class CocurdexDaemonService {
       });
     }
     const { providerId, modelId } = role;
-    if (!providerId || !modelId) return;
+    if (!providerId || !modelId) {
+      const adopted =
+        home?.agentType === role.agentId
+          ? personaRoleFromHomeThread(role, home.providerSnapshot)
+          : null;
+      if (adopted) await this.saveAgentRole(adopted);
+      return;
+    }
     const routineSessionIds = this.routines
       .list(agentId)
       .map((routine) => routine.sessionId);
@@ -2024,15 +2032,32 @@ export class CocurdexDaemonService {
       const session = await this.state.getSession(sessionId);
       if (!session || session.archivedAt) continue;
       if (session.agentType !== role.agentId) continue;
-      const current = session.providerSnapshot;
-      if (current?.providerId === providerId && current.modelId === modelId) {
-        continue;
-      }
-      await this.updateSessionRuntime(
-        { sessionId, model: { providerId, modelId } },
+      if (!personaRoleFromHomeThread(role, session.providerSnapshot)) continue;
+      await this.applySessionRuntime(
+        {
+          sessionId,
+          model: { providerId, modelId },
+          runtime: {
+            reasoningEffort: role.reasoningEffort,
+            thinkingLevel: role.thinkingLevel,
+            serviceTier: role.serviceTier,
+            fastMode: role.fastMode,
+          },
+        },
         LOCAL_REQUEST_CONTEXT.principal,
       );
     }
+  }
+
+  private async adoptHomeThreadRuntime(session: SessionRecord) {
+    const persona = this.state.data.personalAgents.findByHomeSession(
+      session.id,
+    );
+    if (!persona) return;
+    const role = await this.state.getAgentRole(persona.roleId);
+    if (!role || role.agentId !== session.agentType) return;
+    const adopted = personaRoleFromHomeThread(role, session.providerSnapshot);
+    if (adopted) await this.saveAgentRole(adopted);
   }
 
   async saveAgentRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord> {
@@ -2209,6 +2234,15 @@ export class CocurdexDaemonService {
   }
 
   async updateSessionRuntime(
+    input: UpdateSessionRuntimePayload,
+    principal: HostPrincipal,
+  ) {
+    const saved = await this.applySessionRuntime(input, principal);
+    await this.adoptHomeThreadRuntime(saved);
+    return saved;
+  }
+
+  private async applySessionRuntime(
     input: UpdateSessionRuntimePayload,
     principal: HostPrincipal,
   ) {

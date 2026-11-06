@@ -5,6 +5,7 @@ export {
   personaSystemSections,
   personaWritePartition,
 } from "./persona-context";
+export { personaRoleFromHomeThread } from "./persona-runtime";
 export {
   PersonalAgentService,
   type PersonalAgentServiceDeps,

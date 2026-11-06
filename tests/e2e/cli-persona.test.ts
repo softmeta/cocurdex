@@ -97,4 +97,98 @@ describe("personas through the CLI", () => {
       await stub.close();
     }
   });
+
+  it("keeps a persona's model in step with its home thread", async () => {
+    const stub = await startStubLlmServer();
+    let daemon = await spawnDaemon();
+    const { userDataPath } = daemon;
+    try {
+      await saveStubProvider(daemon, stub);
+      const now = new Date().toISOString();
+      for (const modelId of ["e2e-agent-model", "e2e-model-large"]) {
+        await requestDaemon(
+          "provider.model.save",
+          {
+            model: {
+              providerId: "e2e-stub",
+              modelId,
+              name: modelId,
+              api: "openai-completions",
+              enabled: true,
+              source: "manual",
+              capabilities: ["chat", "agent"],
+              createdAt: now,
+              updatedAt: now,
+            },
+          },
+          daemon.options,
+        );
+      }
+      const cli = async <T>(args: string[]) => {
+        const result = await runCli([...args, "--json"], { userDataPath });
+        expect(result.stderr).toBe("");
+        expect(result.code).toBe(0);
+        return JSON.parse(result.stdout) as T;
+      };
+      const home = async (persona: PersonalAgentRecord) =>
+        (
+          await requestDaemon(
+            "session.get",
+            { sessionId: persona.homeSessionId },
+            daemon.options,
+          )
+        )?.providerSnapshot;
+
+      const scout = await cli<PersonalAgentRecord>([
+        "persona",
+        "create",
+        "--name",
+        "Scout",
+      ]);
+      expect(scout.role.modelId).toBeNull();
+      const started = await home(scout);
+      expect(started?.modelId).toEqual(expect.any(String));
+
+      await daemon.stop();
+      daemon = await spawnDaemon({ userDataPath });
+      expect(
+        (await cli<PersonalAgentRecord>(["persona", "show", "Scout"])).role,
+      ).toMatchObject({
+        providerId: started?.providerId,
+        modelId: started?.modelId,
+      });
+
+      await cli([
+        "session",
+        "configure",
+        scout.homeSessionId,
+        "--provider",
+        "e2e-stub",
+        "--model",
+        "e2e-model-large",
+        "--thinking",
+        "high",
+      ]);
+      expect(
+        (await cli<PersonalAgentRecord>(["persona", "show", "Scout"])).role,
+      ).toMatchObject({ modelId: "e2e-model-large", thinkingLevel: "high" });
+
+      await cli([
+        "persona",
+        "update",
+        "Scout",
+        "--provider",
+        "e2e-stub",
+        "--model",
+        "e2e-agent-model",
+      ]);
+      expect(await home(scout)).toMatchObject({
+        modelId: "e2e-agent-model",
+        thinkingLevel: "high",
+      });
+    } finally {
+      await daemon.dispose();
+      await stub.close();
+    }
+  });
 });
