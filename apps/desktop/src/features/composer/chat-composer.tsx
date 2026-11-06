@@ -91,6 +91,7 @@ import { useSlashCommands } from "./use-slash-commands";
 export interface ChatComposerHandle {
   insertContextMention(attachment: MessageAttachment): boolean;
   insertText(text: string): boolean;
+  sendText(text: string): boolean;
 }
 
 interface ChatComposerProps {
@@ -273,8 +274,26 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
           editor.insertText(text);
           return true;
         },
+        sendText(text) {
+          const message = text.trim();
+          if (!message || submitting || (isRunning && !canSendWhileRunning)) {
+            return false;
+          }
+          submit(
+            () => onSend(message, []),
+            () => {},
+          );
+          return true;
+        },
       }),
-      [insertContextMention],
+      [
+        insertContextMention,
+        submitting,
+        isRunning,
+        canSendWhileRunning,
+        submit,
+        onSend,
+      ],
     );
 
     const handleEditorChange = (next: MentionEditorChange) => {

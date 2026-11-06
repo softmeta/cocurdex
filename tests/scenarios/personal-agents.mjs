@@ -150,15 +150,15 @@ runScenario("personal-agents", {
           kind: "stream",
           chunks: ["Ten push-ups,", " then stretch."],
         };
-        const [composer] = await waitForRole(
+        const suggestion = await translate(
           session,
-          await composerQuery(session),
+          "personal:thread.suggestions.attention",
         );
-        await typeInto(session, composer, "Plan my workout");
-        await clickByRole(session, {
-          role: "button",
-          name: await translate(session, "common:actions.send"),
-        });
+        await clickByRole(
+          session,
+          { role: "button", name: suggestion },
+          UI_TIMEOUT_MS,
+        );
         const shown = await session
           .waitUntil(
             (reply) =>
@@ -192,7 +192,7 @@ runScenario("personal-agents", {
           })),
         });
         check(
-          contents.includes("Plan my workout") && contents.includes(REPLY),
+          contents.includes(suggestion) && contents.includes(REPLY),
           "the exchange is stored in the assistant's home thread",
           contents,
         );
