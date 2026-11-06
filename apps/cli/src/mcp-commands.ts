@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
   type AgentMcpUnsupportedReason,
+  isManagedApplicationServer,
   MCP_IMPORT_SOURCES,
   type McpImportSource,
   type McpServerConfig,
@@ -131,6 +132,8 @@ async function serverAgents(args: McpArgs) {
   }
   const { servers } = await readServers();
   if (!servers[name]) throw new Error(`No MCP server named "${name}"`);
+  if (isManagedApplicationServer(servers[name]))
+    throw new Error("Manage assistant access with cocurdex apps update.");
   const updating = none || requested.length > 0;
   const agents = updating
     ? parseAgentIds(requested)

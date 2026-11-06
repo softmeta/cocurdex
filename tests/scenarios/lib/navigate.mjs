@@ -10,6 +10,7 @@ import {
 const NAVIGATION_TIMEOUT_MS = 30_000;
 
 const PANEL_VIEW_KEYS = {
+  applications: "editor:actions.showApplications",
   overview: "editor:actions.showAssistantOverview",
   files: "editor:actions.showEditor",
   git: "editor:actions.showGitChanges",

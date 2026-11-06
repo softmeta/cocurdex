@@ -34,7 +34,6 @@ import {
   sessionsAtom,
   upsertSessionAtom,
 } from "@/features/sessions";
-import { openSettings } from "@/features/settings";
 import { requestDaemon } from "@/lib";
 import { OverviewRow, OverviewSection } from "./assistant-overview-sections";
 import {
@@ -302,14 +301,14 @@ function AssistantOverviewContent({
           >
             <OverviewRow
               title={t("overview.manageConnections", {
-                defaultValue: "Manage applications and MCP",
+                defaultValue: "Connect applications",
               })}
               detail={t("overview.connectionsDescription", {
                 defaultValue:
-                  "Configure connections, sign in, and check available tools.",
+                  "Connect accounts, choose assistant access, and inspect available tools.",
               })}
               icon={<Plug className="size-3.5" />}
-              onClick={() => openSettings("mcp")}
+              onClick={() => selectView("applications")}
             />
           </OverviewSection>
         </div>

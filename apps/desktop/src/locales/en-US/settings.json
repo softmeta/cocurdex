@@ -659,6 +659,7 @@
         "native": "Connects through Cocurdex, including sign-in and project servers."
       },
       "description": "Cocurdex adds this server to the selected agents when their sessions start. Their own MCP configs stay untouched.",
+      "managedApplication": "This connection is managed in Applications. Choose assistant access there; engine-level MCP assignment does not apply.",
       "serverUnsupported": {
         "command-value": "Only Pi can use this server: a value runs a command (!cmd).",
         "cwd": "Only Pi can use this server: it sets a working directory.",

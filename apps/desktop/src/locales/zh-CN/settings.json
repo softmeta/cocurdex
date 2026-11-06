@@ -654,6 +654,7 @@
         "native": "通过 Cocurdex 直接连接，支持登录和项目级服务器。"
       },
       "description": "会话启动时，Cocurdex 会把此服务器提供给选中的 agent，不会修改它们自己的 MCP 配置。",
+      "managedApplication": "此连接由「应用」管理。请在那里选择助理使用权限，不使用按引擎分配 MCP 的方式。",
       "serverUnsupported": {
         "command-value": "仅 Pi 可用：有值通过命令（!cmd）生成。",
         "cwd": "仅 Pi 可用：它设置了工作目录。",

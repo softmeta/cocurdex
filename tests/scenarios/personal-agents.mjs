@@ -17,6 +17,7 @@ import {
   showPanelView,
   translate,
 } from "./lib/navigate.mjs";
+import { assistantApplicationsStep } from "./lib/personal-applications.mjs";
 import {
   assistantFilesStep,
   assistantPanelsStep,
@@ -158,6 +159,7 @@ runScenario("personal-agents", {
       },
     ],
     assistantPanelsStep(),
+    assistantApplicationsStep(state),
     [
       "the assistant answers in its home thread",
       async ({ session }) => {

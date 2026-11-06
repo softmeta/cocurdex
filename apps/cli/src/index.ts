@@ -17,6 +17,10 @@ import {
 } from "@cocurdex/shared";
 import { agentAuthUsageLines, handleAgentCommand } from "./agent-auth-commands";
 import {
+  applicationUsageLines,
+  handleApplicationCommand,
+} from "./application-commands";
+import {
   daemonBackgroundUsageLines,
   handleDaemonBackgroundCommand,
 } from "./daemon-background-command";
@@ -434,6 +438,12 @@ async function main(rawArgs: string[]) {
     return;
   }
 
+  if (
+    resource === "apps" &&
+    (await handleApplicationCommand(rawArgs.slice(rawArgs.indexOf("apps") + 1)))
+  )
+    return;
+
   if (resource === "mcp") {
     const handled = await handleMcpCommand(
       rawArgs.slice(rawArgs.indexOf("mcp") + 1),
@@ -649,6 +659,7 @@ function printUsage() {
       ...providerUsageLines(),
       ...agentAuthUsageLines(),
       ...mcpUsageLines(),
+      ...applicationUsageLines(),
       "  cocurdex workflow list",
       "  cocurdex workflow definitions",
       "  cocurdex workflow tui [run-id]",

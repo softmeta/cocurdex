@@ -11,6 +11,7 @@ import {
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
 
 export type RightPanelView =
+  | "applications"
   | "overview"
   | "editor"
   | "notes"
@@ -25,6 +26,7 @@ export type RightPanelView =
 
 export const DEFAULT_TAB_ORDER: RightPanelView[] = [
   "overview",
+  "applications",
   "editor",
   "git",
   "notes",

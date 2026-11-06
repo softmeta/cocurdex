@@ -74,8 +74,16 @@ export class DaemonMcpService {
     return testPiMcpServer({ userDataPath, cwd }, name, config);
   }
 
-  async startLogin(name: string, workspaceId?: string) {
-    return this.logins.start(await this.location(workspaceId), name);
+  async startLogin(
+    name: string,
+    workspaceId?: string,
+    expectedConfig?: McpServerConfig,
+  ) {
+    return this.logins.start(
+      await this.location(workspaceId),
+      name,
+      expectedConfig,
+    );
   }
 
   async logout(name: string, workspaceId?: string) {

@@ -120,10 +120,13 @@ import {
   requireCatalogEntry,
   WORKTREE_ENVIRONMENT_KEY,
 } from "./agent-tools";
+import { registerApplicationTools } from "./agent-tools/groups/applications";
 import {
   discoverAgentSessionModes,
   discoverInstalledAgentCapabilities,
 } from "./agents";
+import { resolveApplicationPrincipal } from "./application-principal";
+import { ApplicationService } from "./application-service";
 import { DaemonAttachmentStore } from "./attachment-store";
 import { DaemonBackgroundService } from "./background";
 import { DaemonCommitMessageService } from "./commit-message";
@@ -328,6 +331,7 @@ export class CocurdexDaemonService {
   readonly commitMessageService: DaemonCommitMessageService;
   readonly memory: MemoryService;
   readonly mcp: DaemonMcpService;
+  readonly applications: ApplicationService;
   readonly pdfAnnotationsService: DaemonPdfAnnotationsService;
   readonly attachments: DaemonAttachmentStore;
   readonly codexLogins = new CodexLoginSessions();
@@ -704,6 +708,24 @@ export class CocurdexDaemonService {
         ? (this.personalAgents.personaForSession(session)?.id ?? null)
         : null;
     };
+    this.applications = new ApplicationService(
+      this.mcp,
+      async (id) => (await this.personalAgents.get(id)) !== null,
+    );
+    registerApplicationTools(
+      this.agentTools.registry,
+      this.applications,
+      (sessionId) =>
+        resolveApplicationPrincipal(sessionId, {
+          getSession: (id) => this.state.getSession(id),
+          persona: (session) =>
+            this.personalAgents.personaForSession(session)?.id ?? null,
+          delegation: (id) =>
+            this.state.data.delegations.get(id)?.personaId ?? null,
+          teamLead: async (id) =>
+            (await this.team.findForSession(id))?.team.leadSessionId ?? null,
+        }),
+    );
     registerWorkTools(this.agentTools.registry, {
       personaOf,
       catalog: () => this.delegations.catalog(),
@@ -3396,6 +3418,7 @@ export class CocurdexDaemonService {
         schedulerClose,
         this.acpRegistry.ready,
         Promise.resolve().then(() => this.searchService.dispose()),
+        this.applications.dispose(),
         Promise.resolve().then(() => this.mcp.dispose()),
         this.terminals.dispose(),
         Promise.resolve().then(() => this.workspaceWatch.close()),

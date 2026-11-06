@@ -11,6 +11,7 @@ import {
   ListTodo,
   type LucideIcon,
   NotebookPen,
+  Plug,
   Presentation,
   TerminalSquare,
 } from "lucide-react";
@@ -47,6 +48,7 @@ import {
 } from "./titlebar-icon-button";
 
 type ViewTabLabelKey =
+  | "actions.showApplications"
   | "actions.showAssistantOverview"
   | "actions.showGitChanges"
   | "actions.showEditor"
@@ -66,6 +68,11 @@ interface TabDef {
 }
 
 const TAB_REGISTRY: Record<RightPanelView, TabDef> = {
+  applications: {
+    id: "applications",
+    icon: Plug,
+    labelKey: "actions.showApplications",
+  },
   overview: {
     id: "overview",
     icon: LayoutDashboard,
@@ -122,6 +129,7 @@ export function ViewSwitcherTabs({
   const personal = useAtomValue(rightPanelPersonalContextAtom);
   const personalPrimary: RightPanelView[] = [
     "overview",
+    "applications",
     "memory",
     "notes",
     "issues",
@@ -341,11 +349,15 @@ export function ViewSwitcherTabs({
             const def = TAB_REGISTRY[id];
             const Icon = def.icon;
             const label =
-              personal && id === "editor"
-                ? t("actions.conversationFiles", {
-                    defaultValue: "Conversation files",
+              id === "applications"
+                ? t("actions.showApplications", {
+                    defaultValue: "Applications",
                   })
-                : t(def.labelKey);
+                : personal && id === "editor"
+                  ? t("actions.conversationFiles", {
+                      defaultValue: "Conversation files",
+                    })
+                  : t(def.labelKey);
             return (
               <Tooltip key={id}>
                 <TooltipTrigger asChild>

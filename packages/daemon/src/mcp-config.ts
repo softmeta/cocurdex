@@ -4,6 +4,7 @@ import path from "node:path";
 import { validatePiMcpConfigText } from "@cocurdex/agent-adapters/pi-mcp";
 import {
   type AgentId,
+  isManagedApplicationServer,
   isValidMcpServerName,
   type McpConfigFile,
   type McpProjectConfigFile,
@@ -151,6 +152,19 @@ export class DaemonMcpConfigService {
     });
   }
 
+  updateServer(
+    name: string,
+    update: (server: McpServerConfig) => McpServerConfig,
+  ): Promise<McpConfigFile> {
+    return this.mutate((current) => ({
+      ...current,
+      mcpServers: {
+        ...current.mcpServers,
+        [name]: update(requireServer(current, name)),
+      },
+    }));
+  }
+
   mergeServers(
     servers: Record<string, McpServerConfig>,
   ): Promise<McpConfigFile> {
@@ -182,13 +196,13 @@ export class DaemonMcpConfigService {
   }
 
   setServerAgents(name: string, agents: AgentId[]): Promise<McpConfigFile> {
-    return this.mutate((current) => ({
-      ...current,
-      mcpServers: {
-        ...current.mcpServers,
-        [name]: withMcpServerAgents(requireServer(current, name), agents),
-      },
-    }));
+    return this.updateServer(name, (server) => {
+      if (isManagedApplicationServer(server))
+        throw new Error(
+          "Manage assistant access in Applications, or use cocurdex apps update.",
+        );
+      return withMcpServerAgents(server, agents);
+    });
   }
 
   private mutate(
