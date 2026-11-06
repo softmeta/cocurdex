@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import {
   ROUTINE_ACCESS_VALUES,
   ROUTINE_DELIVER_VALUES,
+  ROUTINE_REPORT_STATUSES,
   type RoutineAccess,
   type RoutineDeliver,
   type RoutinePausedReason,
@@ -101,6 +102,9 @@ function mapRun(row: SqliteRow): RoutineRunRecord {
     status: oneOf(RUN_STATUSES, row.status, "failed"),
     summary: nullableString(row.summary),
     error: nullableString(row.error),
+    outcome:
+      ROUTINE_REPORT_STATUSES.find((status) => status === row.outcome) ?? null,
+    question: nullableString(row.question),
     startedAt: String(row.started_at),
     finishedAt: nullableString(row.finished_at),
   };
@@ -128,9 +132,25 @@ export function createSqliteRoutineRepository(
     },
     findBySession(sessionId) {
       return (
-        routines("SELECT * FROM routines WHERE session_id = ?", sessionId)[0] ??
-        null
+        routines(
+          `SELECT * FROM routines
+           WHERE session_id = ?
+              OR id IN (SELECT routine_id FROM routine_runs WHERE session_id = ?)
+           LIMIT 1`,
+          sessionId,
+          sessionId,
+        )[0] ?? null
       );
+    },
+    listSessionIds(routineId) {
+      const rows = database
+        .prepare(
+          `SELECT session_id FROM routines WHERE id = ? AND session_id IS NOT NULL
+           UNION
+           SELECT session_id FROM routine_runs WHERE routine_id = ? AND session_id IS NOT NULL`,
+        )
+        .all(routineId, routineId) as SqliteRow[];
+      return rows.map((row) => String(row.session_id));
     },
     upsert(routine) {
       database
@@ -196,13 +216,15 @@ export function createSqliteRoutineRepository(
         .prepare(
           `INSERT INTO routine_runs (
              id, routine_id, session_id, trigger, status, summary, error,
-             started_at, finished_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             outcome, question, started_at, finished_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              session_id = excluded.session_id,
              status = excluded.status,
              summary = excluded.summary,
              error = excluded.error,
+             outcome = excluded.outcome,
+             question = excluded.question,
              finished_at = excluded.finished_at`,
         )
         .run(
@@ -213,6 +235,8 @@ export function createSqliteRoutineRepository(
           run.status,
           run.summary,
           run.error,
+          run.outcome,
+          run.question,
           run.startedAt,
           run.finishedAt,
         );

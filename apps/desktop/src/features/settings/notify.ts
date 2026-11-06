@@ -1,7 +1,8 @@
-import type { SessionStatus } from "@cocurdex/shared";
+import type { PushNotificationKind } from "@cocurdex/shared";
+import type { TFunction } from "i18next";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { taskApi } from "@/lib";
+import { onDaemonAlert } from "@/lib";
 import type { NotificationSettings } from "./notifications";
 
 // Show a native OS notification. In Electron the renderer Notification API is
@@ -92,70 +93,60 @@ export function playCompletionSound() {
   }
 }
 
-// React to agent runs finishing (a per-session running -> idle transition) and
-// fire the notification / sound the user enabled. This is the legitimate
-// "sync with an external system" Effect case (OS notifications + Web Audio).
+function alertCopy(kind: PushNotificationKind, t: TFunction<"settings">) {
+  switch (kind) {
+    case "approval":
+      return {
+        title: t("notifications.permission.title"),
+        body: t("notifications.permission.body"),
+      };
+    case "question":
+      return {
+        title: t("notifications.question.title"),
+        body: t("notifications.question.body"),
+      };
+    case "plan":
+      return {
+        title: t("notifications.plan.title"),
+        body: t("notifications.plan.body"),
+      };
+    case "turnCompleted":
+      return {
+        title: t("notifications.completed.title"),
+        body: t("notifications.completed.body"),
+      };
+    case "turnFailed":
+      return {
+        title: t("notifications.failed.title"),
+        body: t("notifications.failed.body"),
+      };
+  }
+}
+
 export function useCompletionNotifier(settings: NotificationSettings) {
   const { t } = useTranslation("settings");
   const settingsRef = useRef(settings);
   const translateRef = useRef(t);
-  const previousStatusRef = useRef(new Map<string, SessionStatus>());
 
   settingsRef.current = settings;
   translateRef.current = t;
 
-  useEffect(() => {
-    const previousStatus = previousStatusRef.current;
-
-    return taskApi.onAgentEvent((event) => {
-      const current = settingsRef.current;
-      const translate = translateRef.current;
-
-      // Agent needs human interaction (permission approval or a question).
-      // These only surface as a system notification, never as the sound.
-      if (event.type === "permission.requested") {
+  useEffect(
+    () =>
+      onDaemonAlert((alert) => {
+        const current = settingsRef.current;
+        const translate = translateRef.current;
+        const copy = alertCopy(alert.kind, translate);
         if (current.systemNotifications) {
           showCompletionNotification(
-            translate("notifications.permission.title"),
-            translate("notifications.permission.body"),
+            copy.title,
+            alert.detail ?? (alert.title || copy.body),
           );
         }
-        return;
-      }
-
-      if (event.type === "question.requested") {
-        if (current.systemNotifications) {
-          showCompletionNotification(
-            translate("notifications.question.title"),
-            translate("notifications.question.body"),
-          );
+        if (alert.kind === "turnCompleted" && current.completionSound) {
+          playCompletionSound();
         }
-        return;
-      }
-
-      if (event.type !== "state.changed") {
-        return;
-      }
-
-      const prior = previousStatus.get(event.sessionId);
-      previousStatus.set(event.sessionId, event.status);
-
-      const justCompleted = prior === "running" && event.status === "idle";
-
-      if (!justCompleted) {
-        return;
-      }
-
-      if (current.systemNotifications) {
-        showCompletionNotification(
-          translate("notifications.completed.title"),
-          translate("notifications.completed.body"),
-        );
-      }
-
-      if (current.completionSound) {
-        playCompletionSound();
-      }
-    });
-  }, []);
+      }),
+    [],
+  );
 }

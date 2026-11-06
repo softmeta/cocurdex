@@ -2,7 +2,7 @@ export type RoutineSchedule =
   | { kind: "interval"; minutes: number }
   | { kind: "daily"; time: string; weekdays: number[] | null };
 
-export type RoutineAccess = "read-and-draft" | "ask" | "full";
+export type RoutineAccess = "read-and-draft" | "full";
 
 export type RoutineDeliver = "inbox" | "push" | "silent";
 
@@ -11,6 +11,19 @@ export type RoutinePausedReason = "user" | "failures";
 export type RoutineRunTrigger = "schedule" | "catch-up" | "manual";
 
 export type RoutineRunStatus = "running" | "succeeded" | "failed" | "skipped";
+
+export type RoutineReportStatus =
+  | "ready"
+  | "dropped"
+  | "needs_you"
+  | "blocked"
+  | "failed";
+
+export interface RoutineReport {
+  status: RoutineReportStatus;
+  summary: string;
+  question: string | null;
+}
 
 export interface RoutineRecord {
   id: string;
@@ -38,6 +51,8 @@ export interface RoutineRunRecord {
   status: RoutineRunStatus;
   summary: string | null;
   error: string | null;
+  outcome: RoutineReportStatus | null;
+  question: string | null;
   startedAt: string;
   finishedAt: string | null;
 }
@@ -65,9 +80,24 @@ export interface UpdateRoutinePayload {
 
 export const ROUTINE_ACCESS_VALUES = [
   "read-and-draft",
-  "ask",
   "full",
 ] as const satisfies readonly RoutineAccess[];
+
+export const ROUTINE_REPORT_STATUSES = [
+  "ready",
+  "dropped",
+  "needs_you",
+  "blocked",
+  "failed",
+] as const satisfies readonly RoutineReportStatus[];
+
+export const ROUTINE_REPORT_SUMMARY_MAX_LENGTH = 4_000;
+
+export function routineReportNeedsUser(
+  outcome: RoutineReportStatus | null,
+): boolean {
+  return outcome === "needs_you" || outcome === "blocked";
+}
 
 export const ROUTINE_DELIVER_VALUES = [
   "inbox",

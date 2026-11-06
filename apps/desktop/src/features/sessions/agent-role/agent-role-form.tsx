@@ -8,7 +8,12 @@ import {
   type SaveAgentRolePayload,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import { type FormEvent, useState, useSyncExternalStore } from "react";
+import {
+  type FormEvent,
+  type ReactNode,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -43,11 +48,15 @@ import { saveAgentRoleRecord } from "./agent-role-store";
 
 export function AgentRoleForm({
   role,
+  agentLocked = false,
+  children,
   onCancel,
   onSaved,
   save = saveAgentRoleRecord,
 }: {
   role: SaveAgentRolePayload;
+  agentLocked?: boolean;
+  children?: ReactNode;
   onCancel(): void;
   onSaved(role: AgentRoleRecord): void;
   save?(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
@@ -246,10 +255,12 @@ export function AgentRoleForm({
             onChange={(event) => setDescription(event.target.value)}
           />
         </Field>
+        {children}
         <Field>
           <FieldLabel>{t("settings:agentRoles.runtime")}</FieldLabel>
           <AgentRoleRuntimeFields
             agentId={agentId}
+            agentLocked={agentLocked}
             agents={agents}
             sessionModeId={sessionModeId}
             compatibleProviders={compatibleProviders}

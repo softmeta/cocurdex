@@ -234,6 +234,7 @@ import type {
   SpawnTeammatePayload,
   SpawnTeamTemplatePayload,
   StartScriptRunPayload,
+  SupportedLocale,
   SyncPullInput,
   SyncPullResult,
   TeamMemberRecord,
@@ -772,7 +773,10 @@ export type DaemonRequestPayloadByMethod = {
   "inbox.list": undefined;
   "inbox.read": { id: string };
   "inbox.brief": { timeZone?: string | null };
-  "inbox.postBrief": { updatedAt: string; day: string; content: string };
+  "inbox.postBrief": {
+    timeZone?: string | null;
+    locale?: SupportedLocale | null;
+  };
   "routine.list": { agentId?: string | null };
   "routine.get": { id: string };
   "routine.create": CreateRoutinePayload;

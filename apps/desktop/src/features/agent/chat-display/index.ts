@@ -9,3 +9,9 @@ export {
   defaultChatDisplaySettings,
   normalizeChatDisplaySettings,
 } from "./chat-display-types";
+export {
+  type ChatPresentation,
+  ChatPresentationContext,
+  useActivityDisplay,
+  useChatPresentation,
+} from "./chat-presentation";

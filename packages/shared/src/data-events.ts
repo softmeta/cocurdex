@@ -1,3 +1,4 @@
+import type { AlertEvent } from "./alert";
 import type { AgentEvent } from "./contracts";
 import type { PeerMessageEvent } from "./peer-messaging";
 import type { ScriptRunChangedEvent } from "./script-run";
@@ -39,6 +40,7 @@ export interface DaemonEventMeta {
 
 export type CocurdexDaemonEvent =
   | AgentEvent
+  | AlertEvent
   | CocurdexDataChangedEvent
   | PeerMessageEvent
   | ScriptRunChangedEvent
@@ -50,6 +52,7 @@ export type CocurdexDaemonEvent =
 type NonAgentDaemonEvent = Exclude<CocurdexDaemonEvent, AgentEvent>;
 
 const nonAgentDaemonEventTypes: Record<NonAgentDaemonEvent["type"], true> = {
+  alert: true,
   "data.changed": true,
   "peer.message": true,
   "scriptRun.changed": true,

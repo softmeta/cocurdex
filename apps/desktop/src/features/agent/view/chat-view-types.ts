@@ -20,6 +20,7 @@ import type {
   ChatComposerHandle,
   ComposerSendOutcome,
 } from "@/features/composer";
+import type { ChatPresentation } from "../chat-display";
 import type { SessionPlan } from "../plan";
 import type { QueuedAgentInputItem } from "../queued-input";
 import type { AgentSessionRuntimeState } from "../runtime";
@@ -105,4 +106,5 @@ export interface ChatViewProps {
   readOnly?: boolean;
   parentSessionTitle?: string | null;
   onOpenParentSession?(): void;
+  presentation?: ChatPresentation;
 }

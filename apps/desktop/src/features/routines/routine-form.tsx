@@ -148,11 +148,6 @@ export function RoutineForm({
       description: t("routines.access.readAndDraftDescription"),
     },
     {
-      value: "ask",
-      label: t("routines.access.ask"),
-      description: t("routines.access.askDescription"),
-    },
-    {
       value: "full",
       label: t("routines.access.full"),
       description: t("routines.access.fullDescription"),

@@ -1,8 +1,7 @@
-import type { Brief, InboxItem } from "@cocurdex/shared";
+import { type InboxItem, isSupportedLocale } from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 import { deliverBriefOnEntry } from "./brief-presence";
-import { briefText } from "./brief-text";
 import { inboxApi } from "./inbox-api";
 import { useInboxRevalidation } from "./use-inbox-revalidation";
 
@@ -18,22 +17,15 @@ export function useInbox() {
 }
 
 export function useBrief() {
-  const { t, i18n } = useTranslation("personal");
-  const post = (brief: Brief) =>
-    inboxApi
-      .postBrief({
-        updatedAt: brief.updatedAt,
-        day: brief.day,
-        content: briefText(brief, t, i18n.language),
-      })
-      .catch(() => null);
+  const { i18n } = useTranslation("personal");
+  const locale = isSupportedLocale(i18n.language) ? i18n.language : null;
+  const post = () => inboxApi.postBrief(timeZone, locale).catch(() => null);
   const { data, mutate } = useSWR(
     ["inbox.brief", timeZone],
     () => inboxApi.brief(timeZone),
     {
       dedupingInterval: 0,
-      onSuccess: (brief) =>
-        deliverBriefOnEntry(brief, (entry) => void post(entry)),
+      onSuccess: (brief) => deliverBriefOnEntry(brief, () => void post()),
     },
   );
   useInboxRevalidation(mutate);

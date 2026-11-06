@@ -17,7 +17,7 @@ export function BriefControl({
   if (!brief || !homeSessionId) return null;
 
   const openBrief = async () => {
-    await post(brief);
+    await post();
     onOpenSession(homeSessionId);
   };
 

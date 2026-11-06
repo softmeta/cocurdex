@@ -870,10 +870,18 @@
       "description": "Agent 回复完成时播放提示音。",
       "title": "完成提示音"
     },
+    "failed": {
+      "body": "有一次智能体运行失败了。",
+      "title": "智能体运行失败"
+    },
     "groupTitle": "通知",
     "permission": {
       "body": "有 Agent 正在等待权限审批。",
       "title": "需要审批"
+    },
+    "plan": {
+      "body": "有智能体在等你审批它的计划。",
+      "title": "计划待审批"
     },
     "question": {
       "body": "有 Agent 正在等待你的回答。",

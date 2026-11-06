@@ -5,6 +5,7 @@ export * from "./host-access";
 export * from "./issues";
 export { CURRENT_SCHEMA_VERSION } from "./migrations";
 export * from "./notes";
+export * from "./outbox";
 export * from "./personal";
 export * from "./repositories";
 export * from "./routines";

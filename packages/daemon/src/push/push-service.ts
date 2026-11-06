@@ -1,5 +1,5 @@
 import type { KeyObject } from "node:crypto";
-import type { HostAccessRepository, PushTarget } from "@cocurdex/db";
+import type { HostAccessRepository } from "@cocurdex/db";
 import {
   decodeBase64Url,
   encodeBase64Url,
@@ -7,14 +7,12 @@ import {
   sealMessage,
 } from "@cocurdex/secure-channel";
 import {
-  type AgentEvent,
   type DevicePushRegistrationResult,
   type HostIdentity,
   type HostPrincipal,
   type HostPushStatus,
   normalizeRelayUrl,
   PUSH_SEAL_PROLOGUE,
-  type PushNotificationKind,
   type PushRegistration,
   type PushSettings,
   type PushSettingsUpdate,
@@ -23,10 +21,9 @@ import {
 import {
   buildPushContent,
   encodePushContent,
+  type PushTrigger,
   pushCollapseId,
   pushExpiresAt,
-  pushTriggerForEvent,
-  shouldNotifyForSession,
 } from "./push-content";
 import {
   createPushGatewayClient,
@@ -50,8 +47,6 @@ export interface PushServiceOptions {
   settings: PushSettingsStore;
   signingKey(): KeyObject;
   identity(): HostIdentity;
-  getSession(sessionId: string): Promise<SessionRecord | null>;
-  allows?(session: SessionRecord, kind: PushNotificationKind): boolean;
   crypto: NoiseCrypto;
   defaultGatewayUrl?: string | null;
   fetch?: typeof fetch;
@@ -73,6 +68,15 @@ function parsePushSettings(
     return { url: fallbackUrl };
   }
 }
+
+export interface PreparedPush {
+  targetHandle: string;
+  plaintext: Uint8Array;
+  collapseId: string;
+  expiresAt: number;
+}
+
+export type PushSendResult = "sent" | "failed" | "gone";
 
 function requireDevice(principal: HostPrincipal) {
   if (principal.kind !== "device") {
@@ -152,59 +156,60 @@ export class PushService {
     return { registered: false };
   }
 
-  async notify(event: AgentEvent): Promise<void> {
-    const now = this.now();
-    const trigger = pushTriggerForEvent(event, now);
-    if (!trigger) return;
-    const targets = this.options.repository
+  private notifyTargets() {
+    return this.options.repository
       .listPushTargets()
       .filter((target) => target.scopes.includes(NOTIFY_SCOPE));
-    if (targets.length === 0) return;
+  }
+
+  async prepare(
+    trigger: PushTrigger,
+    session: SessionRecord,
+  ): Promise<PreparedPush[]> {
+    const targets = this.notifyTargets();
+    if (targets.length === 0) return [];
     const { url } = await this.readSettings();
-    if (!url) return;
-    const session = await this.options.getSession(trigger.sessionId);
-    if (!session || !shouldNotifyForSession(session)) return;
-    if (this.options.allows && !this.options.allows(session, trigger.kind)) {
-      return;
-    }
+    if (!url) return [];
     const plaintext = encodePushContent(
       buildPushContent(trigger, session, this.options.identity()),
     );
-    const gateway = this.gateway(url);
-    await Promise.all(
-      targets.map((target) =>
-        this.deliver(gateway, target, plaintext, {
-          collapseId: pushCollapseId(trigger),
-          expiresAt: pushExpiresAt(trigger, now),
-        }),
-      ),
-    );
+    const collapseId = pushCollapseId(trigger);
+    const expiresAt = pushExpiresAt(trigger, this.now());
+    return targets.map((target) => ({
+      targetHandle: target.handle,
+      plaintext,
+      collapseId,
+      expiresAt,
+    }));
   }
 
-  private async deliver(
-    gateway: PushGatewayClient,
-    target: PushTarget,
-    plaintext: Uint8Array,
-    meta: { collapseId: string; expiresAt: number },
-  ) {
+  async send(push: PreparedPush): Promise<PushSendResult> {
+    const target = this.notifyTargets().find(
+      (entry) => entry.handle === push.targetHandle,
+    );
+    if (!target) return "gone";
+    const { url } = await this.readSettings();
+    if (!url) return "gone";
     const sealed = sealMessage({
       crypto: this.options.crypto,
       recipientPublicKey: decodeBase64Url(target.publicKey),
       prologue,
-      plaintext,
+      plaintext: push.plaintext,
     });
-    const outcome = await gateway.send({
+    const outcome = await this.gateway(url).send({
       handle: target.handle,
       ciphertext: encodeBase64Url(sealed),
-      collapseId: meta.collapseId,
+      collapseId: push.collapseId,
       priority: "high",
-      expiresAt: meta.expiresAt,
+      expiresAt: push.expiresAt,
     });
     if (outcome === "unregistered") {
       this.options.repository.clearDevicePushHandle(
         target.handle,
         this.now().toISOString(),
       );
+      return "gone";
     }
+    return outcome;
   }
 }

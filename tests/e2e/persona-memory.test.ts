@@ -68,12 +68,29 @@ function lastUserText(request: StubLlmRequest) {
     : JSON.stringify(user?.content ?? "");
 }
 
+function systemText(request: StubLlmRequest) {
+  const messages = request.body.messages as {
+    role: string;
+    content: unknown;
+  }[];
+  return messages
+    .filter(
+      (message) => message.role === "system" || message.role === "developer",
+    )
+    .map((message) =>
+      typeof message.content === "string"
+        ? message.content
+        : JSON.stringify(message.content ?? ""),
+    )
+    .join("\n");
+}
+
 describe("personal assistant memory", () => {
   afterAll(async () => {
     await tempDirs.cleanup();
   });
 
-  it("scopes recall and writes to the persona and injects its soul once", async () => {
+  it("scopes recall and writes to the persona and keeps its persona in the system prompt", async () => {
     const directory = await tempDirs.create("cocu-persona-memory-");
     const statePath = path.join(directory, "rsrs-state.json");
     await writeFile(statePath, JSON.stringify(SEED), "utf8");
@@ -129,12 +146,12 @@ describe("personal assistant memory", () => {
         "create",
         "--name",
         "Coach",
-        "--agent",
-        "pi",
         "--provider",
         "e2e-stub",
         "--model",
         "e2e-agent-model",
+        "--instructions",
+        "Track the training plan",
         "--soul",
         "Answer like a drill sergeant",
       ])) as PersonalAgentRecord;
@@ -175,9 +192,14 @@ describe("personal assistant memory", () => {
         "--wait",
       ]);
 
+      for (const request of stub.requests) {
+        const system = systemText(request);
+        expect(system).toContain("<assistant_persona>");
+        expect(system).toContain("Track the training plan");
+        expect(system).toContain("Answer like a drill sergeant");
+      }
       const first = lastUserText(stub.requests[0]);
-      expect(first).toContain("<assistant-persona>");
-      expect(first).toContain("Answer like a drill sergeant");
+      expect(first).not.toContain("Answer like a drill sergeant");
       expect(first).toContain("Allergic to peanuts");
       expect(first).not.toContain("Peanut sauce recipe");
       expect(first).not.toContain("Peanut farm visit");
@@ -196,6 +218,7 @@ describe("personal assistant memory", () => {
         ]),
       );
 
+      await cli(["persona", "update", coach.id, "--soul", "Answer softly"]);
       const sent = stub.requests.length;
       stub.plan = { kind: "stream", chunks: ["Again"] };
       await cli([
@@ -206,8 +229,14 @@ describe("personal assistant memory", () => {
         "--wait",
       ]);
       const second = lastUserText(stub.requests[sent]);
-      expect(second).not.toContain("<assistant-persona>");
+      expect(second).not.toContain("Answer softly");
       expect(second).toContain("Allergic to peanuts");
+      const secondSystem = systemText(stub.requests[sent]);
+      expect(secondSystem).toContain("Answer softly");
+      expect(secondSystem.lastIndexOf("Answer softly")).toBeGreaterThan(
+        secondSystem.lastIndexOf("Answer like a drill sergeant"),
+      );
+      expect(secondSystem).toContain("Track the training plan");
 
       const injectedDirectory = await tempDirs.create("cocu-persona-hosted-");
       await writeFile(

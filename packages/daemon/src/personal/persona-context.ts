@@ -21,13 +21,27 @@ export function personaWritePartition(
   return target === "user" ? ABOUT_ME : scope.own;
 }
 
-export function buildPersonaSoulBlock(soul: string | null) {
-  const text = soul?.trim();
-  if (!text) return null;
+export const PERSONA_SYSTEM_SECTION = "assistant_persona";
+
+export interface PersonaPromptSource {
+  instructions: string | null;
+  soul: string | null;
+}
+
+export function buildPersonaSystemSection(source: PersonaPromptSource) {
+  const parts = [source.instructions, source.soul]
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part));
+  if (parts.length === 0) return null;
   return [
-    "<assistant-persona>",
-    "The user wrote this persona for you. Follow it throughout this conversation.",
-    text,
-    "</assistant-persona>",
-  ].join("\n");
+    "The user wrote these instructions for you as their personal assistant. Follow them in every turn.",
+    ...parts,
+  ].join("\n\n");
+}
+
+export function personaSystemSections(
+  source: PersonaPromptSource | null,
+): Record<string, string> {
+  const section = source ? buildPersonaSystemSection(source) : null;
+  return section ? { [PERSONA_SYSTEM_SECTION]: section } : {};
 }

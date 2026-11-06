@@ -1165,6 +1165,7 @@ export function CenterPanel({
             composerRole={personalView?.composerRole}
             composerPlaceholder={personalView?.composerPlaceholder}
             emptyState={personalView?.emptyState}
+            presentation={personalView ? "assistant" : "work"}
             permissionMode={activePermissionMode}
             providerSnapshot={activeSession.providerSnapshot}
             thinkingLevel={selectedThinkingLevel}

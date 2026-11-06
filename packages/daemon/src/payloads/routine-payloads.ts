@@ -2,6 +2,7 @@ import {
   ROUTINE_ACCESS_VALUES,
   ROUTINE_DELIVER_VALUES,
   ROUTINE_MIN_INTERVAL_MINUTES,
+  supportedLocales,
 } from "@cocurdex/shared";
 import { z } from "zod";
 import {
@@ -45,9 +46,8 @@ export const routinePayloadSchemas: PayloadSchemas = {
   ),
   "inbox.postBrief": exact<Payload<"inbox.postBrief">>()(
     z.object({
-      updatedAt: boundedTextSchema(40),
-      day: boundedTextSchema(20),
-      content: promptSchema,
+      timeZone: timeZoneSchema.nullish(),
+      locale: z.enum(supportedLocales).nullish(),
     }),
   ),
   "routine.list": exact<Payload<"routine.list">>()(

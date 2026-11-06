@@ -1,8 +1,11 @@
 import type { ComponentProps, RefObject } from "react";
 import { cn } from "@/lib";
+import { useChatPresentation } from "../../chat-display";
 import { TranscriptStateProvider } from "../../transcript-state";
 import { ChatConversationItem } from "../chat-conversation-item";
 import type { ConversationGroup } from "../chat-timeline";
+import { separatorTimeBefore } from "../conversation-time";
+import { ConversationTimeSeparator } from "../conversation-time-separator";
 import { useElementHeight } from "./use-element-height";
 import {
   type ChatTimelineScrollHandle,
@@ -38,6 +41,7 @@ export function ChatVirtualTimeline({
       viewportElement,
     });
   const viewportHeight = useElementHeight(viewportElement);
+  const showsTimeSeparators = useChatPresentation() === "assistant";
   return (
     <TranscriptStateProvider>
       <div
@@ -56,6 +60,9 @@ export function ChatVirtualTimeline({
             conversationProps.isRunning &&
             anchoredPromptId !== null &&
             group.prompt?.id === anchoredPromptId;
+          const separatorTime = showsTimeSeparators
+            ? separatorTimeBefore(groups[index - 1], group)
+            : null;
           return (
             <div
               className="absolute inset-x-0 top-0 w-full"
@@ -69,6 +76,9 @@ export function ChatVirtualTimeline({
                   : undefined,
               }}
             >
+              {separatorTime === null ? null : (
+                <ConversationTimeSeparator time={separatorTime} />
+              )}
               <div
                 className={cn(isLatestConversation && "pb-6")}
                 data-transcript-content-end={

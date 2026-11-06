@@ -5,17 +5,17 @@ description: Create, configure, and talk to Cocurdex personal agents (personas i
 
 # /cocurdex-persona — Personal agents
 
-The assistant form holds the user's personal agents. Each persona is an agent role (name, engine, model, instructions, avatar) plus a soul (standing personality and preferences) and one home thread, a long-lived session in the personal workspace. The default persona always exists and cannot be deleted; its home thread cannot be deleted or archived on its own.
+The assistant form holds the user's personal agents. Each persona is an agent role (name, model, instructions, avatar) on the Pi engine plus a soul (standing personality and preferences) and one home thread, a long-lived session in the personal workspace. The default persona always exists and cannot be deleted; its home thread cannot be deleted or archived on its own.
 
 Manage personas through the `cocurdex` CLI. A `<persona>` argument accepts the persona id, a unique id prefix, or its name (case-insensitive).
 
 ```bash
 cocurdex persona list --json
 cocurdex persona show <persona> --json
-cocurdex persona create --name <name> [--agent <agent>] [--provider <id> --model <id>] \
+cocurdex persona create --name <name> [--provider <id> --model <id>] \
   [--description <text>] [--instructions <text>|--instructions-file <path>] \
   [--soul <text>|--soul-file <path>] --json
-cocurdex persona update <persona> [--name <name>] [--agent <agent>] [--provider <id> --model <id>] \
+cocurdex persona update <persona> [--name <name>] [--provider <id> --model <id>] \
   [--description <text>] [--instructions <text>|--instructions-file <path>] \
   [--soul <text>|--soul-file <path>] [--pin|--unpin] [--mute|--unmute] --json
 cocurdex persona duplicate <persona> --name <name> --json
@@ -24,7 +24,8 @@ cocurdex persona send <persona> <message> [--wait] [--timeout <seconds>] --json
 cocurdex persona thread <persona> [--limit <n>] --json
 ```
 
-- `create` defaults the engine to Pi; pick `--agent` and a model the user has configured (`cocurdex provider list`).
+- Personas always run on Pi; pick a model the user has configured (`cocurdex provider list`).
+- A muted persona (`--mute`) never notifies the desktop or the phone; its threads still reach the inbox.
 - `send` posts to the persona's home thread and returns the message id. With `--wait` it returns the reply once the turn settles, and fails with the persona's error when the turn fails. Without `--wait`, read the reply later with `thread`.
 - Instructions describe the job; the soul describes who the persona is to the user. Keep both short and specific, and pass long text with the `-file` flags.
 - Deleting a persona also deletes its role and home thread. Confirm with the user first.
@@ -45,7 +46,7 @@ cocurdex memory export <file> --json
 cocurdex memory import <file> --json
 ```
 
-- Inside a persona's thread, each turn recalls that persona's partition plus `me`, never another persona's. `memory_remember` writes to the persona's partition; pass `about: "user"` for a fact every persona should share. The soul is sent at the start of each new thread, so a soul edit applies from the next thread.
+- Inside a persona's thread, each turn recalls that persona's partition plus `me`, never another persona's. `memory_remember` writes to the persona's partition; pass `about: "user"` for a fact every persona should share. The instructions and soul are part of the persona's system prompt on every turn, so an edit applies from the next message.
 - `forget` is reversible: `history` lists the deleted entry with its full id, and `restore` takes that full id.
 - Edit an entry in place with `update` instead of storing a near-duplicate; read it back with `show`.
 - `list` reports `error` when memory is off or not installed; relay the fix it names (see `/cocurdex-settings`) instead of retrying.
@@ -53,14 +54,14 @@ cocurdex memory import <file> --json
 
 ## Routines
 
-A routine runs a persona on a schedule: an interval (`--every <minutes>`, at least 5) or a wall-clock time (`--at HH:MM`, optionally `--days mon,wed|weekdays|weekends`) in an IANA time zone (`--tz`, default the host's). Each routine has its own thread under the persona, with the persona's soul and memory. A `<routine>` argument accepts the id, a unique id prefix, or its name.
+A routine runs a persona on a schedule: an interval (`--every <minutes>`, at least 5) or a wall-clock time (`--at HH:MM`, optionally `--days mon,wed|weekdays|weekends`) in an IANA time zone (`--tz`, default the host's). Every run starts a fresh thread under the persona, with the persona's instructions, soul, and memory; the previous run's thread is archived. A `<routine>` argument accepts the id, a unique id prefix, or its name.
 
 ```bash
 cocurdex routine list [--persona <persona>] --json
 cocurdex routine show <routine> --json
 cocurdex routine create --persona <persona> --name <name> --prompt <text>|--prompt-file <path> \
   (--every <minutes>|--at <HH:MM> [--days <days>]) [--tz <zone>] \
-  [--access read-and-draft|ask|full] [--deliver inbox|push|silent] --json
+  [--access read-and-draft|full] [--deliver inbox|push|silent] --json
 cocurdex routine update <routine> [--name <name>] [--prompt <text>|--prompt-file <path>] \
   [--every <minutes>|--at <HH:MM> [--days <days>]] [--tz <zone>] [--access ...] [--deliver ...] --json
 cocurdex routine pause|resume <routine> --json
@@ -70,21 +71,24 @@ cocurdex routine delete <routine> --json
 ```
 
 - Write the prompt as a self-contained instruction; every run starts from it alone.
-- `access`: `read-and-draft` (default) keeps the agent on its most restricted permission mode; `ask` uses the persona's own mode and waits for approval; `full` runs unattended with every permission. Grant `full` only when the user asks for it explicitly.
-- `deliver`: `inbox` (default) records results quietly and notifies on failure; `push` also notifies the phone on every result; `silent` only records. Unless the routine is `silent`, each successful result is also posted into the persona's home thread, marked with the routine as its source, and the persona sees it on its next turn there. Approvals, questions, and plans always notify.
-- A run that was missed while the machine slept runs once on wake. Failures back off, three in a row pause the routine (`paused: failures`), and `resume` clears it. Each routine runs at most 24 times a day; extra runs are recorded as `skipped`.
-- Inside a persona's thread, the `routine` tool group (`routine_list`, `routine_create`, `routine_update`, `routine_run`, `routine_runs`, `routine_delete`) manages that persona's own routines. Tools cannot grant `full` access or change or run a `full` routine.
-- Deleting a routine deletes its thread; deleting a persona deletes its routines and their threads.
+- Runs are unattended: nobody can answer a question mid-run. `access`: `read-and-draft` (default) limits the run to reading files and memory plus the routine tools, and blocks every other tool; `full` allows every tool. Grant `full` only when the user asks for it explicitly.
+- Each run ends by calling `routine_report` with a `status`: `ready` (a result to read), `dropped` (nothing worth telling; recorded, never delivered), `needs_you` (with a `question` the user must answer), `blocked`, or `failed` (counts as a failure). A run that forgets is reminded once; if it still does not report, its final reply is used as a `ready` result. `routine runs` shows each run's `outcome`, `summary`, and `question`.
+- `deliver`: `inbox` (default) records results quietly and notifies on failure; `push` also notifies the phone on every result; `silent` only records. Unless the routine is `silent`, each delivered result is also posted into the persona's home thread, marked with the routine as its source, and the persona sees it on its next turn there. `needs_you` and `blocked` runs are posted and reach the inbox even when `silent`.
+- A run is stopped and failed after 20 minutes. A run cut off by a daemon restart is recorded as failed and is not replayed; the routine waits for its next slot. A run that was missed while the machine slept runs once on wake. Failures back off, three in a row pause the routine (`paused: failures`), and `resume` clears it. Each routine runs at most 24 times a day; extra runs are recorded as `skipped`.
+- Inside a persona's thread, the `routine` tool group (`routine_list`, `routine_create`, `routine_update`, `routine_run`, `routine_runs`, `routine_delete`) manages that persona's own routines; `routine_report` exists only inside a running routine. Tools cannot grant `full` access or change or run a `full` routine.
+- Deleting a routine deletes its run threads; deleting a persona deletes its routines and their threads.
 
 ## Inbox and brief
 
-The inbox gathers what needs the user across every form: pending approvals, questions, and plans, failed or unread finished sessions, and routine results, failures, and auto-pauses. Items are ordered by what needs the user, then failures, then results. The brief is today's summary built from the same data without a model: what needs the user, each routine's latest result today, and failures; it is `null` when there is nothing to report.
+The inbox gathers what needs the user across every form: pending approvals, questions, and plans, failed or unread finished sessions, and routine results, runs that need the user, failures, and auto-pauses. Items are ordered by what needs the user, then failures, then results. The brief is today's summary built from the same data without a model: what needs the user, each routine's latest result today, and failures; it is `null` when there is nothing to report.
 
 ```bash
 cocurdex inbox [list] --json
 cocurdex inbox read <item-id> --json
 cocurdex inbox brief [--tz <zone>] --json
+cocurdex inbox brief post [--tz <zone>] [--locale en-US|zh-CN] --json
 ```
 
 - `read` marks the item's thread visited, which clears it; do it only after the user has seen or handled the item.
 - Use the brief to answer "what happened today" or "what needs me" instead of reading every thread.
+- `brief post` writes today's brief into the default assistant's home thread, in the given locale (the last one used otherwise), and returns the message; it returns `null` when there is no brief or nothing changed since the last post. The apps post it when the user comes back after being away.

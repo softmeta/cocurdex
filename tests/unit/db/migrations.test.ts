@@ -1290,6 +1290,208 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds the push outbox from version 42 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("DROP TABLE push_outbox;");
+    const now = "2026-11-06T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Personal', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Coach', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      PRAGMA user_version = 42;
+    `);
+
+    initializeDatabase(database);
+
+    database.exec(`
+      INSERT INTO push_outbox (id, target_handle, plaintext, collapse_id, expires_at, attempts, next_attempt_at, created_at)
+      VALUES ('o1', 'h1', '{}', 'c1', 1, 0, '${now}', '${now}');
+    `);
+    expect(database.prepare("SELECT id FROM push_outbox").all()).toEqual([
+      { id: "o1" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
+  it("adds routine reports from version 41 and retires ask access", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(
+      "ALTER TABLE routine_runs DROP COLUMN outcome; ALTER TABLE routine_runs DROP COLUMN question;",
+    );
+    const now = "2026-11-06T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Personal', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, created_at, updated_at)
+      VALUES ('r1', 'Coach', 'pi', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Coach', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO personal_agents (id, role_id, home_session_id, soul, is_default, created_at, updated_at)
+      VALUES ('p1', 'r1', 's1', 'Calm', 1, '${now}', '${now}');
+      INSERT INTO routines (id, agent_id, name, prompt, schedule_json, time_zone, access, created_at, updated_at)
+      VALUES
+        ('rt1', 'p1', 'Morning', 'Plan my day', '{"kind":"interval","minutes":60}', 'UTC', 'ask', '${now}', '${now}'),
+        ('rt2', 'p1', 'Deploy', 'Ship it', '{"kind":"interval","minutes":60}', 'UTC', 'full', '${now}', '${now}');
+      INSERT INTO routine_runs (id, routine_id, trigger, status, summary, started_at)
+      VALUES ('run1', 'rt1', 'manual', 'succeeded', 'Three meetings', '${now}');
+      PRAGMA user_version = 41;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database.prepare("SELECT id, access FROM routines ORDER BY id").all(),
+    ).toEqual([
+      { id: "rt1", access: "read-and-draft" },
+      { id: "rt2", access: "full" },
+    ]);
+    expect(
+      database
+        .prepare("SELECT id, summary, outcome, question FROM routine_runs")
+        .all(),
+    ).toEqual([
+      { id: "run1", summary: "Three meetings", outcome: null, question: null },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
+  it("moves personal agents onto pi from version 40 and keeps user data", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-11-06T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Personal', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO provider_configs (id, name, base_url, created_at, updated_at)
+      VALUES ('openrouter', 'OpenRouter', 'https://example.invalid', '${now}', '${now}');
+      INSERT INTO provider_models (provider_id, model_id, name, api, source, created_at, updated_at)
+      VALUES
+        ('openrouter', 'kept-model', 'Kept', 'openai-completions', 'manual', '${now}', '${now}'),
+        ('openrouter', 'default-model', 'Default', 'openai-completions', 'manual', '${now}', '${now}');
+      INSERT INTO agent_provider_defaults (agent_id, provider_id, model_id, created_at, updated_at)
+      VALUES ('pi', 'openrouter', 'default-model', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, provider_id, model_id, model_name, instructions, reasoning_effort, thinking_level, created_at, updated_at)
+      VALUES
+        ('r1', 'Coach', 'codex', 'openrouter', 'kept-model', 'Kept', 'Be brief', 'high', 'low', '${now}', '${now}'),
+        ('r2', 'Scout', 'claude-agent', 'anthropic', 'claude-native', 'Native', NULL, NULL, NULL, '${now}', '${now}'),
+        ('r3', 'Reviewer', 'codex', 'openai', 'gpt-x', 'GPT', NULL, 'high', NULL, '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, session_mode_id, permission_mode, provider_snapshot_json, created_at, updated_at)
+      VALUES
+        ('s1', 'w1', 'Coach', 'codex', 'idle', 'read-only', 'plan', 'auto', '{"providerId":"openrouter"}', '${now}', '${now}'),
+        ('s2', 'w1', 'Scout', 'pi', 'idle', 'read-only', NULL, NULL, '{"providerId":"openrouter"}', '${now}', '${now}'),
+        ('s3', 'w1', 'Morning', 'codex', 'idle', 'read-only', NULL, NULL, '{"providerId":"openai"}', '${now}', '${now}'),
+        ('s4', 'w1', 'Work', 'codex', 'idle', 'read-only', NULL, NULL, '{"providerId":"openai"}', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO personal_agents (id, role_id, home_session_id, soul, is_default, created_at, updated_at)
+      VALUES
+        ('p1', 'r1', 's1', 'Calm', 1, '${now}', '${now}'),
+        ('p2', 'r2', 's2', NULL, 0, '${now}', '${now}');
+      INSERT INTO routines (id, agent_id, name, prompt, schedule_json, time_zone, session_id, created_at, updated_at)
+      VALUES ('rt1', 'p1', 'Morning', 'Plan my day', '{"kind":"interval","minutes":60}', 'UTC', 's3', '${now}', '${now}');
+      PRAGMA user_version = 40;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, agent_id, provider_id, model_id, model_name, instructions, reasoning_effort, thinking_level FROM agent_roles ORDER BY id",
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: "r1",
+        agent_id: "pi",
+        provider_id: "openrouter",
+        model_id: "kept-model",
+        model_name: "Kept",
+        instructions: "Be brief",
+        reasoning_effort: null,
+        thinking_level: "low",
+      },
+      {
+        id: "r2",
+        agent_id: "pi",
+        provider_id: "openrouter",
+        model_id: "default-model",
+        model_name: null,
+        instructions: null,
+        reasoning_effort: null,
+        thinking_level: null,
+      },
+      {
+        id: "r3",
+        agent_id: "codex",
+        provider_id: "openai",
+        model_id: "gpt-x",
+        model_name: "GPT",
+        instructions: null,
+        reasoning_effort: "high",
+        thinking_level: null,
+      },
+    ]);
+    expect(
+      database
+        .prepare(
+          "SELECT id, agent_type, session_mode_id, permission_mode, provider_snapshot_json FROM sessions ORDER BY id",
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: "s1",
+        agent_type: "pi",
+        session_mode_id: null,
+        permission_mode: null,
+        provider_snapshot_json: null,
+      },
+      {
+        id: "s2",
+        agent_type: "pi",
+        session_mode_id: null,
+        permission_mode: null,
+        provider_snapshot_json: '{"providerId":"openrouter"}',
+      },
+      {
+        id: "s3",
+        agent_type: "pi",
+        session_mode_id: null,
+        permission_mode: null,
+        provider_snapshot_json: null,
+      },
+      {
+        id: "s4",
+        agent_type: "codex",
+        session_mode_id: null,
+        permission_mode: null,
+        provider_snapshot_json: '{"providerId":"openai"}',
+      },
+    ]);
+    expect(
+      database
+        .prepare("SELECT id, soul FROM personal_agents ORDER BY id")
+        .all(),
+    ).toEqual([
+      { id: "p1", soul: "Calm" },
+      { id: "p2", soul: null },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
   it("adds routines from version 39 and keeps personal agents", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

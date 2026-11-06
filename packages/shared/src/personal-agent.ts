@@ -1,9 +1,10 @@
 import type { AgentRoleRecord, SaveAgentRolePayload } from "./agent-role";
-import { CHAT_AGENT_ID, isChatWorkspaceId } from "./chat-session";
+import { isChatWorkspaceId } from "./chat-session";
 import type { AgentId, SessionRecord } from "./contracts";
 
 export const PERSONAL_WORKSPACE_ID = "personal";
 export const PERSONAL_AGENT_SOUL_MAX_LENGTH = 20_000;
+export const PERSONAL_AGENT_RUNTIME_ID: AgentId = "pi";
 
 export interface PersonalAgentRecord {
   id: string;
@@ -44,13 +45,10 @@ export interface DuplicatePersonalAgentPayload {
   name: string;
 }
 
-export function personalAgentRoleDraft(
-  name: string,
-  agentId: AgentId = CHAT_AGENT_ID,
-): PersonalAgentRolePayload {
+export function personalAgentRoleDraft(name: string): PersonalAgentRolePayload {
   return {
     name,
-    agentId,
+    agentId: PERSONAL_AGENT_RUNTIME_ID,
     providerId: null,
     modelId: null,
     modelName: null,
@@ -63,6 +61,14 @@ export function personalAgentRoleDraft(
     openCodeAgent: null,
     openCodeVariant: null,
   };
+}
+
+export function assertPersonalAgentRuntime(agentId: AgentId) {
+  if (agentId !== PERSONAL_AGENT_RUNTIME_ID) {
+    throw new Error(
+      `Personal agents run on ${PERSONAL_AGENT_RUNTIME_ID}, not ${agentId}`,
+    );
+  }
 }
 
 export function isPersonalWorkspaceId(workspaceId: string) {

@@ -5,6 +5,7 @@ import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import {
   type AgentId,
   type AgentPermissionMode,
+  isAgentEvent,
   isFormWorkspaceId,
   primaryWorkspaceRootPath,
   projectAgentRoleToExecutorBinding,
@@ -303,7 +304,7 @@ async function main(rawArgs: string[]) {
       subscribe: (onEvent, onDisconnect) =>
         subscribeDaemonEvents(
           (event) => {
-            if ("sessionId" in event) onEvent(event);
+            if (isAgentEvent(event) && "sessionId" in event) onEvent(event);
           },
           { onDisconnect },
         ),

@@ -11,7 +11,7 @@ import {
 import { selectSessionAtom } from "@/features/sessions";
 import { cn } from "@/lib";
 
-import { chatDisplaySettingsAtom } from "../chat-display";
+import { useActivityDisplay } from "../chat-display";
 import { useTranscriptState } from "../use-transcript-state";
 import { ToolCallDetailBody } from "./tool-call-detail";
 import { ToolCallRowIcon } from "./tool-call-row-icon";
@@ -248,7 +248,7 @@ export function ToolCallGroup({
   nested?: boolean;
 }) {
   const { t } = useTranslation("agent");
-  const { activityDisplay } = useAtomValue(chatDisplaySettingsAtom);
+  const activityDisplay = useActivityDisplay();
   const runs = partitionToolCallRuns(toolCalls);
   const [openRuns, setOpenRuns] = useTranscriptState<Record<string, boolean>>(
     `tool-group:${toolCalls[0]?.id}`,

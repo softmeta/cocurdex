@@ -6,6 +6,7 @@ export type InboxItemKind =
   | "completed"
   | "routine-failed"
   | "routine-paused"
+  | "routine-needs-you"
   | "routine-result";
 
 export type InboxForm = "work" | "chat" | "personal";
@@ -27,6 +28,7 @@ export const INBOX_NEEDS_YOU_KINDS: readonly InboxItemKind[] = [
   "approval",
   "question",
   "plan",
+  "routine-needs-you",
 ];
 
 export const INBOX_FAILURE_KINDS: readonly InboxItemKind[] = [

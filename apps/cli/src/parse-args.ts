@@ -3,6 +3,23 @@ export interface ParsedArgs {
   flags: Map<string, string | boolean>;
 }
 
+export function assertKnownFlags(
+  parsed: ParsedArgs,
+  known: readonly string[],
+  command: string,
+) {
+  const unknown = [...parsed.flags.keys()].filter(
+    (flag) => flag !== "json" && !known.includes(flag),
+  );
+  if (unknown.length > 0) {
+    const names = unknown.map((flag) => `--${flag}`).join(", ");
+    const accepted = ["json", ...known].map((flag) => `--${flag}`).join(", ");
+    throw new Error(
+      `Unknown flag ${names} for "${command}". Accepted flags: ${accepted}`,
+    );
+  }
+}
+
 export function parseArgs(args: string[]): ParsedArgs {
   const flags = new Map<string, string | boolean>();
   const positional: string[] = [];

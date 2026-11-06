@@ -1,4 +1,8 @@
-import type { RoutineRunRecord, RoutineRunStatus } from "@cocurdex/shared";
+import {
+  type RoutineRunRecord,
+  type RoutineRunStatus,
+  routineReportNeedsUser,
+} from "@cocurdex/shared";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/ui";
@@ -14,6 +18,35 @@ function statusLabel(t: TFunction<"personal">, status: RoutineRunStatus) {
     case "skipped":
       return t("routines.run.skipped");
   }
+}
+
+function runLabel(t: TFunction<"personal">, run: RoutineRunRecord) {
+  if (run.status !== "succeeded") return statusLabel(t, run.status);
+  switch (run.outcome) {
+    case "dropped":
+      return t("routines.run.dropped");
+    case "needs_you":
+      return t("routines.run.needsYou");
+    case "blocked":
+      return t("routines.run.blocked");
+    default:
+      return statusLabel(t, run.status);
+  }
+}
+
+function runDotClass(run: RoutineRunRecord) {
+  if (run.status === "succeeded" && routineReportNeedsUser(run.outcome)) {
+    return "bg-chat-status-pending-fg";
+  }
+  if (run.status === "succeeded" && run.outcome === "dropped") {
+    return "bg-muted-foreground";
+  }
+  return statusDotClass(run.status);
+}
+
+function runDetail(run: RoutineRunRecord) {
+  if (run.error) return run.error;
+  return [run.summary, run.question].filter(Boolean).join("\n");
 }
 
 function statusDotClass(status: RoutineRunStatus) {
@@ -45,8 +78,8 @@ export function RoutineRuns({ runs }: { runs: RoutineRunRecord[] }) {
       ) : (
         <ul className="flex flex-col gap-2">
           {runs.map((run) => {
-            const label = statusLabel(t, run.status);
-            const detail = run.error ?? run.summary;
+            const label = runLabel(t, run);
+            const detail = runDetail(run);
             return (
               <li
                 className="flex min-w-0 items-start gap-2"
@@ -56,7 +89,7 @@ export function RoutineRuns({ runs }: { runs: RoutineRunRecord[] }) {
                 <span className="flex h-5 w-3 shrink-0 items-center justify-center">
                   <span
                     aria-label={label}
-                    className={`size-1.5 rounded-full ${statusDotClass(run.status)}`}
+                    className={`size-1.5 rounded-full ${runDotClass(run)}`}
                     role="img"
                   />
                 </span>
@@ -73,7 +106,7 @@ export function RoutineRuns({ runs }: { runs: RoutineRunRecord[] }) {
                   </span>
                   {detail ? (
                     <Text
-                      className="line-clamp-3"
+                      className="line-clamp-3 whitespace-pre-line"
                       size="meta"
                       tone={run.error ? "destructive" : "muted"}
                     >

@@ -44,8 +44,6 @@ describe("personas through the CLI", () => {
         "create",
         "--name",
         "Coach",
-        "--agent",
-        "pi",
         "--provider",
         "e2e-stub",
         "--model",

@@ -1,9 +1,6 @@
 {
   "brief": {
-    "failures": "Failures",
-    "needsYou": "Needs you",
-    "open": "Today's brief",
-    "results": "Routine results"
+    "open": "Today's brief"
   },
   "copyName": "{{name}} copy",
   "defaultName": "Assistant",
@@ -14,6 +11,10 @@
     "title": "Delete {{name}}?"
   },
   "edit": {
+    "instructions": "Instructions",
+    "instructionsPlaceholder": "What this assistant is for and how it should work",
+    "soul": "Persona",
+    "soulPlaceholder": "Tone, personality, and how it talks to you",
     "title": "Edit assistant"
   },
   "empty": {
@@ -30,6 +31,7 @@
       "plan": "Plan ready",
       "question": "Has a question",
       "routineFailed": "Routine failed",
+      "routineNeedsYou": "Needs you",
       "routinePaused": "Paused after failures",
       "routineResult": "New result"
     }
@@ -52,8 +54,6 @@
   },
   "routines": {
     "access": {
-      "ask": "Ask first",
-      "askDescription": "Uses the assistant's own mode and waits for your approval.",
       "full": "Full access",
       "fullDescription": "Runs unattended with every permission.",
       "label": "Access",
@@ -96,7 +96,10 @@
     "resize": "Resize routines list",
     "resume": "Resume",
     "run": {
+      "blocked": "Blocked",
+      "dropped": "Nothing to report",
       "failed": "Failed",
+      "needsYou": "Needs you",
       "running": "Running",
       "skipped": "Skipped",
       "succeeded": "Succeeded"

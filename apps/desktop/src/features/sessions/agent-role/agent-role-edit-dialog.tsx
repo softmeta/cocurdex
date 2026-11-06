@@ -1,5 +1,6 @@
 import type { AgentRoleRecord, SaveAgentRolePayload } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -13,6 +14,8 @@ import { AgentRoleForm } from "./agent-role-form";
 
 export function AgentRoleEditDialog({
   role,
+  agentLocked,
+  children,
   open,
   onOpenChange,
   onSaved,
@@ -20,6 +23,8 @@ export function AgentRoleEditDialog({
   title,
 }: {
   role?: AgentRoleRecord | null;
+  agentLocked?: boolean;
+  children?: ReactNode;
   open: boolean;
   onOpenChange(open: boolean): void;
   onSaved?(role: AgentRoleRecord): void;
@@ -44,13 +49,16 @@ export function AgentRoleEditDialog({
         <AgentRoleForm
           key={role?.id ?? "new"}
           role={role ?? blankRoleDraft(agents)}
+          agentLocked={agentLocked}
           save={save}
           onCancel={() => onOpenChange(false)}
           onSaved={(saved) => {
             onSaved?.(saved);
             onOpenChange(false);
           }}
-        />
+        >
+          {children}
+        </AgentRoleForm>
       </DialogContent>
     </Dialog>
   );

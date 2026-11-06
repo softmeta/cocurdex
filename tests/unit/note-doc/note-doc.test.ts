@@ -231,4 +231,15 @@ describe("note doc bytes", () => {
 
     expect(decodeNoteDocBytes(encodeNoteDocBytes(state))).toEqual(state);
   });
+
+  it("keeps list formatting when bold text contains inline code", () => {
+    const markdown = [
+      "1. **daemon reads `~/.x/db` (rejected)**: reason",
+      "2. **other**: text",
+    ].join("\n");
+    const stored = noteDocToMarkdown(createNoteDocState(markdown));
+    expect(stored).not.toContain("\\*");
+    expect(stored).toContain("`~/.x/db`");
+    expect(stored).toContain("2. **other**: text");
+  });
 });

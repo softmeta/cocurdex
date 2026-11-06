@@ -1,7 +1,7 @@
 import type { MessageRecord } from "@cocurdex/shared";
 
 export function requiresNativeSessionRecovery(history: MessageRecord[]) {
-  return history.length > 1;
+  return history.some((message) => message.role === "assistant");
 }
 
 export function createNativeSessionRecoveryError(agentLabel: string) {

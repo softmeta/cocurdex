@@ -9,8 +9,8 @@ import { useInbox } from "@/features/inbox";
 import { MemoryOnboarding } from "@/features/memory";
 import { personalApi, usePersonalAgents } from "@/features/personal";
 import { sessionsAtom } from "@/features/sessions";
-import { AgentRoleEditDialog } from "@/features/sessions/agent-role";
 import { InboxSection } from "./inbox-section";
+import { PersonaEditDialog } from "./persona-edit-dialog";
 import { personalAgentEditIdAtom } from "./personal-agent-edit-store";
 import {
   PersonalAgentRow,
@@ -104,14 +104,12 @@ export function PersonalAgentsPanel({
         />
       </SidebarScrollArea>
       <MemoryOnboarding />
-      <AgentRoleEditDialog
+      <PersonaEditDialog
+        agent={editing}
+        key={editing?.id ?? "none"}
         onOpenChange={(open) => {
           if (!open) setEditId(null);
         }}
-        open={editing !== null}
-        role={editing?.role ?? null}
-        save={personalApi.saveRole}
-        title={t("edit.title")}
       />
       <AppConfirmDialog
         cancelLabel={t("delete.cancel")}
