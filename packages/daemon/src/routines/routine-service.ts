@@ -6,8 +6,10 @@ import {
   ROUTINE_ACCESS_VALUES,
   ROUTINE_DELIVER_VALUES,
   type RoutineRecord,
+  type RoutineReport,
   type RoutineRunRecord,
   type RoutineRunTrigger,
+  routineReportNeedsUser,
   routineScheduleError,
   type UpdateRoutinePayload,
 } from "@cocurdex/shared";
@@ -72,9 +74,85 @@ export interface RoutineActiveRun {
   done: Promise<RoutineRunRecord>;
 }
 
+interface RoutineSessionRun {
+  routineId: string;
+  runId: string;
+  report: RoutineReport | null;
+}
+
+interface RoutineRunResult {
+  status: RoutineRunRecord["status"];
+  summary: string | null;
+  error: string | null;
+  outcome: RoutineReport["status"] | null;
+  question: string | null;
+}
+
+function runResult(
+  outcome: SessionTurnOutcome,
+  report: RoutineReport | null,
+): RoutineRunResult {
+  if (outcome.status === "failed") {
+    return failedResult(outcome.error, report);
+  }
+  if (outcome.status === "cancelled") {
+    return failedResult("The run was cancelled.", report);
+  }
+  if (!report) {
+    return {
+      status: "succeeded",
+      summary: summarize(outcome.message),
+      error: null,
+      outcome: null,
+      question: null,
+    };
+  }
+  return {
+    status: report.status === "failed" ? "failed" : "succeeded",
+    summary: report.summary,
+    error: report.status === "failed" ? report.summary : null,
+    outcome: report.status,
+    question: report.question,
+  };
+}
+
+function failedResult(
+  error: string,
+  report: RoutineReport | null,
+): RoutineRunResult {
+  return {
+    status: "failed",
+    summary: report?.summary ?? null,
+    error,
+    outcome: report?.status ?? null,
+    question: report?.question ?? null,
+  };
+}
+
+function deliveredContent(
+  routine: RoutineRecord,
+  outcome: SessionTurnOutcome,
+  result: RoutineRunResult,
+) {
+  if (result.status !== "succeeded" || result.outcome === "dropped") {
+    return "";
+  }
+  if (result.outcome === null) {
+    if (routine.deliver === "silent") return "";
+    return outcome.status === "completed" ? outcome.message.content.trim() : "";
+  }
+  if (!routineReportNeedsUser(result.outcome) && routine.deliver === "silent") {
+    return "";
+  }
+  return [result.summary, result.question]
+    .filter((part): part is string => Boolean(part))
+    .join("\n\n");
+}
+
 export class RoutineService {
   private readonly now: () => Date;
   private readonly running = new Map<string, RoutineActiveRun>();
+  private readonly sessionRuns = new Map<string, RoutineSessionRun>();
   private timer: ReturnType<typeof setInterval> | null = null;
   private ticking: Promise<void> | null = null;
 
@@ -83,13 +161,26 @@ export class RoutineService {
   }
 
   start() {
-    const at = this.now().toISOString();
+    const now = this.now();
+    const at = now.toISOString();
     for (const run of this.deps.repository.listRunning()) {
       this.deps.repository.saveRun({
         ...run,
         status: "failed",
         error: "The daemon stopped during the run.",
         finishedAt: at,
+      });
+      const routine = this.deps.repository.getById(run.routineId);
+      if (!routine) continue;
+      this.deps.repository.upsert({
+        ...routine,
+        sessionId: run.sessionId ?? routine.sessionId,
+        nextRunAt: routineNextRunAt(
+          routine.schedule,
+          routine.timeZone,
+          now,
+        ).toISOString(),
+        updatedAt: at,
       });
     }
     if (this.timer) return;
@@ -137,6 +228,29 @@ export class RoutineService {
 
   findBySession(sessionId: string) {
     return this.deps.repository.findBySession(sessionId);
+  }
+
+  sessionIds(routineId: string) {
+    return this.deps.repository.listSessionIds(routineId);
+  }
+
+  runningRoutine(sessionId: string) {
+    const active = this.sessionRuns.get(sessionId);
+    return active ? this.deps.repository.getById(active.routineId) : null;
+  }
+
+  isReporting(sessionId: string) {
+    const active = this.sessionRuns.get(sessionId);
+    return active !== undefined && active.report === null;
+  }
+
+  report(sessionId: string, report: RoutineReport) {
+    const active = this.sessionRuns.get(sessionId);
+    if (!active) throw new Error("This session is not running a routine");
+    if (active.report) {
+      throw new Error("This run already has a report");
+    }
+    this.sessionRuns.set(sessionId, { ...active, report });
   }
 
   async create(payload: CreateRoutinePayload) {
@@ -285,6 +399,8 @@ export class RoutineService {
       status: "skipped",
       summary: null,
       error: "The daily run limit was reached.",
+      outcome: null,
+      question: null,
       startedAt: at,
       finishedAt: at,
     });
@@ -310,6 +426,8 @@ export class RoutineService {
       status: "running",
       summary: null,
       error: null,
+      outcome: null,
+      question: null,
       startedAt,
       finishedAt: null,
     };
@@ -326,38 +444,43 @@ export class RoutineService {
   private async perform(routine: RoutineRecord, started: RoutineRunRecord) {
     let run = started;
     let outcome: SessionTurnOutcome;
+    let report: RoutineReport | null = null;
+    let sessionId: string | null = null;
     try {
-      const sessionId = await this.deps.ensureSession(routine);
+      sessionId = await this.deps.ensureSession(routine);
       run = { ...run, sessionId };
       this.deps.repository.saveRun(run);
+      this.sessionRuns.set(sessionId, {
+        routineId: routine.id,
+        runId: run.id,
+        report: null,
+      });
       outcome = await this.deps.runTurn(routine, sessionId);
     } catch (error) {
       outcome = {
         status: "failed",
         error: error instanceof Error ? error.message : String(error),
       };
+    } finally {
+      if (sessionId) {
+        report = this.sessionRuns.get(sessionId)?.report ?? null;
+        this.sessionRuns.delete(sessionId);
+      }
     }
-    return this.finish(routine.id, run, outcome);
+    return this.finish(routine.id, run, outcome, report);
   }
 
   private async finish(
     routineId: string,
     started: RoutineRunRecord,
     outcome: SessionTurnOutcome,
+    report: RoutineReport | null,
   ) {
     const now = this.now();
     const at = now.toISOString();
-    const succeeded = outcome.status === "completed";
-    let error: string | null = null;
-    if (outcome.status === "failed") error = outcome.error;
-    if (outcome.status === "cancelled") error = "The run was cancelled.";
-    const run: RoutineRunRecord = {
-      ...started,
-      status: succeeded ? "succeeded" : "failed",
-      summary: succeeded ? summarize(outcome.message) : null,
-      error,
-      finishedAt: at,
-    };
+    const result = runResult(outcome, report);
+    const succeeded = result.status === "succeeded";
+    const run: RoutineRunRecord = { ...started, ...result, finishedAt: at };
     this.deps.repository.saveRun(run);
     const routine = this.deps.repository.getById(routineId);
     if (!routine) return run;
@@ -379,9 +502,8 @@ export class RoutineService {
     };
     this.deps.repository.upsert(updated);
     this.deps.announceChanged();
-    const content =
-      outcome.status === "completed" ? outcome.message.content.trim() : "";
-    if (content && routine.deliver !== "silent") {
+    const content = deliveredContent(routine, outcome, result);
+    if (content) {
       await this.deps.deliverResult(routine, run, content).catch((error) =>
         logDaemonDiagnostic("warn", "routine.deliverFailed", {
           routineId: routine.id,

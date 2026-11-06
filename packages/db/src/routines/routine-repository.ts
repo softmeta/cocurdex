@@ -5,6 +5,7 @@ export interface RoutineRepository {
   listByAgent(agentId: string): RoutineRecord[];
   getById(id: string): RoutineRecord | null;
   findBySession(sessionId: string): RoutineRecord | null;
+  listSessionIds(routineId: string): string[];
   upsert(routine: RoutineRecord): void;
   delete(id: string): void;
   listRuns(routineId: string | null, limit: number): RoutineRunRecord[];

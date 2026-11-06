@@ -1,32 +1,44 @@
 import crypto from "node:crypto";
 import type { PersonalAgentRow } from "@cocurdex/db";
 import {
-  type AgentRoleRecord,
   type CreateSessionPayload,
   PERSONAL_WORKSPACE_ID,
   type RoutineRecord,
   type SendSessionCommand,
-  type SessionConfiguration,
   type SessionRecord,
 } from "@cocurdex/shared";
 import type { SessionTurnOutcome } from "../session-control/execution-types";
-import { routinePermissionMode } from "./routine-policy";
+
+export const ROUTINE_RUN_TIMEOUT_MS = 20 * 60_000;
 
 export interface RoutineSessionDeps {
   getPersona(id: string): PersonalAgentRow | null;
-  getRole(id: string): Promise<AgentRoleRecord | null>;
-  getSession(id: string): Promise<SessionRecord | null>;
   createSession(input: CreateSessionPayload): Promise<SessionRecord>;
-  saveSessionConfiguration(input: SessionConfiguration): Promise<SessionRecord>;
+  archiveSession(sessionId: string): Promise<unknown>;
   sendSessionMessage(command: SendSessionCommand): Promise<unknown>;
   waitForSessionTurn(sessionId: string): Promise<SessionTurnOutcome | null>;
+  stopSessionTurn(sessionId: string): Promise<unknown>;
+  timeoutMs?: number;
+}
+
+function timeoutMinutes(ms: number) {
+  return Math.max(1, Math.round(ms / 60_000));
 }
 
 export function createRoutineSessions(deps: RoutineSessionDeps) {
-  async function reusable(routine: RoutineRecord) {
-    if (!routine.sessionId) return null;
-    const session = await deps.getSession(routine.sessionId);
-    return session && !session.archivedAt ? session : null;
+  const timeoutMs = deps.timeoutMs ?? ROUTINE_RUN_TIMEOUT_MS;
+
+  async function waitWithTimeout(sessionId: string) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<"timeout">((resolve) => {
+      timer = setTimeout(() => resolve("timeout"), timeoutMs);
+      timer.unref?.();
+    });
+    try {
+      return await Promise.race([deps.waitForSessionTurn(sessionId), timedOut]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   return {
@@ -35,21 +47,13 @@ export function createRoutineSessions(deps: RoutineSessionDeps) {
       if (!persona) {
         throw new Error(`Personal agent ${routine.agentId} was not found`);
       }
-      const role = await deps.getRole(persona.roleId);
-      const session =
-        (await reusable(routine)) ??
-        (await deps.createSession({
-          workspaceId: PERSONAL_WORKSPACE_ID,
-          agentRoleId: persona.roleId,
-          title: routine.name,
-        }));
-      const permissionMode = routinePermissionMode(
-        routine.access,
-        session.agentType,
-        role?.permissionMode ?? undefined,
-      );
-      if (permissionMode !== session.permissionMode) {
-        await deps.saveSessionConfiguration({ ...session, permissionMode });
+      const session = await deps.createSession({
+        workspaceId: PERSONAL_WORKSPACE_ID,
+        agentRoleId: persona.roleId,
+        title: routine.name,
+      });
+      if (routine.sessionId) {
+        await deps.archiveSession(routine.sessionId).catch(() => undefined);
       }
       return session.id;
     },
@@ -69,7 +73,14 @@ export function createRoutineSessions(deps: RoutineSessionDeps) {
           routineName: routine.name,
         },
       });
-      const outcome = await deps.waitForSessionTurn(sessionId);
+      const outcome = await waitWithTimeout(sessionId);
+      if (outcome === "timeout") {
+        await deps.stopSessionTurn(sessionId).catch(() => undefined);
+        return {
+          status: "failed",
+          error: `The run hit its ${timeoutMinutes(timeoutMs)}-minute limit and was stopped.`,
+        };
+      }
       return outcome ?? { status: "failed", error: "The run did not finish." };
     },
   };

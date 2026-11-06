@@ -1561,6 +1561,7 @@ export default interface Resources {
         plan: "Plan ready";
         question: "Has a question";
         routineFailed: "Routine failed";
+        routineNeedsYou: "Needs you";
         routinePaused: "Paused after failures";
         routineResult: "New result";
       };
@@ -1583,8 +1584,6 @@ export default interface Resources {
     };
     routines: {
       access: {
-        ask: "Ask first";
-        askDescription: "Uses the assistant's own mode and waits for your approval.";
         full: "Full access";
         fullDescription: "Runs unattended with every permission.";
         label: "Access";
@@ -1627,7 +1626,10 @@ export default interface Resources {
       resize: "Resize routines list";
       resume: "Resume";
       run: {
+        blocked: "Blocked";
+        dropped: "Nothing to report";
         failed: "Failed";
+        needsYou: "Needs you";
         running: "Running";
         skipped: "Skipped";
         succeeded: "Succeeded";

@@ -34,6 +34,7 @@
       "plan": "计划待确认",
       "question": "有问题要问你",
       "routineFailed": "例行任务失败",
+      "routineNeedsYou": "需要你处理",
       "routinePaused": "连续失败已暂停",
       "routineResult": "有新结果"
     }
@@ -56,8 +57,6 @@
   },
   "routines": {
     "access": {
-      "ask": "先问我",
-      "askDescription": "使用助理自己的权限模式，需要你审批。",
       "full": "完全权限",
       "fullDescription": "无人值守，拥有全部权限。",
       "label": "权限",
@@ -100,7 +99,10 @@
     "resize": "调整例行任务列表宽度",
     "resume": "恢复",
     "run": {
+      "blocked": "受阻",
+      "dropped": "无可汇报",
       "failed": "失败",
+      "needsYou": "需要你处理",
       "running": "运行中",
       "skipped": "已跳过",
       "succeeded": "成功"

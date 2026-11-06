@@ -174,8 +174,11 @@ import { PushService } from "./push";
 import {
   createRoutineSessions,
   isValidTimeZone,
+  ROUTINE_RUN_SECTION,
   RoutineService,
   routinePushAllowed,
+  routineRunPolicy,
+  routineRunSection,
   zonedDayStart,
 } from "./routines";
 import { SLOW_REQUEST_THRESHOLD_MS } from "./rpc-request-log";
@@ -430,12 +433,11 @@ export class CocurdexDaemonService {
     });
     const routineSessions = createRoutineSessions({
       getPersona: (id) => this.state.data.personalAgents.getById(id),
-      getRole: (id) => this.state.getAgentRole(id),
-      getSession: (id) => this.state.getSession(id),
       createSession: (input) => this.createSession(input),
-      saveSessionConfiguration: (input) => this.saveSessionConfiguration(input),
+      archiveSession: (sessionId) => this.archiveSession(sessionId),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
+      stopSessionTurn: (sessionId) => this.stopSession(sessionId),
     });
     this.routines = new RoutineService({
       repository: this.state.data.routines,
@@ -648,6 +650,8 @@ export class CocurdexDaemonService {
       delete: (id, callerSessionId) => this.deleteRoutine(id, callerSessionId),
       run: (id) => this.routines.runNow(id).run,
       runs: (routineId, limit) => this.routines.runs(routineId, limit),
+      reporting: (sessionId) => this.routines.isReporting(sessionId),
+      report: (sessionId, report) => this.routines.report(sessionId, report),
     });
     registerSettingsTools(this.agentTools.registry, {
       getWorktreeEnvironment: (workspaceId) =>
@@ -820,19 +824,26 @@ export class CocurdexDaemonService {
   }
 
   async deleteRoutine(id: string, keepSessionId?: string) {
-    const routine = this.routines.get(id);
+    const sessionIds = this.routineSessionIds(id);
     this.routines.delete(id);
-    const sessionId = routine?.sessionId;
-    if (sessionId && sessionId !== keepSessionId) {
-      await this.removeSession(sessionId);
+    for (const sessionId of sessionIds) {
+      if (sessionId !== keepSessionId) await this.removeSession(sessionId);
     }
   }
 
+  private routineSessionIds(routineId: string) {
+    const routine = this.routines.get(routineId);
+    const ids = new Set(this.routines.sessionIds(routineId));
+    if (routine?.sessionId) ids.add(routine.sessionId);
+    return [...ids];
+  }
+
   private async removeRoutinesOf(agentId: string) {
-    const removed = this.routines.deleteForAgent(agentId);
-    for (const routine of removed) {
-      if (routine.sessionId) await this.removeSession(routine.sessionId);
-    }
+    const sessionIds = this.routines
+      .list(agentId)
+      .flatMap((routine) => this.routineSessionIds(routine.id));
+    this.routines.deleteForAgent(agentId);
+    for (const sessionId of sessionIds) await this.removeSession(sessionId);
   }
 
   async archiveSession(sessionId: string) {
@@ -3401,6 +3412,7 @@ export class CocurdexDaemonService {
         history: start.history,
         contextHandoff: start.contextHandoff,
         systemSections: start.systemSections,
+        runPolicy: start.runPolicy,
       },
     );
   }
@@ -3445,12 +3457,19 @@ export class CocurdexDaemonService {
     const personaRole = persona
       ? await this.state.getAgentRole(persona.roleId)
       : null;
+    const routine = this.routines.runningRoutine(session.id);
     const systemSections = persona
-      ? personaSystemSections({
-          instructions: personaRole?.instructions ?? null,
-          soul: persona.soul,
-        })
+      ? {
+          ...personaSystemSections({
+            instructions: personaRole?.instructions ?? null,
+            soul: persona.soul,
+          }),
+          ...(routine
+            ? { [ROUTINE_RUN_SECTION]: routineRunSection(routine) }
+            : {}),
+        }
       : undefined;
+    const runPolicy = routine ? routineRunPolicy(routine.access) : null;
     const memoryPrefix = [memoryGate, memoryContext?.brief]
       .filter((section): section is string => Boolean(section))
       .join("\n\n");
@@ -3468,6 +3487,7 @@ export class CocurdexDaemonService {
           : history,
         contextHandoff: undefined,
         systemSections,
+        runPolicy,
       };
     }
     const sourceSessionId =
@@ -3534,6 +3554,7 @@ export class CocurdexDaemonService {
         entries: handoff.entries,
       },
       systemSections,
+      runPolicy,
     };
   }
 

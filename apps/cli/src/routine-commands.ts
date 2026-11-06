@@ -31,7 +31,7 @@ const DAY_GROUPS: Record<string, number[]> = {
 
 export function routineUsageLines() {
   const fields =
-    "[--prompt <text>|--prompt-file <path>] [--every <minutes>|--at <HH:MM> [--days <mon,wed|weekdays|weekends>]] [--tz <zone>] [--access read-and-draft|ask|full] [--deliver inbox|push|silent]";
+    "[--prompt <text>|--prompt-file <path>] [--every <minutes>|--at <HH:MM> [--days <mon,wed|weekdays|weekends>]] [--tz <zone>] [--access read-and-draft|full] [--deliver inbox|push|silent]";
   return [
     "  cocurdex routine list [--persona <persona>] [--json]",
     "  cocurdex routine show <routine> [--json]",

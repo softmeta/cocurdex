@@ -16,7 +16,10 @@ import {
 import { migrateNotesToCollaborativeDocs } from "./notes/note-schema";
 import { migratePersonasToPi } from "./personal/migrate-personas-to-pi";
 import { createPersonalAgentsSchemaSql } from "./personal/schema";
-import { createRoutinesSchemaSql } from "./routines/schema";
+import {
+  createRoutinesSchemaSql,
+  migrateRoutineReports,
+} from "./routines/schema";
 import {
   createCommandReceiptsSql,
   createProviderModelOverridesSql,
@@ -30,7 +33,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 41;
+export const CURRENT_SCHEMA_VERSION = 42;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -629,6 +632,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [38, createPersonalAgentsTable],
   [39, createRoutinesTables],
   [40, migratePersonasToPi],
+  [41, migrateRoutineReports],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

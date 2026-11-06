@@ -1290,6 +1290,53 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds routine reports from version 41 and retires ask access", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(
+      "ALTER TABLE routine_runs DROP COLUMN outcome; ALTER TABLE routine_runs DROP COLUMN question;",
+    );
+    const now = "2026-11-06T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Personal', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, created_at, updated_at)
+      VALUES ('r1', 'Coach', 'pi', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Coach', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO personal_agents (id, role_id, home_session_id, soul, is_default, created_at, updated_at)
+      VALUES ('p1', 'r1', 's1', 'Calm', 1, '${now}', '${now}');
+      INSERT INTO routines (id, agent_id, name, prompt, schedule_json, time_zone, access, created_at, updated_at)
+      VALUES
+        ('rt1', 'p1', 'Morning', 'Plan my day', '{"kind":"interval","minutes":60}', 'UTC', 'ask', '${now}', '${now}'),
+        ('rt2', 'p1', 'Deploy', 'Ship it', '{"kind":"interval","minutes":60}', 'UTC', 'full', '${now}', '${now}');
+      INSERT INTO routine_runs (id, routine_id, trigger, status, summary, started_at)
+      VALUES ('run1', 'rt1', 'manual', 'succeeded', 'Three meetings', '${now}');
+      PRAGMA user_version = 41;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database.prepare("SELECT id, access FROM routines ORDER BY id").all(),
+    ).toEqual([
+      { id: "rt1", access: "read-and-draft" },
+      { id: "rt2", access: "full" },
+    ]);
+    expect(
+      database
+        .prepare("SELECT id, summary, outcome, question FROM routine_runs")
+        .all(),
+    ).toEqual([
+      { id: "run1", summary: "Three meetings", outcome: null, question: null },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
   it("moves personal agents onto pi from version 40 and keeps user data", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

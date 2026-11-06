@@ -63,6 +63,8 @@ function run(routineId: string, extra: Partial<RoutineRunRecord> = {}) {
     status: "succeeded",
     summary: "All good",
     error: null,
+    outcome: null,
+    question: null,
     startedAt: "2026-11-05T06:59:00.000Z",
     finishedAt: "2026-11-05T07:00:00.000Z",
     ...extra,
@@ -179,6 +181,39 @@ describe("buildInbox", () => {
       expect.arrayContaining([
         ["routine-failed", "flaky", "Timed out"],
         ["routine-paused", "stuck", "No model"],
+      ]),
+    );
+    expect(items).toHaveLength(2);
+  });
+
+  it("asks the user about a run that needs them even when silent, and hides dropped runs", () => {
+    const items = buildInbox({
+      sessions: [],
+      attention: [],
+      pending: noPending,
+      routines: [
+        routine("ask", { deliver: "silent" }),
+        routine("blocked"),
+        routine("nothing"),
+      ],
+      latestRuns: new Map([
+        [
+          "ask",
+          run("ask", { outcome: "needs_you", question: "Send the reply?" }),
+        ],
+        [
+          "blocked",
+          run("blocked", { outcome: "blocked", summary: "No access" }),
+        ],
+        ["nothing", run("nothing", { outcome: "dropped" })],
+      ]),
+    });
+    expect(
+      items.map((item) => [item.kind, item.routineId, item.detail]),
+    ).toEqual(
+      expect.arrayContaining([
+        ["routine-needs-you", "ask", "Send the reply?"],
+        ["routine-needs-you", "blocked", "No access"],
       ]),
     );
     expect(items).toHaveLength(2);

@@ -1,3 +1,5 @@
+import type { DatabaseSync } from "node:sqlite";
+
 export function createRoutinesSchemaSql(): string {
   return `
     CREATE TABLE IF NOT EXISTS routines (
@@ -30,6 +32,8 @@ export function createRoutinesSchemaSql(): string {
       status TEXT NOT NULL,
       summary TEXT,
       error TEXT,
+      outcome TEXT,
+      question TEXT,
       started_at TEXT NOT NULL,
       finished_at TEXT,
       FOREIGN KEY (routine_id) REFERENCES routines(id) ON DELETE CASCADE
@@ -38,4 +42,21 @@ export function createRoutinesSchemaSql(): string {
     CREATE INDEX IF NOT EXISTS idx_routine_runs_routine_started
       ON routine_runs(routine_id, started_at);
   `;
+}
+
+export function migrateRoutineReports(database: DatabaseSync): void {
+  const columns = new Set(
+    database
+      .prepare("PRAGMA table_info(routine_runs)")
+      .all()
+      .map((row) => String(row.name)),
+  );
+  for (const column of ["outcome", "question"]) {
+    if (!columns.has(column)) {
+      database.exec(`ALTER TABLE routine_runs ADD COLUMN ${column} TEXT`);
+    }
+  }
+  database.exec(
+    "UPDATE routines SET access = 'read-and-draft' WHERE access = 'ask'",
+  );
 }

@@ -2,6 +2,7 @@ import { createAgentAdapter } from "@cocurdex/agent-adapters";
 import type {
   AgentAdapter,
   AgentContextHandoff,
+  AgentRunPolicy,
   AgentSession,
   RuntimeProviderConfig,
 } from "@cocurdex/agent-core";
@@ -588,6 +589,7 @@ export class AgentRuntimeManager {
       history: MessageRecord[];
       contextHandoff?: AgentContextHandoff;
       systemSections?: Record<string, string>;
+      runPolicy?: AgentRunPolicy | null;
     },
   ) {
     const isSteering = payload.delivery === "steer-active-run";
@@ -662,6 +664,7 @@ export class AgentRuntimeManager {
         providerConfig: options.providerConfig,
         delivery: payload.delivery,
         systemSections: options.systemSections,
+        runPolicy: options.runPolicy,
       });
 
       logDaemonDiagnostic("info", "runtime.turnFinished", {

@@ -20,6 +20,7 @@ export default interface Resources {
         plan: "Plan to review";
         question: "Has a question";
         routineFailed: "Routine failed";
+        routineNeedsYou: "Needs you";
         routinePaused: "Routine paused";
         routineResult: "New result";
       };

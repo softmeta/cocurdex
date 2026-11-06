@@ -7,6 +7,7 @@ import {
   isPersonalSession,
   type RoutineRecord,
   type RoutineRunRecord,
+  routineReportNeedsUser,
   type SessionAttentionSnapshot,
   type SessionRecord,
 } from "@cocurdex/shared";
@@ -49,6 +50,19 @@ function isAfter(at: string | null, reference: string | null) {
   if (!at) return false;
   if (!reference) return true;
   return Date.parse(at) > Date.parse(reference);
+}
+
+function routineRunItem(run: RoutineRunRecord) {
+  if (run.status === "failed") {
+    return { kind: "routine-failed" as const, detail: run.error };
+  }
+  if (routineReportNeedsUser(run.outcome)) {
+    return {
+      kind: "routine-needs-you" as const,
+      detail: run.question ?? run.summary,
+    };
+  }
+  return { kind: "routine-result" as const, detail: run.summary };
 }
 
 export function buildInbox(sources: InboxSources): InboxItem[] {
@@ -120,17 +134,19 @@ export function buildInbox(sources: InboxSources): InboxItem[] {
       });
       continue;
     }
-    if (!run?.finishedAt || routine.deliver === "silent") continue;
+    if (!run?.finishedAt || run.outcome === "dropped") continue;
+    const result = routineRunItem(run);
+    if (routine.deliver === "silent" && result.kind !== "routine-needs-you") {
+      continue;
+    }
     const seen = run.sessionId ? attention.get(run.sessionId) : undefined;
     if (seen?.resultDisposition === "settled") continue;
     if (!isAfter(run.finishedAt, seen?.lastVisitedAt ?? null)) continue;
-    const failed = run.status === "failed";
     items.push({
       ...base,
-      kind: failed ? "routine-failed" : "routine-result",
+      ...result,
       runId: run.id,
       sessionId: run.sessionId ?? routine.sessionId,
-      detail: failed ? run.error : run.summary,
       at: run.finishedAt,
     });
   }

@@ -30,7 +30,7 @@ let stub;
 const state = {};
 
 function rowName(name) {
-  return new RegExp(`^${name}`);
+  return new RegExp(`^${name}\\s`);
 }
 
 async function personas(session) {

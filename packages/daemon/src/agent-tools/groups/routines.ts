@@ -1,10 +1,13 @@
-import type {
-  AgentToolCallerContext,
-  CreateRoutinePayload,
-  RoutineRecord,
-  RoutineRunRecord,
-  RoutineSchedule,
-  UpdateRoutinePayload,
+import {
+  type AgentToolCallerContext,
+  type CreateRoutinePayload,
+  ROUTINE_REPORT_STATUSES,
+  ROUTINE_REPORT_SUMMARY_MAX_LENGTH,
+  type RoutineRecord,
+  type RoutineReport,
+  type RoutineRunRecord,
+  type RoutineSchedule,
+  type UpdateRoutinePayload,
 } from "@cocurdex/shared";
 import type { AgentToolRegistry } from "../tool-registry";
 
@@ -17,9 +20,11 @@ export interface RoutineToolDependencies {
   delete(id: string, callerSessionId: string): Promise<void>;
   run(id: string): RoutineRunRecord;
   runs(routineId: string, limit: number): RoutineRunRecord[];
+  reporting(sessionId: string): boolean;
+  report(sessionId: string, report: RoutineReport): void;
 }
 
-const AGENT_ACCESS = ["read-and-draft", "ask"] as const;
+const AGENT_ACCESS = ["read-and-draft"] as const;
 const DELIVER = ["inbox", "push", "silent"] as const;
 
 const scheduleSchema = {
@@ -51,13 +56,13 @@ const editableProperties = {
     type: "string",
     enum: [...AGENT_ACCESS],
     description:
-      "read-and-draft (default) reads and drafts without side effects; ask pauses for the user's approval before acting. Only the user can grant full access.",
+      "read-and-draft (default): runs may read files and memory but cannot change anything. Only the user can grant full access.",
   },
   deliver: {
     type: "string",
     enum: [...DELIVER],
     description:
-      "inbox (default) records the result quietly; push also notifies the phone; silent only records. Approvals and questions always notify.",
+      "inbox (default) records the result quietly; push also notifies the phone; silent only records. A run that needs the user always reaches the inbox.",
   },
 };
 
@@ -81,6 +86,29 @@ function parseSchedule(value: unknown): RoutineSchedule | undefined {
 
 function optionalText(value: unknown) {
   return typeof value === "string" ? value : undefined;
+}
+
+function reportText(value: unknown, label: string) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) throw new Error(`${label} cannot be empty`);
+  if (text.length > ROUTINE_REPORT_SUMMARY_MAX_LENGTH) {
+    throw new Error(
+      `${label} is longer than ${ROUTINE_REPORT_SUMMARY_MAX_LENGTH} characters`,
+    );
+  }
+  return text;
+}
+
+function parseReport(input: Record<string, unknown>): RoutineReport {
+  const status = oneOf(ROUTINE_REPORT_STATUSES, input.status);
+  if (!status) {
+    throw new Error(
+      `status must be one of ${ROUTINE_REPORT_STATUSES.join(", ")}`,
+    );
+  }
+  const question =
+    status === "needs_you" ? reportText(input.question, "question") : null;
+  return { status, summary: reportText(input.summary, "summary"), question };
 }
 
 function oneOf<T extends string>(values: readonly T[], value: unknown) {
@@ -259,6 +287,42 @@ export function registerRoutineTools(
       const routine = await owned(caller, input.id);
       const limit = typeof input.limit === "number" ? input.limit : 10;
       return deps.runs(routine.id, Math.min(50, Math.max(1, limit)));
+    },
+  });
+
+  registry.register({
+    descriptor: {
+      group: "routine",
+      name: "report",
+      description:
+        "Finish the routine run you are in: say whether the user should see the result and write what they read. Call it exactly once, at the end of the run.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          status: {
+            type: "string",
+            enum: [...ROUTINE_REPORT_STATUSES],
+            description:
+              "ready: a result to read; dropped: nothing worth telling this time; needs_you: the user has to decide or answer; blocked: something outside your control stopped you; failed: you could not do the task",
+          },
+          summary: {
+            type: "string",
+            description: "What the user reads, written for them",
+          },
+          question: {
+            type: "string",
+            description: "Required with needs_you: what the user has to answer",
+          },
+        },
+        required: ["status", "summary"],
+        additionalProperties: false,
+      },
+    },
+    isAvailable: (caller) => deps.reporting(caller.sessionId),
+    execute: async (caller, input) => {
+      const report = parseReport(input);
+      deps.report(caller.sessionId, report);
+      return { recorded: report.status };
     },
   });
 }

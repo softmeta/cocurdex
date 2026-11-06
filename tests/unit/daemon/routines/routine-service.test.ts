@@ -3,7 +3,7 @@ import { RoutineService } from "@cocurdex/daemon/internal/routines/routine-servi
 import type { SessionTurnOutcome } from "@cocurdex/daemon/internal/session-control/execution-types";
 import { createSqliteRoutineRepository } from "@cocurdex/db";
 import { initializeDatabase } from "@cocurdex/db/internal/migrations";
-import type { MessageRecord } from "@cocurdex/shared";
+import type { MessageRecord, RoutineReport } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 
 const MINUTE = 60_000;
@@ -34,17 +34,21 @@ function reply(content: string): SessionTurnOutcome {
 
 function harness(
   outcomes: SessionTurnOutcome[] | Record<string, SessionTurnOutcome> = [],
+  reports: Record<string, RoutineReport> = {},
+  database = seededDatabase(),
 ) {
-  const repository = createSqliteRoutineRepository(seededDatabase());
+  const repository = createSqliteRoutineRepository(database);
   let clock = new Date("2026-11-05T09:00:00Z");
   const prompts: string[] = [];
   const delivered: { routine: string; run: string; content: string }[] = [];
   const service = new RoutineService({
     repository,
     personaExists: async (id) => id === "coach",
-    ensureSession: async () => "routine-session",
-    runTurn: async (routine) => {
+    ensureSession: async (routine) => `session:${routine.prompt}`,
+    runTurn: async (routine, sessionId) => {
       prompts.push(routine.prompt);
+      const report = reports[routine.prompt];
+      if (report) service.report(sessionId, report);
       const outcome = Array.isArray(outcomes)
         ? outcomes.shift()
         : outcomes[routine.prompt];
@@ -89,12 +93,12 @@ describe("RoutineService", () => {
         trigger: "schedule",
         status: "succeeded",
         summary: "All clear",
-        sessionId: "routine-session",
+        sessionId: "session:How is training going?",
       }),
     ]);
     expect(service.get(routine.id)).toMatchObject({
       nextRunAt: "2026-11-05T11:00:00.000Z",
-      sessionId: "routine-session",
+      sessionId: "session:How is training going?",
     });
   });
 
@@ -128,6 +132,101 @@ describe("RoutineService", () => {
         content: "Two meetings today.",
       },
     ]);
+  });
+
+  it("delivers a report by its status and asks the user even when silent", async () => {
+    const report = (
+      status: RoutineReport["status"],
+      question: string | null = null,
+    ): RoutineReport => ({ status, summary: `${status} summary`, question });
+    const { service, repository, delivered, finished, advance } = harness(
+      {},
+      {
+        Ready: report("ready"),
+        Dropped: report("dropped"),
+        Quiet: report("ready"),
+        Ask: report("needs_you", "Send it?"),
+        Stuck: report("failed"),
+      },
+    );
+    const create = (name: string, deliver: "inbox" | "silent" = "inbox") =>
+      service.create({
+        agentId: "coach",
+        name,
+        prompt: name,
+        schedule: { kind: "interval", minutes: 60 },
+        timeZone: "UTC",
+        deliver,
+      });
+    await create("Ready");
+    await create("Dropped");
+    await create("Quiet", "silent");
+    await create("Ask", "silent");
+    const stuck = await create("Stuck");
+
+    await advance(60 * MINUTE);
+
+    expect(delivered.map((entry) => [entry.routine, entry.content])).toEqual(
+      expect.arrayContaining([
+        ["Ready", "ready summary"],
+        ["Ask", "needs_you summary\n\nSend it?"],
+      ]),
+    );
+    expect(delivered).toHaveLength(2);
+    expect(
+      finished().map((run) => [run.status, run.outcome, run.question]),
+    ).toEqual(
+      expect.arrayContaining([
+        ["succeeded", "dropped", null],
+        ["succeeded", "needs_you", "Send it?"],
+        ["failed", "failed", null],
+      ]),
+    );
+    expect(repository.getById(stuck.id)?.failureCount).toBe(1);
+    expect(service.isReporting("session:Ask")).toBe(false);
+  });
+
+  it("marks a run cut off by a restart failed and waits for the next slot", async () => {
+    const database = seededDatabase();
+    const first = harness([], {}, database);
+    const routine = await first.service.create({
+      agentId: "coach",
+      name: "Check in",
+      prompt: "Check in",
+      schedule: { kind: "interval", minutes: 60 },
+      timeZone: "UTC",
+    });
+    first.repository.saveRun({
+      id: "interrupted",
+      routineId: routine.id,
+      sessionId: "old-session",
+      trigger: "schedule",
+      status: "running",
+      summary: null,
+      error: null,
+      outcome: null,
+      question: null,
+      startedAt: "2026-11-05T08:00:00.000Z",
+      finishedAt: null,
+    });
+    first.repository.upsert({
+      ...routine,
+      nextRunAt: "2026-11-05T08:00:00.000Z",
+    });
+
+    const restarted = harness([], {}, database);
+    restarted.service.start();
+    restarted.service.stop();
+    await restarted.service.idle();
+
+    expect(restarted.prompts).toEqual([]);
+    expect(restarted.repository.listRuns(routine.id, 5)).toEqual([
+      expect.objectContaining({ id: "interrupted", status: "failed" }),
+    ]);
+    expect(restarted.service.get(routine.id)).toMatchObject({
+      sessionId: "old-session",
+      nextRunAt: "2026-11-05T10:00:00.000Z",
+    });
   });
 
   it("runs once to catch up after the machine slept through several runs", async () => {

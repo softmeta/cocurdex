@@ -85,6 +85,12 @@ export interface AgentContextHandoff {
   entries: AgentContextHandoffEntry[];
 }
 
+export interface AgentRunPolicy {
+  allowedTools: readonly string[] | null;
+  blockedToolReason: string;
+  requiredTool: { name: string; reminder: string } | null;
+}
+
 export interface SendAgentMessagePayload {
   messageId?: string;
   content: string;
@@ -106,6 +112,7 @@ export interface SendAgentMessagePayload {
   providerConfig?: RuntimeProviderConfig | null;
   delivery?: AgentInputDelivery;
   systemSections?: Record<string, string>;
+  runPolicy?: AgentRunPolicy | null;
 }
 
 export interface AgentSession {

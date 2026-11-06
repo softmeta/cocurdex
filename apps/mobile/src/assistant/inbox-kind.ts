@@ -20,6 +20,8 @@ export function inboxKindLabel(t: TFunction<"assistant">, kind: InboxItemKind) {
       return t("inbox.kind.completed");
     case "routine-failed":
       return t("inbox.kind.routineFailed");
+    case "routine-needs-you":
+      return t("inbox.kind.routineNeedsYou");
     case "routine-paused":
       return t("inbox.kind.routinePaused");
     case "routine-result":

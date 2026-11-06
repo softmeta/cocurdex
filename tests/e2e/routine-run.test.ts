@@ -64,8 +64,6 @@ async function setUp() {
     "create",
     "--name",
     "Coach",
-    "--agent",
-    "pi",
     "--provider",
     "e2e-stub",
     "--model",
@@ -321,6 +319,160 @@ describe("routines", () => {
       expect(toolResults(stub.requests[1]).join("\n")).toContain(
         "Only the user can change or run a routine with full access",
       );
+    } finally {
+      await dispose();
+    }
+  });
+
+  it("keeps a read-and-draft run read-only and asks the user even when silent", async () => {
+    const { stub, daemon, cli, coach, dispose } = await setUp();
+    try {
+      await cli([
+        "routine",
+        "create",
+        "--persona",
+        coach.id,
+        "--name",
+        "Reply drafts",
+        "--prompt",
+        "Draft replies to my mail",
+        "--every",
+        "60",
+        "--deliver",
+        "silent",
+      ]);
+      stub.plan = {
+        kind: "script",
+        turns: [
+          {
+            toolCalls: [
+              {
+                name: "write",
+                arguments: { path: "reply.txt", content: "Sent" },
+              },
+            ],
+          },
+          {
+            toolCalls: [
+              {
+                name: "routine_report",
+                arguments: {
+                  status: "needs_you",
+                  summary: "Two replies are drafted",
+                  question: "Send both replies?",
+                },
+              },
+            ],
+          },
+          { text: ["Reported"] },
+        ],
+      };
+      const run = await cli<RoutineRunRecord>([
+        "routine",
+        "run",
+        "Reply drafts",
+        "--wait",
+      ]);
+
+      expect(run).toMatchObject({
+        status: "succeeded",
+        outcome: "needs_you",
+        summary: "Two replies are drafted",
+        question: "Send both replies?",
+      });
+      const tools = (
+        (stub.requests[0]?.body.tools ?? []) as { function: { name: string } }[]
+      ).map((tool) => tool.function.name);
+      expect(tools).toContain("routine_report");
+      expect(tools).not.toContain("write");
+      expect(tools).not.toContain("bash");
+      expect(toolResults(stub.requests[1]).join("\n")).toMatch(
+        /Tool write not found|read-and-draft access/,
+      );
+
+      const inbox = await cli<InboxItem[]>(["inbox"]);
+      expect(inbox).toEqual([
+        expect.objectContaining({
+          kind: "routine-needs-you",
+          sessionId: run.sessionId,
+          detail: "Send both replies?",
+        }),
+      ]);
+      const { messages } = await requestDaemon(
+        "session.listMessages",
+        { sessionId: coach.homeSessionId },
+        daemon.options,
+      );
+      expect(JSON.stringify(messages)).toContain("Send both replies?");
+    } finally {
+      await dispose();
+    }
+  });
+
+  it("reminds a run to report, drops it quietly, and starts each run fresh", async () => {
+    const { stub, daemon, cli, coach, dispose } = await setUp();
+    try {
+      await cli([
+        "routine",
+        "create",
+        "--persona",
+        coach.id,
+        "--name",
+        "News watch",
+        "--prompt",
+        "Check for news",
+        "--every",
+        "60",
+      ]);
+      const dropTurn = {
+        toolCalls: [
+          {
+            name: "routine_report",
+            arguments: { status: "dropped", summary: "Nothing new" },
+          },
+        ],
+      };
+      stub.plan = {
+        kind: "script",
+        turns: [{ text: ["Nothing new"] }, dropTurn, { text: ["Done"] }],
+      };
+      const first = await cli<RoutineRunRecord>([
+        "routine",
+        "run",
+        "News watch",
+        "--wait",
+      ]);
+
+      expect(first).toMatchObject({
+        status: "succeeded",
+        outcome: "dropped",
+        summary: "Nothing new",
+      });
+      expect(JSON.stringify(stub.requests[1]?.body.messages)).toContain(
+        "You have not called routine_report yet",
+      );
+      expect(await cli(["inbox"])).toEqual([]);
+      const home = await requestDaemon(
+        "session.listMessages",
+        { sessionId: coach.homeSessionId },
+        daemon.options,
+      );
+      expect(JSON.stringify(home.messages)).not.toContain("Nothing new");
+
+      stub.plan = { kind: "script", turns: [dropTurn, { text: ["Done"] }] };
+      const second = await cli<RoutineRunRecord>([
+        "routine",
+        "run",
+        "News watch",
+        "--wait",
+      ]);
+      expect(second.sessionId).not.toBe(first.sessionId);
+      const previous = await requestDaemon(
+        "session.get",
+        { sessionId: first.sessionId as string },
+        daemon.options,
+      );
+      expect(previous?.archivedAt).toBeTruthy();
     } finally {
       await dispose();
     }

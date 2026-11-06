@@ -75,6 +75,7 @@ import {
 } from "./pi-model-utils";
 import { getPiAgentDir } from "./pi-paths";
 import { listPiBuiltInProviderIds } from "./pi-provider-catalog";
+import { createPiRunPolicy } from "./pi-run-policy";
 import { forkPiProviderSession, readPiSessionFile } from "./pi-session-fork";
 import {
   getPiSkillRootSnapshots,
@@ -415,6 +416,7 @@ export function createPiSdkAdapter(
       let unsubscribe: (() => void) | null = null;
       let pendingThinkingLevel: PiThinkingLevel | undefined;
       const systemSections = createPiSystemSections();
+      const runPolicy = createPiRunPolicy();
       const activeMessages = new Map<string, ActiveMessageRecord>();
       const activeToolCalls = new Map<string, AgentToolCallRecord>();
       const nativeFiles = new Map<
@@ -843,6 +845,7 @@ export function createPiSdkAdapter(
                   extensionFactories: [
                     ...createPiBuiltinExtensions(),
                     systemSections.extension,
+                    runPolicy.extension,
                   ],
                   appendSystemPromptOverride: (base) => {
                     const rootsPrompt = renderPiWorkspaceRootsPrompt(
@@ -985,6 +988,9 @@ export function createPiSdkAdapter(
             pendingThinkingLevel = thinkingLevel;
             if (messagePayload.systemSections) {
               systemSections.set(messagePayload.systemSections);
+            }
+            if (messagePayload.delivery !== "steer-active-run") {
+              runPolicy.set(messagePayload.runPolicy ?? null);
             }
             const session = await getPiSession();
             await applyPiModelSelection(session, messagePayload.providerConfig);
