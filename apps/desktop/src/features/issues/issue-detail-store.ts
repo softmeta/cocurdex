@@ -81,7 +81,7 @@ export const openIssueDetailAtom = atom(
         return;
       }
       set(issueDetailAtom, {
-        bodyEpoch: 1,
+        bodyEpoch: 0,
         bodyStatus: "ready",
         card: detail.issue,
         detail,
