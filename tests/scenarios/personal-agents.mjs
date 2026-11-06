@@ -85,7 +85,7 @@ async function seedStubModel(session) {
 }
 
 runScenario("personal-agents", {
-  open: () => openScenarioApp(args),
+  open: () => openScenarioApp(args, { isolated: true }),
   setup: async ({ session }) => {
     stub = await startStubLlmServer();
     await seedStubModel(session);

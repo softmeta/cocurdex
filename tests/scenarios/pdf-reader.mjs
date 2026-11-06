@@ -389,7 +389,6 @@ runScenario("pdf-reader", {
         );
         await rm(missingPath);
         await session.reload();
-        await resetRequests(session);
         await showPanelView(session, "pdf");
         const missingTab = await labels.closeFile(MISSING_PDF_NAME);
         await session.waitUntil(
