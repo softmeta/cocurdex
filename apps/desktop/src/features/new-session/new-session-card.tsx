@@ -43,6 +43,7 @@ import { TeamTemplateEditDialog } from "@/features/sessions/team";
 import { AcpRegistryDialog } from "@/features/settings";
 import { openSettings } from "@/features/settings/settings-navigation";
 import { WorkspacePicker, WorktreePicker } from "@/features/workspaces";
+import { cn } from "@/lib";
 import type { NewSessionCardProps } from "./new-session-card.types";
 import { useNewSessionCard } from "./use-new-session-card";
 import { useNewSessionTeam } from "./use-new-session-team";
@@ -418,12 +419,12 @@ export function NewSessionCard({
     }
   };
 
-  const workspaceControls = (
-    <>
+  const header = (
+    <div className="flex flex-1 flex-wrap items-center gap-1.5">
       <WorkspacePicker
-        appearance="ghost"
+        appearance="outline"
         showChevron={false}
-        triggerClassName="h-7 max-w-40 min-w-0 shrink gap-1.5 rounded-control px-1.5 text-body font-normal text-muted-foreground shadow-none hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground"
+        triggerClassName="max-w-60 h-7 gap-1.5 rounded-control px-2 text-muted-foreground hover:text-foreground aria-expanded:text-foreground hover:bg-welcome-surface-strong-hover aria-expanded:bg-welcome-surface-strong-hover data-[state=open]:bg-welcome-surface-strong-hover dark:hover:bg-welcome-surface-strong-hover"
         activeWorkspaceId={activeWorkspaceId}
         workspaceName={workspaceName}
         workspaces={workspaces}
@@ -434,11 +435,11 @@ export function NewSessionCard({
 
       {hasWorkspace ? (
         <WorktreePicker
-          appearance="ghost"
+          appearance="outline"
           disabled={createWorktree}
           showChevron={false}
           selectedPath={selectedWorktreePath}
-          triggerClassName="h-7 max-w-40 min-w-0 shrink gap-1.5 rounded-control px-1.5 text-body font-normal text-muted-foreground shadow-none hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground"
+          triggerClassName="h-7 gap-1.5 rounded-control px-2 text-muted-foreground hover:text-foreground aria-expanded:text-foreground hover:bg-welcome-surface-strong-hover aria-expanded:bg-welcome-surface-strong-hover data-[state=open]:bg-welcome-surface-strong-hover dark:hover:bg-welcome-surface-strong-hover"
           workspaceRootPath={
             workspaces.find((workspace) => workspace.id === activeWorkspaceId)
               ?.rootPaths[0] ?? ""
@@ -450,14 +451,14 @@ export function NewSessionCard({
 
       {hasWorkspace ? (
         <AppSearchableSelect
-          appearance="ghost"
+          appearance="outline"
           showChevron={false}
           disabled={isSwitchingBranch || branchOptions.length === 0}
           emptyText={t("sessions:branch.empty")}
           options={branchOptions}
           searchPlaceholder={t("sessions:branch.searchPlaceholder")}
           side="top"
-          triggerClassName="h-7 max-w-40 min-w-0 shrink gap-1.5 rounded-control px-1.5 text-body font-normal text-muted-foreground shadow-none hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground"
+          triggerClassName="max-w-45 h-7 gap-1.5 rounded-control px-2 text-muted-foreground hover:text-foreground aria-expanded:text-foreground hover:bg-welcome-surface-strong-hover aria-expanded:bg-welcome-surface-strong-hover data-[state=open]:bg-welcome-surface-strong-hover dark:hover:bg-welcome-surface-strong-hover"
           triggerLabel={
             <span className="flex min-w-0 items-center gap-1.5">
               <GitBranch className="size-3.5 shrink-0" />
@@ -475,7 +476,9 @@ export function NewSessionCard({
 
       {hasWorkspace && onCreateWorktree ? (
         <label
-          className="flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-control px-1.5 text-body text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          className={cn(
+            "flex cursor-pointer items-center h-7 gap-1.5 rounded-control px-2 text-muted-foreground hover:text-foreground aria-expanded:text-foreground hover:bg-welcome-surface-strong-hover aria-expanded:bg-welcome-surface-strong-hover data-[state=open]:bg-welcome-surface-strong-hover dark:hover:bg-welcome-surface-strong-hover",
+          )}
           htmlFor={createWorktreeId}
         >
           <Checkbox
@@ -492,16 +495,16 @@ export function NewSessionCard({
           {t("sessions:worktree.label")}
         </label>
       ) : null}
-    </>
+    </div>
   );
 
   return (
     <EmptyStage identity={<StageIdentity title={t("sessions:stage.title")} />}>
       {sessionTitle ? <div className="sr-only">{sessionTitle}</div> : null}
+      <div className="flex min-w-0">{header}</div>
       <ChatComposer
         ref={composerRef}
         mode="agent"
-        footerLeading={workspaceControls}
         sessionId={null}
         draftKey={newSessionComposerDraftKey(activeWorkspaceId)}
         agentType={effectiveSelectedAgent}
