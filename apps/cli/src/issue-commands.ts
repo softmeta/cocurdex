@@ -16,13 +16,48 @@ import {
 import { withDaemon } from "./daemon-command";
 import type { ParsedArgs } from "./parse-args";
 import {
+  assertKnownFlags,
   getRequiredFlag,
   printResult,
   printRows,
   stringFlag,
 } from "./parse-args";
+import { readBodyFlag } from "./read-body";
 
 const CLI_ACTOR: IssueActor = { kind: "cli" };
+
+const BODY_FLAGS = ["body", "body-file"];
+
+async function readIssueBody(parsed: ParsedArgs) {
+  return (await readBodyFlag(parsed))?.trimEnd();
+}
+const FIELD_FLAGS = [
+  "title",
+  ...BODY_FLAGS,
+  "status",
+  "priority",
+  "workspace",
+  "parent",
+  "labels",
+];
+
+const ISSUE_FLAGS: Record<string, readonly string[]> = {
+  list: ["view", "status", "label", "parent", "open"],
+  show: ["view", "detail"],
+  create: ["view", ...FIELD_FLAGS],
+  update: ["view", ...FIELD_FLAGS],
+  move: ["view", "from"],
+  delete: ["view"],
+  comment: BODY_FLAGS,
+  relate: [],
+  unrelate: [],
+  labels: [],
+  label: ["name", "color"],
+  statuses: [],
+  status: ["name", "category", "color", "position"],
+  views: [],
+  view: ["title", "group-by", "layout", "show-empty", "properties"],
+};
 
 type IssueAction = (
   args: string[],
@@ -299,11 +334,12 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
     printResult(await requireIssue(id, viewId), parsed);
   },
   async create(_args, parsed, viewId) {
+    const description = await readIssueBody(parsed);
     const issue = await withDaemon(() =>
       requestDaemon("issue.create", {
         viewId,
         title: getRequiredFlag(parsed, "title"),
-        description: stringFlag(parsed, "body"),
+        description,
         status: stringFlag(parsed, "status"),
         priority: stringFlag(parsed, "priority"),
         workspaceId: stringFlag(parsed, "workspace") ?? null,
@@ -317,12 +353,13 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
   async update(args, parsed, viewId) {
     const id = requiredId(args, "update <id> [fields]");
     const current = await requireIssue(id, viewId);
+    const description = await readIssueBody(parsed);
     const issue = await withDaemon(() =>
       requestDaemon("issue.update", {
         viewId,
         id: current.id,
         title: stringFlag(parsed, "title"),
-        description: stringFlag(parsed, "body"),
+        description,
         status: stringFlag(parsed, "status"),
         priority: stringFlag(parsed, "priority"),
         workspaceId: nullableFlag(parsed, "workspace"),
@@ -368,10 +405,16 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
   },
   async comment(args, parsed) {
     const id = requiredId(args, "comment <id> --body <markdown>");
+    const body = await readIssueBody(parsed);
+    if (!body) {
+      throw new Error(
+        "Usage: cocurdex issue comment <id> --body <markdown>|--body-file <path>",
+      );
+    }
     const detail = await withDaemon(() =>
       requestDaemon("issue.comment", {
         id,
-        body: getRequiredFlag(parsed, "body"),
+        body,
         actor: CLI_ACTOR,
       }),
     );
@@ -461,13 +504,11 @@ export async function handleIssueCommand(
   args: string[],
   parsed: ParsedArgs,
 ): Promise<boolean> {
-  const handler =
-    action && Object.hasOwn(ISSUE_ACTIONS, action)
-      ? ISSUE_ACTIONS[action]
-      : undefined;
-  if (!handler) {
+  if (!action || !Object.hasOwn(ISSUE_ACTIONS, action)) {
     return false;
   }
+  const handler = ISSUE_ACTIONS[action];
+  assertKnownFlags(parsed, ISSUE_FLAGS[action] ?? [], `issue ${action}`);
   await handler(args, parsed, stringFlag(parsed, "view") ?? DEFAULT_VIEW_ID);
   return true;
 }

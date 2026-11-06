@@ -13,10 +13,10 @@ Use only these structural commands:
 ```bash
 cocurdex issue list [--status <column>] [--label <name>] [--parent <id>] [--open] --json
 cocurdex issue show <id> [--detail] --json
-cocurdex issue create --title <title> [--status <column>] [--priority <id>] [--body <markdown>] [--parent <id>] [--labels <a,b>] --json
-cocurdex issue update <id> [--title <title>] [--body <markdown>] [--status <column>] [--priority <id>] [--parent <id>|none] [--labels <a,b>] --json
+cocurdex issue create --title <title> [--status <column>] [--priority <id>] [--body <markdown>|--body-file <path>] [--parent <id>] [--labels <a,b>] --json
+cocurdex issue update <id> [--title <title>] [--body <markdown>|--body-file <path>] [--status <column>] [--priority <id>] [--parent <id>|none] [--labels <a,b>] --json
 cocurdex issue move <id> <column> [--from <column>] [--view <id>] --json
-cocurdex issue comment <id> --body <markdown> --json
+cocurdex issue comment <id> --body <markdown>|--body-file <path> --json
 cocurdex issue relate|unrelate <id> blocks|related|duplicate <other-id> --json
 cocurdex issue labels --json
 cocurdex issue label create --name <name> [--color <color>] --json
@@ -30,6 +30,9 @@ cocurdex issue delete <id> --json
 cocurdex issue views --json
 cocurdex issue view update <view-id> [--title <title>] [--group-by status|priority|label|workspace|parent] [--layout board|list] [--show-empty true|false] [--properties <a,b>] --json
 ```
+
+Pass long or multi-line Markdown with `--body-file <path>` or pipe it with
+`--body -`. An unknown flag fails the command and lists the accepted ones.
 
 Every `<id>` accepts the issue's stable id or its short identifier such as
 `COC-12`. Prefer the identifier when you mention an issue to the user.

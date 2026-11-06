@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import { withDaemon } from "./daemon-command";
 import type { ParsedArgs } from "./parse-args";
@@ -8,7 +7,7 @@ import {
   printRows,
   stringFlag,
 } from "./parse-args";
-import { readStdin } from "./read-stdin";
+import { readBodyFlag } from "./read-body";
 
 export async function handleNoteCommand(
   action: string | undefined,
@@ -32,7 +31,7 @@ export async function handleNoteCommand(
 
   if (action === "create") {
     const isFolder = parsed.flags.has("folder");
-    const bodyMarkdown = isFolder ? undefined : await readBody(parsed);
+    const bodyMarkdown = isFolder ? undefined : await readBodyFlag(parsed);
     const note = await withDaemon(() =>
       requestDaemon("note.create", {
         title: getRequiredFlag(parsed, "title"),
@@ -50,7 +49,7 @@ export async function handleNoteCommand(
     const id = requiredId(args, "update");
     const expectedRevision =
       expectedRevisionFlag(parsed) ?? (await currentRevision(id));
-    const bodyMarkdown = await readBody(parsed);
+    const bodyMarkdown = await readBodyFlag(parsed);
     const updated = await withDaemon(() =>
       requestDaemon("note.update", {
         id,
@@ -126,15 +125,6 @@ export async function handleNoteCommand(
   }
 
   return false;
-}
-
-async function readBody(parsed: ParsedArgs): Promise<string | undefined> {
-  const bodyFile = stringFlag(parsed, "body-file");
-  if (bodyFile) {
-    return readFile(bodyFile, "utf8");
-  }
-  const body = stringFlag(parsed, "body");
-  return body === "-" ? readStdin() : body;
 }
 
 function requiredId(args: string[], action: string) {

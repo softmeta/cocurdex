@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import { getDaemonMetadataPath } from "@cocurdex/daemon/paths";
 import type { DaemonMetadata } from "@cocurdex/rpc";
@@ -284,6 +285,63 @@ describe("cocurdex CLI against a running daemon", () => {
     expect(
       (JSON.parse(listed.stdout) as { id: string }[]).map((entry) => entry.id),
     ).toContain(issue.id);
+  });
+
+  it("reads issue bodies from a file or stdin and rejects unknown flags", async () => {
+    const options = { userDataPath: daemon.userDataPath };
+    const bodyFile = path.join(await tempDirs.create("issue-body-"), "body.md");
+    await writeFile(bodyFile, "From **a file**\n", "utf8");
+
+    const created = await runCli(
+      [
+        "issue",
+        "create",
+        "--title",
+        "Bodies",
+        "--body-file",
+        bodyFile,
+        "--json",
+      ],
+      options,
+    );
+    expect(created.code, created.stderr).toBe(0);
+    const issue = JSON.parse(created.stdout) as {
+      id: string;
+      description: string;
+    };
+    expect(issue.description).toBe("From **a file**");
+
+    const updated = await runCli(
+      ["issue", "update", issue.id, "--body", "-", "--json"],
+      { ...options, input: "From stdin\n" },
+    );
+    expect(updated.code, updated.stderr).toBe(0);
+    expect(JSON.parse(updated.stdout)).toMatchObject({
+      description: "From stdin",
+    });
+
+    const commented = await runCli(
+      ["issue", "comment", issue.id, "--body-file", bodyFile, "--json"],
+      options,
+    );
+    expect(commented.code, commented.stderr).toBe(0);
+    expect(JSON.parse(commented.stdout)).toMatchObject({
+      body: "From **a file**",
+    });
+
+    const unknown = await runCli(
+      ["issue", "update", issue.id, "--description-file", bodyFile],
+      options,
+    );
+    expect(unknown.code).not.toBe(0);
+    expect(unknown.stderr).toContain("--description-file");
+    const unchanged = await runCli(
+      ["issue", "show", issue.id, "--json"],
+      options,
+    );
+    expect(JSON.parse(unchanged.stdout)).toMatchObject({
+      description: "From stdin",
+    });
   });
 
   it("regroups a view by label and moves an issue between label groups", async () => {

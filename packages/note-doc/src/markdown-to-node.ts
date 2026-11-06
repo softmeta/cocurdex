@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-import type { Node, Schema } from "@tiptap/pm/model";
+import { Mark, type Node, type Schema } from "@tiptap/pm/model";
 import {
   lexNoteMarkdownBlocks,
   parseNoteMarkdown,
@@ -49,13 +49,26 @@ function wrapStrayInlineNodes(schema: Schema, json: JSONContent): JSONContent {
   return { ...json, content };
 }
 
+function compatibleMarks(schema: Schema, json: JSONContent): JSONContent {
+  const content = json.content?.map((child) => compatibleMarks(schema, child));
+  const withContent = content ? { ...json, content } : json;
+  if (!json.marks?.length) return withContent;
+  let marks = Mark.none;
+  for (const mark of json.marks) {
+    marks = Mark.fromJSON(schema, mark).addToSet(marks);
+  }
+  return { ...withContent, marks: marks.map((mark) => mark.toJSON()) };
+}
+
 function convertLosslessly(
   schema: Schema,
   markdown: string,
   json: JSONContent,
 ): Node | null {
   try {
-    const node = schema.nodeFromJSON(wrapStrayInlineNodes(schema, json));
+    const node = schema.nodeFromJSON(
+      compatibleMarks(schema, wrapStrayInlineNodes(schema, json)),
+    );
     node.check();
     return keepsEveryWordCharacter(
       markdown,
