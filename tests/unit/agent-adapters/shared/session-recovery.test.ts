@@ -25,6 +25,16 @@ describe("native session recovery", () => {
     ).toBe(true);
   });
 
+  it("starts fresh when earlier turns failed before the agent ever replied", () => {
+    expect(
+      requiresNativeSessionRecovery([
+        message("user"),
+        message("system"),
+        message("user"),
+      ]),
+    ).toBe(false);
+  });
+
   it("explains that no fallback prompt was sent", () => {
     expect(createNativeSessionRecoveryError("Codex").message).toBe(
       "Codex could not restore its native session. Cocurdex stopped before sending the prompt to avoid replaying history and consuming unexpected tokens.",
