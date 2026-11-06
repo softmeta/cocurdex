@@ -2376,6 +2376,7 @@ export default interface Resources {
       empty: "No roles yet";
       emptyDescription: "Click New role, or choose Save as role from the model menu when starting a session.";
       listTitle: "Saved roles";
+      model: "Model";
       name: "Name";
       namePlaceholder: "Role name";
       roleDescription: "Description";

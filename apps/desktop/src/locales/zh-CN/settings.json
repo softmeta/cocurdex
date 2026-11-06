@@ -134,6 +134,7 @@
     "empty": "还没有角色",
     "emptyDescription": "点击「新建角色」，或在新建会话的模型菜单中选择「保存为角色」。",
     "listTitle": "已保存的角色",
+    "model": "模型",
     "name": "名称",
     "namePlaceholder": "角色名称",
     "roleDescription": "描述",

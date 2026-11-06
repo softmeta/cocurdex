@@ -262,7 +262,11 @@ export function AgentRoleForm({
         </Field>
         {children}
         <Field>
-          <FieldLabel>{t("settings:agentRoles.runtime")}</FieldLabel>
+          <FieldLabel>
+            {agentLocked
+              ? t("settings:agentRoles.model")
+              : t("settings:agentRoles.runtime")}
+          </FieldLabel>
           <AgentRoleRuntimeFields
             agentId={agentId}
             agentLocked={agentLocked}
