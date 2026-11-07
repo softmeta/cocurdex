@@ -18,6 +18,7 @@ function toPayload(
     id: base.id,
     revision: base.revision,
     displayName: base.displayName,
+    allPersonas: base.allPersonas,
     personaIds: base.personaIds,
     allowDelegatedWork: base.allowDelegatedWork,
     allowWorkSessions: base.allowWorkSessions,

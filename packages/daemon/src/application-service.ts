@@ -101,6 +101,7 @@ export class ApplicationService {
           version: 1,
           applicationId: app.id,
           displayName: payload.displayName.trim() || app.name,
+          allPersonas: payload.allPersonas ?? true,
           personaIds: [...new Set(payload.personaIds)],
           allowDelegatedWork: payload.allowDelegatedWork,
           allowWorkSessions: payload.allowWorkSessions ?? true,
@@ -127,6 +128,7 @@ export class ApplicationService {
         {
           ...metadata,
           displayName: payload.displayName.trim() || metadata.displayName,
+          allPersonas: payload.allPersonas ?? metadata.allPersonas,
           personaIds: [...new Set(payload.personaIds)],
           allowDelegatedWork: payload.allowDelegatedWork,
           allowWorkSessions:

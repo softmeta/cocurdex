@@ -5,6 +5,7 @@ const id = z.object({ id: idSchema });
 const login = z.object({ id: idSchema, loginId: idSchema });
 const grant = {
   displayName: boundedTextSchema(160).min(1),
+  allPersonas: z.boolean().optional(),
   personaIds: z.array(idSchema).max(256),
   allowDelegatedWork: z.boolean(),
   allowWorkSessions: z.boolean().optional(),

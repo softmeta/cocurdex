@@ -63,6 +63,7 @@ async function setup(github = githubLogin(null)) {
   const added = await apps.add({
     applicationId: "notion",
     displayName: "Notes",
+    allPersonas: false,
     personaIds: ["a"],
     allowDelegatedWork: false,
   });
@@ -87,6 +88,7 @@ describe("application connections", () => {
     const second = await apps.add({
       applicationId: "notion",
       displayName: "Private notes",
+      allPersonas: false,
       personaIds: ["b"],
       allowDelegatedWork: false,
     });
@@ -178,6 +180,43 @@ describe("application connections", () => {
     expect(client.close).toHaveBeenCalledTimes(2);
   });
 
+  it("opens a new connection to every assistant, including ones created later, until narrowed", async () => {
+    const { mcp, apps } = await setup();
+    const open = await apps.add({
+      applicationId: "linear",
+      displayName: "Issues",
+      personaIds: [],
+      allowDelegatedWork: false,
+    });
+    expect(open.allPersonas).toBe(true);
+    const later = {
+      personaId: "created-later",
+      delegated: false,
+      workSession: false,
+    };
+    expect((await apps.list(later)).map((item) => item.id)).toEqual([open.id]);
+    const narrowed = await apps.update({
+      ...edit(open),
+      allPersonas: false,
+      personaIds: ["a"],
+    });
+    expect(await apps.list(later)).toEqual([]);
+    const kept = await apps.update({
+      ...edit(narrowed),
+      displayName: "Tracker",
+    });
+    expect(kept.allPersonas).toBe(false);
+    await mcp.config.updateServer(open.id, (config) => {
+      const extension = config.cocurdex as {
+        application: Record<string, unknown>;
+      };
+      const { allPersonas: _dropped, ...legacy } = extension.application;
+      return { ...config, cocurdex: { ...extension, application: legacy } };
+    });
+    const [legacy] = (await apps.list()).filter((item) => item.id === open.id);
+    expect(legacy).toMatchObject({ allPersonas: false, personaIds: ["a"] });
+  });
+
   it("accepts an application id when exactly one granted connection matches it", async () => {
     const { apps, added, factory } = await setup();
     const a = { personaId: "a", delegated: false, workSession: false };
@@ -196,6 +235,7 @@ describe("application connections", () => {
     const second = await apps.add({
       applicationId: "notion",
       displayName: "Team notes",
+      allPersonas: false,
       personaIds: ["a"],
       allowDelegatedWork: false,
     });

@@ -10,6 +10,7 @@ const metadata = {
   version: 1 as const,
   applicationId: "notion" as const,
   displayName: "Work notes",
+  allPersonas: false,
   personaIds: ["assistant-a"],
   allowDelegatedWork: false,
   allowWorkSessions: false,
@@ -50,6 +51,16 @@ describe("managed application grants", () => {
     ).toBe(false);
   });
 
+  it("grants every assistant when open to all, still gating delegated work", () => {
+    const open = withApplicationMetadata(server, {
+      ...metadata,
+      allPersonas: true,
+    });
+    expect(applicationAllows(open, persona("assistant-b"))).toBe(true);
+    expect(applicationAllows(open, persona("assistant-b", true))).toBe(false);
+    expect(applicationAllows(open, persona(null))).toBe(false);
+  });
+
   it("opens a connection to work sessions only when it allows them", () => {
     expect(applicationAllows(server, workSession)).toBe(false);
     const open = withApplicationMetadata(server, {
@@ -64,7 +75,11 @@ describe("managed application grants", () => {
   });
 
   it("reads a connection saved before work sessions existed as closed to them", () => {
-    const { allowWorkSessions: _omitted, ...legacy } = metadata;
+    const {
+      allowWorkSessions: _omitted,
+      allPersonas: _added,
+      ...legacy
+    } = metadata;
     const saved = {
       url: "https://mcp.notion.com/mcp",
       cocurdex: { application: legacy },
