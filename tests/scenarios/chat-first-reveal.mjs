@@ -9,7 +9,7 @@ const DIAGRAM_NAME_KEY = "common:mermaid.title";
 const UI_TIMEOUT_MS = 30_000;
 const SETTLE_FRAMES = 30;
 
-const SESSION_ROW = new RegExp(`^${SESSION_TITLE}\\s+(?![(（])`);
+const SESSION_ROW = new RegExp(`^${SESSION_TITLE}(?:$|\(?:$|\s+(?![(（])))`);
 
 const args = readScenarioArgs();
 

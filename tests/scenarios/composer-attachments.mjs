@@ -6,7 +6,7 @@ import { translate } from "./lib/navigate.mjs";
 
 const SESSION_TITLE = "Draft release notes";
 const SESSION_HEADING = "Acme Shop 0.4.0";
-const SESSION_ROW = new RegExp(`^${SESSION_TITLE}\\s+(?![(（])`);
+const SESSION_ROW = new RegExp(`^${SESSION_TITLE}(?:$|\(?:$|\s+(?![(（])))`);
 const IMAGE_NAME = "photo-40x50.jpg";
 const IMAGE_FIXTURE = createRequire(import.meta.url).resolve(
   `./fixtures/deck-images/${IMAGE_NAME}`,

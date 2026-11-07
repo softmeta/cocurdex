@@ -188,7 +188,7 @@ runScenario("menu-flyouts", {
       async ({ session }) => {
         await clickByRole(
           session,
-          { role: "button", name: /^Draft release notes\s+(?![(（])/ },
+          { role: "button", name: /^Draft release notes(?:$|\s+(?![(（]))/ },
           UI_TIMEOUT_MS,
         );
         await showPanelView(session, "notes");

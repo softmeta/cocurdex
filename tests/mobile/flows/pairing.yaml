@@ -94,13 +94,20 @@ appId: dev.cocurdex.mobile
 - tapOn: ${EDIT_ASSISTANT}
 - tapOn:
     id: assistant-form-model
-- assertNotVisible: ".*${LAST_ASSISTANT_MODEL}.*"
-- scrollUntilVisible:
-    element:
-      text: ".*${LAST_ASSISTANT_MODEL}.*"
-    direction: DOWN
-    timeout: 12000
-- tapOn: ".*${LAST_ASSISTANT_MODEL}.*"
+- assertNotVisible:
+    id: "assistant-form-model-.*/scroll-test-model-24"
+- repeat:
+    times: 7
+    while:
+      notVisible:
+        id: "assistant-form-model-.*/scroll-test-model-24"
+    commands:
+      - swipe:
+          start: "50%, 82%"
+          end: "50%, 38%"
+          duration: 450
+- tapOn:
+    id: "assistant-form-model-.*/scroll-test-model-24"
 - tapOn: ${SAVE_ASSISTANT}
 - extendedWaitUntil:
     visible: ${MODEL_TEST_ASSISTANT}
@@ -147,7 +154,11 @@ appId: dev.cocurdex.mobile
       id: new-chat-prompt
       text: ${CHAT_PROMPT}
     timeout: 10000
-- hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - hideKeyboard
 - tapOn: ${SEND_ACTION}
 - extendedWaitUntil:
     visible:

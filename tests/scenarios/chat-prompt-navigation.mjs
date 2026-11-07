@@ -3,7 +3,7 @@ import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clickByRole } from "./lib/locate.mjs";
 import { translate } from "./lib/navigate.mjs";
 
-const SESSION_ROW = /^Checkout flow diagrams\s+(?![(（])/;
+const SESSION_ROW = /^Checkout flow diagrams(?:$|\s+(?![(（]))/;
 const TARGET_PROMPT = 4;
 const TARGET_ROW = TARGET_PROMPT - 1;
 const SAMPLE_MS = 2_000;
