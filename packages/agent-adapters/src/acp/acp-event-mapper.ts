@@ -265,29 +265,11 @@ export function mapAcpPromptUsage(
   };
 }
 
-interface PromptContextSamples {
-  count: number;
-  sum: number;
-  last: number;
-}
-
-function verifyPromptContext(
-  samples: PromptContextSamples,
-  usage: PromptResponse["usage"],
-): number | null {
-  const total = readNonNegativeInt(usage?.totalTokens);
-  const cached = readNonNegativeInt(usage?.cachedReadTokens) ?? 0;
-  if (total == null || samples.count === 0) return null;
-  if (samples.sum === total) return samples.last;
-  return samples.count === 1 && samples.sum === total + cached ? total : null;
-}
-
 export class AcpEventMapper {
   private readonly activeMessageSegments = new Map<string, string>();
   private lastTimelineTimestampMs = Number.NEGATIVE_INFINITY;
   private lastContextTokensUsed: number | null | undefined;
   private lastContextWindowSize: number | null = null;
-  private promptContextSamples: PromptContextSamples | null = null;
   private lastReportedCostUsd: number | null = null;
   private lastTurnUsage: AgentUsageRecord | null = null;
   private readonly messages = new Map<string, MessageBuffer>();
@@ -309,7 +291,7 @@ export class AcpEventMapper {
     ) => AgentToolCallRecord | null = (toolCall) => toolCall,
     private readonly workspaceRootPath: string | null = null,
     private readonly usageOptions: {
-      usePromptResponseForContext?: boolean;
+      contextFromUsageUpdates?: boolean;
     } = {},
   ) {
     this.updateNativeSessionTitle = createNativeSessionTitleTracker({
@@ -331,17 +313,6 @@ export class AcpEventMapper {
   beginTurn(userMessageId: string) {
     this.userMessageId = userMessageId;
     this.turnDiffs.clear();
-  }
-
-  beginPrompt() {
-    if (this.usageOptions.usePromptResponseForContext) {
-      this.promptContextSamples = { count: 0, sum: 0, last: 0 };
-    }
-  }
-
-  failPrompt() {
-    const usage = this.finishPromptContext();
-    if (usage) this.emitUsage(usage);
   }
 
   collectNativeEvidence() {
@@ -438,7 +409,7 @@ export class AcpEventMapper {
   handle(notification: SessionNotification) {
     // Grok (and similar agents) stamp context fill on every notification's
     // `_meta.totalTokens` instead of sending a dedicated `usage_update`.
-    if (!this.usageOptions.usePromptResponseForContext) {
+    if (!this.usageOptions.contextFromUsageUpdates) {
       this.emitContextFromMeta(readMetaRecord(notification._meta));
     }
 
@@ -551,12 +522,6 @@ export class AcpEventMapper {
           cost?: unknown;
         };
         const used = readNonNegativeInt(record.used);
-        const samples = this.promptContextSamples;
-        if (samples && used != null && used > 0) {
-          samples.count += 1;
-          samples.sum += used;
-          samples.last = used;
-        }
         const size = readNonNegativeInt(record.size);
         const cumulativeCostUsd = readCostUsd(record.cost);
         let totalCostUsd: number | undefined;
@@ -570,9 +535,7 @@ export class AcpEventMapper {
         this.emitUsage({
           inputTokens: 0,
           outputTokens: 0,
-          ...(used != null && !this.usageOptions.usePromptResponseForContext
-            ? { contextTokensUsed: used }
-            : {}),
+          ...(used != null ? { contextTokensUsed: used } : {}),
           ...(size != null ? { contextWindowSize: size } : {}),
           ...(totalCostUsd != null ? { totalCostUsd } : {}),
         });
@@ -610,8 +573,8 @@ export class AcpEventMapper {
     durationMs: number,
     promptResponse?: PromptResponse | null,
   ): MessageRecord {
-    const promptUsage = this.usageOptions.usePromptResponseForContext
-      ? this.finishPromptContext(promptResponse?.usage)
+    const promptUsage = this.usageOptions.contextFromUsageUpdates
+      ? null
       : mapAcpPromptUsage(promptResponse);
     if (promptUsage) {
       this.lastTurnUsage = promptUsage;
@@ -682,22 +645,6 @@ export class AcpEventMapper {
     this.tools.clear();
     this.lastTurnUsage = null;
     return result;
-  }
-
-  private finishPromptContext(
-    usage?: PromptResponse["usage"],
-  ): AgentUsageRecord | null {
-    const samples = this.promptContextSamples;
-    this.promptContextSamples = null;
-    if (!samples || (samples.count === 0 && !usage)) return null;
-    return {
-      inputTokens: 0,
-      outputTokens: 0,
-      contextTokensUsed: verifyPromptContext(samples, usage),
-      ...(this.lastContextWindowSize != null
-        ? { contextWindowSize: this.lastContextWindowSize }
-        : {}),
-    };
   }
 
   private emitContextFromMeta(meta: Record<string, unknown> | null) {

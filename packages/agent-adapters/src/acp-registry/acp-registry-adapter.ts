@@ -38,7 +38,7 @@ interface AcpAgentAdapterProfile {
   args?: string[];
   authMethodPriority?: () => string[];
   authenticateOnSession?: boolean;
-  usePromptResponseForContext?: boolean;
+  contextFromUsageUpdates?: boolean;
   createAdapter?(
     launch: AcpLaunch,
     connectionFactory?: AcpConnectionFactory,
@@ -52,7 +52,7 @@ interface AcpAgentAdapterProfile {
 
 const adapterProfiles: Readonly<Record<string, AcpAgentAdapterProfile>> = {
   "antigravity-acp": {
-    usePromptResponseForContext: true,
+    contextFromUsageUpdates: true,
   },
   cursor: {
     authMethodPriority: () => ["cursor_login"],
@@ -110,7 +110,7 @@ export function createAcpRegistryAdapter(
     descriptor: getAgentDescriptor(agentId),
     modelProviderId: agentId,
     skipAuthenticate: !profile.authenticateOnSession,
-    usePromptResponseForContext: profile.usePromptResponseForContext,
+    contextFromUsageUpdates: profile.contextFromUsageUpdates,
   };
   return new AcpAgentAdapter(options, connectionFactory);
 }
