@@ -65,6 +65,7 @@ function SessionPaneFrame({
 
 interface SessionSplitLayoutProps {
   composerRef?: Ref<ChatComposerHandle>;
+  onOpenAssistantOverview?(): void;
   hideTitlebarSpacer?: boolean;
   /** Set when the surrounding shell renders the pane header for a lone pane. */
   hideSinglePaneHeader?: boolean;
@@ -74,6 +75,7 @@ interface SessionSplitLayoutProps {
 
 export function SessionSplitLayout({
   composerRef,
+  onOpenAssistantOverview,
   hideTitlebarSpacer = false,
   hideSinglePaneHeader = false,
   headerEndInset = 0,
@@ -225,6 +227,13 @@ export function SessionSplitLayout({
             paneId={node.pane.id}
             sessionId={node.pane.sessionId}
             title={sessionPaneTitle(node.pane, sessions)}
+            onOpenAssistantOverview={
+              onOpenAssistantOverview &&
+              (() => {
+                handleActivate(node.pane);
+                onOpenAssistantOverview();
+              })
+            }
             onClose={() => handleClose(node.pane.id)}
             onCloseAll={() => handleCloseAll(node.pane.id)}
             onSplitDown={() => splitPaneById(node.pane.id, "down")}

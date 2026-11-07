@@ -14,6 +14,7 @@ import {
   waitForRole,
 } from "./lib/locate.mjs";
 import {
+  closeEditorPanel,
   openAssistantsTab,
   showPanelView,
   translate,
@@ -197,6 +198,39 @@ runScenario("personal-agents", {
         state.homeSessionId = assistant.homeSessionId;
         state.personaId = assistant.id;
         return { homeSessionId: assistant.homeSessionId };
+      },
+    ],
+    [
+      "the assistant header opens the overview after following the pointer",
+      async ({ session }) => {
+        await closeEditorPanel(session);
+        const overviewLabel = await translate(
+          session,
+          "editor:actions.showAssistantOverview",
+        );
+        const trigger = { role: "button", name: overviewLabel };
+        const [button] = await waitForRole(session, trigger);
+        const point = await centerOf(session, button.backendNodeId);
+        await session.send("Input.dispatchMouseEvent", {
+          type: "mouseMoved",
+          x: point.x + 5,
+          y: point.y,
+        });
+        await session.waitUntil(
+          ({ x, y }) =>
+            Number(
+              document
+                .elementFromPoint(x, y)
+                ?.closest("button")
+                ?.querySelector("[data-avatar]")
+                ?.style.getPropertyValue("--avatar-look-x"),
+            ) > 0,
+          { x: point.x + 5, y: point.y },
+          UI_TIMEOUT_MS,
+        );
+        await clickByRole(session, trigger);
+        await waitForRole(session, { role: "region", name: overviewLabel });
+        return {};
       },
     ],
     assistantPanelsStep(),

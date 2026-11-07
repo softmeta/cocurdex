@@ -3,7 +3,10 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import type { Ref } from "react";
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { setChatComposerAttachmentAtom } from "@/features/editor";
+import {
+  editorPanelOpenAtom,
+  setChatComposerAttachmentAtom,
+} from "@/features/editor";
 import {
   OnboardingView,
   onboardingDismissedAtom,
@@ -46,6 +49,7 @@ import type { ChatLayoutMode } from "../chat-layout-preference";
 import { useChatBrowserContext } from "../chat-window/chat-browser-context";
 import { useChatContext } from "../chat-window/use-chat-context";
 import { NavigationButtons } from "../navigation";
+import { rightPanelResolvedActiveViewAtom } from "../right-editor-panel-store";
 import {
   SearchPalette,
   SearchPaletteButton,
@@ -188,6 +192,8 @@ export function AppShellFrame({
   useChatBrowserContext();
   useOpenEntityBridge();
   const dock = useDockGeometry();
+  const setRightPanelOpen = useSetAtom(editorPanelOpenAtom);
+  const setRightPanelView = useSetAtom(rightPanelResolvedActiveViewAtom);
   const requestChatContext = useSetAtom(requestChatContextAtom);
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
@@ -248,6 +254,10 @@ export function AppShellFrame({
       composerRef={composerRef}
       hideTitlebarSpacer={isRightPanelMaximized}
       hideSinglePaneHeader={isRightPanelMaximized}
+      onOpenAssistantOverview={() => {
+        setRightPanelView("overview");
+        setRightPanelOpen(true);
+      }}
     />
   );
 

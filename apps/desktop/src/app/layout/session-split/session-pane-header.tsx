@@ -23,6 +23,7 @@ interface SessionPaneHeaderProps {
   leading?: ReactNode;
   trailing?: ReactNode;
   className?: string;
+  onOpenAssistantOverview?(): void;
   onClose?(): void;
   onCloseAll?(): void;
   onSplitDown(): void;
@@ -42,6 +43,7 @@ export function SessionPaneHeader({
   leading,
   trailing,
   className,
+  onOpenAssistantOverview,
   onClose,
   onCloseAll,
   onSplitDown,
@@ -68,7 +70,10 @@ export function SessionPaneHeader({
           <div className="pointer-events-auto relative">{leading}</div>
         ) : null}
         <div className="absolute inset-x-0 top-1.5 flex justify-center">
-          <PersonaTitle role={personaRole} />
+          <PersonaTitle
+            onOpenOverview={onOpenAssistantOverview}
+            role={personaRole}
+          />
         </div>
         <div className="min-w-0 flex-1" />
         {trailing ? (
