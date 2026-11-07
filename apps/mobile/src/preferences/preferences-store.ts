@@ -1,6 +1,7 @@
 import { File, Paths } from "expo-file-system";
 import { useSyncExternalStore } from "react";
 import { Appearance } from "react-native";
+import { persistNightMode } from "./native-night-mode";
 import {
   type AppearancePreference,
   CODE_SCALE,
@@ -28,6 +29,7 @@ function applyAppearance(appearance: AppearancePreference) {
   Appearance.setColorScheme(
     appearance === "system" ? "unspecified" : appearance,
   );
+  persistNightMode(appearance);
 }
 
 let current = readStored();
