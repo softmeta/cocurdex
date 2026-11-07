@@ -16,11 +16,31 @@ appId: dev.cocurdex.mobile
 - assertVisible: ${ATTACH_ACTION}
 - tapOn:
     id: "composer-input"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "UIKeyboardLayoutStar.*"
+          timeout: 10000
 - inputText: ${SEND_PROMPT}
-- tapOn: ${SEND_ACTION}
-- extendedWaitUntil:
-    visible: ${SEND_REPLY}
-    timeout: 20000
+- waitForAnimationToEnd
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "composer-input"
+              text: ${SEND_PROMPT}
+          commands:
+            - tapOn:
+                text: ${SEND_ACTION}
+                enabled: true
+      - extendedWaitUntil:
+          visible: ${SEND_REPLY}
+          timeout: 15000
 - assertNotVisible: ${REPLYING_STATUS}
 - takeScreenshot: session-streaming
 - extendedWaitUntil:
@@ -179,6 +199,8 @@ appId: dev.cocurdex.mobile
     visible:
       id: "new-session-prompt"
     timeout: 5000
+- tapOn:
+    id: "new-session-prompt"
 - assertVisible:
     id: "new-session-agent"
     text: "(?s).*${ROLE_NAME}.*"
@@ -222,6 +244,14 @@ appId: dev.cocurdex.mobile
     timeout: 5000
 - tapOn:
     id: "new-session-prompt"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "UIKeyboardLayoutStar.*"
+          timeout: 10000
 - inputText: ${NEW_SESSION_PROMPT}
 - takeScreenshot: new-session-filled
 - tapOn: ${SEND_ACTION}
