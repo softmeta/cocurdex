@@ -98,7 +98,7 @@
     "unmute": "Unmute",
     "unpin": "Unpin"
   },
-  "newName": "New assistant",
+  "namePool": "Iris,Milo,Juno,Otto,Nora,Felix,Luna,Theo,Ivy,Leo,Hazel,Jasper,Ruby,Oscar,Mabel,Rowan,Clara,Hugo,Wren,Ezra,Ada,Silas,Vera,Arlo,June,Remy,Elsie,Finn,Pearl,Kai",
   "overview": {
     "archived": "Archived",
     "cancelled": "Cancelled",

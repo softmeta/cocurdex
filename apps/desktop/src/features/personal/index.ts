@@ -1,4 +1,5 @@
 export { PersonaIntro } from "./persona-intro";
+export { pickPersonaName } from "./persona-name";
 export { personalApi } from "./personal-api";
 export {
   revalidatePersonalAgents,

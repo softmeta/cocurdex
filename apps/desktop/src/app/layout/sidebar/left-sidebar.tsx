@@ -7,7 +7,11 @@ import { toast } from "sonner";
 import { AppSidebarIconButton } from "@/components/app";
 import { chatSessionsAtom } from "@/features/chat";
 import { inboxApi } from "@/features/inbox";
-import { personalApi, revalidatePersonalAgents } from "@/features/personal";
+import {
+  personalApi,
+  pickPersonaName,
+  revalidatePersonalAgents,
+} from "@/features/personal";
 import {
   activeSessionIdAtom,
   removeSessionsByWorkspaceAtom,
@@ -161,7 +165,12 @@ export function LeftSidebar({
       const template = agents.find((agent) => agent.isDefault)?.role;
       const created = await personalApi.create({
         role: {
-          ...personalAgentRoleDraft(t("personal:newName")),
+          ...personalAgentRoleDraft(
+            pickPersonaName(
+              t("personal:namePool").split(","),
+              agents.map((agent) => agent.role.name),
+            ),
+          ),
           providerId: template?.providerId ?? null,
           modelId: template?.modelId ?? null,
           modelName: template?.modelName ?? null,
