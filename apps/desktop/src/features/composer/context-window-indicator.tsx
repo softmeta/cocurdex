@@ -86,6 +86,7 @@ export function ContextUsageMeter({
   modelLabel,
   used,
   contextLimit,
+  contextUnavailable,
   rateLimits,
   breakdown,
   layout = "inline",
@@ -94,6 +95,7 @@ export function ContextUsageMeter({
   modelLabel?: ReactNode;
   used: number | null;
   contextLimit: number | null;
+  contextUnavailable?: boolean;
   rateLimits?: AgentRateLimitsRecord;
   // Reported only by agents that can see how the window is spent (Claude
   // Agent); the panel drops the composition sections without it.
@@ -118,7 +120,7 @@ export function ContextUsageMeter({
     return `${usedText} / ${limitText}`;
   })();
   const hasUsageContent = Boolean(
-    rateLimits || (usageLabel && percent != null),
+    rateLimits || (usageLabel && (percent != null || contextUnavailable)),
   );
   // The ring is the only footer affordance for context, quota and composition,
   // so it also renders when usage is unknown (value 0) as long as quota exists.
@@ -145,7 +147,11 @@ export function ContextUsageMeter({
             trackClassName="text-chat-border-strong"
             value={percent ?? 0}
           />
-          {percent != null ? <span>{Math.round(percent)}%</span> : null}
+          {percent != null ? (
+            <span>{Math.round(percent)}%</span>
+          ) : contextUnavailable ? (
+            <span>—</span>
+          ) : null}
         </button>
       </PopoverTrigger>
       <ContextUsagePopoverContent
@@ -509,6 +515,7 @@ export function ContextWindowIndicator({
       afterModel={afterModel}
       breakdown={sessionContextBreakdown[session.id]}
       contextLimit={contextLimit}
+      contextUnavailable={usage?.contextTokensUsed === null}
       layout={layout}
       modelLabel={modelLabel}
       rateLimits={sessionRateLimits[session.id]}

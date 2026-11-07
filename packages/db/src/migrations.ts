@@ -35,7 +35,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 /** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 44;
+export const CURRENT_SCHEMA_VERSION = 45;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -605,6 +605,20 @@ function allowNativeContextTransfers(database: DatabaseSync): void {
   `);
 }
 
+function invalidateAntigravityContextUsage(database: DatabaseSync) {
+  database.exec(`
+    UPDATE session_usage
+    SET usage_json = json_set(usage_json, '$.contextTokensUsed', NULL)
+    WHERE session_id IN (
+      SELECT id FROM sessions WHERE agent_type = 'acp:antigravity-acp'
+    )
+      AND CASE WHEN json_valid(usage_json)
+        THEN json_type(usage_json, '$.contextTokensUsed') IS NOT NULL
+        ELSE 0
+      END
+  `);
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
@@ -645,6 +659,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [41, migrateRoutineReports],
   [42, createPushOutboxTable],
   [43, createDelegationsTable],
+  [44, invalidateAntigravityContextUsage],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

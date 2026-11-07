@@ -627,6 +627,111 @@ describe("AcpEventMapper", () => {
     });
   });
 
+  it("uses the verified prompt total without displaying inflated Antigravity updates", () => {
+    const events: AgentEvent[] = [];
+    const mapper = new AcpEventMapper(
+      "app-session-1",
+      (event) => events.push(event),
+      undefined,
+      null,
+      undefined,
+      null,
+      { usePromptResponseForContext: true },
+    );
+    const notifyUsage = (used: number) =>
+      mapper.handle({
+        sessionId: "provider-session-1",
+        update: { sessionUpdate: "usage_update", used, size: 1_048_576 },
+      });
+    const contextSamples = () =>
+      events.flatMap((event) =>
+        event.type === "usage.updated" && event.usage.contextTokensUsed != null
+          ? [event.usage.contextTokensUsed]
+          : [],
+      );
+
+    mapper.beginPrompt();
+    notifyUsage(49_305);
+    expect(contextSamples()).toEqual([]);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "usage.updated",
+        usage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          contextWindowSize: 1_048_576,
+        },
+      }),
+    );
+    mapper.complete("end_turn", 42, {
+      stopReason: "end_turn",
+      usage: {
+        totalTokens: 25_760,
+        inputTokens: 25_737,
+        outputTokens: 1,
+        thoughtTokens: 22,
+        cachedReadTokens: 23_545,
+        cachedWriteTokens: 0,
+      },
+    });
+    mapper.beginPrompt();
+    notifyUsage(49_542);
+    mapper.complete("cancelled", 42, { stopReason: "cancelled" });
+    expect(contextSamples()).toEqual([25_760]);
+    expect(
+      events.filter((event) => event.type === "usage.updated").at(-1),
+    ).toMatchObject({ usage: { contextTokensUsed: null } });
+  });
+
+  it("does not mistake an Antigravity turn total for the last model step", () => {
+    const events: AgentEvent[] = [];
+    const mapper = new AcpEventMapper(
+      "app-session-1",
+      (event) => events.push(event),
+      undefined,
+      null,
+      undefined,
+      null,
+      { usePromptResponseForContext: true },
+    );
+    mapper.beginPrompt();
+    for (const used of [49_523, 49_936]) {
+      mapper.handle({
+        sessionId: "provider-session-1",
+        update: { sessionUpdate: "usage_update", used, size: 1_048_576 },
+      });
+    }
+    mapper.complete("end_turn", 42, {
+      stopReason: "end_turn",
+      usage: {
+        totalTokens: 52_230,
+        inputTokens: 51_947,
+        outputTokens: 90,
+        thoughtTokens: 193,
+        cachedReadTokens: 47_229,
+        cachedWriteTokens: 0,
+      },
+    });
+    expect(
+      events.filter((event) => event.type === "usage.updated").at(-1),
+    ).toMatchObject({ usage: { contextTokensUsed: null } });
+
+    mapper.beginPrompt();
+    for (const used of [25_000, 26_000]) {
+      mapper.handle({
+        sessionId: "provider-session-1",
+        update: { sessionUpdate: "usage_update", used, size: 1_048_576 },
+      });
+    }
+    mapper.complete("end_turn", 42, {
+      stopReason: "end_turn",
+      usage: { totalTokens: 51_000, inputTokens: 50_990, outputTokens: 10 },
+    });
+    expect(
+      events.filter((event) => event.type === "usage.updated").at(-1),
+    ).toMatchObject({ usage: { contextTokensUsed: 26_000 } });
+  });
+
   it("forwards native ACP session titles with compare-and-set metadata", () => {
     const events: AgentEvent[] = [];
     const mapper = new AcpEventMapper(
