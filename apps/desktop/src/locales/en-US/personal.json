@@ -204,6 +204,7 @@
     "timeZone": "Time zone"
   },
   "sidebar": {
+    "hint": "Remembers you and minds your day",
     "title": "Assistants"
   },
   "thread": {

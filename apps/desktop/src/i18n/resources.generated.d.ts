@@ -395,6 +395,7 @@ export default interface Resources {
       error: "Request failed";
     };
     sidebar: {
+      hint: "Ask anything, get quick answers";
       title: "Chat";
     };
   };
@@ -1738,6 +1739,7 @@ export default interface Resources {
       timeZone: "Time zone";
     };
     sidebar: {
+      hint: "Remembers you and minds your day";
       title: "Assistants";
     };
     thread: {
@@ -2233,6 +2235,7 @@ export default interface Resources {
         };
       };
       workspacesGroup: "Work";
+      workspacesHint: "Build, fix, and ship in your projects";
     };
     split: {
       actions: "Actions";

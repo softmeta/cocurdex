@@ -395,7 +395,8 @@
         "yesterday": "Yesterday"
       }
     },
-    "workspacesGroup": "Work"
+    "workspacesGroup": "Work",
+    "workspacesHint": "Build, fix, and ship in your projects"
   },
   "split": {
     "actions": "Actions",
