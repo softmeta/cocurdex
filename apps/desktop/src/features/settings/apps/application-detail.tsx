@@ -3,7 +3,7 @@ import {
   type ApplicationConnection,
   type PersonalAgentRecord,
 } from "@cocurdex/shared";
-import { ArrowUpRight, LogOut, Plug, RefreshCw } from "lucide-react";
+import { ArrowUpRight, LogOut, Plug, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ export function ApplicationDetail({
   onChanged,
   onSaved,
   onRemoved,
+  onConnectAnother,
 }: {
   connection: ApplicationConnection;
   agents: PersonalAgentRecord[];
@@ -32,6 +33,7 @@ export function ApplicationDetail({
   onChanged(): Promise<unknown>;
   onSaved(next: ApplicationConnection): Promise<unknown>;
   onRemoved(): void;
+  onConnectAnother(): void;
 }) {
   const { t } = useTranslation("personal");
   const [name, setName] = useState(connection.displayName);
@@ -230,6 +232,17 @@ export function ApplicationDetail({
         >
           <LogOut className="size-3.5" />
           {t("apps.signOut", { defaultValue: "Sign out" })}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={disabled}
+          onClick={onConnectAnother}
+        >
+          <Plus className="size-3.5" />
+          {t("apps.connectAnother", {
+            defaultValue: "Connect another account",
+          })}
         </Button>
         {app ? (
           <Button

@@ -62,23 +62,27 @@ export class ApplicationService {
     principal?: ApplicationPrincipal,
   ): Promise<ApplicationConnection[]> {
     const servers = await this.mcp.config.readServers();
-    return Object.entries(servers).flatMap(([id, config]) => {
-      const metadata = readApplicationMetadata(config);
-      if (!metadata || (principal && !applicationAllows(config, principal)))
-        return [];
-      const checked = this.statuses.get(id);
-      return [
-        {
-          id,
-          ...metadata,
-          enabled: config.enabled !== false,
-          status:
-            checked?.revision === connectionRevision(config)
-              ? checked.status
-              : null,
-        },
-      ];
-    });
+    const connections = await Promise.all(
+      Object.entries(servers).map(async ([id, config]) => {
+        const metadata = readApplicationMetadata(config);
+        if (!metadata || (principal && !applicationAllows(config, principal)))
+          return [];
+        const checked = this.statuses.get(id);
+        return [
+          {
+            id,
+            ...metadata,
+            personaIds: await this.existingPersonas(metadata.personaIds),
+            enabled: config.enabled !== false,
+            status:
+              checked?.revision === connectionRevision(config)
+                ? checked.status
+                : null,
+          },
+        ];
+      }),
+    );
+    return connections.flat();
   }
 
   async add(payload: AddApplicationPayload) {
@@ -116,7 +120,13 @@ export class ApplicationService {
   }
 
   async update(payload: UpdateApplicationPayload) {
-    await this.validatePersonas(payload.personaIds);
+    const saved = this.metadata(await this.require(payload.id)).personaIds;
+    await this.validatePersonas(
+      payload.personaIds.filter((id) => !saved.includes(id)),
+    );
+    const personaIds = await this.existingPersonas([
+      ...new Set(payload.personaIds),
+    ]);
     await this.cancelFor(payload.id);
     await this.closeClients(payload.id);
     await this.mcp.config.updateServer(payload.id, (config) => {
@@ -129,7 +139,7 @@ export class ApplicationService {
           ...metadata,
           displayName: payload.displayName.trim() || metadata.displayName,
           allPersonas: payload.allPersonas ?? metadata.allPersonas,
-          personaIds: [...new Set(payload.personaIds)],
+          personaIds,
           allowDelegatedWork: payload.allowDelegatedWork,
           allowWorkSessions:
             payload.allowWorkSessions ?? metadata.allowWorkSessions,
@@ -417,6 +427,11 @@ export class ApplicationService {
     if (principal && config.enabled === false)
       throw new Error("Application is disabled");
     return config;
+  }
+
+  private async existingPersonas(ids: readonly string[]) {
+    const exists = await Promise.all(ids.map((id) => this.personaExists(id)));
+    return ids.filter((_, index) => exists[index]);
   }
 
   private async validatePersonas(ids: string[]) {

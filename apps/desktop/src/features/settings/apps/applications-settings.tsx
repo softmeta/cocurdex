@@ -56,7 +56,11 @@ export function ApplicationsSettingsPanel() {
   const connections = (data ?? []).filter((item) =>
     matches(`${item.displayName} ${item.applicationId}`),
   );
-  const catalog = APPLICATION_CATALOG.filter((app) => matches(app.name));
+  const catalog = APPLICATION_CATALOG.filter(
+    (app) =>
+      matches(app.name) &&
+      !(data ?? []).some((item) => item.applicationId === app.id),
+  );
   const active = resolveSelection(selection, data ?? []);
   const selectedConnection =
     active?.kind === "connection"
@@ -226,6 +230,9 @@ export function ApplicationsSettingsPanel() {
                   setSelection(null);
                   void mutate();
                 }}
+                onConnectAnother={() =>
+                  void connect(selectedConnection.applicationId)
+                }
               />
             ) : null}
             {selectedApp ? (
@@ -233,11 +240,6 @@ export function ApplicationsSettingsPanel() {
                 app={selectedApp}
                 authHint={authHint(selectedApp.id, t)}
                 busy={busy}
-                connected={(data ?? []).some(
-                  (item) =>
-                    item.applicationId === selectedApp.id &&
-                    isApplicationConnected(item),
-                )}
                 onConnect={() => void connect(selectedApp.id)}
               />
             ) : null}

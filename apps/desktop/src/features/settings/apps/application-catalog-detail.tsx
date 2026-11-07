@@ -8,19 +8,15 @@ export function ApplicationCatalogDetail({
   app,
   authHint,
   busy,
-  connected,
   onConnect,
 }: {
   app: (typeof APPLICATION_CATALOG)[number];
   authHint: string;
   busy: boolean;
-  connected: boolean;
   onConnect(): void;
 }) {
   const { t } = useTranslation("personal");
-  const connectLabel = connected
-    ? t("apps.connectAnother", { defaultValue: "Connect another account" })
-    : t("apps.connect", { defaultValue: "Connect" });
+  const connectLabel = t("apps.connect", { defaultValue: "Connect" });
 
   return (
     <section

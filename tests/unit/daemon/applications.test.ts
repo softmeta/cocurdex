@@ -355,6 +355,36 @@ describe("application connections", () => {
     ).toEqual([]);
   });
 
+  it("drops a deleted assistant from the grant instead of refusing later edits", async () => {
+    const { mcp } = await setup();
+    const personas = new Set(["a", "b"]);
+    const apps = new ApplicationService(mcp, async (id) => personas.has(id));
+    const added = await apps.add({
+      applicationId: "github",
+      displayName: "GitHub",
+      allPersonas: false,
+      personaIds: ["a", "b"],
+      allowDelegatedWork: false,
+    });
+    personas.delete("b");
+
+    const listed = (await apps.list()).find((item) => item.id === added.id);
+    expect(listed?.personaIds).toEqual(["a"]);
+
+    const updated = await apps.update({
+      ...edit(added),
+      enabled: true,
+      allowWorkSessions: false,
+    });
+    expect(updated).toMatchObject({
+      personaIds: ["a"],
+      allowWorkSessions: false,
+    });
+    await expect(
+      apps.update({ ...edit(updated), enabled: true, personaIds: ["a", "c"] }),
+    ).rejects.toThrow("Assistant not found: c");
+  });
+
   it("keeps a checked status across grant edits and drops it when the connection itself changes", async () => {
     const { mcp, apps, added } = await setup();
     vi.spyOn(mcp, "test").mockResolvedValue({
