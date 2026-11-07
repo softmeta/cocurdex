@@ -127,7 +127,7 @@ export function WorkspacesPanel({
             className: "overflow-x-hidden [&>div]:!block [&>div]:min-w-0",
           }}
         >
-          <SidebarMenu className="pe-3">
+          <SidebarMenu className="pe-1">
             {leading}
             {filtered &&
             !sessionsSection.collapsed &&

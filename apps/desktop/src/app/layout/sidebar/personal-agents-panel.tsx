@@ -70,7 +70,7 @@ export function PersonalAgentsPanel({
           className: "overflow-x-hidden [&>div]:!block [&>div]:min-w-0",
         }}
       >
-        <section aria-label={t("roster.label")} className="pe-3 pb-3">
+        <section aria-label={t("roster.label")} className="pe-1 pb-3">
           <SidebarMenu className="gap-0.5">
             {agents.map((agent) => (
               <li className="list-none" key={agent.id}>

@@ -35,7 +35,7 @@ export function SidebarSectionHeading({
   return (
     <div className="sticky top-0 z-10 flex w-full min-w-0 items-center bg-sidebar">
       <div className="min-w-0 flex-1">{heading}</div>
-      <div className="-me-1.25 flex shrink-0 items-center">{actions}</div>
+      <div className="flex shrink-0 items-center pe-0.75">{actions}</div>
     </div>
   );
 }

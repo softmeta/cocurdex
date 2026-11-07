@@ -71,7 +71,7 @@ export function InboxSection({
   if (items.length === 0) return null;
 
   return (
-    <section aria-label={t("inbox.heading")} className="pe-3 pb-3">
+    <section aria-label={t("inbox.heading")} className="pe-1 pb-3">
       <SidebarSectionHeading section="inbox">
         {t("inbox.headingCount", { total: items.length })}
       </SidebarSectionHeading>

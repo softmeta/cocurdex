@@ -211,7 +211,7 @@ export function SessionGroupsPanel({
           className: "overflow-x-hidden [&>div]:!block [&>div]:min-w-0",
         }}
       >
-        <SidebarMenu className="pe-3">
+        <SidebarMenu className="pe-1">
           {leading}
           {!sessionsSection.collapsed &&
           groups.length === 0 &&
