@@ -38,10 +38,12 @@ export function TranscriptList({
   footer,
   renderRow,
   sentMessageId,
+  bottomInset = 0,
   ref,
 }: {
   items: readonly CondensedItem[];
   footer?: ReactElement;
+  bottomInset?: number;
   renderRow: (item: CondensedItem) => ReactElement;
   sentMessageId?: string;
   ref?: Ref<TranscriptHandle>;
@@ -73,7 +75,10 @@ export function TranscriptList({
   }
   const latestJump = useRef<{ animated: boolean } | null>(null);
   const [viewportHeight, setViewportHeight] = useState(0);
-  const visibleHeight = Math.max(0, viewportHeight - headerOverlap);
+  const visibleHeight = Math.max(
+    0,
+    viewportHeight - headerOverlap - bottomInset,
+  );
   const peek = sentPromptPeek(visibleHeight);
   const viewportWidth = useRef(0);
   const [jump, setJump] = useState(INITIAL_JUMP_STATE);
@@ -140,7 +145,9 @@ export function TranscriptList({
         const target = state.target;
         const inset =
           target === state.sentMessageId
-            ? sentPromptPeek(metrics.current.viewportHeight - headerOverlap)
+            ? sentPromptPeek(
+                metrics.current.viewportHeight - headerOverlap - bottomInset,
+              )
             : 0;
         latestView.current?.measureLayout(
           content,
@@ -252,7 +259,10 @@ export function TranscriptList({
         automaticallyAdjustContentInsets={false}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: space.md + headerOverlap },
+          {
+            paddingTop: space.md + headerOverlap,
+            paddingBottom: space.md + bottomInset,
+          },
         ]}
         scrollEventThrottle={32}
         onScroll={onScroll}
@@ -357,6 +367,7 @@ export function TranscriptList({
         <JumpButton
           target={currentJump.kind}
           streaming={streaming}
+          bottomInset={bottomInset}
           unseen={
             currentJump.kind === "latest" && hasUnseenLatest(jump, items.length)
           }

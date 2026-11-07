@@ -241,10 +241,12 @@ export function SessionDetailScreen({
       ]
     : [];
 
+  const [dockHeight, setDockHeight] = useState<number | null>(null);
   let body: ReactNode;
+  const dockInset = { paddingBottom: dockHeight ?? 0 };
   if (detail.loaded && detail.missing) {
     body = (
-      <View style={styles.center}>
+      <View style={[styles.center, dockInset]}>
         <Text style={{ color: colors.mutedForeground }}>
           {t("detail.missing")}
         </Text>
@@ -253,7 +255,11 @@ export function SessionDetailScreen({
   } else if (!settled) {
     body = <View style={styles.fill} />;
   } else if (showIntro) {
-    body = <PersonaIntro onPick={(text) => void send(text, [])} />;
+    body = (
+      <View style={[styles.fill, dockInset]}>
+        <PersonaIntro onPick={(text) => void send(text, [])} />
+      </View>
+    );
   } else {
     body = (
       <TranscriptView
@@ -262,6 +268,7 @@ export function SessionDetailScreen({
         items={items}
         presentation={persona ? "assistant" : "work"}
         userBubble={personaBubble ?? undefined}
+        bottomInset={dockHeight ?? 0}
         actions={{
           hostId: host.hostId,
           fileRoot: canReadFiles ? workspacePath : undefined,
@@ -315,57 +322,65 @@ export function SessionDetailScreen({
           behavior="padding"
           keyboardVerticalOffset={frame.windowTop - bottomInset}
         >
-          {body}
-          {canInteract && needsExecute ? (
-            <Text
-              testID="session-needs-execute"
-              style={[styles.error, { color: colors.mutedForeground }]}
+          <View style={styles.fill}>
+            {dockHeight === null ? null : body}
+            <View
+              pointerEvents="box-none"
+              style={[styles.dock, { paddingBottom: bottomInset }]}
+              onLayout={(event) =>
+                setDockHeight(event.nativeEvent.layout.height)
+              }
             >
-              {t("detail.needsExecute")}
-            </Text>
-          ) : null}
-          {actionFailed ? (
-            <Text
-              accessibilityRole="alert"
-              style={[styles.error, { color: colors.destructive }]}
-            >
-              {t("detail.actionFailed")}
-            </Text>
-          ) : null}
-          <View style={{ paddingBottom: bottomInset }}>
-            {pending ? (
-              <InteractionDock
-                pending={pending}
-                canApprove={canApprove}
-                actions={actions}
-              />
-            ) : (
-              <Composer
-                running={running}
-                canSend={
-                  canInteract &&
-                  !needsExecute &&
-                  detail.loaded &&
-                  !detail.missing
-                }
-                placeholder={
-                  persona
-                    ? t("assistant:thread.placeholder", {
-                        name: persona.role.name,
-                      })
-                    : undefined
-                }
-                onSend={send}
-                onStop={stop}
-                onPickImages={pickImages}
-                onUploadImage={(image) => uploadImage(host.hostId, image)}
-                accessory={
-                  persona ? undefined : (
-                    <SessionConfigChips host={host} sessionId={sessionId} />
-                  )
-                }
-              />
-            )}
+              {canInteract && needsExecute ? (
+                <Text
+                  testID="session-needs-execute"
+                  style={[styles.error, { color: colors.mutedForeground }]}
+                >
+                  {t("detail.needsExecute")}
+                </Text>
+              ) : null}
+              {actionFailed ? (
+                <Text
+                  accessibilityRole="alert"
+                  style={[styles.error, { color: colors.destructive }]}
+                >
+                  {t("detail.actionFailed")}
+                </Text>
+              ) : null}
+              {pending ? (
+                <InteractionDock
+                  pending={pending}
+                  canApprove={canApprove}
+                  actions={actions}
+                />
+              ) : (
+                <Composer
+                  running={running}
+                  canSend={
+                    canInteract &&
+                    !needsExecute &&
+                    detail.loaded &&
+                    !detail.missing
+                  }
+                  placeholder={
+                    persona
+                      ? t("assistant:thread.placeholder", {
+                          name: persona.role.name,
+                        })
+                      : undefined
+                  }
+                  onSend={send}
+                  onStop={stop}
+                  onPickImages={pickImages}
+                  onUploadImage={(image) => uploadImage(host.hostId, image)}
+                  accessory={
+                    persona ? undefined : (
+                      <SessionConfigChips host={host} sessionId={sessionId} />
+                    )
+                  }
+                />
+              )}
+            </View>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -375,6 +390,7 @@ export function SessionDetailScreen({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  dock: { position: "absolute", left: 0, right: 0, bottom: 0 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   error: {
     fontSize: 13,

@@ -26,9 +26,11 @@ export function JumpButton({
   target,
   streaming = false,
   unseen,
+  bottomInset = 0,
   onPress,
 }: {
   target: Exclude<JumpButtonKind, null>;
+  bottomInset?: number;
   streaming?: boolean;
   unseen: boolean;
   onPress(): void;
@@ -38,7 +40,10 @@ export function JumpButton({
   const fill = FILL[useThemeName()];
   const latest = target === "latest";
   return (
-    <View pointerEvents="box-none" style={styles.slot}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.slot, { bottom: space.lg + bottomInset }]}
+    >
       <Pressable
         testID="transcript-jump"
         accessibilityRole="button"
@@ -133,7 +138,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     start: 0,
     end: 0,
-    bottom: space.lg,
     alignItems: "center",
   },
   button: {

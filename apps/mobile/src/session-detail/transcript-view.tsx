@@ -397,8 +397,10 @@ export function TranscriptView({
   presentation = "work",
   userBubble,
   sentMessageId,
+  bottomInset,
   ref,
 }: {
+  bottomInset?: number;
   items: readonly CondensedItem[];
   footer?: React.ReactElement;
   actions: TranscriptActions;
@@ -448,6 +450,7 @@ export function TranscriptView({
       items={items}
       footer={footer}
       sentMessageId={sentMessageId}
+      bottomInset={bottomInset}
       renderRow={renderRow}
     />
   );
