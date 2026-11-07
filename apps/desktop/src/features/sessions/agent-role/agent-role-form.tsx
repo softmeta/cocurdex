@@ -230,12 +230,7 @@ export function AgentRoleForm({
           </FieldLabel>
           <div className="flex items-center gap-2">
             <AgentRoleAvatarPicker
-              role={{
-                id: role.id ?? "new",
-                name,
-                agentId: agentLocked ? undefined : agentId,
-                avatar,
-              }}
+              role={{ id: role.id ?? "new", name, agentId, avatar }}
               onChange={setAvatar}
             />
             <Input
@@ -254,7 +249,7 @@ export function AgentRoleForm({
           </FieldLabel>
           <Textarea
             id="agent-role-description"
-            className="max-h-40 min-h-20"
+            className="max-h-40 min-h-0"
             maxLength={AGENT_ROLE_DESCRIPTION_MAX_LENGTH}
             placeholder={
               descriptionPlaceholder ??
