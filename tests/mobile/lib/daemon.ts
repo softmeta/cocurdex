@@ -9,6 +9,7 @@ import {
   buildHostPairingLink,
   entityUri,
   type ImageAttachment,
+  personalAgentRoleDraft,
 } from "@cocurdex/shared";
 import type { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { installFixtureDb } from "@cocurdex/test-harness/fixture-db/install";
@@ -182,6 +183,13 @@ export async function startPairingDaemon(
       },
       agentModelName: AGENT_MODEL_NAME,
       agentModelId: AGENT_MODEL_ID,
+      async createAssistant(name: string) {
+        return requestDaemon(
+          "personalAgent.create",
+          { role: personalAgentRoleDraft(name) },
+          daemon.options,
+        );
+      },
       sessions: () => requestDaemon("session.list", daemon.options),
       async pairedDevices() {
         const devices = await requestDaemon(

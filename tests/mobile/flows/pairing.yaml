@@ -74,12 +74,34 @@ appId: dev.cocurdex.mobile
             id: "pairing-link"
           timeout: 30000
 - extendedWaitUntil:
-    visible:
-      id: "assistant-section-inbox"
+    visible: ${MODEL_TEST_ASSISTANT}
     timeout: 60000
 - assertNotVisible: ${LINK_PLACEHOLDER}
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: ${MODEL_TEST_ASSISTANT}
+    timeout: 30000
 - assertVisible: ${TAB_ASSISTANT}
 - takeScreenshot: assistant
+- longPressOn: ${MODEL_TEST_ASSISTANT}
+- tapOn:
+    id: assistant-action-edit
+- tapOn:
+    id: assistant-form-model
+- tapOn: ".*${NEW_SESSION_MODEL}.*"
+- tapOn: ${SAVE_ASSISTANT}
+- extendedWaitUntil:
+    visible: ${MODEL_TEST_ASSISTANT}
+    timeout: 10000
+- longPressOn: ${MODEL_TEST_ASSISTANT}
+- tapOn:
+    id: assistant-action-edit
+- assertVisible: ".*${NEW_SESSION_MODEL}.*"
+- tapOn: ${CLOSE_ACTION}
+- extendedWaitUntil:
+    visible: ${MODEL_TEST_ASSISTANT}
+    timeout: 30000
 - retry:
     maxRetries: 2
     commands:

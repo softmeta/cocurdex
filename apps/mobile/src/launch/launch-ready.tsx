@@ -1,9 +1,13 @@
 import { StyleSheet, View } from "react-native";
-import { revealApp } from "./launch-splash";
+import { markLaunchReady } from "./launch-splash";
 
 export function LaunchReady() {
   return (
-    <View onLayout={revealApp} pointerEvents="none" style={styles.marker} />
+    <View
+      onLayout={markLaunchReady}
+      pointerEvents="none"
+      style={styles.marker}
+    />
   );
 }
 

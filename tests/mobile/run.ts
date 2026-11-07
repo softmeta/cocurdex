@@ -100,7 +100,10 @@ function flowLabels(locale: SupportedLocale) {
   const sessions = readMessages(locale, "sessions");
   const issues = readMessages(locale, "issues");
   const notes = readMessages(locale, "notes");
+  const assistant = readMessages(locale, "assistant");
   return {
+    CLOSE_ACTION: common.actions.close,
+    SAVE_ASSISTANT: assistant.form.save,
     TAB_ASSISTANT: common.tabs.assistant,
     TAB_SETTINGS: common.tabs.settings,
     TAB_SESSIONS: common.tabs.sessions,
@@ -398,6 +401,12 @@ async function main() {
           await target.resetState();
           await target.setAppearance(appearance);
           await target.setLocale(locale);
+          const modelTestAssistant =
+            flow === "pairing"
+              ? await daemon.createAssistant(
+                  `Model test assistant - ${appearance}`,
+                )
+              : null;
           await runFlow(
             target,
             `${flow}.yaml`,
@@ -407,6 +416,7 @@ async function main() {
               SEND_SESSION_ID: replySession.id,
               NEW_SESSION_MODEL: daemon.agentModelName,
               AGENT_MODEL_ID: daemon.agentModelId,
+              MODEL_TEST_ASSISTANT: modelTestAssistant?.role.name ?? "",
               PAIRING_LINK: await daemon.createPairingLink(),
               HOST_ADDRESS: daemon.hostAddress,
               LINK_NOTE_TITLE,

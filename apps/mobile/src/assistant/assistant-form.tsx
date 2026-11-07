@@ -1,5 +1,6 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
 import {
+  PERSONAL_AGENT_RUNTIME_ID,
   PERSONAL_AGENT_SOUL_MAX_LENGTH,
   type PersonalAgentRecord,
   type PersonalAgentRolePayload,
@@ -9,16 +10,20 @@ import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Keyboard, StyleSheet, Text } from "react-native";
+import { useCompatibleModels } from "@/agents";
 import { hostConnection } from "@/connection";
+import { ChoiceRow } from "@/session-runtime";
 import { useThemeColors } from "@/theme";
 import {
   FieldSection,
   Form,
+  FormSection,
   FormTextField,
   keyboardHidden,
   ModalCloseButton,
   PendingIndicator,
   SheetAction,
+  useOptionSheet,
 } from "@/ui";
 import { revalidateAssistant, usePersonalAgents } from "./assistant-queries";
 
@@ -28,6 +33,11 @@ interface AssistantDraft {
   instructions: string;
   soul: string;
 }
+
+type AssistantModel = Pick<
+  PersonalAgentRolePayload,
+  "providerId" | "modelId" | "modelName"
+>;
 
 function draftOf(agent: PersonalAgentRecord | null): AssistantDraft {
   return {
@@ -85,18 +95,28 @@ function Editor({
   host: SavedHost;
   agent: PersonalAgentRecord | null;
 }) {
-  const { t } = useTranslation("assistant");
+  const { t } = useTranslation(["assistant", "sessions"]);
   const router = useRouter();
   const colors = useThemeColors();
   const [initial] = useState(() => draftOf(agent));
   const [draft, setDraft] = useState(initial);
+  const [model, setModel] = useState<AssistantModel>(() => ({
+    providerId: agent?.role.providerId ?? null,
+    modelId: agent?.role.modelId ?? null,
+    modelName: agent?.role.modelName ?? null,
+  }));
+  const models = useCompatibleModels(host.hostId, PERSONAL_AGENT_RUNTIME_ID);
+  const open = useOptionSheet();
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const canSave =
     !saving &&
     host.scopes.includes("interact") &&
     draft.name.trim() !== "" &&
-    (agent === null || !sameDraft(initial, draft));
+    (agent === null ||
+      !sameDraft(initial, draft) ||
+      model.providerId !== agent.role.providerId ||
+      model.modelId !== agent.role.modelId);
   const field = (key: keyof AssistantDraft) => (value: string) =>
     setDraft((current) => ({ ...current, [key]: value }));
 
@@ -105,7 +125,7 @@ function Editor({
     setSaving(true);
     setFailed(false);
     const connection = hostConnection(host.hostId);
-    const role = rolePayload(agent, draft);
+    const role = { ...rolePayload(agent, draft), ...model };
     const soul = draft.soul.trim() || null;
     try {
       const saved = agent
@@ -170,6 +190,43 @@ function Editor({
             onChangeText={field("description")}
           />
         </FieldSection>
+        <FormSection>
+          <ChoiceRow
+            open={open}
+            title={t("sessions:newSession.model")}
+            unsetLabel={
+              model.modelName ?? model.modelId ?? t("sessions:runtime.default")
+            }
+            testIDPrefix="assistant-form-model"
+            choices={[
+              {
+                key: "default",
+                label: t("sessions:runtime.default"),
+                selected: model.providerId === null && model.modelId === null,
+                onPress: () =>
+                  setModel({
+                    providerId: null,
+                    modelId: null,
+                    modelName: null,
+                  }),
+              },
+              ...(models.data ?? []).map(({ provider, model: candidate }) => ({
+                key: `${provider.id}/${candidate.modelId}`,
+                label: candidate.name,
+                supporting: provider.name,
+                selected:
+                  model.providerId === provider.id &&
+                  model.modelId === candidate.modelId,
+                onPress: () =>
+                  setModel({
+                    providerId: provider.id,
+                    modelId: candidate.modelId,
+                    modelName: candidate.name,
+                  }),
+              })),
+            ]}
+          />
+        </FormSection>
         <FieldSection title={t("form.instructions")}>
           <FormTextField
             testID="assistant-form-instructions"

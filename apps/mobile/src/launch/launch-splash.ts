@@ -1,20 +1,44 @@
 import * as SplashScreen from "expo-splash-screen";
 
 const LAUNCH_TIMEOUT_MS = 3000;
-const FADE_MS = 200;
 
-let holding = true;
+type LaunchPhase = "waiting" | "ready" | "finished";
 
-SplashScreen.setOptions({ duration: FADE_MS, fade: true });
-void SplashScreen.preventAutoHideAsync().catch(() => {
-  holding = false;
-});
+let phase: LaunchPhase = "waiting";
+const listeners = new Set<() => void>();
 
-const fallback = setTimeout(revealApp, LAUNCH_TIMEOUT_MS);
+SplashScreen.setOptions({ duration: 0, fade: false });
+void SplashScreen.preventAutoHideAsync().catch(finishLaunch);
 
-export function revealApp() {
-  if (!holding) return;
-  holding = false;
+const fallback = setTimeout(finishLaunch, LAUNCH_TIMEOUT_MS);
+
+export function getLaunchPhase() {
+  return phase;
+}
+
+export function subscribeToLaunch(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function setLaunchPhase(next: LaunchPhase) {
+  phase = next;
+  for (const listener of listeners) listener();
+}
+
+export function markLaunchReady() {
+  if (phase === "waiting") setLaunchPhase("ready");
+}
+
+export function hideNativeSplash() {
   clearTimeout(fallback);
-  requestAnimationFrame(() => requestAnimationFrame(() => SplashScreen.hide()));
+  SplashScreen.hide();
+}
+
+export function finishLaunch() {
+  if (phase === "finished") return;
+  hideNativeSplash();
+  setLaunchPhase("finished");
 }

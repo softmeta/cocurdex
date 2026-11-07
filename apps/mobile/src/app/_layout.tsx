@@ -6,7 +6,7 @@ import { Stack, ThemeProvider, usePathname } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { LaunchReady } from "@/launch";
+import { LaunchOverlay, LaunchReady } from "@/launch";
 import { MermaidRendererHost } from "@/markdown";
 import { useNotificationRoutes } from "@/notifications";
 import {
@@ -285,6 +285,7 @@ export default function RootLayout() {
         <NavigationBar style={systemBarStyle} />
         <MermaidRendererHost />
         {opensOnHome ? null : <LaunchReady />}
+        <LaunchOverlay />
       </ThemeProvider>
     </GestureHandlerRootView>
   );
