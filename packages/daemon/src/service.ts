@@ -1241,6 +1241,9 @@ export class CocurdexDaemonService {
     const pending = this.runtime.getPendingInteractions();
     return buildInbox({
       sessions: await this.state.listSessions(),
+      delegatedSessionIds: new Set(
+        this.state.data.delegations.list().map((row) => row.workSessionId),
+      ),
       attention: await this.state.sessionAttention.list(),
       pending: {
         permissions: pending.permissions.map((request) => ({
