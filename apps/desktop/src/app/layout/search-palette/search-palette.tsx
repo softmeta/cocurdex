@@ -24,11 +24,13 @@ import {
   workspacesAtom,
 } from "@/features/workspaces";
 import { cn, formatShortcutLabel, type WorkspaceFileEntry } from "@/lib";
+import { sidebarTabAtom } from "../sidebar";
 import {
   cycleSearchCategory,
   rankSessions,
-  SEARCH_CATEGORIES,
   type SearchCategory,
+  searchCategories,
+  sessionsInScope,
 } from "./search-palette-model";
 import {
   DocumentResultItem,
@@ -45,8 +47,14 @@ function resultLimit(category: SearchCategory) {
   return category === "all" ? ALL_CATEGORY_RESULT_COUNT : CATEGORY_RESULT_COUNT;
 }
 
-function shows(category: SearchCategory, section: SearchCategory) {
-  return category === "all" || category === section;
+function shows(
+  categories: readonly SearchCategory[],
+  category: SearchCategory,
+  section: SearchCategory,
+) {
+  return (
+    categories.includes(section) && (category === "all" || category === section)
+  );
 }
 
 function forwardCtrlNavigation(event: KeyboardEvent<HTMLInputElement>) {
@@ -133,7 +141,10 @@ function SearchPaletteContent({
   const { t } = useTranslation(["common", "search"]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<SearchCategory>("all");
-  const sessions = useAtomValue(sessionsAtom);
+  const scope =
+    useAtomValue(sidebarTabAtom) === "personal" ? "assistants" : "everything";
+  const categories = searchCategories(scope);
+  const sessions = sessionsInScope(useAtomValue(sessionsAtom), scope);
   const workspaces = useAtomValue(workspacesAtom);
   const documents = useDocumentSearch();
   const actions = useSearchPaletteActions(onClose);
@@ -147,7 +158,7 @@ function SearchPaletteContent({
   const normalizedQuery = query.trim();
   const limit = resultLimit(category);
   const files = useFileResults(
-    activeWorkspaceRootPaths,
+    categories.includes("files") ? activeWorkspaceRootPaths : [],
     normalizedQuery,
     limit,
   );
@@ -228,7 +239,8 @@ function SearchPaletteContent({
     },
   ];
   const visibleSections = sections.filter(
-    (section) => shows(category, section.key) && section.items.length > 0,
+    (section) =>
+      shows(categories, category, section.key) && section.items.length > 0,
   );
 
   const emptyState = (() => {
@@ -257,7 +269,8 @@ function SearchPaletteContent({
         description: t("search:empty.documentsError.description"),
       };
     }
-    const filesLoading = shows(category, "files") && files.status === "loading";
+    const filesLoading =
+      shows(categories, category, "files") && files.status === "loading";
     const documentsLoading =
       category !== "sessions" && documents.status === "loading";
     if (filesLoading || documentsLoading) {
@@ -282,7 +295,7 @@ function SearchPaletteContent({
     if (isMod && (event.key === "[" || event.key === "]")) {
       event.preventDefault();
       setCategory((current) =>
-        cycleSearchCategory(current, event.key === "]" ? 1 : -1),
+        cycleSearchCategory(categories, current, event.key === "]" ? 1 : -1),
       );
       return;
     }
@@ -330,7 +343,7 @@ function SearchPaletteContent({
           role="tablist"
           aria-label={t("search:categoriesLabel")}
         >
-          {SEARCH_CATEGORIES.map((item) => (
+          {categories.map((item) => (
             <button
               key={item}
               type="button"

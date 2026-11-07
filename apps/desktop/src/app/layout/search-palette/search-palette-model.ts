@@ -1,4 +1,4 @@
-import type { SessionRecord } from "@cocurdex/shared";
+import { isPersonalSession, type SessionRecord } from "@cocurdex/shared";
 
 export const SEARCH_CATEGORIES = [
   "all",
@@ -10,13 +10,34 @@ export const SEARCH_CATEGORIES = [
 
 export type SearchCategory = (typeof SEARCH_CATEGORIES)[number];
 
+export type SearchScope = "everything" | "assistants";
+
+const ASSISTANT_CATEGORIES: readonly SearchCategory[] = [
+  "all",
+  "sessions",
+  "notes",
+  "issues",
+];
+
+export function searchCategories(scope: SearchScope) {
+  return scope === "assistants" ? ASSISTANT_CATEGORIES : SEARCH_CATEGORIES;
+}
+
+export function sessionsInScope(
+  sessions: readonly SessionRecord[],
+  scope: SearchScope,
+) {
+  return scope === "assistants" ? sessions.filter(isPersonalSession) : sessions;
+}
+
 export function cycleSearchCategory(
+  categories: readonly SearchCategory[],
   current: SearchCategory,
   direction: 1 | -1,
 ): SearchCategory {
-  const count = SEARCH_CATEGORIES.length;
-  const index = SEARCH_CATEGORIES.indexOf(current);
-  return SEARCH_CATEGORIES[(index + direction + count) % count];
+  const count = categories.length;
+  const index = categories.indexOf(current);
+  return categories[(index + direction + count) % count];
 }
 
 function sessionActivityAt(session: SessionRecord) {

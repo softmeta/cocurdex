@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   cycleSearchCategory,
   rankSessions,
+  searchCategories,
+  sessionsInScope,
 } from "@/app/layout/search-palette/search-palette-model";
 
 function session(
@@ -72,8 +74,28 @@ describe("rankSessions", () => {
 
 describe("cycleSearchCategory", () => {
   it("wraps around in both directions", () => {
-    expect(cycleSearchCategory("all", -1)).toBe("issues");
-    expect(cycleSearchCategory("issues", 1)).toBe("all");
-    expect(cycleSearchCategory("sessions", 1)).toBe("files");
+    const categories = searchCategories("everything");
+    expect(cycleSearchCategory(categories, "all", -1)).toBe("issues");
+    expect(cycleSearchCategory(categories, "issues", 1)).toBe("all");
+    expect(cycleSearchCategory(categories, "sessions", 1)).toBe("files");
+  });
+});
+
+describe("assistant search scope", () => {
+  it("keeps workspace files and other modes' sessions out of assistant search", () => {
+    const categories = searchCategories("assistants");
+    expect(categories).not.toContain("files");
+    expect(cycleSearchCategory(categories, "sessions", 1)).toBe("notes");
+    const mixed = [
+      session({ id: "work", title: "Work" }),
+      session({ id: "chat", sessionKind: "chat", title: "Chat" }),
+      session({ id: "assistant", sessionKind: "personal", title: "Assistant" }),
+    ];
+    expect(ids(sessionsInScope(mixed, "assistants"))).toEqual(["assistant"]);
+    expect(ids(sessionsInScope(mixed, "everything"))).toEqual([
+      "work",
+      "chat",
+      "assistant",
+    ]);
   });
 });
