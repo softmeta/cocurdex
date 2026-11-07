@@ -141,12 +141,29 @@ appId: dev.cocurdex.mobile
     visible:
       id: new-chat-model
     timeout: 10000
-- tapOn:
-    id: new-chat-model
-- extendedWaitUntil:
-    visible:
-      id: "new-chat-model-.*/${AGENT_MODEL_ID}"
-    timeout: 10000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "UIKeyboardLayoutStar.*"
+          timeout: 10000
+- waitForAnimationToEnd
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              id: "new-chat-model-.*/${AGENT_MODEL_ID}"
+          commands:
+            - tapOn:
+                id: new-chat-model
+      - extendedWaitUntil:
+          visible:
+            id: "new-chat-model-.*/${AGENT_MODEL_ID}"
+          timeout: 5000
 - waitForAnimationToEnd
 - retry:
     maxRetries: 2
