@@ -23,6 +23,7 @@ import {
   bootstrapSessionsAtom,
   collapsedSessionIdsAtom,
   createDraftSessionAtom,
+  deleteSessionAtom,
   getDefaultPermissionMode,
   getSessionPermissionMode,
   isDefaultSessionTitle,
@@ -801,6 +802,36 @@ describe("archiveSessionAtom", () => {
       other.id,
     ]);
     expect(store.get(activeSessionIdAtom)).toBe(other.id);
+  });
+});
+
+describe("deleteSessionAtom", () => {
+  const chatSession = (id: string): SessionRecord => ({
+    ...baseSession,
+    id,
+    sessionKind: "chat",
+    title: `Chat ${id}`,
+  });
+
+  it("clears the selection when the last chat goes, without opening a work session", () => {
+    const chat = chatSession("chat-1");
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession, chat]);
+    store.set(selectSessionAtom, chat.id);
+    store.set(deleteSessionAtom, { sessionId: chat.id });
+
+    expect(store.get(activeSessionIdAtom)).toBeNull();
+  });
+
+  it("moves to another chat rather than a work session", () => {
+    const first = chatSession("chat-1");
+    const second = chatSession("chat-2");
+    const store = createStore();
+    store.set(bootstrapSessionsAtom, [baseSession, first, second]);
+    store.set(selectSessionAtom, first.id);
+    store.set(deleteSessionAtom, { sessionId: first.id });
+
+    expect(store.get(activeSessionIdAtom)).toBe(second.id);
   });
 });
 
