@@ -696,6 +696,9 @@ export class AcpEventMapper {
       inputTokens: 0,
       outputTokens: 0,
       contextTokensUsed: verifyPromptContext(samples, usage),
+      ...(this.lastContextWindowSize != null
+        ? { contextWindowSize: this.lastContextWindowSize }
+        : {}),
     };
   }
 

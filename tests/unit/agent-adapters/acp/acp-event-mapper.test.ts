@@ -674,6 +674,11 @@ describe("AcpEventMapper", () => {
         cachedWriteTokens: 0,
       },
     });
+    expect(
+      events.filter((event) => event.type === "usage.updated").at(-1),
+    ).toMatchObject({
+      usage: { contextTokensUsed: 25_760, contextWindowSize: 1_048_576 },
+    });
     mapper.beginPrompt();
     notifyUsage(49_542);
     mapper.complete("cancelled", 42, { stopReason: "cancelled" });
