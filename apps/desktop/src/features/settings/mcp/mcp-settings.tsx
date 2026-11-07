@@ -1,7 +1,8 @@
-import type {
-  McpConfigFile,
-  McpServerConfig,
-  McpServerStatus,
+import {
+  isManagedApplicationServer,
+  type McpConfigFile,
+  type McpServerConfig,
+  type McpServerStatus,
 } from "@cocurdex/shared";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -72,7 +73,12 @@ export function McpSettingsPanel() {
   const importSessionRef = useRef(0);
   const [newServerStatus, setNewServerStatus] =
     useState<McpServerStatus | null>(null);
-  const globalNames = Object.keys(mcp.servers);
+  const listedServers = Object.fromEntries(
+    Object.entries(mcp.servers).filter(
+      ([, config]) => !isManagedApplicationServer(config),
+    ),
+  );
+  const globalNames = Object.keys(listedServers);
   const projectServers = mcp.project?.servers ?? {};
   const active = resolveSelection(
     selection,
@@ -233,7 +239,7 @@ export function McpSettingsPanel() {
             project={mcp.project?.servers ?? null}
             query={query}
             selection={active}
-            servers={mcp.servers}
+            servers={listedServers}
             status={mcp.status}
             workspaceName={mcp.workspaceName}
             onAdd={startNewServer}

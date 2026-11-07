@@ -15,6 +15,7 @@ import {
   Monitor,
   Network,
   Palette,
+  Plug,
   Scale,
   Server,
   Settings,
@@ -81,9 +82,9 @@ export const settingsSections = [
     requires: "interact",
   },
   {
-    id: "mcp",
-    labelKey: "mcp",
-    icon: Server,
+    id: "apps",
+    labelKey: "connections",
+    icon: Plug,
     cluster: "agent",
     requires: "credentials",
   },
@@ -91,13 +92,6 @@ export const settingsSections = [
     id: "memory",
     labelKey: "memory",
     icon: Brain,
-    cluster: "agent",
-    requires: "host.admin",
-  },
-  {
-    id: "skills",
-    labelKey: "skills",
-    icon: BookOpen,
     cluster: "agent",
     requires: "host.admin",
   },
@@ -153,6 +147,20 @@ export const settingsSections = [
     requires: "host.admin",
   },
   {
+    id: "mcp",
+    labelKey: "mcp",
+    icon: Server,
+    cluster: "hidden",
+    requires: "credentials",
+  },
+  {
+    id: "skills",
+    labelKey: "skills",
+    icon: BookOpen,
+    cluster: "hidden",
+    requires: "host.admin",
+  },
+  {
     id: "personalization",
     labelKey: "personalization",
     icon: SlidersHorizontal,
@@ -176,9 +184,34 @@ export const settingsSections = [
   cluster: SettingsClusterId | "hidden";
   icon: typeof Settings;
   id: SettingsSectionId;
-  labelKey: SettingsSectionId;
+  labelKey: SettingsSectionId | "connections";
   requires?: HostAccessScope;
 }>;
+
+export const connectionSections = [
+  "apps",
+  "mcp",
+  "skills",
+] as const satisfies readonly SettingsSectionId[];
+
+export type ConnectionSectionId = (typeof connectionSections)[number];
+
+export function isConnectionSection(
+  sectionId: SettingsSectionId,
+): sectionId is ConnectionSectionId {
+  return (connectionSections as readonly SettingsSectionId[]).includes(
+    sectionId,
+  );
+}
+
+export function permittedConnectionSections(
+  scopes: readonly HostAccessScope[],
+): ConnectionSectionId[] {
+  return connectionSections.filter((id) => {
+    const section = settingsSections.find((item) => item.id === id);
+    return section ? sectionAllowed(section, scopes) : false;
+  });
+}
 
 export type SettingsSectionItem = (typeof settingsSections)[number];
 

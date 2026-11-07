@@ -24,23 +24,23 @@ import { cn, hostScopes } from "@/lib";
 import { AdapterSettingsPanel } from "./adapters";
 import { AppearancePanel } from "./appearance-settings";
 import { ArchivedSessionsPanel } from "./archived-sessions";
+import { ConnectionsSettingsPanel } from "./connections-settings";
 import { DevicesSettingsPanel } from "./devices";
 import { DiagnosticsSettingsPanel } from "./diagnostics-settings";
 import { EditorSettingsPanel } from "./editor-settings";
 import { GeneralPanel } from "./general-settings";
 import { GitSettingsPanel } from "./git-settings";
-import { McpSettingsPanel } from "./mcp";
 import { NetworkProxySettingsPanel } from "./network-proxy-settings";
 import type { NotificationSettings } from "./notifications";
 import { OssLicensesSettingsPanel } from "./oss-licenses";
 import { ProviderSettingsPanel } from "./providers";
 import {
   groupSettingsSectionsByCluster,
+  isConnectionSection,
   permittedSettingsSection,
   settingsSections,
 } from "./settings-sections";
 import { SettingsSidebar } from "./settings-sidebar";
-import { SkillsSettingsPanel } from "./skills";
 import type { AppearanceSettings, ThemeMode } from "./theme";
 import { WorkflowSettingsPanel } from "./workflows";
 import {
@@ -86,6 +86,7 @@ function SectionPanel({
   onHideFabWhenClosedChange,
   onLanguageModeChange,
   onNotificationSettingsChange,
+  onSectionChange,
   onThemeModeChange,
   sectionId,
   themeMode,
@@ -100,6 +101,7 @@ function SectionPanel({
   onHideFabWhenClosedChange(hide: boolean): void;
   onLanguageModeChange(languageMode: LanguageMode): void;
   onNotificationSettingsChange(settings: NotificationSettings): void;
+  onSectionChange(sectionId: SettingsSectionId): void;
   onThemeModeChange(themeMode: ThemeMode): void;
   sectionId: SettingsSectionId;
   themeMode: ThemeMode;
@@ -177,8 +179,13 @@ function SectionPanel({
     return <TeamSettingsPanel />;
   }
 
-  if (sectionId === "mcp") {
-    return <McpSettingsPanel />;
+  if (isConnectionSection(sectionId)) {
+    return (
+      <ConnectionsSettingsPanel
+        section={sectionId}
+        onSectionChange={onSectionChange}
+      />
+    );
   }
 
   if (sectionId === "memory") {
@@ -187,10 +194,6 @@ function SectionPanel({
         <MemorySettingsPanel />
       </div>
     );
-  }
-
-  if (sectionId === "skills") {
-    return <SkillsSettingsPanel />;
   }
 
   if (sectionId === "workflows") {
@@ -290,8 +293,7 @@ export function SettingsScreen({
     activeSection === "archived" ||
     activeSection === "workflows" ||
     activeSection === "providers" ||
-    activeSection === "mcp" ||
-    activeSection === "skills";
+    isConnectionSection(activeSection);
   const [scrolledSection, setScrolledSection] =
     useState<SettingsSectionId | null>(null);
   const isContentScrolled = scrolledSection === activeSection;
@@ -300,7 +302,9 @@ export function SettingsScreen({
     const heading = headingRef.current;
     return heading ? heading.offsetTop + heading.offsetHeight : 0;
   };
-  const sectionLabel = t(`settings:sections.${activeSectionMeta.labelKey}`);
+  const sectionLabel = isConnectionSection(activeSection)
+    ? t("settings:sections.connections")
+    : t(`settings:sections.${activeSectionMeta.labelKey}`);
   const settingsHeading =
     activeSection === "workspaces" ? (
       <WorkspaceSettingsHeading />
@@ -325,6 +329,7 @@ export function SettingsScreen({
       onHideFabWhenClosedChange={onHideFabWhenClosedChange}
       onLanguageModeChange={onLanguageModeChange}
       onNotificationSettingsChange={onNotificationSettingsChange}
+      onSectionChange={handleSectionChange}
       onThemeModeChange={onThemeModeChange}
       sectionId={activeSection}
       themeMode={themeMode}
@@ -382,8 +387,7 @@ export function SettingsScreen({
                 activeSection === "workflows" && "max-w-none gap-4",
                 activeSection === "licenses" && "max-w-5xl gap-6",
                 activeSection === "providers" && "max-w-6xl gap-6",
-                activeSection === "mcp" && "max-w-6xl gap-6",
-                activeSection === "skills" && "max-w-6xl gap-6",
+                isConnectionSection(activeSection) && "max-w-6xl gap-6",
                 activeSection === "archived" && "max-w-3xl gap-8",
               )}
             >

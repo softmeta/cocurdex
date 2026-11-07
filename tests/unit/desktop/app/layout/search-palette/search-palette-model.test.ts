@@ -25,7 +25,8 @@ function session(
   };
 }
 
-const ids = (sessions: SessionRecord[]) => sessions.map(({ id }) => id);
+const ids = (sessions: readonly SessionRecord[]) =>
+  sessions.map(({ id }) => id);
 
 describe("rankSessions", () => {
   const sessions = [

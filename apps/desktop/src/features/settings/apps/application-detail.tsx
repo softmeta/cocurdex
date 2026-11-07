@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppRemoveButton, SettingRow, SettingsGroup } from "@/components";
-import { Button, Input, Label, Switch } from "@/components/ui";
+import { Button, Input, Label, Switch, Text } from "@/components/ui";
 import { desktopApi, requestDaemon } from "@/lib";
 import {
   applicationStateLabel,
@@ -71,13 +71,23 @@ export function ApplicationDetail({
     ? t("apps.reauthorize", { defaultValue: "Reauthorize" })
     : t("apps.connect", { defaultValue: "Connect" });
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-body text-muted-foreground">
-        {t("apps.hostCredentials", {
-          defaultValue:
-            "Credentials stay on this host. The provider controls account and workspace access during authorization.",
-        })}
-      </p>
+    <section aria-label={view.displayName} className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <Text
+          as="h2"
+          className="flex min-h-8 items-center"
+          size="display"
+          weight="semibold"
+        >
+          {view.displayName}
+        </Text>
+        <Text size="body" tone="muted">
+          {t("apps.hostCredentials", {
+            defaultValue:
+              "Credentials stay on this host. The provider controls account and workspace access during authorization.",
+          })}
+        </Text>
+      </div>
       <SettingsGroup
         title={t("apps.connection", { defaultValue: "Connection" })}
       >
@@ -249,6 +259,6 @@ export function ApplicationDetail({
           }
         />
       </div>
-    </div>
+    </section>
   );
 }

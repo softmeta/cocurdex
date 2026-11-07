@@ -3444,8 +3444,10 @@ export default interface Resources {
       adapters: "Agent CLIs";
       agentRoles: "Roles";
       appearance: "Appearance";
+      apps: "Apps";
       archived: "Archived sessions";
       computer: "Computer use";
+      connections: "Connections";
       devices: "Devices";
       diagnostics: "Diagnostics";
       editor: "Editor";

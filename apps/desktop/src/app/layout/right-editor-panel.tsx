@@ -8,7 +8,6 @@ import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ResizeSeparator } from "@/components/resize-separator";
 import { beginColumnResize } from "@/components/use-column-resize";
-import { ApplicationsView } from "@/features/applications";
 import { BrowserPanel } from "@/features/browser";
 import { DecksView } from "@/features/decks";
 import {
@@ -407,7 +406,6 @@ export function RightEditorPanel({
             }
           >
             {activeView === "overview" ? <AssistantOverview /> : null}
-            {activeView === "applications" ? <ApplicationsView /> : null}
             {activeView === "editor" ? (
               <div
                 className="flex min-h-0 flex-1"
