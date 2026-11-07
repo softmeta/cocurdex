@@ -25,7 +25,7 @@ export function ComposerDockFrame({
   return (
     <div
       className={cn(
-        "overflow-visible px-2 pb-2 @lg/chat:px-3 @3xl/chat:px-6",
+        "overflow-visible px-2 pb-4 @lg/chat:px-3 @3xl/chat:px-6",
         className,
       )}
     >
