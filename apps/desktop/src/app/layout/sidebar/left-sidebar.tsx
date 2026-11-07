@@ -48,7 +48,6 @@ interface LeftSidebarProps {
   // picked. headerStart slots chrome (e.g. session-list toggle) into the same
   // bg-sidebar column so the dock drawer matches the main sidebar paint path.
   headerStart?: ReactNode;
-  hideCreateButton?: boolean;
   hideTitlebarSpacer?: boolean;
   onAfterNavigate?(): void;
   showFooter?: boolean;
@@ -77,7 +76,6 @@ function SidebarTopSlot({
 
 export function LeftSidebar({
   headerStart,
-  hideCreateButton = false,
   hideTitlebarSpacer,
   onAfterNavigate,
   showFooter = false,
@@ -234,14 +232,12 @@ export function LeftSidebar({
                 <FolderPlus className="size-3.5" />
               </AppSidebarIconButton>
             ) : null}
-            {hideCreateButton ? null : (
-              <AppSidebarIconButton
-                aria-label={create.label}
-                onClick={create.run}
-              >
-                <SquarePen className="size-3.5" />
-              </AppSidebarIconButton>
-            )}
+            <AppSidebarIconButton
+              aria-label={create.label}
+              onClick={create.run}
+            >
+              <SquarePen className="size-3.5" />
+            </AppSidebarIconButton>
           </div>
 
           {activeTab === "workspaces" ? (

@@ -154,7 +154,7 @@ export function AppShellContent({
           className={cn(
             "flex min-w-0 shrink-0 overflow-hidden",
             isCompact &&
-              "app-no-drag absolute end-2 top-10 bottom-2 z-50 rounded-panel border border-border bg-chat-canvas shadow-2xl",
+              "app-no-drag absolute end-2 top-10 bottom-2 z-50 rounded-panel bg-chat-canvas shadow-overlay ring-1 ring-menu-ring",
             isCompact && !compactChatOpen && "invisible pointer-events-none",
           )}
           inert={busy || (isCompact && !compactChatOpen)}
@@ -172,7 +172,7 @@ export function AppShellContent({
               onResizeHandleMouseDown("left", event)
             }
           >
-            <LeftSidebar hideCreateButton showFooter />
+            <LeftSidebar showFooter />
           </ResizableSidebarSlot>
           <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
             <div

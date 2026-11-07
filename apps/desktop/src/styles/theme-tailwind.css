@@ -155,6 +155,7 @@
   --shadow-chat-floating: var(--chat-shadow-floating);
   --shadow-chat-code-inset: var(--chat-shadow-code-inset);
   --shadow-menu: var(--menu-shadow);
+  --shadow-overlay: var(--overlay-shadow);
   --color-menu-ring: var(--menu-ring);
 
   /*

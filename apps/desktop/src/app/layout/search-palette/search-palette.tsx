@@ -304,7 +304,7 @@ function SearchPaletteContent({
 
   return (
     <DialogContent
-      className="app-no-drag overflow-hidden border-chat-border bg-chat-surface-raised p-0 shadow-2xl"
+      className="app-no-drag overflow-hidden bg-chat-surface-raised p-0"
       size="palette"
       showCloseButton={false}
     >

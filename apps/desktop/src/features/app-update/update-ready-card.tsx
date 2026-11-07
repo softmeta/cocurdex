@@ -23,7 +23,7 @@ export function UpdateReadyCard() {
   const releaseNotesUrl = state.releaseNotesUrl;
 
   return (
-    <div className="pointer-events-auto fixed end-4 bottom-4 z-50 w-[calc(100%-2rem)] max-w-sm rounded-card border border-border/40 bg-popover p-4 shadow-md">
+    <div className="pointer-events-auto fixed end-4 bottom-4 z-50 w-[calc(100%-2rem)] max-w-sm rounded-card bg-popover p-4 shadow-menu ring-1 ring-menu-ring">
       <Text size="body" weight="semibold">
         {t("updates.card.title")}
       </Text>

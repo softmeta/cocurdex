@@ -14,6 +14,7 @@
   --app-overlay: color-mix(in srgb, var(--background) 90%, transparent);
   --menu-ring: color-mix(in srgb, var(--foreground) 7%, transparent);
   --menu-shadow: 0 6px 20px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.04);
+  --overlay-shadow: 0 20px 56px rgb(0 0 0 / 0.12), 0 2px 8px rgb(0 0 0 / 0.04);
   --modal-scrim: rgb(0 0 0 / 0.12);
   --selection-bg: color-mix(in srgb, var(--primary) 18%, transparent);
   --selection-fg: var(--foreground);
@@ -398,6 +399,7 @@
 [data-theme="dark"] {
   --menu-ring: color-mix(in srgb, var(--foreground) 12%, transparent);
   --menu-shadow: 0 8px 24px rgb(0 0 0 / 0.36), 0 1px 3px rgb(0 0 0 / 0.2);
+  --overlay-shadow: 0 24px 64px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.24);
   --chat-link: var(--sidebar-primary);
   --chat-link-hover: color-mix(
     in srgb,
