@@ -2,10 +2,11 @@ import "@/runtime";
 import "@/i18n";
 import { pathBaseName } from "@cocurdex/shared";
 import { NavigationBar } from "expo-navigation-bar";
-import { Stack, ThemeProvider } from "expo-router";
+import { Stack, ThemeProvider, usePathname } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { LaunchReady } from "@/launch";
 import { MermaidRendererHost } from "@/markdown";
 import { useNotificationRoutes } from "@/notifications";
 import {
@@ -49,6 +50,7 @@ export default function RootLayout() {
   const grouped = useGroupedColors();
   const headerOptions = useHeaderOptions();
   const systemBarStyle = scheme === "dark" ? "light" : "dark";
+  const opensOnHome = usePathname() === "/";
   useNotificationRoutes();
   return (
     <GestureHandlerRootView
@@ -66,10 +68,18 @@ export default function RootLayout() {
             name="session/[hostId]/[sessionId]"
             options={{
               title: "",
-              headerBackTitle: t("tabs.sessions"),
               animation: PUSH_ANIMATION,
               headerStyle: { backgroundColor: colors.background },
               contentStyle: { backgroundColor: colors.background },
+            }}
+          />
+          <Stack.Screen
+            name="assistant-overview/[hostId]/[agentId]"
+            options={{
+              title: "",
+              animation: PUSH_ANIMATION,
+              headerStyle: { backgroundColor: grouped.page },
+              contentStyle: { backgroundColor: grouped.page },
             }}
           />
           <Stack.Screen
@@ -156,6 +166,16 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="approve/[hostId]"
+            options={{
+              title: t("screens.approve"),
+              presentation: PAIR_PRESENTATION,
+              sheetAllowedDetents: [0.6, 1],
+              sheetGrabberVisible: true,
+              sheetCornerRadius: SHEET_CORNER_RADIUS,
+            }}
+          />
+          <Stack.Screen
             name="pair"
             options={{
               title: t("screens.pair"),
@@ -200,10 +220,19 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="new-chat/[hostId]"
+            options={{
+              title: "",
+              headerBackTitle: t("tabs.chat"),
+              animation: PUSH_ANIMATION,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
+          <Stack.Screen
             name="new-session/index"
             options={{
               title: "",
-              headerBackTitle: t("tabs.sessions"),
+              headerBackTitle: t("tabs.work"),
               animation: PUSH_ANIMATION,
               contentStyle: { backgroundColor: colors.background },
             }}
@@ -233,6 +262,15 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="assistant-form/[hostId]"
+            options={{
+              title: "",
+              presentation: "modal",
+              headerStyle: { backgroundColor: grouped.page },
+              contentStyle: { backgroundColor: grouped.page },
+            }}
+          />
+          <Stack.Screen
             name="rename-computer/[hostId]"
             options={{
               title: t("screens.renameComputer"),
@@ -254,6 +292,7 @@ export default function RootLayout() {
         </Stack>
         <NavigationBar style={systemBarStyle} />
         <MermaidRendererHost />
+        {opensOnHome ? null : <LaunchReady />}
       </ThemeProvider>
     </GestureHandlerRootView>
   );

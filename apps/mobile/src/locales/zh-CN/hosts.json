@@ -5,6 +5,10 @@
     "rename": "重命名",
     "switch": "切换到这台电脑"
   },
+  "approval": {
+    "codeLabel": "安全码",
+    "description": "{{host}} 上会弹出“允许使用这台电脑？”。在那里输入这 6 位安全码并点“允许”，手机会自动连上。请求 10 分钟后失效。"
+  },
   "detail": {
     "address": "地址",
     "name": "名称",

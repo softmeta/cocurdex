@@ -9,6 +9,7 @@ import {
   buildHostPairingLink,
   entityUri,
   type ImageAttachment,
+  personalAgentRoleDraft,
 } from "@cocurdex/shared";
 import type { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { installFixtureDb } from "@cocurdex/test-harness/fixture-db/install";
@@ -27,6 +28,8 @@ import type { MobilePlatform } from "./target";
 
 const AGENT_MODEL_ID = "e2e-agent-model";
 const AGENT_MODEL_NAME = "E2E Agent Model";
+const ASSISTANT_MODEL_COUNT = 24;
+const LAST_ASSISTANT_MODEL = `Scroll Test Model ${ASSISTANT_MODEL_COUNT}`;
 const STUB_REQUEST_TAIL = 6;
 const DAEMON_LOG_TAIL = 150;
 const IMAGE_FIXTURE = createRequire(import.meta.url).resolve(
@@ -182,6 +185,34 @@ export async function startPairingDaemon(
       },
       agentModelName: AGENT_MODEL_NAME,
       agentModelId: AGENT_MODEL_ID,
+      lastAssistantModel: LAST_ASSISTANT_MODEL,
+      async createAssistant(name: string) {
+        for (let number = 1; number <= ASSISTANT_MODEL_COUNT; number += 1) {
+          const suffix = String(number).padStart(2, "0");
+          await requestDaemon(
+            "provider.model.save",
+            {
+              model: {
+                providerId: providerSnapshot.providerId,
+                modelId: `scroll-test-model-${suffix}`,
+                name: `Scroll Test Model ${suffix}`,
+                api: "openai-completions",
+                enabled: true,
+                source: "manual",
+                capabilities: ["agent"],
+                createdAt: now,
+                updatedAt: now,
+              },
+            },
+            daemon.options,
+          );
+        }
+        return requestDaemon(
+          "personalAgent.create",
+          { role: personalAgentRoleDraft(name) },
+          daemon.options,
+        );
+      },
       sessions: () => requestDaemon("session.list", daemon.options),
       async pairedDevices() {
         const devices = await requestDaemon(

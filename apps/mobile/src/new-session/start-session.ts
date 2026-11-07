@@ -10,8 +10,8 @@ import {
 
 export type StartConnection = Pick<HostConnection, "request" | "command">;
 
-export interface StartRequest {
-  payload: CreateSessionPayload;
+export interface StartRequest<Payload = CreateSessionPayload> {
+  payload: Payload;
   prompt: string;
   attachments: ImageAttachment[];
   fallbackTitle: string;
@@ -45,21 +45,29 @@ export function shownSessionPayload(
 }
 
 export function createSessionStarter(connection: StartConnection) {
+  return createConversationStarter(
+    connection,
+    (payload: CreateSessionPayload, title) =>
+      connection.request("session.create", { ...payload, title }),
+  );
+}
+
+export function createConversationStarter<Payload>(
+  connection: StartConnection,
+  createSession: (payload: Payload, title: string) => Promise<SessionRecord>,
+) {
   let unsent: UnsentStart | null = null;
 
-  const create = async (key: string, request: StartRequest) => {
+  const create = async (key: string, request: StartRequest<Payload>) => {
     const title = generateLocalSessionTitle(
       request.prompt,
       request.fallbackTitle,
     );
-    const session = await connection.request("session.create", {
-      ...request.payload,
-      title,
-    });
+    const session = await createSession(request.payload, title);
     return { key, session, messageId: crypto.randomUUID() };
   };
 
-  return async (request: StartRequest) => {
+  return async (request: StartRequest<Payload>) => {
     const key = JSON.stringify([
       request.payload,
       request.prompt,

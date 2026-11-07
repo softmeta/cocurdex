@@ -74,20 +74,139 @@ appId: dev.cocurdex.mobile
             id: "pairing-link"
           timeout: 30000
 - extendedWaitUntil:
-    visible:
-      id: "assistant-section-inbox"
+    visible: ${MODEL_TEST_ASSISTANT}
     timeout: 60000
 - assertNotVisible: ${LINK_PLACEHOLDER}
-- assertVisible: ${TAB_ASSISTANT}
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: ${MODEL_TEST_ASSISTANT}
+    timeout: 30000
+- assertVisible:
+    id: session-mode-switch
 - takeScreenshot: assistant
 - retry:
     maxRetries: 2
     commands:
-      - tapOn: ${TAB_SESSIONS}
+      - longPressOn:
+          id: assistant-${MODEL_TEST_ASSISTANT_ID}
+      - assertVisible: ${EDIT_ASSISTANT}
+- tapOn: ${EDIT_ASSISTANT}
+- tapOn:
+    id: assistant-form-model
+- assertNotVisible:
+    id: "assistant-form-model-.*/scroll-test-model-24"
+- repeat:
+    times: 7
+    while:
+      notVisible:
+        id: "assistant-form-model-.*/scroll-test-model-24"
+    commands:
+      - swipe:
+          start: "50%, 82%"
+          end: "50%, 38%"
+          duration: 450
+- tapOn:
+    id: "assistant-form-model-.*/scroll-test-model-24"
+- tapOn: ${SAVE_ASSISTANT}
+- extendedWaitUntil:
+    visible: ${MODEL_TEST_ASSISTANT}
+    timeout: 10000
+- retry:
+    maxRetries: 2
+    commands:
+      - longPressOn:
+          id: assistant-${MODEL_TEST_ASSISTANT_ID}
+      - assertVisible: ${EDIT_ASSISTANT}
+- tapOn: ${EDIT_ASSISTANT}
+- assertVisible: ".*${LAST_ASSISTANT_MODEL}.*"
+- tapOn: ${CLOSE_ACTION}
+- extendedWaitUntil:
+    visible: ${MODEL_TEST_ASSISTANT}
+    timeout: 30000
+- tapOn:
+    id: session-mode-switch
+- assertVisible:
+    id: session-mode-assistant
+- assertVisible:
+    id: session-mode-work
+- assertVisible:
+    id: session-mode-chat
+- takeScreenshot: session-modes
+- tapOn: ${TAB_CHAT}
+- assertNotVisible: ${MODEL_TEST_ASSISTANT}
+- assertNotVisible: ${WORKSPACE_NAME}
+- tapOn: ${NEW_CHAT}
+- extendedWaitUntil:
+    visible:
+      id: new-chat-model
+    timeout: 10000
+- tapOn:
+    id: new-chat-model
+- tapOn: ".*${NEW_SESSION_MODEL}.*"
+- tapOn:
+    id: new-chat-prompt
+- waitForAnimationToEnd
+- setClipboard: ${CHAT_PROMPT}
+- pasteText
+- extendedWaitUntil:
+    visible:
+      id: new-chat-prompt
+      text: ${CHAT_PROMPT}
+    timeout: 10000
+- waitForAnimationToEnd
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: new-chat-prompt
+          commands:
+            - tapOn:
+                text: ${SEND_ACTION}
+                enabled: true
+      - extendedWaitUntil:
+          visible:
+            id: composer-input
+          timeout: 15000
+- assertVisible: ${CHAT_PROMPT}
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: ${MODEL_TEST_ASSISTANT}
+    timeout: 30000
+- tapOn:
+    id: session-mode-switch
+- tapOn: ${TAB_CHAT}
+- extendedWaitUntil:
+    visible:
+      id: "session-row-.*"
+    timeout: 15000
+- takeScreenshot: chat
+- tapOn:
+    id: session-mode-switch
+- tapOn:
+    id: session-mode-assistant
+- extendedWaitUntil:
+    visible: ${MODEL_TEST_ASSISTANT}
+    timeout: 10000
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow: shared/open-work.yaml
       - extendedWaitUntil:
           visible: ${WORKSPACE_NAME}
           timeout: 30000
 - takeScreenshot: sessions
+- tapOn: ${TAB_SETTINGS}
+- assertNotVisible:
+    id: session-mode-switch
+- tapOn:
+    id: sessions-tab
+- extendedWaitUntil:
+    visible: ${WORKSPACE_NAME}
+    timeout: 10000
 - retry:
     maxRetries: 2
     commands:

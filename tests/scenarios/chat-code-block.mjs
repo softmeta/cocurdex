@@ -3,7 +3,7 @@ import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clearColorScheme, emulateColorScheme } from "./lib/appearance.mjs";
 import { clickByRole } from "./lib/locate.mjs";
 
-const SESSION_ROW = /^Checkout audit log\s+(?![(（])/;
+const SESSION_ROW = /^Checkout audit log(?:$|\s+(?![(（]))/;
 const UI_TIMEOUT_MS = 30_000;
 
 const args = readScenarioArgs();

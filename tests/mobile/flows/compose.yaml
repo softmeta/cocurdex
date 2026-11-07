@@ -16,11 +16,31 @@ appId: dev.cocurdex.mobile
 - assertVisible: ${ATTACH_ACTION}
 - tapOn:
     id: "composer-input"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "UIKeyboardLayoutStar.*"
+          timeout: 10000
 - inputText: ${SEND_PROMPT}
-- tapOn: ${SEND_ACTION}
-- extendedWaitUntil:
-    visible: ${SEND_REPLY}
-    timeout: 20000
+- waitForAnimationToEnd
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "composer-input"
+              text: ${SEND_PROMPT}
+          commands:
+            - tapOn:
+                text: ${SEND_ACTION}
+                enabled: true
+      - extendedWaitUntil:
+          visible: ${SEND_REPLY}
+          timeout: 15000
 - assertNotVisible: ${REPLYING_STATUS}
 - takeScreenshot: session-streaming
 - extendedWaitUntil:
@@ -32,6 +52,8 @@ appId: dev.cocurdex.mobile
 - tapOn: ${SEND_REPLY}
 - waitForAnimationToEnd
 - takeScreenshot: session-reply
+- tapOn:
+    id: "composer-input"
 - tapOn:
     id: "session-config-chip"
 - extendedWaitUntil:
@@ -73,7 +95,6 @@ appId: dev.cocurdex.mobile
 - tapOn: ${SESSION_CONFIG_CLOSE}
 - extendedWaitUntil:
     visible:
-      id: "session-config-chip"
       text: "(?s).*${NEW_SESSION_MODEL}.*"
     timeout: 10000
 - runFlow:
@@ -178,6 +199,8 @@ appId: dev.cocurdex.mobile
     visible:
       id: "new-session-prompt"
     timeout: 5000
+- tapOn:
+    id: "new-session-prompt"
 - assertVisible:
     id: "new-session-agent"
     text: "(?s).*${ROLE_NAME}.*"
@@ -187,9 +210,9 @@ appId: dev.cocurdex.mobile
       notifications: allow
 - extendedWaitUntil:
     visible:
-      id: "assistant-section-inbox"
+      id: "session-mode-switch"
     timeout: 30000
-- tapOn: ${TAB_SESSIONS}
+- runFlow: shared/open-work.yaml
 - extendedWaitUntil:
     visible: ${NEW_SESSION_ACTION}
     timeout: 10000
@@ -221,9 +244,38 @@ appId: dev.cocurdex.mobile
     timeout: 5000
 - tapOn:
     id: "new-session-prompt"
-- inputText: ${NEW_SESSION_PROMPT}
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "UIKeyboardLayoutStar.*"
+          timeout: 10000
+- setClipboard: ${NEW_SESSION_PROMPT}
+- pasteText
+- extendedWaitUntil:
+    visible:
+      id: "new-session-prompt"
+      text: ${NEW_SESSION_PROMPT}
+    timeout: 10000
+- waitForAnimationToEnd
 - takeScreenshot: new-session-filled
-- tapOn: ${SEND_ACTION}
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "new-session-prompt"
+          commands:
+            - tapOn:
+                text: ${SEND_ACTION}
+                enabled: true
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 15000
 - extendedWaitUntil:
     visible: ${SEND_REPLY}
     timeout: 20000

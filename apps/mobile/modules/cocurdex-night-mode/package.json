@@ -1,0 +1,7 @@
+{
+  "name": "cocurdex-night-mode",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Persists the app's night mode so Android's starting window follows it",
+  "license": "UNLICENSED"
+}

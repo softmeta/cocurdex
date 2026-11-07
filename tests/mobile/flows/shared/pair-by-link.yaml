@@ -54,13 +54,13 @@ appId: dev.cocurdex.mobile
           commands:
             - tapOn: ${PAIR_ACTION}
       - extendedWaitUntil:
-          visible:
-            id: "assistant-section-inbox"
+          notVisible:
+            id: "pairing-link"
           timeout: 15000
 - retry:
     maxRetries: 2
     commands:
-      - tapOn: ${TAB_SESSIONS}
+      - runFlow: open-work.yaml
       - extendedWaitUntil:
           visible: ${WORKSPACE_NAME}
           timeout: 30000

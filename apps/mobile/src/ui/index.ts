@@ -58,6 +58,6 @@ export { useSheetStackOptions } from "./sheet-stack-options";
 export { ShimmerText } from "./shimmer-text";
 export { TabBarInsetContext, useTabBarInset } from "./tab-bar-inset";
 export { useTransitionSettled } from "./transition-settled";
-export { useAgeLabel } from "./use-age-label";
+export { useAgeLabel, useListTimeLabel } from "./use-age-label";
 export { useConfirm } from "./use-confirm";
 export { usePullToRefresh } from "./use-pull-to-refresh";

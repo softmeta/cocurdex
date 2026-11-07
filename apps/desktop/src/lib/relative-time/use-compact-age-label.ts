@@ -1,8 +1,7 @@
-import { getCompactRelativeTime } from "@cocurdex/shared";
+import { formatListTime, getCompactRelativeTime } from "@cocurdex/shared";
 import { useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { formatActivityTime } from "./activity-time-label";
-import { formatListTime } from "./list-time-label";
 
 const TICK_MS = 30_000;
 

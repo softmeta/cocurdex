@@ -35,6 +35,14 @@
     "restore": "恢复",
     "restoreSession": "恢复 {{title}}"
   },
+  "chat": {
+    "empty": "还没有聊天",
+    "modelsFailed": "无法加载聊天模型",
+    "new": "新建聊天",
+    "noModels": "请先在电脑上配置聊天模型",
+    "prompt": "给模型发消息",
+    "search": "搜索聊天"
+  },
   "composer": {
     "attach": "添加照片",
     "imageFailed": "图片上传失败，请检查连接后重试。",

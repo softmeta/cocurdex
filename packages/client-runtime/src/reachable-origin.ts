@@ -1,6 +1,7 @@
 import type { MessageCompressor, NoiseCrypto } from "@cocurdex/secure-channel";
 import { isRelayEndpoint } from "@cocurdex/shared";
 import { connectPairedHost } from "./host-access";
+import { HostAccessError } from "./host-access-error";
 import {
   type SavedHost,
   savedHostEndpoint,
@@ -33,10 +34,26 @@ interface OpenOriginOptions {
   handlers?: SecureSocketHandlers;
 }
 
+const HOST_ANSWERS: readonly HostAccessError["reason"][] = [
+  "pending",
+  "invalid",
+];
+
+function hostAnswer(errors: readonly unknown[]) {
+  for (const reason of HOST_ANSWERS) {
+    const answer = errors.find(
+      (error) => error instanceof HostAccessError && error.reason === reason,
+    );
+    if (answer) return answer;
+  }
+  return null;
+}
+
 async function openOrigin(
   host: ReachableHost,
   origin: string,
   options: OpenOriginOptions,
+  errors: unknown[] = [],
 ): Promise<ConnectedOrigin | null> {
   try {
     const opened = await connectPairedHost(
@@ -46,7 +63,8 @@ async function openOrigin(
     if (opened.accepted.host.hostId === host.hostId) return { origin, opened };
     opened.close();
     return null;
-  } catch {
+  } catch (error) {
+    errors.push(error);
     return null;
   }
 }
@@ -107,17 +125,23 @@ export async function connectReachableOrigin(
   if (current === undefined) return null;
   let chosen: string | null = null;
   const closedEarly = new Set<string>();
+  const errors: unknown[] = [];
   const attempts = new Map(
     origins.map((origin) => [
       origin,
-      openOrigin(options.host, origin, {
-        ...options,
-        handlers: gatedHandlers(
-          options.handlers,
-          () => chosen === origin,
-          () => closedEarly.add(origin),
-        ),
-      }),
+      openOrigin(
+        options.host,
+        origin,
+        {
+          ...options,
+          handlers: gatedHandlers(
+            options.handlers,
+            () => chosen === origin,
+            () => closedEarly.add(origin),
+          ),
+        },
+        errors,
+      ),
     ]),
   );
   const attemptsOf = (relayed: boolean) =>
@@ -136,6 +160,10 @@ export async function connectReachableOrigin(
   const winner = keepCurrent
     ? ((await withinGrace(currentAttempt, CURRENT_ORIGIN_GRACE_MS)) ?? first)
     : first;
+  if (!winner) {
+    const answer = hostAnswer(errors);
+    if (answer) throw answer;
+  }
   chosen = winner?.origin ?? null;
   const relayed = chosen !== null && isRelayEndpoint(chosen);
   for (const [origin, attempt] of attempts) {

@@ -16,7 +16,8 @@
     "months_other": "{{count}}mo",
     "now": "now",
     "years_one": "{{count}}y",
-    "years_other": "{{count}}y"
+    "years_other": "{{count}}y",
+    "yesterday": "Yesterday"
   },
   "links": {
     "relation": {
@@ -46,6 +47,7 @@
     "placeholder": "Search"
   },
   "screens": {
+    "approve": "Approve on Computer",
     "archived": "Archived Sessions",
     "assistant": "Assistant",
     "computers": "Computers",
@@ -63,9 +65,14 @@
   },
   "tabs": {
     "assistant": "Assistant",
+    "assistantDescription": "Talk to your assistants",
+    "chat": "Chat",
+    "chatDescription": "Chat with a model",
     "issues": "Issues",
     "notes": "Notes",
-    "sessions": "Sessions",
-    "settings": "Settings"
+    "settings": "Settings",
+    "switchMode": "Switch mode ({{mode}})",
+    "work": "Work",
+    "workDescription": "Run workspace tasks"
   }
 }

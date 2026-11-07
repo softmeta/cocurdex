@@ -70,7 +70,7 @@ export function ScanPairing({
   onClose,
   onPaste,
 }: {
-  onPaired(): void;
+  onPaired(hostId: string): void;
   onClose(): void;
   onPaste(): void;
 }) {
@@ -95,7 +95,7 @@ export function ScanPairing({
       return;
     }
     selectHost(result.host.hostId);
-    onPaired();
+    onPaired(result.host.hostId);
   };
 
   const granted = permission?.granted === true;

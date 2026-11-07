@@ -59,6 +59,7 @@ export interface SessionSection {
 }
 
 export interface SessionSectionsInput {
+  mode?: "work" | "chat";
   workspaces: readonly WorkspaceRecord[];
   sessions: readonly SessionRecord[];
   attention: readonly SessionAttentionSnapshot[];
@@ -173,13 +174,17 @@ export function buildSessionSections(
     input.workspaces.map((workspace) => [workspace.id, workspace]),
   );
   const workspaceName = (session: SessionRecord) =>
-    workspaces.get(session.workspaceId)?.name ?? "";
+    input.mode === "chat"
+      ? ""
+      : (workspaces.get(session.workspaceId)?.name ?? "");
   const listed = input.sessions.filter(
     (session) =>
-      workspaces.has(session.workspaceId) &&
-      !isFormWorkspaceId(session.workspaceId) &&
       !session.archivedAt &&
-      !isChatSession(session),
+      (input.mode === "chat"
+        ? isChatSession(session)
+        : workspaces.has(session.workspaceId) &&
+          !isFormWorkspaceId(session.workspaceId) &&
+          !isChatSession(session)),
   );
   const searched = matchingTrees(listed, query, workspaceName);
   const facts = listFacts(input.attention);

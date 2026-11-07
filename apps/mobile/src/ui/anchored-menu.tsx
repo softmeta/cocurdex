@@ -25,6 +25,7 @@ const SETTLE_FRAMES = 30;
 export interface AnchoredMenuItem {
   key: string;
   label: string;
+  description?: string;
   icon?: { ios: SFSymbol; android: AndroidSymbol };
   leading?: ReactElement;
   group?: string;
@@ -36,6 +37,7 @@ export interface AnchoredMenuItem {
 
 export interface AnchoredMenuRequest {
   title?: string | null;
+  preferredWidth?: number;
   items: readonly AnchoredMenuItem[];
 }
 
@@ -72,10 +74,14 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), Math.max(min, max));
 }
 
-function useMenuFrame(anchor: MenuAnchor, height: number | null) {
+function useMenuFrame(
+  anchor: MenuAnchor,
+  height: number | null,
+  preferredWidth = MENU_WIDTH,
+) {
   const window = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const width = Math.min(MENU_WIDTH, window.width - layout.sideMargin * 2);
+  const width = Math.min(preferredWidth, window.width - layout.sideMargin * 2);
   const left = clamp(
     anchor.x - width / 2,
     layout.sideMargin,
@@ -108,11 +114,13 @@ function MenuRow({ item }: { item: AnchoredMenuItem }) {
     <Pressable
       accessibilityRole={MENU_ITEM_ROLE}
       accessibilityLabel={item.label}
+      accessibilityHint={item.description}
       accessibilityState={{ selected: item.selected ?? false }}
       onPress={item.onPress}
       android_ripple={{ color: colors.muted }}
       style={({ pressed }) => [
         styles.row,
+        item.description && styles.describedRow,
         pressed && { backgroundColor: colors.muted },
       ]}
       testID={item.testID}
@@ -121,9 +129,16 @@ function MenuRow({ item }: { item: AnchoredMenuItem }) {
       {item.icon && !item.leading ? (
         <SymbolView name={item.icon} size={20} tintColor={iconColor} />
       ) : null}
-      <Text numberOfLines={1} style={[styles.label, { color }]}>
-        {item.label}
-      </Text>
+      <View style={styles.copy}>
+        <Text numberOfLines={1} style={[styles.label, { color }]}>
+          {item.label}
+        </Text>
+        {item.description ? (
+          <Text style={[styles.description, { color: colors.mutedForeground }]}>
+            {item.description}
+          </Text>
+        ) : null}
+      </View>
       {item.selected ? (
         <SymbolView
           name={{ ios: "checkmark", android: "check" }}
@@ -147,7 +162,7 @@ function MenuPanel({
   const colors = useThemeColors();
   const surface = useFloatingSurface();
   const [height, setHeight] = useState<number | null>(null);
-  const frame = useMenuFrame(anchor, height);
+  const frame = useMenuFrame(anchor, height, request.preferredWidth);
   return (
     <View
       accessibilityRole="menu"
@@ -290,7 +305,14 @@ const styles = StyleSheet.create({
     gap: space.md,
     paddingHorizontal: space.lg,
   },
-  label: { flex: 1, fontSize: 16, lineHeight: 22 },
+  describedRow: {
+    paddingVertical: space.sm,
+    gap: space.sm,
+    paddingHorizontal: space.md,
+  },
+  copy: { flex: 1, minWidth: 0 },
+  label: { fontSize: 16, lineHeight: 22 },
+  description: { fontSize: 12, lineHeight: 16 },
   divider: {
     height: StyleSheet.hairlineWidth,
     marginVertical: space.xs,

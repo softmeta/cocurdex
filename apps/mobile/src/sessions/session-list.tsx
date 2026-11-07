@@ -1,5 +1,5 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
-import type { AgentId } from "@cocurdex/shared";
+import { type AgentId, normalizeSessionListView } from "@cocurdex/shared";
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -35,6 +35,10 @@ const OFFLINE_STATES = new Set<HostSessionsSnapshot["connection"]>([
   "retrying",
   "waiting",
 ]);
+const CHAT_LIST_VIEW = normalizeSessionListView({
+  grouping: "none",
+  rootLimit: "all",
+});
 
 function useHeadingTitle(agentLabels: ReadonlyMap<AgentId, string>) {
   const { t } = useTranslation("sessions");
@@ -87,11 +91,13 @@ export function SessionList({
   query,
   agentLabels,
   onReload,
+  mode = "work",
 }: {
   host: SavedHost;
   query: string;
   agentLabels: ReadonlyMap<AgentId, string>;
   onReload(): void;
+  mode?: "work" | "chat";
 }) {
   const scrollIndicator = useScrollIndicatorWhileScrolling();
   const tabBarInset = useTabBarInset();
@@ -100,23 +106,33 @@ export function SessionList({
   const router = useRouter();
   const snapshot = useHostSessions(host.hostId);
   const ui = useSessionListUi();
+  const view = mode === "chat" ? CHAT_LIST_VIEW : ui.view;
   const roles = useAgentRoles(host.hostId).data;
   const roleById = new Map(roles?.map((role) => [role.id, role]));
   const headingTitle = useHeadingTitle(agentLabels);
-  const actions = useSessionActions(host);
+  const actions = useSessionActions(host, mode === "work");
   const sections = useMemo(
     () =>
       buildSessionSections({
+        mode,
         workspaces: snapshot.workspaces,
         sessions: snapshot.sessions,
         attention: snapshot.attention,
         query,
-        view: ui.view,
+        view,
         collapsedIds: ui.collapsedIds,
         expandedSectionKeys: ui.expandedSectionKeys,
         now: new Date(),
       }).map((section) => ({ ...section, data: section.rows })),
-    [snapshot.workspaces, snapshot.sessions, snapshot.attention, query, ui],
+    [
+      snapshot.workspaces,
+      snapshot.sessions,
+      snapshot.attention,
+      query,
+      mode,
+      view,
+      ui,
+    ],
   );
 
   if (!snapshot.loaded) {
@@ -134,10 +150,7 @@ export function SessionList({
   const offline = OFFLINE_STATES.has(snapshot.connection);
   const searching = query.trim() !== "";
   const filtering =
-    ui.view.statuses.length +
-      ui.view.agents.length +
-      ui.view.environments.length >
-    0;
+    view.statuses.length + view.agents.length + view.environments.length > 0;
 
   return (
     <>
@@ -165,8 +178,12 @@ export function SessionList({
           ) : (
             <ListNotice
               icon={{ ios: "bubble.left.and.bubble.right", android: "forum" }}
-              title={t("empty.title")}
-              description={t("empty.description", { host: host.name })}
+              title={mode === "chat" ? t("chat.empty") : t("empty.title")}
+              description={
+                mode === "work"
+                  ? t("empty.description", { host: host.name })
+                  : undefined
+              }
             />
           )
         }

@@ -3,7 +3,7 @@ import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clickByRole, queryAllByRole, waitForRole } from "./lib/locate.mjs";
 import { translate } from "./lib/navigate.mjs";
 
-const SESSION_ROW = /^Checkout audit log\s+(?![(（])/;
+const SESSION_ROW = /^Checkout audit log(?:$|\s+(?![(（]))/;
 const UI_TIMEOUT_MS = 30_000;
 const JUMP_TIMEOUT_MS = 5_000;
 const MAX_WHEEL_TICKS = 20;

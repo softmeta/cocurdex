@@ -11,7 +11,8 @@
     "minutes_other": "{{count}}分钟",
     "months_other": "{{count}}个月",
     "now": "刚刚",
-    "years_other": "{{count}}年"
+    "years_other": "{{count}}年",
+    "yesterday": "昨天"
   },
   "links": {
     "relation": {
@@ -41,6 +42,7 @@
     "placeholder": "搜索"
   },
   "screens": {
+    "approve": "在电脑上批准",
     "archived": "已归档会话",
     "assistant": "助理",
     "computers": "电脑",
@@ -58,9 +60,14 @@
   },
   "tabs": {
     "assistant": "助理",
+    "assistantDescription": "和你的专属助理协作",
+    "chat": "聊天",
+    "chatDescription": "直接和模型对话",
     "issues": "事项",
     "notes": "笔记",
-    "sessions": "会话",
-    "settings": "设置"
+    "settings": "设置",
+    "switchMode": "切换模式（当前为{{mode}}）",
+    "work": "工作",
+    "workDescription": "在工作区执行任务"
   }
 }

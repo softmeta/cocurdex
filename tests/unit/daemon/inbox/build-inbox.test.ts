@@ -22,6 +22,10 @@ function session(
   } as SessionRecord;
 }
 
+function personalSession(id: string) {
+  return session(id, { sessionKind: "personal", workspaceId: "personal" });
+}
+
 function attention(
   sessionId: string,
   extra: Partial<SessionAttentionSnapshot>,
@@ -76,11 +80,12 @@ const noPending = { permissions: [], questions: [], planApprovals: [] };
 describe("buildInbox", () => {
   it("puts what needs the user first, then failures, then results, newest first", () => {
     const items = buildInbox({
+      delegatedSessionIds: new Set<string>(),
       sessions: [
-        session("done"),
-        session("broken"),
-        session("asking", { sessionKind: "personal", workspaceId: "personal" }),
-        session("approve"),
+        personalSession("done"),
+        personalSession("broken"),
+        personalSession("asking"),
+        personalSession("approve"),
       ],
       attention: [
         attention("done", {
@@ -117,14 +122,15 @@ describe("buildInbox", () => {
       items.map((item) => [item.kind, item.sessionId, item.form, item.detail]),
     ).toEqual([
       ["question", "asking", "personal", "Which day?"],
-      ["approval", "approve", "work", "Run npm test"],
-      ["failed", "broken", "work", null],
-      ["completed", "done", "work", null],
+      ["approval", "approve", "personal", "Run npm test"],
+      ["failed", "broken", "personal", null],
+      ["completed", "done", "personal", null],
     ]);
   });
 
   it("reports a routine's latest result once and drops it after the thread is visited", () => {
     const sources = {
+      delegatedSessionIds: new Set<string>(),
       sessions: [session("brief-thread", { sessionKind: "personal" })],
       pending: noPending,
       routines: [routine("brief")],
@@ -161,6 +167,7 @@ describe("buildInbox", () => {
 
   it("shows routine failures and auto-pauses but keeps silent routines out", () => {
     const items = buildInbox({
+      delegatedSessionIds: new Set<string>(),
       sessions: [],
       attention: [],
       pending: noPending,
@@ -188,6 +195,7 @@ describe("buildInbox", () => {
 
   it("asks the user about a run that needs them even when silent, and hides dropped runs", () => {
     const items = buildInbox({
+      delegatedSessionIds: new Set<string>(),
       sessions: [],
       attention: [],
       pending: noPending,
@@ -219,10 +227,63 @@ describe("buildInbox", () => {
     expect(items).toHaveLength(2);
   });
 
+  it("leaves work and chat sessions to their own modes", () => {
+    const items = buildInbox({
+      delegatedSessionIds: new Set<string>(),
+      sessions: [session("work"), session("chat", { sessionKind: "chat" })],
+      attention: [
+        attention("work", { runtimeState: "failed" }),
+        attention("chat", { attentionState: "completed-unread" }),
+      ],
+      pending: {
+        permissions: [
+          {
+            sessionId: "work",
+            detail: "Run npm test",
+            createdAt: "2026-11-05T08:10:00.000Z",
+          },
+        ],
+        questions: [],
+        planApprovals: [],
+      },
+      routines: [],
+      latestRuns: new Map(),
+    });
+    expect(items).toEqual([]);
+  });
+
+  it("keeps work the persona delegated, so its approvals reach the user", () => {
+    const items = buildInbox({
+      delegatedSessionIds: new Set(["delegated"]),
+      sessions: [session("delegated")],
+      attention: [],
+      pending: {
+        permissions: [
+          {
+            sessionId: "delegated",
+            detail: "Run npm test",
+            createdAt: "2026-11-05T08:10:00.000Z",
+          },
+        ],
+        questions: [],
+        planApprovals: [],
+      },
+      routines: [],
+      latestRuns: new Map(),
+    });
+    expect(items.map((item) => [item.kind, item.form])).toEqual([
+      ["approval", "work"],
+    ]);
+  });
+
   it("ignores archived sessions and subagents", () => {
     const items = buildInbox({
+      delegatedSessionIds: new Set<string>(),
       sessions: [
-        session("old", { archivedAt: "2026-11-01T00:00:00.000Z" }),
+        session("old", {
+          sessionKind: "personal",
+          archivedAt: "2026-11-01T00:00:00.000Z",
+        }),
         session("child", { sessionKind: "subagent" }),
       ],
       attention: [

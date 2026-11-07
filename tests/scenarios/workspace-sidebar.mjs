@@ -23,7 +23,7 @@ function readActiveSessionId() {
 async function openSession(session, title) {
   await clickByRole(
     session,
-    { role: "button", name: new RegExp(`^${title}\\s+(?![(（])`) },
+    { role: "button", name: new RegExp(`^${title}(?:$|\\s+(?![(（]))`) },
     UI_TIMEOUT_MS,
   );
   await session.waitUntil(

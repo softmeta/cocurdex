@@ -100,7 +100,7 @@ cocurdex persona work stop <persona> <session-id> --json
 
 ## Inbox and brief
 
-The inbox gathers what needs the user across every form: pending approvals, questions, and plans, failed or unread finished sessions, and routine results, runs that need the user, failures, and auto-pauses. Items are ordered by what needs the user, then failures, then results. The brief is today's summary built from the same data without a model: what needs the user, each routine's latest result today, and failures; it is `null` when there is nothing to report.
+The inbox gathers what needs the user from personas: pending approvals, questions, and plans, failed or unread finished sessions, from persona threads and the work sessions personas delegated (never ordinary work or chat sessions), and routine results, runs that need the user, failures, and auto-pauses. Items are ordered by what needs the user, then failures, then results. The brief is today's summary built from the same data without a model: what needs the user, each routine's latest result today, and failures; it is `null` when there is nothing to report.
 
 ```bash
 cocurdex inbox [list] --json

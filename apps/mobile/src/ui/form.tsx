@@ -9,6 +9,7 @@ export function Form({ children, adjustsForKeyboard = false }: FormProps) {
     <ScrollView
       style={[styles.fill, { backgroundColor: grouped.page }]}
       contentContainerStyle={styles.content}
+      nestedScrollEnabled
       contentInsetAdjustmentBehavior="automatic"
       automaticallyAdjustKeyboardInsets={adjustsForKeyboard}
       keyboardShouldPersistTaps="handled"

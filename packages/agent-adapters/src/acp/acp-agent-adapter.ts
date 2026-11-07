@@ -110,7 +110,7 @@ export interface AcpAgentAdapterOptions {
     buildParams(providerSessionId: string): Record<string, unknown>;
     mapResponse(value: unknown): AcpContextUsage | null;
   };
-  usePromptResponseForContext?: boolean;
+  contextFromUsageUpdates?: boolean;
   // Agents that expose a live MCP catalog (Grok's `x.ai/mcp/list`) report it
   // here so the session runtime menu can list connected servers.
   mcpServersRequest?: {
@@ -284,7 +284,7 @@ export class AcpAgentAdapter implements AgentAdapter {
       (toolCall) =>
         subagentBridge ? subagentBridge.transform(toolCall) : toolCall,
       payload.workspaceRootPath,
-      { usePromptResponseForContext: this.options.usePromptResponseForContext },
+      { contextFromUsageUpdates: this.options.contextFromUsageUpdates },
     );
     const createChildMapper = (session: SessionRecord) => {
       const existing = childMappers.get(session.id);
@@ -299,7 +299,7 @@ export class AcpAgentAdapter implements AgentAdapter {
         undefined,
         payload.workspaceRootPath,
         {
-          usePromptResponseForContext: this.options.usePromptResponseForContext,
+          contextFromUsageUpdates: this.options.contextFromUsageUpdates,
         },
       );
       childMappers.set(session.id, childMapper);
@@ -1028,7 +1028,6 @@ export class AcpAgentAdapter implements AgentAdapter {
             messagePayload.attachments ?? [],
             capabilities,
           );
-          mapper.beginPrompt();
           prompt = connection.prompt({
             sessionId: providerSessionId,
             prompt: promptContent,
@@ -1065,7 +1064,6 @@ export class AcpAgentAdapter implements AgentAdapter {
             });
             return message;
           }
-          mapper.failPrompt();
           const error = mapTurnError(caught, turnConnection);
           const message =
             error instanceof Error ? error.message : "ACP prompt failed";

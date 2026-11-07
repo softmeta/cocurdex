@@ -1,8 +1,10 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
-import type { InboxItem } from "@cocurdex/shared";
+import type { InboxItem, PersonalAgentRecord } from "@cocurdex/shared";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { SectionList, StyleSheet } from "react-native";
+import { LaunchReady } from "@/launch";
+import { sessionRowStatus, useHostSessions } from "@/sessions";
 import {
   ListNotice,
   ListSectionHeader,
@@ -11,12 +13,14 @@ import {
   useScrollIndicatorWhileScrolling,
   useTabBarInset,
 } from "@/ui";
+import { useAgentActions } from "./agent-actions-menu";
 import {
   greetPersonalAgent,
   readInboxItem,
   revalidateAssistant,
   useBrief,
   useInbox,
+  useLatestReply,
   usePersonalAgents,
 } from "./assistant-queries";
 import { AgentRow, BriefResultRow, InboxRow } from "./assistant-rows";
@@ -27,13 +31,59 @@ import {
 } from "./assistant-sections";
 import { useAssistantRevalidation } from "./use-assistant-revalidation";
 
-function useSectionTitles(): Record<AssistantSection["kind"], string> {
+function useSectionTitles(): Record<AssistantSection["kind"], string | null> {
   const { t } = useTranslation("assistant");
   return {
     brief: t("brief.title"),
     inbox: t("inbox.title"),
-    agents: t("agents.title"),
+    agents: null,
   };
+}
+
+function AgentRoster({
+  host,
+  agent,
+  onOpen,
+  onLongPress,
+}: {
+  host: SavedHost;
+  agent: PersonalAgentRecord;
+  onOpen(agent: PersonalAgentRecord): void;
+  onLongPress: Parameters<typeof AgentRow>[0]["onLongPress"];
+}) {
+  const { t } = useTranslation("assistant");
+  const snapshot = useHostSessions(host.hostId);
+  const session = snapshot.sessions.find(
+    (item) => item.id === agent.homeSessionId,
+  );
+  const attention = snapshot.attention.find(
+    (item) => item.sessionId === agent.homeSessionId,
+  );
+  const status = attention ? sessionRowStatus(attention.primaryState) : "none";
+  const stamp = session?.lastMessageAt ?? null;
+  const reply = useLatestReply(host.hostId, agent.homeSessionId, stamp).data;
+  const preview = reply ? previewLine(reply.content) : "";
+  const subtitle =
+    status === "running"
+      ? t("agents.working")
+      : preview || agent.role.description || "\u00a0";
+  return (
+    <AgentRow
+      agent={agent}
+      activityAt={stamp}
+      status={status}
+      subtitle={subtitle}
+      onOpen={onOpen}
+      onLongPress={onLongPress}
+    />
+  );
+}
+
+function previewLine(content: string) {
+  return content
+    .replace(/[`*_>#~]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function AssistantHome({ host }: { host: SavedHost }) {
@@ -57,18 +107,22 @@ export function AssistantHome({ host }: { host: SavedHost }) {
     if (item.sessionId) openSession(item.sessionId);
     void readInboxItem(host.hostId, item.id).catch(() => undefined);
   };
+  const agentActions = useAgentActions(host, openSession);
 
   if (!agents.data) {
     if (!agents.error) return <PendingIndicator />;
     return (
-      <ListNotice
-        icon={{ ios: "wifi.slash", android: "cloud_off" }}
-        title={t("unavailable.title", { host: host.name })}
-        action={{
-          label: t("unavailable.retry"),
-          onPress: () => void revalidateAssistant(host.hostId),
-        }}
-      />
+      <>
+        <LaunchReady />
+        <ListNotice
+          icon={{ ios: "wifi.slash", android: "cloud_off" }}
+          title={t("unavailable.title", { host: host.name })}
+          action={{
+            label: t("unavailable.retry"),
+            onPress: () => void revalidateAssistant(host.hostId),
+          }}
+        />
+      </>
     );
   }
 
@@ -85,47 +139,59 @@ export function AssistantHome({ host }: { host: SavedHost }) {
     if (item.kind === "inbox") {
       return <InboxRow item={item.item} onOpen={openItem} />;
     }
-    const { role } = item.agent;
-    const subtitle = role.description ?? "";
     return (
-      <AgentRow
+      <AgentRoster
+        host={host}
         agent={item.agent}
-        subtitle={subtitle}
         onOpen={(agent) => {
           greetPersonalAgent(host, agent.id);
           openSession(agent.homeSessionId);
         }}
+        onLongPress={agentActions.open}
       />
     );
   };
 
+  const settled =
+    (inbox.data !== undefined || inbox.error !== undefined) &&
+    (brief.data !== undefined || brief.error !== undefined);
+
   return (
-    <SectionList<AssistantRow, AssistantSection>
-      {...scrollIndicator}
-      contentContainerStyle={{ paddingBottom: tabBarInset }}
-      style={styles.fill}
-      contentInsetAdjustmentBehavior="automatic"
-      sections={sections}
-      keyExtractor={(row) => row.key}
-      stickySectionHeadersEnabled={false}
-      refreshing={pull.refreshing}
-      onRefresh={pull.onRefresh}
-      ListEmptyComponent={
-        <ListNotice
-          icon={{ ios: "sparkles", android: "auto_awesome" }}
-          title={t("empty.title")}
-          description={t("empty.description", { host: host.name })}
-        />
-      }
-      renderSectionHeader={({ section }) => (
-        <ListSectionHeader
-          title={titles[section.kind]}
-          count={section.kind === "inbox" ? section.data.length : undefined}
-          testID={`assistant-section-${section.kind}`}
-        />
-      )}
-      renderItem={renderItem}
-    />
+    <>
+      {settled ? <LaunchReady /> : null}
+      <SectionList<AssistantRow, AssistantSection>
+        {...scrollIndicator}
+        contentContainerStyle={{ paddingBottom: tabBarInset }}
+        style={styles.fill}
+        contentInsetAdjustmentBehavior="automatic"
+        sections={sections}
+        keyExtractor={(row) => row.key}
+        stickySectionHeadersEnabled={false}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
+        ListEmptyComponent={
+          <ListNotice
+            icon={{ ios: "sparkles", android: "auto_awesome" }}
+            title={t("empty.title")}
+            description={t("empty.description", { host: host.name })}
+          />
+        }
+        renderSectionHeader={({ section }) => {
+          const title = titles[section.kind];
+          if (!title) return null;
+          return (
+            <ListSectionHeader
+              title={title}
+              count={section.kind === "inbox" ? section.data.length : undefined}
+              testID={`assistant-section-${section.kind}`}
+            />
+          );
+        }}
+        renderItem={renderItem}
+      />
+      {agentActions.menu}
+      {agentActions.dialog}
+    </>
   );
 }
 

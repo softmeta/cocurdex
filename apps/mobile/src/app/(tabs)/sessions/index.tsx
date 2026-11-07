@@ -11,7 +11,7 @@ import {
 } from "@/hosts";
 import { beginNewSession } from "@/new-session";
 import { SessionList, sessionsStore, useSessionListUi } from "@/sessions";
-import { ListScreenHeader } from "@/ui";
+import { SessionModeHeader } from "@/tabs";
 
 export default function SessionsScreen() {
   const { t } = useTranslation(["sessions", "common"]);
@@ -22,7 +22,7 @@ export default function SessionsScreen() {
   if (!host) {
     return (
       <>
-        <ListScreenHeader title={t("common:screens.sessions")} />
+        <SessionModeHeader title={t("common:tabs.work")} />
         <EmptyHosts onScan={() => void openScan()} onPaste={openPaste} />
       </>
     );
@@ -64,8 +64,8 @@ function HostSessionsScreen({
 
   return (
     <>
-      <ListScreenHeader
-        title={t("common:screens.sessions")}
+      <SessionModeHeader
+        title={t("common:tabs.work")}
         search={{ placeholder: t("search"), onQuery }}
         actions={[
           {

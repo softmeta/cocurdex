@@ -1,22 +1,16 @@
 import { TabList, TabSlot, Tabs, TabTrigger } from "expo-router/ui";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native";
-import { FloatingTab, FloatingTabBar, useFloatingTabBarInset } from "@/tabs";
+import {
+  FloatingTab,
+  FloatingTabBar,
+  SESSION_MODES,
+  SessionsTab,
+  useFloatingTabBarInset,
+} from "@/tabs";
 import { TabBarInsetContext, useKeyboardVisible } from "@/ui";
 
 const TABS = [
-  {
-    name: "(assistant)",
-    href: "/",
-    icon: { ios: "sparkles", android: "auto_awesome" },
-    label: "tabs.assistant",
-  },
-  {
-    name: "sessions",
-    href: "/sessions",
-    icon: { ios: "bubble.left.and.bubble.right", android: "forum" },
-    label: "tabs.sessions",
-  },
   {
     name: "issues",
     href: "/issues",
@@ -48,6 +42,16 @@ export default function TabsLayout() {
       </TabBarInsetContext>
       <TabList asChild>
         <FloatingTabBar hidden={keyboardVisible}>
+          {SESSION_MODES.map((mode) => (
+            <TabTrigger
+              key={mode.name}
+              name={mode.name}
+              href={mode.href}
+              style={styles.hidden}
+              accessible={false}
+            />
+          ))}
+          <SessionsTab />
           {TABS.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
               <FloatingTab icon={tab.icon} label={t(tab.label)} />
@@ -59,4 +63,7 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  hidden: { display: "none" },
+});

@@ -1,7 +1,13 @@
 import type { TabTriggerSlotProps } from "expo-router/ui";
 import { type AndroidSymbol, type SFSymbol, SymbolView } from "expo-symbols";
-import type { ReactNode } from "react";
-import { Pressable, StyleSheet, View, type ViewProps } from "react-native";
+import type { ReactNode, Ref } from "react";
+import {
+  type HostInstance,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewProps,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { space, useThemeColors } from "@/theme";
 import { useFloatingSurface } from "@/ui";
@@ -13,8 +19,12 @@ const BAR_GAP = space.md;
 
 export const FLOATING_TAB_BAR_HEIGHT = TAB_HEIGHT + BAR_PADDING * 2;
 
+function useBarBottom() {
+  return Math.max(useSafeAreaInsets().bottom - space.sm, BAR_GAP);
+}
+
 export function useFloatingTabBarInset() {
-  return FLOATING_TAB_BAR_HEIGHT + BAR_GAP * 2 + useSafeAreaInsets().bottom;
+  return FLOATING_TAB_BAR_HEIGHT + BAR_GAP + useBarBottom();
 }
 
 export function FloatingTabBar({
@@ -24,7 +34,7 @@ export function FloatingTabBar({
   ...props
 }: ViewProps & { hidden: boolean; children?: ReactNode }) {
   const surface = useFloatingSurface();
-  const bottom = useSafeAreaInsets().bottom + BAR_GAP;
+  const bottom = useBarBottom();
   return (
     <View
       {...props}
@@ -43,14 +53,16 @@ export function FloatingTab({
   style,
   ref,
   ...props
-}: TabTriggerSlotProps & {
+}: Omit<TabTriggerSlotProps, "ref"> & {
   icon: { ios: SFSymbol; android: AndroidSymbol };
   label: string;
+  ref?: Ref<HostInstance>;
 }) {
   const colors = useThemeColors();
   return (
     <Pressable
       {...props}
+      ref={ref}
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected: isFocused }}

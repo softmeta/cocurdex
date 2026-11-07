@@ -6,9 +6,9 @@ export default function ScanScreen() {
   const router = useRouter();
   return (
     <ScanPairing
-      onPaired={() => {
+      onPaired={(hostId) => {
         enablePushNotifications();
-        router.back();
+        router.replace({ pathname: "/approve/[hostId]", params: { hostId } });
       }}
       onClose={() => router.back()}
       onPaste={() => router.replace("/pair")}

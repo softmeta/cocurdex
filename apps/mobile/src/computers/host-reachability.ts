@@ -72,6 +72,18 @@ function subscribe(listener: () => void) {
   };
 }
 
+export function whenHostOnline(hostId: string, onOnline: () => void) {
+  let seen = results.get(hostId);
+  const unsubscribe = subscribe(() => {
+    const current = results.get(hostId);
+    if (current === seen) return;
+    seen = current;
+    if (current?.state === "online") onOnline();
+  });
+  void probe(hostId);
+  return unsubscribe;
+}
+
 export function useHostReachability(hostId: string): HostReachability {
   const snapshot = useSyncExternalStore(subscribe, () => results);
   return snapshot.get(hostId) ?? CHECKING;

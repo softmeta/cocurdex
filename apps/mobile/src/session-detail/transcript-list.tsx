@@ -38,10 +38,12 @@ export function TranscriptList({
   footer,
   renderRow,
   sentMessageId,
+  bottomInset = 0,
   ref,
 }: {
   items: readonly CondensedItem[];
   footer?: ReactElement;
+  bottomInset?: number;
   renderRow: (item: CondensedItem) => ReactElement;
   sentMessageId?: string;
   ref?: Ref<TranscriptHandle>;
@@ -52,6 +54,7 @@ export function TranscriptList({
   const indicator = useScrollIndicatorWhileScrolling();
   const list = useRef<FlatList<TranscriptTurn>>(null);
   const metrics = useRef<ScrollMetrics | null>(null);
+  const listHeight = useRef(0);
   const latestView = useRef<ComponentRef<typeof View>>(null);
   const indexFailed = useRef(false);
   const latestContent = useRef<{ id: string; height: number } | null>(null);
@@ -72,10 +75,14 @@ export function TranscriptList({
   }
   const latestJump = useRef<{ animated: boolean } | null>(null);
   const [viewportHeight, setViewportHeight] = useState(0);
-  const visibleHeight = Math.max(0, viewportHeight - headerOverlap);
+  const visibleHeight = Math.max(
+    0,
+    viewportHeight - headerOverlap - bottomInset,
+  );
   const peek = sentPromptPeek(visibleHeight);
   const viewportWidth = useRef(0);
   const [jump, setJump] = useState(INITIAL_JUMP_STATE);
+  const [placed, setPlaced] = useState(false);
   const turns = useMemo(() => transcriptTurns(items), [items]);
   const history = useMemo(() => turns.slice(0, -1), [turns]);
   const latest = turns.at(-1);
@@ -121,6 +128,10 @@ export function TranscriptList({
       )
     : jump;
 
+  const scrollInstantly = (offset: number) => {
+    list.current?.scrollToOffset({ offset, animated: false });
+    if (metrics.current) metrics.current = { ...metrics.current, offset };
+  };
   const align = () => {
     const state = navigation.current;
     if (state.target) {
@@ -134,16 +145,16 @@ export function TranscriptList({
         const target = state.target;
         const inset =
           target === state.sentMessageId
-            ? sentPromptPeek(metrics.current.viewportHeight - headerOverlap)
+            ? sentPromptPeek(
+                metrics.current.viewportHeight - headerOverlap - bottomInset,
+              )
             : 0;
         latestView.current?.measureLayout(
           content,
           (_x, y) => {
             if (navigation.current.target !== target) return;
-            list.current?.scrollToOffset({
-              offset: Math.max(0, y - space.md - headerOverlap - inset),
-              animated: false,
-            });
+            scrollInstantly(Math.max(0, y - space.md - headerOverlap - inset));
+            setPlaced(true);
           },
           () => {},
         );
@@ -155,7 +166,12 @@ export function TranscriptList({
           viewOffset: space.md + headerOverlap,
           animated: false,
         });
-        if (!indexFailed.current) state.target = undefined;
+        if (!indexFailed.current) {
+          state.target = undefined;
+          setPlaced(true);
+        }
+      } else {
+        setPlaced(true);
       }
     } else if (
       state.initialPosition &&
@@ -164,13 +180,13 @@ export function TranscriptList({
       latestLayout.current?.id === latest.id
     ) {
       state.initialPosition = false;
-      list.current?.scrollToOffset({
-        offset: Math.max(
+      scrollInstantly(
+        Math.max(
           0,
           metrics.current.contentHeight - metrics.current.viewportHeight,
         ),
-        animated: false,
-      });
+      );
+      setPlaced(true);
     }
   };
   const scrollToLatest = (animated: boolean) => {
@@ -233,6 +249,7 @@ export function TranscriptList({
       <FlatList
         {...indicator}
         ref={list}
+        style={!placed && latest ? styles.placing : undefined}
         data={history}
         keyExtractor={(turn) => turn.id}
         extraData={[viewportHeight, renderRow, footer]}
@@ -242,7 +259,10 @@ export function TranscriptList({
         automaticallyAdjustContentInsets={false}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: space.md + headerOverlap },
+          {
+            paddingTop: space.md + headerOverlap,
+            paddingBottom: space.md + bottomInset,
+          },
         ]}
         scrollEventThrottle={32}
         onScroll={onScroll}
@@ -250,6 +270,7 @@ export function TranscriptList({
           latestJump.current = null;
           navigation.current.target = undefined;
           navigation.current.initialPosition = false;
+          setPlaced(true);
           indicator.onScrollBeginDrag();
           setJump((current) => ({ ...current, userScrolled: true }));
         }}
@@ -260,6 +281,7 @@ export function TranscriptList({
           setViewportHeight((previous) =>
             resized ? height : Math.max(previous, height),
           );
+          listHeight.current = height;
           if (metrics.current) metrics.current.viewportHeight = height;
           refreshJump();
         }}
@@ -268,7 +290,7 @@ export function TranscriptList({
           const next = {
             offset: previous?.offset ?? 0,
             contentHeight: height,
-            viewportHeight: previous?.viewportHeight ?? viewportHeight,
+            viewportHeight: previous?.viewportHeight ?? listHeight.current,
           };
           metrics.current = next;
           setJump((current) =>
@@ -285,7 +307,10 @@ export function TranscriptList({
         }}
         onScrollToIndexFailed={({ index, averageItemLength }) => {
           indexFailed.current = true;
-          if (navigation.current.retries >= 12) return;
+          if (navigation.current.retries >= 12) {
+            setPlaced(true);
+            return;
+          }
           navigation.current.retries += 1;
           list.current?.scrollToOffset({
             offset: averageItemLength * index,
@@ -338,10 +363,11 @@ export function TranscriptList({
           )
         }
       />
-      {currentJump.kind ? (
+      {placed && currentJump.kind ? (
         <JumpButton
           target={currentJump.kind}
           streaming={streaming}
+          bottomInset={bottomInset}
           unseen={
             currentJump.kind === "latest" && hasUnseenLatest(jump, items.length)
           }
@@ -354,6 +380,7 @@ export function TranscriptList({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  placing: { opacity: 0 },
   content: {
     paddingHorizontal: layout.sideMargin,
     paddingVertical: space.md,
