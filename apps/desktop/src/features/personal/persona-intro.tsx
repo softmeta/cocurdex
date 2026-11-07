@@ -5,16 +5,14 @@ import { Button } from "@/components/ui";
 import { AgentRoleAvatar } from "@/features/sessions";
 
 export function PersonaGreetingActivity({ role }: { role: AgentRoleRecord }) {
-  const { t } = useTranslation("agent");
+  const { t } = useTranslation("personal");
   return (
     <div
       aria-live="polite"
       className="flex min-w-0 items-center gap-2 text-body text-chat-fg-muted"
     >
       <AgentRoleAvatar role={role} showAgent={false} size="sm" />
-      <span className="activity-shimmer truncate">
-        {t("activity.thinking")}
-      </span>
+      <span className="activity-shimmer truncate">{t("roster.working")}</span>
     </div>
   );
 }
