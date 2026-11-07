@@ -55,7 +55,7 @@ appId: dev.cocurdex.mobile
             - tapOn: ${PAIR_ACTION}
       - extendedWaitUntil:
           visible:
-            id: "assistant-section-agents"
+            id: "assistant-section-inbox"
           timeout: 15000
 - retry:
     maxRetries: 2

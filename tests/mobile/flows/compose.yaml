@@ -187,7 +187,7 @@ appId: dev.cocurdex.mobile
       notifications: allow
 - extendedWaitUntil:
     visible:
-      id: "assistant-section-agents"
+      id: "assistant-section-inbox"
     timeout: 30000
 - tapOn: ${TAB_SESSIONS}
 - extendedWaitUntil:
