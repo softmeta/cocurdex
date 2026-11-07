@@ -31,6 +31,7 @@ export interface ChatComposerOverride {
 }
 
 export interface ChatViewProps {
+  floatingHeader?: boolean;
   chatComposer?: ChatComposerOverride;
   composerRole?: AgentRoleRecord | null;
   composerPlaceholder?: string;

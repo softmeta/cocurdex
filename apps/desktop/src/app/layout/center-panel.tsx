@@ -137,6 +137,7 @@ import { useQueuedInputActions } from "./use-queued-input-actions";
 
 interface CenterPanelProps {
   composerRef?: Ref<ChatComposerHandle>;
+  floatingHeader?: boolean;
   hideTitlebarSpacer?: boolean;
   pane?: SessionPaneBinding;
   isFocused?: boolean;
@@ -258,6 +259,7 @@ function resolveCenterWorkingPath(
 
 export function CenterPanel({
   composerRef,
+  floatingHeader = false,
   hideTitlebarSpacer,
   pane,
   isFocused = true,
@@ -1163,6 +1165,7 @@ export function CenterPanel({
             composerRole={personalView?.composerRole}
             composerPlaceholder={personalView?.composerPlaceholder}
             emptyState={personalView?.emptyState}
+            floatingHeader={floatingHeader && personalView !== null}
             presentation={personalView ? "assistant" : "work"}
             permissionMode={activePermissionMode}
             providerSnapshot={activeSession.providerSnapshot}

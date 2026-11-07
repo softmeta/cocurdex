@@ -54,7 +54,7 @@ function SessionPaneFrame({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: pointer down focuses this pane
     <div
-      className="flex h-full min-h-0 min-w-0 flex-col"
+      className="relative flex h-full min-h-0 min-w-0 flex-col"
       onMouseDown={onActivate}
       ref={frameRef}
     >
@@ -219,6 +219,7 @@ export function SessionSplitLayout({
                 : 0
             }
             canClose={paneCount > 1}
+            floatingPersona
             isFocused={isFocused}
             occupiesTitlebar={occupiesTitlebar && !hideTitlebarSpacer}
             paneId={node.pane.id}
@@ -238,6 +239,7 @@ export function SessionSplitLayout({
                 assignComposerRef(composerRef, handle);
               }
             }}
+            floatingHeader={showPaneHeader}
             hideTitlebarSpacer
             isFocused={isFocused}
             pane={node.pane}

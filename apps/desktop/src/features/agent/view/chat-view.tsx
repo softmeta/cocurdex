@@ -108,6 +108,7 @@ export function ChatView({
   parentSessionTitle = null,
   onOpenParentSession,
   presentation = "work",
+  floatingHeader = false,
 }: ChatViewProps) {
   const { t } = useTranslation("agent");
   const [isInitialBottomSettled, setIsInitialBottomSettled] = useState(false);
@@ -415,7 +416,11 @@ export function ChatView({
                 viewportRef={attachViewport}
               >
                 <ChatContentColumn
-                  className={cn("pt-6", timelineGroups.length === 0 && "pb-6")}
+                  className={cn(
+                    !floatingHeader && "pt-6",
+                    floatingHeader && "pt-20",
+                    timelineGroups.length === 0 && "pb-6",
+                  )}
                   ref={chatContentRef}
                 >
                   {showsEmptyState ? null : timelineGroups.length === 0 ? (
