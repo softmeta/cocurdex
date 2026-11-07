@@ -1,7 +1,7 @@
 import type { ImageAttachment } from "@cocurdex/shared";
 import { randomUUID } from "expo-crypto";
 import { SymbolView } from "expo-symbols";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { layout, space, useThemeColors } from "@/theme";
@@ -12,6 +12,10 @@ import {
   ImageUploadError,
   type ImageUploadFailure,
 } from "./image-upload-response";
+import {
+  type TextInputHandle,
+  useBlurOnKeyboardHide,
+} from "./use-blur-on-keyboard-hide";
 
 interface Draft extends DraftImage {
   attachment: ImageAttachment | null;
@@ -75,8 +79,9 @@ export function Composer({
     !canSend || sending || uploading || (!stopping && !hasContent);
   const roomForImages = MAX_IMAGES_PER_MESSAGE - drafts.length;
   const [focused, setFocused] = useState(autoFocus);
-  const drafting = focused || text !== "" || drafts.length > 0;
-  const compact = !accessory || !drafting;
+  const input = useRef<TextInputHandle>(null);
+  useBlurOnKeyboardHide(input);
+  const compact = !accessory || !focused;
 
   const upload = async (draft: Draft, image: PickedImage) => {
     try {
@@ -149,6 +154,7 @@ export function Composer({
           }
         />
         <TextInput
+          ref={input}
           testID={inputTestID}
           value={text}
           onChangeText={setText}
