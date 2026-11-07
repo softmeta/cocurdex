@@ -2,6 +2,11 @@ import type { ApplicationPrincipal } from "@cocurdex/shared";
 import type { ApplicationService } from "../../application-service";
 import type { AgentToolRegistry } from "../tool-registry";
 
+const CONNECTION_ID = {
+  type: "string",
+  description: "The connection id field from applications_list.",
+};
+
 export function registerApplicationTools(
   registry: AgentToolRegistry,
   service: ApplicationService,
@@ -30,7 +35,7 @@ export function registerApplicationTools(
         "List the available tools and input schemas of an allowed application connection. Read this before calling a tool.",
       inputSchema: {
         type: "object",
-        properties: { id: { type: "string" } },
+        properties: { id: CONNECTION_ID },
         required: ["id"],
         additionalProperties: false,
       },
@@ -48,7 +53,7 @@ export function registerApplicationTools(
       inputSchema: {
         type: "object",
         properties: {
-          id: { type: "string" },
+          id: CONNECTION_ID,
           tool: { type: "string" },
           args: { type: "object" },
         },
@@ -74,7 +79,7 @@ export function registerApplicationTools(
       inputSchema: {
         type: "object",
         properties: {
-          id: { type: "string" },
+          id: CONNECTION_ID,
           tool: { type: "string" },
           args: { type: "object" },
         },

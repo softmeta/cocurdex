@@ -178,6 +178,33 @@ describe("application connections", () => {
     expect(client.close).toHaveBeenCalledTimes(2);
   });
 
+  it("accepts an application id when exactly one granted connection matches it", async () => {
+    const { apps, added, factory } = await setup();
+    const a = { personaId: "a", delegated: false, workSession: false };
+    const b = { personaId: "b", delegated: false, workSession: false };
+    expect(await apps.read("notion", "search", {}, a)).toMatchObject({
+      content: [{ text: "Found" }],
+    });
+    expect(factory).toHaveBeenLastCalledWith(
+      expect.anything(),
+      added.id,
+      expect.anything(),
+    );
+    await expect(apps.tools("notion", b)).rejects.toThrow(
+      "Application connection not found",
+    );
+    const second = await apps.add({
+      applicationId: "notion",
+      displayName: "Team notes",
+      personaIds: ["a"],
+      allowDelegatedWork: false,
+    });
+    const ambiguous = apps.tools("notion", a);
+    await expect(ambiguous).rejects.toThrow(added.id);
+    await expect(apps.tools("notion", a)).rejects.toThrow(second.id);
+    expect(factory).toHaveBeenCalledTimes(1);
+  });
+
   it("lets work sessions use a connection only while it is open to them", async () => {
     const { apps, added } = await setup();
     const work = { personaId: null, delegated: false, workSession: true };

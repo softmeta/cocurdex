@@ -10,6 +10,8 @@ export default interface Resources {
       replyCount_one: "{{count}} interim reply";
       replyCount_other: "{{count}} interim replies";
       responding: "Replying";
+      slowResponse: "Taking longer than usual, hang tight";
+      stillThinking: "Still thinking";
       stopped: "Stopped";
       summary: {
         command_one: "Ran {{count}} command";

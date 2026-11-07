@@ -69,8 +69,8 @@ export class ApplicationService {
       const checked = this.statuses.get(id);
       return [
         {
-          ...metadata,
           id,
+          ...metadata,
           enabled: config.enabled !== false,
           status:
             checked?.revision === connectionRevision(config)
@@ -256,7 +256,8 @@ export class ApplicationService {
     );
   }
 
-  async tools(id: string, principal?: ApplicationPrincipal) {
+  async tools(requestedId: string, principal?: ApplicationPrincipal) {
+    const id = await this.resolveId(requestedId, principal);
     const config = await this.require(id, principal);
     this.assertEnabled(config);
     const client = await this.client(id, config);
@@ -289,12 +290,13 @@ export class ApplicationService {
   }
 
   private async execute(
-    id: string,
+    requestedId: string,
     tool: string,
     args: Record<string, unknown>,
     principal: ApplicationPrincipal | undefined,
     readOnly: boolean,
   ) {
+    const id = await this.resolveId(requestedId, principal);
     const config = await this.require(id, principal);
     this.assertEnabled(config);
     const client = await this.client(id, config);
@@ -382,6 +384,26 @@ export class ApplicationService {
         "Managed application endpoint was changed. Review the advanced MCP configuration.",
       );
     return value;
+  }
+
+  private async resolveId(requested: string, principal?: ApplicationPrincipal) {
+    const servers = await this.mcp.config.readServers();
+    if (servers[requested] || !principal) return requested;
+    const matches = Object.entries(servers).flatMap(([id, config]) =>
+      readApplicationMetadata(config)?.applicationId === requested &&
+      applicationAllows(config, principal)
+        ? [id]
+        : [],
+    );
+    const [only, ...others] = matches;
+    if (only && others.length === 0) return only;
+    if (only)
+      throw new Error(
+        `Several ${requested} connections are available. Pass one of these connection ids: ${matches.join(", ")}`,
+      );
+    throw new Error(
+      "Application connection not found. Pass the id field from applications_list.",
+    );
   }
 
   private async require(id: string, principal?: ApplicationPrincipal) {

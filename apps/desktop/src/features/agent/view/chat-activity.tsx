@@ -111,20 +111,52 @@ function useElapsedLabel(runStartedAt?: number) {
   return formatElapsed(now - (runStartedAt ?? mountedAt));
 }
 
+const ASSISTANT_THINKING_STAGES = [
+  { afterMs: 0, key: "activity.thinking" },
+  { afterMs: 15_000, key: "activity.stillThinking" },
+  { afterMs: 40_000, key: "activity.slowResponse" },
+] as const;
+
+function useAssistantThinkingStage() {
+  const [stage, setStage] = useState(0);
+
+  useMountEffect(() => {
+    const timers = ASSISTANT_THINKING_STAGES.slice(1).map((item, index) =>
+      window.setTimeout(() => setStage(index + 1), item.afterMs),
+    );
+    return () => {
+      for (const timer of timers) window.clearTimeout(timer);
+    };
+  });
+
+  return ASSISTANT_THINKING_STAGES[stage] ?? ASSISTANT_THINKING_STAGES[0];
+}
+
+function AssistantThinkingLabel() {
+  const { t } = useTranslation("agent");
+  const { key } = useAssistantThinkingStage();
+  return <span className="activity-shimmer truncate">{t(key)}</span>;
+}
+
 function AssistantActivityLabel({ activity }: { activity: ActivityState }) {
   const { t } = useTranslation("agent");
   const role = useChatAssistantRole();
   const isUsingTools =
     activity.kind === "usingTools" ||
     (activity.activeToolCalls?.length ?? 0) > 0;
-  const label = isUsingTools ? t("activity.handling") : t("activity.thinking");
 
   return (
     <span className="flex min-w-0 items-center gap-2 text-chat-fg-muted">
       {role ? (
         <AgentRoleAvatar role={role} showAgent={false} size="sm" />
       ) : null}
-      <span className="activity-shimmer truncate">{label}</span>
+      {isUsingTools ? (
+        <span className="activity-shimmer truncate">
+          {t("activity.handling")}
+        </span>
+      ) : (
+        <AssistantThinkingLabel />
+      )}
     </span>
   );
 }

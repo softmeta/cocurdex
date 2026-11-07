@@ -7,6 +7,8 @@
     "ready": "就绪",
     "replyCount_other": "{{count}} 条中间回复",
     "responding": "回复中",
+    "slowResponse": "这次有点慢，再等等",
+    "stillThinking": "还在想，稍等",
     "stopped": "已停止",
     "summary": {
       "command_other": "执行了 {{count}} 条命令",
