@@ -14,19 +14,29 @@
   animation: settings-panel-fade-in 180ms ease-out;
 }
 
+@property --shell-panel-open-progress {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
 @media (prefers-reduced-motion: no-preference) {
+  .shell-panel-opening {
+    animation: shell-panel-open 220ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  }
+
   .assistant-overview-slide-in {
-    transition: translate 220ms cubic-bezier(0.2, 0.75, 0.25, 1);
+    translate: calc(100% * (1 - var(--shell-panel-open-progress))) 0;
+  }
 
-    @starting-style {
-      translate: 100% 0;
-    }
+  .assistant-overview-slide-in:dir(rtl) {
+    translate: calc(-100% * (1 - var(--shell-panel-open-progress))) 0;
+  }
+}
 
-    &:dir(rtl) {
-      @starting-style {
-        translate: -100% 0;
-      }
-    }
+@keyframes shell-panel-open {
+  from {
+    --shell-panel-open-progress: 0;
   }
 }
 

@@ -90,6 +90,10 @@ export function AppShellContent({
     isRightPanelOpen && !isPanelFullWidth
       ? rightWidth + PANEL_SEPARATOR_WIDTH
       : 0;
+  const slideInOverview = !isPanelFullWidth && rightPanelView === "overview";
+  const chatInset = slideInOverview
+    ? `calc(${chatOverlayInset}px * var(--shell-panel-open-progress, 1))`
+    : `${chatOverlayInset}px`;
   const editorOverlayInset =
     !detached &&
     isRightPanelMaximized &&
@@ -100,7 +104,10 @@ export function AppShellContent({
       : 0;
   return (
     <main
-      className="relative flex min-h-0 flex-1 overflow-hidden bg-app"
+      className={cn(
+        "relative flex min-h-0 flex-1 overflow-hidden bg-app",
+        isRightPanelOpen && !isPanelFullWidth && "shell-panel-opening",
+      )}
       ref={contentRowRef}
     >
       {isRightPanelOpen ? (
@@ -111,9 +118,7 @@ export function AppShellContent({
             isPanelFullWidth
               ? "flex-1"
               : "absolute inset-y-0 end-0 z-40 max-w-full",
-            !isPanelFullWidth &&
-              rightPanelView === "overview" &&
-              "assistant-overview-slide-in",
+            slideInOverview && "assistant-overview-slide-in",
           )}
           style={
             isPanelFullWidth
@@ -156,7 +161,7 @@ export function AppShellContent({
           data-testid="shell-chat-surface"
           style={{
             width: isCompact ? MIN_CHAT_WIDTH + 2 : "100%",
-            paddingInlineEnd: chatOverlayInset,
+            paddingInlineEnd: chatInset,
           }}
         >
           <ResizableSidebarSlot
@@ -174,7 +179,7 @@ export function AppShellContent({
               className="h-full"
               style={
                 chatOverlayInset && !isRightPanelDocked
-                  ? { minWidth: `calc(100% + ${chatOverlayInset}px)` }
+                  ? { minWidth: `calc(100% + ${chatInset})` }
                   : undefined
               }
             >

@@ -1663,7 +1663,7 @@ export default interface Resources {
       label: "Assistants";
       muted: "Muted";
       "new": "New assistant";
-      working: "Working…";
+      working: "Working";
     };
     routines: {
       access: {

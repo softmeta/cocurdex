@@ -263,15 +263,31 @@ runScenario("personal-agents", {
                 if (!panel) return;
                 observer.disconnect();
                 requestAnimationFrame(async () => {
-                  const initial = panel.getBoundingClientRect().left;
-                  await Promise.all(
-                    panel
-                      .getAnimations()
-                      .map((animation) => animation.finished),
+                  const chat = document.querySelector(
+                    '[data-testid="shell-chat-surface"]',
                   );
+                  const gap = () =>
+                    panel.getBoundingClientRect().left -
+                    (chat.getBoundingClientRect().right -
+                      Number.parseFloat(
+                        getComputedStyle(chat).paddingInlineEnd,
+                      ));
+                  const initial = panel.getBoundingClientRect().left;
+                  let maximumGap = Math.abs(gap());
+                  const animations = [
+                    ...panel.getAnimations(),
+                    ...panel.parentElement.getAnimations(),
+                  ];
+                  while (
+                    animations.some(({ playState }) => playState === "running")
+                  ) {
+                    await new Promise(requestAnimationFrame);
+                    maximumGap = Math.max(maximumGap, Math.abs(gap()));
+                  }
                   resolve({
                     initial,
                     settled: panel.getBoundingClientRect().left,
+                    maximumGap,
                   });
                 });
               });
@@ -288,6 +304,11 @@ runScenario("personal-agents", {
         check(
           motion.initial > motion.settled,
           "the overview slides in from the right",
+          motion,
+        );
+        check(
+          motion.maximumGap <= 1,
+          "the chat edge tracks the overview throughout the opening",
           motion,
         );
         await clearColorScheme(session);
