@@ -62,10 +62,6 @@ export function ApplicationsView() {
           allowDelegatedWork: false,
         }));
       await mutate();
-      if (app.requiresClient && !connection.configured) {
-        setSelectedId(connection.id);
-        return;
-      }
       setAdding(null);
       await login.start(connection.id);
     } catch (cause) {
@@ -216,10 +212,10 @@ export function ApplicationsView() {
                     <div>
                       <div className="text-body">{app.name}</div>
                       <div className="text-meta text-muted-foreground">
-                        {app.requiresClient
-                          ? t("apps.ownOAuth", {
+                        {app.id === "github"
+                          ? t("apps.githubAuth", {
                               defaultValue:
-                                "Requires your own OAuth application",
+                                "Uses your GitHub CLI sign-in, or authorize in your browser",
                             })
                           : t("apps.browserOAuth", {
                               defaultValue: "Authorize in your browser",

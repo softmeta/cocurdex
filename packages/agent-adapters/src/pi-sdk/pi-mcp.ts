@@ -385,3 +385,35 @@ export function signOutPiMcpServer(location: PiMcpLocation, name: string) {
   if (!url) return false;
   return new McpOAuthCredentialStore().remove(name, url);
 }
+
+function entryUrl(entry: McpServerEntry) {
+  const url = "url" in entry.config ? entry.config.url : undefined;
+  if (!url) throw new Error(`MCP server "${entry.name}" has no URL`);
+  return url;
+}
+
+export async function savePiMcpAccessToken(
+  location: PiMcpLocation,
+  name: string,
+  token: { accessToken: string; scope?: string },
+  expectedConfig?: McpServerConfig,
+) {
+  const { entry } = findEntry(location, name, expectedConfig);
+  const serverUrl = entryUrl(entry);
+  await new McpOAuthCredentialStore().forServer(name, serverUrl).save({
+    serverUrl,
+    tokens: {
+      access_token: token.accessToken,
+      token_type: "bearer",
+      ...(token.scope ? { scope: token.scope } : {}),
+    },
+  });
+}
+
+export function readPiMcpAccessToken(location: PiMcpLocation, name: string) {
+  const { entry } = findEntry(location, name);
+  return (
+    new McpOAuthCredentialStore().tokens(name, entryUrl(entry))?.access_token ??
+    null
+  );
+}

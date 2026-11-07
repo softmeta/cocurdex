@@ -12,10 +12,6 @@ import { AppRemoveButton, SettingRow, SettingsGroup } from "@/components";
 import { Button, Input, Label, Switch } from "@/components/ui";
 import { desktopApi, requestDaemon } from "@/lib";
 import {
-  type ApplicationOAuthChanges,
-  ApplicationOAuthSetup,
-} from "./application-oauth-setup";
-import {
   applicationStateLabel,
   isApplicationConnected,
 } from "./application-state";
@@ -81,10 +77,6 @@ export function ApplicationDetail({
       return;
     }
     if (next !== connection.displayName) void update({ displayName: next });
-  }
-
-  function saveOAuth(changes: ApplicationOAuthChanges) {
-    return update(changes);
   }
 
   const disabled = busy || login.busyId !== null;
@@ -185,17 +177,10 @@ export function ApplicationDetail({
           />
         </SettingRow>
       </SettingsGroup>
-      {app?.requiresClient ? (
-        <ApplicationOAuthSetup
-          connection={connection}
-          disabled={disabled}
-          onSave={saveOAuth}
-        />
-      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button
           variant="ghost"
-          disabled={disabled || !connection.configured || !connection.enabled}
+          disabled={disabled || !connection.enabled}
           onClick={() => void login.start(connection.id)}
         >
           <Plug className="size-3.5" />
@@ -203,7 +188,7 @@ export function ApplicationDetail({
         </Button>
         <Button
           variant="ghost"
-          disabled={disabled || !connection.configured}
+          disabled={disabled}
           onClick={() =>
             void run(() =>
               requestDaemon("application.check", { id: connection.id }),

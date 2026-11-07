@@ -7,8 +7,6 @@ export function applicationStateLabel(
 ): string {
   if (!connection.enabled)
     return t("apps.disabled", { defaultValue: "Disabled" });
-  if (!connection.configured)
-    return t("apps.setupRequired", { defaultValue: "Setup required" });
   if (!connection.status)
     return t("apps.notChecked", { defaultValue: "Not checked" });
   if (connection.status.state === "connected")

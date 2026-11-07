@@ -1,3 +1,4 @@
+import { readPiMcpAccessToken } from "@cocurdex/agent-adapters/pi-mcp";
 import { ApplicationService } from "@cocurdex/daemon/internal/application-service";
 import { DaemonMcpService } from "@cocurdex/daemon/internal/mcp-service";
 import { routineRunPolicy } from "@cocurdex/daemon/internal/routines/routine-run-policy";
@@ -8,15 +9,25 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 const dirs = createTempDirs();
 afterAll(() => dirs.cleanup());
 
-function edit({
-  clientId: _client,
-  callbackPort: _port,
-  ...connection
-}: ApplicationConnection) {
+function edit(connection: ApplicationConnection) {
   return connection;
 }
 
-async function setup() {
+function githubLogin(cliToken: string | null) {
+  return {
+    cliToken: vi.fn(async () => cliToken),
+    deviceCode: vi.fn(async () => ({
+      deviceCode: "synthetic-device",
+      userCode: "ABCD-1234",
+      verificationUri: "https://github.com/login/device",
+      intervalSeconds: 5,
+      expiresInSeconds: 900,
+    })),
+    pollToken: vi.fn(async () => ({ accessToken: "synthetic-device-token" })),
+  };
+}
+
+async function setup(github = githubLogin(null)) {
   const mcp = new DaemonMcpService(
     await dirs.create("apps-"),
     async () => null,
@@ -39,6 +50,8 @@ async function setup() {
     mcp,
     async (id) => ["a", "b"].includes(id),
     factory,
+    undefined,
+    github,
   );
   const added = await apps.add({
     applicationId: "notion",
@@ -232,27 +245,73 @@ describe("application connections", () => {
     const disabled = await apps.update({ ...edit(granted), enabled: false });
     expect(disabled.status).toBeNull();
   });
-  it("requires GitHub client configuration, keeps secrets private, and removes only the selected connection", async () => {
-    const { apps, added } = await setup();
-    const github = await apps.add({
+  it("signs GitHub in with the gh token once, then uses device authorization for another account", async () => {
+    const github = githubLogin("synthetic-gh-token");
+    const { apps, mcp, added } = await setup(github);
+    const first = await apps.add({
       applicationId: "github",
       displayName: "Code",
       personaIds: [],
       allowDelegatedWork: false,
     });
-    expect(github.configured).toBe(false);
-    await expect(apps.startLogin(github.id)).rejects.toThrow("Configure");
-    const configured = await apps.update({
-      ...edit(github),
-      enabled: true,
-      clientId: "synthetic-client",
-      clientSecret: "synthetic-secret",
-      callbackPort: 19173,
+    expect(await apps.startLogin(first.id)).toEqual({
+      loginId: null,
+      authUrl: null,
     });
-    expect(configured.configured).toBe(true);
-    expect(JSON.stringify(await apps.list())).not.toContain("synthetic-secret");
-    await apps.remove(github.id);
-    expect((await apps.list()).map((item) => item.id)).toEqual([added.id]);
+    const location = await mcp.location();
+    expect(readPiMcpAccessToken(location, first.id)).toBe("synthetic-gh-token");
+    const second = await apps.add({
+      applicationId: "github",
+      displayName: "Work code",
+      personaIds: [],
+      allowDelegatedWork: false,
+    });
+    const started = await apps.startLogin(second.id);
+    expect(started).toMatchObject({
+      authUrl: "https://github.com/login/device",
+      userCode: "ABCD-1234",
+    });
+    expect(await apps.waitLogin(second.id, started.loginId ?? "")).toEqual({
+      success: true,
+      error: null,
+    });
+    expect(readPiMcpAccessToken(location, second.id)).toBe(
+      "synthetic-device-token",
+    );
+    await apps.remove(second.id);
+    expect((await apps.list()).map((item) => item.id)).toEqual([
+      added.id,
+      first.id,
+    ]);
+  });
+
+  it("cancels a pending GitHub device authorization", async () => {
+    const github = githubLogin(null);
+    github.pollToken.mockImplementation(
+      (_code, signal: AbortSignal) =>
+        new Promise((_resolve, reject) =>
+          signal.addEventListener("abort", () =>
+            reject(new Error("GitHub authorization was cancelled")),
+          ),
+        ),
+    );
+    const { apps, mcp } = await setup(github);
+    const connection = await apps.add({
+      applicationId: "github",
+      displayName: "Code",
+      personaIds: [],
+      allowDelegatedWork: false,
+    });
+    const started = await apps.startLogin(connection.id);
+    const waiting = apps.waitLogin(connection.id, started.loginId ?? "");
+    apps.cancelLogin(connection.id, started.loginId ?? "");
+    expect(await waiting).toEqual({
+      success: false,
+      error: "GitHub authorization was cancelled",
+    });
+    expect(
+      readPiMcpAccessToken(await mcp.location(), connection.id),
+    ).toBeNull();
   });
 
   it("fails closed if advanced settings replace a catalog endpoint or managed metadata", async () => {

@@ -1,7 +1,7 @@
 import { type InboxItem, personalAgentRoleDraft } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { FolderPlus, SquarePen } from "lucide-react";
-import { type ReactNode, startTransition, useOptimistic } from "react";
+import { type ReactNode, startTransition, useOptimistic, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppSidebarIconButton } from "@/components/app";
@@ -159,7 +159,10 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
+  const creatingPersonalAgent = useRef(false);
   const handleCreatePersonalAgent = async () => {
+    if (creatingPersonalAgent.current) return;
+    creatingPersonalAgent.current = true;
     try {
       const agents = await personalApi.list();
       const template = agents.find((agent) => agent.isDefault)?.role;
@@ -181,6 +184,8 @@ export function LeftSidebar({
       setPersonalAgentEditId(created.id);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      creatingPersonalAgent.current = false;
     }
   };
 

@@ -8,7 +8,6 @@ export const APPLICATION_CATALOG = [
     url: "https://mcp.notion.com/mcp",
     documentationUrl:
       "https://developers.notion.com/guides/mcp/get-started-with-mcp",
-    requiresClient: false,
   },
   {
     id: "linear",
@@ -16,7 +15,6 @@ export const APPLICATION_CATALOG = [
     category: "development",
     url: "https://mcp.linear.app/mcp",
     documentationUrl: "https://linear.app/docs/mcp",
-    requiresClient: false,
   },
   {
     id: "github",
@@ -24,7 +22,6 @@ export const APPLICATION_CATALOG = [
     category: "development",
     url: "https://api.githubcopilot.com/mcp/",
     documentationUrl: "https://github.com/github/github-mcp-server",
-    requiresClient: true,
   },
 ] as const;
 
@@ -44,9 +41,6 @@ export interface ApplicationMetadata {
 export interface ApplicationConnection extends ApplicationMetadata {
   id: string;
   enabled: boolean;
-  configured: boolean;
-  clientId: string | null;
-  callbackPort: number | null;
   status: McpServerStatus | null;
 }
 
@@ -64,9 +58,6 @@ export interface UpdateApplicationPayload {
   personaIds: string[];
   allowDelegatedWork: boolean;
   enabled: boolean;
-  clientId?: string;
-  clientSecret?: string;
-  callbackPort?: number;
 }
 
 export interface ApplicationTool {

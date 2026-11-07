@@ -6,6 +6,7 @@ export interface ApplicationLoginWaiting {
   id: string;
   loginId: string;
   authUrl: string;
+  userCode: string | null;
 }
 
 export interface ApplicationLogin {
@@ -56,9 +57,18 @@ export function useApplicationLogin(
         return;
       }
       if (started.loginId && started.authUrl) {
-        const next = { id, loginId: started.loginId, authUrl: started.authUrl };
+        const next = {
+          id,
+          loginId: started.loginId,
+          authUrl: started.authUrl,
+          userCode: started.userCode ?? null,
+        };
         active.current = { id, loginId: started.loginId };
         setWaiting(next);
+        if (started.userCode)
+          await navigator.clipboard
+            .writeText(started.userCode)
+            .catch(() => undefined);
         void desktopApi.openExternal(started.authUrl);
         const outcome = await requestDaemon("application.login.wait", {
           id,

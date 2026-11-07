@@ -31,7 +31,7 @@ async function removeOpenConnection(session, t) {
 
 export function assistantApplicationsStep(state) {
   return [
-    "applications connect from the catalog, save grants immediately, and remove in both themes",
+    "application grants save immediately and connections remove in both themes",
     async ({ session }) => {
       const t = (key) => translate(session, `personal:apps.${key}`);
       const created = [];
@@ -69,23 +69,6 @@ export function assistantApplicationsStep(state) {
             reopened.personaIds.includes(state.personaId),
           "grants persist after returning to the connection",
           reopened,
-        );
-        await removeOpenConnection(session, t);
-        const githubConnect = `${await t("connect")} GitHub`;
-        await waitForRole(session, { role: "button", name: githubConnect });
-        await clickByRole(session, { role: "button", name: githubConnect });
-        await waitForRole(session, {
-          role: "textbox",
-          name: await t("clientId"),
-        });
-        const github = (await daemonRequest(session, "application.list")).find(
-          (item) => item.applicationId === "github",
-        );
-        check(
-          github?.configured === false &&
-            github.personaIds.includes(state.personaId),
-          "connecting GitHub opens its OAuth setup for the current assistant",
-          github,
         );
         await removeOpenConnection(session, t);
         await waitForRole(session, {

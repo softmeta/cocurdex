@@ -1,8 +1,8 @@
 import { ArrowUpRight, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { SettingsGroup } from "@/components";
-import { Button, Input } from "@/components/ui";
+import { AppCopyButton, SettingsGroup } from "@/components";
+import { Button, Input, Text } from "@/components/ui";
 import { desktopApi } from "@/lib";
 import type { ApplicationLogin } from "./use-application-login";
 
@@ -17,7 +17,8 @@ export function ApplicationLoginPanel({
   const [returnUrl, setReturnUrl] = useState("");
   const waiting = login.waiting;
   if (!waiting) return null;
-  const remote = !desktopApi.capabilities.localFilePaths;
+  const remote =
+    !desktopApi.capabilities.localFilePaths && waiting.userCode === null;
 
   return (
     <SettingsGroup
@@ -28,11 +29,30 @@ export function ApplicationLoginPanel({
     >
       <div className="flex flex-col gap-3 py-3.5">
         <p role="status" className="text-body text-muted-foreground">
-          {t("apps.waitingHint", {
-            defaultValue:
-              "Finish authorization in your browser. This page updates when you return.",
-          })}
+          {waiting.userCode
+            ? t("apps.deviceCodeHint", {
+                defaultValue:
+                  "Enter this code on the GitHub page in your browser. This page updates when you finish.",
+              })
+            : t("apps.waitingHint", {
+                defaultValue:
+                  "Finish authorization in your browser. This page updates when you return.",
+              })}
         </p>
+        {waiting.userCode ? (
+          <div className="flex items-center gap-2">
+            <Text
+              className="font-mono tracking-widest"
+              size="title"
+              aria-label={t("apps.deviceCode", {
+                defaultValue: "Authorization code",
+              })}
+            >
+              {waiting.userCode}
+            </Text>
+            <AppCopyButton value={waiting.userCode} />
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
