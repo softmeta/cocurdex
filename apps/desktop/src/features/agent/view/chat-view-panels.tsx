@@ -63,7 +63,7 @@ interface ChatComposerControls {
   pendingPermissionRequest?: AgentPermissionRequestRecord | null;
   pendingPlanApproval?: AgentPlanApprovalRecord | null;
   queuedInputs?: QueuedAgentInputItem[];
-  supportsSteering?: boolean;
+  canSteerQueuedInput?: boolean;
   /** Live ACP task list (todo_write / plan update) — docked above the composer. */
   plan?: SessionPlan | null;
   workspaceRootPath?: string | null;
@@ -133,7 +133,7 @@ export function ComposerDock({
   pendingPermissionRequest,
   pendingPlanApproval,
   queuedInputs = [],
-  supportsSteering = false,
+  canSteerQueuedInput = false,
   plan = null,
   planCollapsed = false,
   onDismissPlan,
@@ -205,13 +205,14 @@ export function ComposerDock({
         onSteerQueuedInput &&
         onUpdateQueuedInput ? (
           <QueuedInputShelf
+            isRunning={isRunning}
             items={queuedInputs}
             onDelete={onDeleteQueuedInput}
             onSendNow={onSendNowQueuedInput}
             onResume={queuePaused ? onResumeQueuedInputs : undefined}
             onSteer={onSteerQueuedInput}
             onUpdate={onUpdateQueuedInput}
-            supportsSteering={supportsSteering && isRunning}
+            canSteerQueuedInput={canSteerQueuedInput && isRunning}
           />
         ) : null}
         {pendingPlanApproval ? (

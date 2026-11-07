@@ -678,57 +678,46 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.shutdown();
   });
 
-  it("interrupts the active turn to send a queued input immediately", async () => {
+  it("leaves the active turn and follow-up order intact when asked to send now", async () => {
     const service = await createService();
-    let completeActiveTurn: (() => void) | undefined;
+    let completeActiveTurn!: () => void;
     const activeTurn = new Promise<MessageRecord>((resolve) => {
       completeActiveTurn = () =>
-        resolve(createRuntimeMessage("Interrupted turn"));
-    });
-    let completeSecondTurn: (() => void) | undefined;
-    const secondTurn = new Promise<MessageRecord>((resolve) => {
-      completeSecondTurn = () => resolve(createRuntimeMessage("Sent now"));
+        resolve(createRuntimeMessage("Completed first turn"));
     });
     const send = vi
       .spyOn(service.runtime, "sendSessionMessage")
       .mockImplementationOnce(() => activeTurn)
-      .mockImplementation(() => secondTurn);
-    const cancel = vi
-      .spyOn(service.runtime, "cancelSessionTurn")
-      .mockImplementation(async () => {
-        completeActiveTurn?.();
-        return true;
-      });
+      .mockResolvedValue(createRuntimeMessage("Completed follow-up"));
+    const cancel = vi.spyOn(service.runtime, "cancelSessionTurn");
 
-    await service.sendSessionMessage(
-      createPayload("First turn", "start-new-run"),
-    );
-    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
-    const firstQueued = await service.sendSessionMessage(
-      createPayload("Stays queued", "queue-after-run"),
-    );
-    const secondQueued = await service.sendSessionMessage(
-      createPayload("Send me now", "queue-after-run"),
-    );
+    try {
+      await service.sendSessionMessage(
+        createPayload("First turn", "start-new-run"),
+      );
+      await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
+      const firstQueued = await service.sendSessionMessage(
+        createPayload("First queued", "queue-after-run"),
+      );
+      const secondQueued = await service.sendSessionMessage(
+        createPayload("Second queued", "queue-after-run"),
+      );
 
-    await expect(
-      service.sendQueuedAgentInputNow("session-1", secondQueued.id),
-    ).resolves.toMatchObject({ id: secondQueued.id, content: "Send me now" });
-    expect(cancel).toHaveBeenCalledWith("session-1");
+      await expect(
+        service.sendQueuedAgentInputNow("session-1", secondQueued.id),
+      ).rejects.toThrow("while the current turn is running");
+      expect(cancel).not.toHaveBeenCalled();
+      expect(send).toHaveBeenCalledOnce();
 
-    await waitForDispatch(() => expect(send).toHaveBeenCalledTimes(2));
-    expect(send.mock.calls[1]?.[0]).toMatchObject({
-      messageId: secondQueued.id,
-      content: "Send me now",
-      delivery: "start-new-run",
-    });
-    expect(service.getActiveWork().queuedInputs).toBe(1);
-    expect((await service.bootstrap()).queuedAgentInputs).toEqual([
-      expect.objectContaining({ messageId: firstQueued.id }),
-    ]);
-
-    completeSecondTurn?.();
-    await service.shutdown();
+      completeActiveTurn();
+      await waitForDispatch(() => expect(send).toHaveBeenCalledTimes(3));
+      expect(
+        send.mock.calls.slice(1).map(([payload]) => payload.messageId),
+      ).toEqual([firstQueued.id, secondQueued.id]);
+    } finally {
+      completeActiveTurn();
+      await service.shutdown();
+    }
   });
 
   it("keeps follow-ups paused across daemon restarts until sent", async () => {

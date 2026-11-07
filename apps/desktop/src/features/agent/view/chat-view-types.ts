@@ -63,7 +63,7 @@ export interface ChatViewProps {
   status?: SessionStatus;
   isRunning?: boolean;
   canSendWhileRunning?: boolean;
-  supportsSteering?: boolean;
+  canSteerQueuedInput?: boolean;
   runtime?: AgentSessionRuntimeState | null;
   queuedInputs?: QueuedAgentInputItem[];
   onClearAttachment?(): void;

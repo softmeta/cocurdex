@@ -16,14 +16,8 @@ export type ActivityKind =
   | "thinking"
   | "usingTools";
 
-export type ActivityStep =
-  | { headline: string; kind: "reasoning" }
-  | { kind: "toolCall"; toolCall: AgentToolCallRecord };
-
 export type ActivityState = {
-  activeToolCalls?: AgentToolCallRecord[];
   kind: ActivityKind;
-  latestStep?: ActivityStep;
   tone: "complete" | "error" | "muted" | "running";
   toolActivityId?: string;
 };
@@ -64,67 +58,6 @@ function isStreamingResponse(
   );
 }
 
-type ReasoningLine = { isTitle: boolean; text: string };
-
-function parseReasoningLine(line: string): ReasoningLine | null {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.startsWith("<!--")) {
-    return null;
-  }
-  const isHeading = trimmed.startsWith("#");
-  const text = trimmed.replace(/^#+/, "").trim();
-  if (!text.startsWith("**")) {
-    return text ? { isTitle: isHeading, text } : null;
-  }
-  const boldEnd = text.indexOf("**", 2);
-  if (boldEnd < 0) {
-    return null;
-  }
-  const title = `${text.slice(2, boldEnd)}${text.slice(boldEnd + 2)}`.trim();
-  return title ? { isTitle: true, text: title } : null;
-}
-
-export function getReasoningHeadline(content: string) {
-  const lines = content
-    .split(/\r?\n/)
-    .map(parseReasoningLine)
-    .filter((line): line is ReasoningLine => line !== null);
-  return (
-    lines.findLast((line) => line.isTitle)?.text ?? lines.at(-1)?.text ?? null
-  );
-}
-
-function getLatestReasoningHeadline(messages: MessageRecord[]) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (!message || message.role === "user") {
-      return null;
-    }
-    const headline =
-      message.kind === "reasoning"
-        ? getReasoningHeadline(message.content)
-        : null;
-    if (headline) {
-      return { headline, message };
-    }
-  }
-  return null;
-}
-
-function getLatestStep(
-  messages: MessageRecord[],
-  latestToolCall: AgentToolCallRecord | undefined,
-): ActivityStep | null {
-  const reasoning = getLatestReasoningHeadline(messages);
-  if (
-    latestToolCall &&
-    (!reasoning || startedAfter(latestToolCall, reasoning.message))
-  ) {
-    return { kind: "toolCall", toolCall: latestToolCall };
-  }
-  return reasoning ? { headline: reasoning.headline, kind: "reasoning" } : null;
-}
-
 export function getActivityState({
   isRunning,
   messages,
@@ -154,13 +87,12 @@ export function getActivityState({
     tone: "running" as const,
     toolActivityId: latestToolCall?.id,
   };
-  const activeToolCalls = toolCalls.filter(
+  const hasActiveToolCall = toolCalls.some(
     (toolCall) =>
       isActiveToolCall(toolCall) && !isWorktreeSetupToolCall(toolCall),
   );
-  if (isRunning && activeToolCalls.length > 0) {
+  if (isRunning && hasActiveToolCall) {
     return {
-      activeToolCalls,
       kind: "usingTools",
       ...runningState,
     };
@@ -179,67 +111,8 @@ export function getActivityState({
     return { kind: "responding", ...runningState };
   }
 
-  const latestStep = getLatestStep(messages, latestToolCall);
   return {
     kind: latestMessage?.role === "assistant" ? "thinking" : "planning",
     ...runningState,
-    ...(latestStep ? { latestStep } : {}),
   };
-}
-
-const TOOL_CALL_REVEAL_DELAY_MS = 400;
-const TOOL_CALL_MIN_VISIBLE_MS = 800;
-
-export type ShownToolCall = { at: number; toolCall: AgentToolCallRecord };
-
-export function getShownToolCallChangeDelay({
-  activeToolCallId,
-  now,
-  shown,
-}: {
-  activeToolCallId: string | null;
-  now: number;
-  shown: ShownToolCall | null;
-}): number | null {
-  if (activeToolCallId === (shown?.toolCall.id ?? null)) {
-    return null;
-  }
-
-  const remainingVisibleMs = shown
-    ? Math.max(0, shown.at + TOOL_CALL_MIN_VISIBLE_MS - now)
-    : 0;
-
-  if (activeToolCallId === null) {
-    return remainingVisibleMs;
-  }
-
-  return Math.max(TOOL_CALL_REVEAL_DELAY_MS, remainingVisibleMs);
-}
-
-const STEP_MIN_VISIBLE_MS = 1500;
-
-export type ShownStep = { at: number; key: string; step: ActivityStep };
-
-export function getActivityStepKey(step: ActivityStep) {
-  return step.kind === "reasoning"
-    ? `reasoning:${step.headline}`
-    : `toolCall:${step.toolCall.id}`;
-}
-
-export function getShownStepChangeDelay({
-  activeKey,
-  now,
-  shown,
-}: {
-  activeKey: string | null;
-  now: number;
-  shown: Pick<ShownStep, "at" | "key"> | null;
-}): number | null {
-  if (activeKey === (shown?.key ?? null)) {
-    return null;
-  }
-  if (!shown) {
-    return 0;
-  }
-  return Math.max(0, shown.at + STEP_MIN_VISIBLE_MS - now);
 }

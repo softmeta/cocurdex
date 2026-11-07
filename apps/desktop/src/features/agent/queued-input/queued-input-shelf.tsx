@@ -38,8 +38,9 @@ import { messageOriginLabel } from "../view/message-origin-label";
 import type { QueuedAgentInputItem } from "./queued-input-store";
 
 interface QueuedInputShelfProps {
+  isRunning: boolean;
   items: QueuedAgentInputItem[];
-  supportsSteering: boolean;
+  canSteerQueuedInput: boolean;
   onDelete(item: QueuedAgentInputItem): Promise<void>;
   onSendNow(item: QueuedAgentInputItem): Promise<void>;
   onSteer(item: QueuedAgentInputItem): Promise<void>;
@@ -53,8 +54,9 @@ interface QueuedInputRowProps
 }
 
 function QueuedInputRow({
+  isRunning,
   item,
-  supportsSteering,
+  canSteerQueuedInput,
   onDelete,
   onSendNow,
   onSteer,
@@ -194,7 +196,7 @@ function QueuedInputRow({
             ? stripPeerEnvelope(item.message.content)
             : item.message.content}
         </Text>
-        {supportsSteering ? (
+        {canSteerQueuedInput ? (
           <Button
             disabled={pendingAction !== null}
             onClick={() => {
@@ -218,14 +220,16 @@ function QueuedInputRow({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-max">
-            <DropdownMenuItem
-              onClick={() => {
-                void runAction("sendNow", () => onSendNow(item));
-              }}
-            >
-              <SendHorizontal className="size-4" />
-              {t("queue.sendNow")}
-            </DropdownMenuItem>
+            {!isRunning ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  void runAction("sendNow", () => onSendNow(item));
+                }}
+              >
+                <SendHorizontal className="size-4" />
+                {t("queue.sendNow")}
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem
               onClick={() => {
                 setDraft(item.message.content);

@@ -82,7 +82,7 @@ export function ChatView({
   status,
   isRunning = false,
   canSendWhileRunning = false,
-  supportsSteering = false,
+  canSteerQueuedInput = false,
   runtime,
   queuedInputs = [],
   onClearAttachment,
@@ -501,7 +501,7 @@ export function ChatView({
             runtimeCommands={runtime?.commands}
             runtimeMode={runtime?.mode}
             queuedInputs={queuedInputs}
-            supportsSteering={supportsSteering}
+            canSteerQueuedInput={canSteerQueuedInput}
             onClearAttachment={onClearAttachment}
             onSelectSessionMode={onSelectSessionMode}
             onSelectPermissionMode={onSelectPermissionMode}
