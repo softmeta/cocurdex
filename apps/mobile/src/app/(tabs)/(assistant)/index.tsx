@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { AssistantHome } from "@/assistant";
 import { EmptyHosts, useCurrentHost, usePairingRoutes } from "@/hosts";
+import { LaunchReady } from "@/launch";
 import { ListScreenHeader } from "@/ui";
 
 export default function AssistantScreen() {
@@ -13,7 +14,10 @@ export default function AssistantScreen() {
       {host ? (
         <AssistantHome key={host.hostId} host={host} />
       ) : (
-        <EmptyHosts onScan={() => void openScan()} onPaste={openPaste} />
+        <>
+          <EmptyHosts onScan={() => void openScan()} onPaste={openPaste} />
+          <LaunchReady />
+        </>
       )}
     </>
   );

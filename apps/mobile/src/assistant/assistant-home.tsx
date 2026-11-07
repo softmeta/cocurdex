@@ -3,6 +3,7 @@ import type { InboxItem } from "@cocurdex/shared";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { SectionList, StyleSheet } from "react-native";
+import { LaunchReady } from "@/launch";
 import {
   ListNotice,
   ListSectionHeader,
@@ -61,14 +62,17 @@ export function AssistantHome({ host }: { host: SavedHost }) {
   if (!agents.data) {
     if (!agents.error) return <PendingIndicator />;
     return (
-      <ListNotice
-        icon={{ ios: "wifi.slash", android: "cloud_off" }}
-        title={t("unavailable.title", { host: host.name })}
-        action={{
-          label: t("unavailable.retry"),
-          onPress: () => void revalidateAssistant(host.hostId),
-        }}
-      />
+      <>
+        <LaunchReady />
+        <ListNotice
+          icon={{ ios: "wifi.slash", android: "cloud_off" }}
+          title={t("unavailable.title", { host: host.name })}
+          action={{
+            label: t("unavailable.retry"),
+            onPress: () => void revalidateAssistant(host.hostId),
+          }}
+        />
+      </>
     );
   }
 
@@ -99,33 +103,40 @@ export function AssistantHome({ host }: { host: SavedHost }) {
     );
   };
 
+  const settled =
+    (inbox.data !== undefined || inbox.error !== undefined) &&
+    (brief.data !== undefined || brief.error !== undefined);
+
   return (
-    <SectionList<AssistantRow, AssistantSection>
-      {...scrollIndicator}
-      contentContainerStyle={{ paddingBottom: tabBarInset }}
-      style={styles.fill}
-      contentInsetAdjustmentBehavior="automatic"
-      sections={sections}
-      keyExtractor={(row) => row.key}
-      stickySectionHeadersEnabled={false}
-      refreshing={pull.refreshing}
-      onRefresh={pull.onRefresh}
-      ListEmptyComponent={
-        <ListNotice
-          icon={{ ios: "sparkles", android: "auto_awesome" }}
-          title={t("empty.title")}
-          description={t("empty.description", { host: host.name })}
-        />
-      }
-      renderSectionHeader={({ section }) => (
-        <ListSectionHeader
-          title={titles[section.kind]}
-          count={section.kind === "inbox" ? section.data.length : undefined}
-          testID={`assistant-section-${section.kind}`}
-        />
-      )}
-      renderItem={renderItem}
-    />
+    <>
+      {settled ? <LaunchReady /> : null}
+      <SectionList<AssistantRow, AssistantSection>
+        {...scrollIndicator}
+        contentContainerStyle={{ paddingBottom: tabBarInset }}
+        style={styles.fill}
+        contentInsetAdjustmentBehavior="automatic"
+        sections={sections}
+        keyExtractor={(row) => row.key}
+        stickySectionHeadersEnabled={false}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
+        ListEmptyComponent={
+          <ListNotice
+            icon={{ ios: "sparkles", android: "auto_awesome" }}
+            title={t("empty.title")}
+            description={t("empty.description", { host: host.name })}
+          />
+        }
+        renderSectionHeader={({ section }) => (
+          <ListSectionHeader
+            title={titles[section.kind]}
+            count={section.kind === "inbox" ? section.data.length : undefined}
+            testID={`assistant-section-${section.kind}`}
+          />
+        )}
+        renderItem={renderItem}
+      />
+    </>
   );
 }
 
