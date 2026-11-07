@@ -163,12 +163,15 @@ export default interface Resources {
     };
     tabs: {
       assistant: "Assistant";
+      assistantDescription: "Talk to your assistants";
       chat: "Chat";
+      chatDescription: "Chat with a model";
       issues: "Issues";
       notes: "Notes";
       settings: "Settings";
       switchMode: "Switch mode ({{mode}})";
       work: "Work";
+      workDescription: "Run workspace tasks";
     };
   };
   files: {

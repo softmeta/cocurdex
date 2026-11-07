@@ -60,11 +60,14 @@
   },
   "tabs": {
     "assistant": "助理",
+    "assistantDescription": "和你的专属助理协作",
     "chat": "聊天",
+    "chatDescription": "直接和模型对话",
     "issues": "事项",
     "notes": "笔记",
     "settings": "设置",
     "switchMode": "切换模式（当前为{{mode}}）",
-    "work": "工作"
+    "work": "工作",
+    "workDescription": "在工作区执行任务"
   }
 }

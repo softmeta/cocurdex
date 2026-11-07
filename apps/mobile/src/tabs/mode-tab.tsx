@@ -15,6 +15,7 @@ export const SESSION_MODES = [
     href: "/",
     icon: { ios: "sparkles", android: "auto_awesome" },
     label: "tabs.assistant",
+    description: "tabs.assistantDescription",
   },
   {
     key: "work",
@@ -22,6 +23,7 @@ export const SESSION_MODES = [
     href: "/sessions",
     icon: { ios: "folder", android: "folder" },
     label: "tabs.work",
+    description: "tabs.workDescription",
   },
   {
     key: "chat",
@@ -29,6 +31,7 @@ export const SESSION_MODES = [
     href: "/chat",
     icon: { ios: "bubble.left", android: "chat_bubble" },
     label: "tabs.chat",
+    description: "tabs.chatDescription",
   },
 ] as const;
 
@@ -47,9 +50,11 @@ export function SessionModeHeader(
           testID: "session-mode-switch",
           onPress: (anchor) =>
             menu.open(anchor, {
+              preferredWidth: 208,
               items: SESSION_MODES.map((option) => ({
                 key: option.key,
                 label: t(option.label),
+                description: t(option.description),
                 icon: option.icon,
                 selected: getTrigger(option.name)?.isFocused,
                 testID: `session-mode-${option.key}`,
