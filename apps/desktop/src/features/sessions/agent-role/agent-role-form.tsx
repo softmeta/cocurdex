@@ -214,7 +214,6 @@ export function AgentRoleForm({
         openCodeVariant: openCodeVariant || null,
         avatar,
       });
-      toast.success(t("settings:agentRoles.saved"));
       onSaved(saved);
     } catch {
       setSaving(false);

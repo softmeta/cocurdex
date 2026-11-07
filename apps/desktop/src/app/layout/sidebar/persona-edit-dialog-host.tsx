@@ -1,7 +1,11 @@
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { usePersonalAgents } from "@/features/personal";
+import { selectSessionAtom } from "@/features/sessions";
 import { PersonaEditDialog } from "./persona-edit-dialog";
-import { personalAgentEditIdAtom } from "./personal-agent-edit-store";
+import {
+  personalAgentDraftAtom,
+  personalAgentEditIdAtom,
+} from "./personal-agent-edit-store";
 
 function EditingPersona({ id, onClose }: { id: string; onClose(): void }) {
   const { agents } = usePersonalAgents();
@@ -19,6 +23,19 @@ function EditingPersona({ id, onClose }: { id: string; onClose(): void }) {
 
 export function PersonaEditDialogHost() {
   const [editId, setEditId] = useAtom(personalAgentEditIdAtom);
+  const [draft, setDraft] = useAtom(personalAgentDraftAtom);
+  const selectSession = useSetAtom(selectSessionAtom);
+  if (draft) {
+    return (
+      <PersonaEditDialog
+        draft={draft}
+        onCreated={(created) => selectSession(created.homeSessionId)}
+        onOpenChange={(open) => {
+          if (!open) setDraft(null);
+        }}
+      />
+    );
+  }
   if (!editId) return null;
   return <EditingPersona id={editId} onClose={() => setEditId(null)} />;
 }

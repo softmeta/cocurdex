@@ -153,7 +153,7 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
-  const handleCreatePersonalAgent = useCreatePersonalAgent(selectFormSession);
+  const handleCreatePersonalAgent = useCreatePersonalAgent();
 
   const toggleWorkspace = (workspaceId: string) => {
     setCollapsedWorkspaceIds((current) =>

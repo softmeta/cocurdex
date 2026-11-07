@@ -1,5 +1,6 @@
 import {
   type MessageAttachment,
+  type PersonalAgentRolePayload,
   personalAgentRoleDraft,
 } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
@@ -12,31 +13,29 @@ import {
   revalidatePersonalAgents,
 } from "@/features/personal";
 import { taskApi } from "@/lib";
-import { personalAgentEditIdAtom } from "./sidebar/personal-agent-edit-store";
+import { personalAgentDraftAtom } from "./sidebar/personal-agent-edit-store";
 
 interface FirstMessage {
   text: string;
   attachments: MessageAttachment[];
 }
 
-function useCreateAssistant() {
+function useAssistantDraft() {
   const { t } = useTranslation("personal");
-  return async () => {
+  return async (): Promise<PersonalAgentRolePayload> => {
     const agents = await personalApi.list();
     const template = agents.find((agent) => agent.isDefault)?.role;
-    return personalApi.create({
-      role: {
-        ...personalAgentRoleDraft(
-          pickPersonaName(
-            t("namePool").split(","),
-            agents.map((agent) => agent.role.name),
-          ),
+    return {
+      ...personalAgentRoleDraft(
+        pickPersonaName(
+          t("namePool").split(","),
+          agents.map((agent) => agent.role.name),
         ),
-        providerId: template?.providerId ?? null,
-        modelId: template?.modelId ?? null,
-        modelName: template?.modelName ?? null,
-      },
-    });
+      ),
+      providerId: template?.providerId ?? null,
+      modelId: template?.modelId ?? null,
+      modelName: template?.modelName ?? null,
+    };
   };
 }
 
@@ -56,32 +55,27 @@ function useSingleFlight() {
   };
 }
 
-export function useCreatePersonalAgent(
-  openSession: (sessionId: string) => void,
-) {
-  const setEditId = useSetAtom(personalAgentEditIdAtom);
-  const createAssistant = useCreateAssistant();
+export function useCreatePersonalAgent() {
+  const setDraft = useSetAtom(personalAgentDraftAtom);
+  const assistantDraft = useAssistantDraft();
   const singleFlight = useSingleFlight();
 
   return async () => {
-    await singleFlight(async () => {
-      const created = await createAssistant();
-      setEditId(created.id);
-      await revalidatePersonalAgents();
-      openSession(created.homeSessionId);
-    });
+    await singleFlight(async () => setDraft(await assistantDraft()));
   };
 }
 
 export function useStartPersonalAgent(
   openSession: (sessionId: string) => void,
 ) {
-  const createAssistant = useCreateAssistant();
+  const assistantDraft = useAssistantDraft();
   const singleFlight = useSingleFlight();
 
   return async ({ text, attachments }: FirstMessage) => {
     const sent = await singleFlight(async () => {
-      const created = await createAssistant();
+      const created = await personalApi.create({
+        role: await assistantDraft(),
+      });
       await taskApi.sendMessage({
         sessionId: created.homeSessionId,
         messageId: crypto.randomUUID(),

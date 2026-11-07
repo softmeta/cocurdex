@@ -214,7 +214,6 @@
       "brief": "Send me a brief every morning at 8",
       "label": "Suggestions",
       "memory": "What do you remember about me?"
-    },
-    "typing": "{{name}} is typing…"
+    }
   }
 }

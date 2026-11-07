@@ -5,7 +5,7 @@ import { Button } from "@/components/ui";
 import { AgentRoleAvatar } from "@/features/sessions";
 
 export function PersonaGreetingActivity({ role }: { role: AgentRoleRecord }) {
-  const { t } = useTranslation("personal");
+  const { t } = useTranslation("agent");
   return (
     <div
       aria-live="polite"
@@ -13,7 +13,7 @@ export function PersonaGreetingActivity({ role }: { role: AgentRoleRecord }) {
     >
       <AgentRoleAvatar role={role} showAgent={false} size="sm" />
       <span className="activity-shimmer truncate">
-        {t("thread.typing", { name: role.name })}
+        {t("activity.thinking")}
       </span>
     </div>
   );

@@ -36,7 +36,7 @@ export function PersonalEmptyState({
   const { t } = useTranslation("personal");
   const { agents, loaded } = usePersonalAgents();
   const selectSession = useSetAtom(selectSessionAtom);
-  const createAssistant = useCreatePersonalAgent(selectSession);
+  const createAssistant = useCreatePersonalAgent();
   const startAssistant = useStartPersonalAgent(selectSession);
   useOpenFirstAssistant(agents, selectedSessionId);
   if (!loaded || agents.length > 0) return <div className="h-full" />;

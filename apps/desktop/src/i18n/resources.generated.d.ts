@@ -1750,7 +1750,6 @@ export default interface Resources {
         label: "Suggestions";
         memory: "What do you remember about me?";
       };
-      typing: "{{name}} is typing…";
     };
   };
   search: {
@@ -2467,7 +2466,6 @@ export default interface Resources {
       runtime: "Agent and model";
       save: "Save";
       saveFailed: "Could not save this role.";
-      saved: "Role updated";
     };
     appearance: {
       groupTitle: "Appearance";

@@ -145,11 +145,9 @@ runScenario("personal-agents", {
           name: await translate(session, "personal:edit.title"),
         };
         await waitForRole(session, dialog, UI_TIMEOUT_MS);
-        const [assistant] = await personas(session);
         check(
-          assistant?.isDefault,
-          "the first assistant becomes the default",
-          assistant,
+          (await personas(session)).length === 0,
+          "opening the dialog creates nothing until it is saved",
         );
         stub.plan = { kind: "stream", chunks: [FIRST_GREETING] };
         await clickByRole(session, {
@@ -158,6 +156,12 @@ runScenario("personal-agents", {
           within: dialog,
         });
         await waitForNoRole(session, dialog, UI_TIMEOUT_MS);
+        const [assistant] = await personas(session);
+        check(
+          assistant?.isDefault,
+          "the first assistant becomes the default",
+          assistant,
+        );
         await waitForNoRole(session, invite, UI_TIMEOUT_MS);
         const selected = await session.run(
           (id) =>
@@ -441,16 +445,9 @@ runScenario("personal-agents", {
           );
           await session.send("Input.insertText", { text });
         }
-        const unsaved = (await personas(session)).find(
-          (agent) => !agent.isDefault && agent.role.name !== "Coach",
-        );
-        const before = await daemonRequest(session, "session.snapshot", {
-          sessionId: unsaved.homeSessionId,
-        });
         check(
-          before.messages.length === 0,
-          "a new assistant does not greet while its edit dialog is open",
-          before.messages,
+          (await personas(session)).length === 1,
+          "a new assistant does not exist until its edit dialog is saved",
         );
         stub.plan = { kind: "stream", chunks: [COACH_GREETING] };
         await clickByRole(session, {
@@ -474,9 +471,12 @@ runScenario("personal-agents", {
           },
           UI_TIMEOUT_MS,
         );
+        const saved = (await personas(session)).find(
+          (agent) => agent.role.name === "Coach",
+        );
         const greeted = await waitForMessages(
           session,
-          unsaved.homeSessionId,
+          saved.homeSessionId,
           (messages) => messages.length > 0,
         );
         check(
