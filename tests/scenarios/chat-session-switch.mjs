@@ -12,7 +12,7 @@ const UI_TIMEOUT_MS = 30_000;
 const args = readScenarioArgs();
 
 function sessionRow(title) {
-  return { role: "button", name: new RegExp(`^${title}(?:$|\(?:$|\s+(?![(（])))`) };
+  return { role: "button", name: new RegExp(`^${title}(?:$|\\s+(?![(（]))`) };
 }
 
 function installPaintSampler() {
