@@ -1,10 +1,6 @@
-import {
-  APPLICATION_CATALOG,
-  type ApplicationConnection,
-  type ApplicationId,
-} from "@cocurdex/shared";
+import { APPLICATION_CATALOG, type ApplicationId } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import { ArrowLeft, ArrowUpRight, Plug, Plus, Search } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Plug, Search } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -15,7 +11,13 @@ import { activeSessionIdAtom, sessionsAtom } from "@/features/sessions";
 import { openSettings } from "@/features/settings";
 import { requestDaemon } from "@/lib";
 import { ApplicationDetail } from "./application-detail";
+import { ApplicationLoginPanel } from "./application-login-panel";
 import { useApplications } from "./application-queries";
+import {
+  applicationStateLabel,
+  isApplicationConnected,
+} from "./application-state";
+import { useApplicationLogin } from "./use-application-login";
 
 export function ApplicationsView() {
   const { t } = useTranslation("personal");
@@ -32,6 +34,7 @@ export function ApplicationsView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState<ApplicationId | null>(null);
+  const login = useApplicationLogin(() => mutate());
   const selected = data?.find((item) => item.id === selectedId);
   const matches = (value: string) =>
     value.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
@@ -39,18 +42,32 @@ export function ApplicationsView() {
     matches(`${item.displayName} ${item.applicationId}`),
   );
 
-  async function add(applicationId: ApplicationId) {
+  async function connect(applicationId: ApplicationId) {
+    const app = APPLICATION_CATALOG.find((item) => item.id === applicationId);
+    if (!app) return;
     setAdding(applicationId);
     try {
-      const app = APPLICATION_CATALOG.find((item) => item.id === applicationId);
-      const connection = await requestDaemon("application.add", {
-        applicationId,
-        displayName: app?.name ?? applicationId,
-        personaIds: persona ? [persona.id] : [],
-        allowDelegatedWork: false,
-      });
+      const pending = (data ?? []).find(
+        (item) =>
+          item.applicationId === applicationId &&
+          item.enabled &&
+          !isApplicationConnected(item),
+      );
+      const connection =
+        pending ??
+        (await requestDaemon("application.add", {
+          applicationId,
+          displayName: app.name,
+          personaIds: persona ? [persona.id] : [],
+          allowDelegatedWork: false,
+        }));
       await mutate();
-      setSelectedId(connection.id);
+      if (app.requiresClient && !connection.configured) {
+        setSelectedId(connection.id);
+        return;
+      }
+      setAdding(null);
+      await login.start(connection.id);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -58,19 +75,18 @@ export function ApplicationsView() {
     }
   }
 
-  function stateLabel(connection: ApplicationConnection) {
-    if (!connection.enabled)
-      return t("apps.disabled", { defaultValue: "Disabled" });
-    if (!connection.configured)
-      return t("apps.setupRequired", { defaultValue: "Setup required" });
-    if (!connection.status)
-      return t("apps.notChecked", { defaultValue: "Not checked" });
-    if (connection.status.state === "connected")
-      return t("apps.connected", { defaultValue: "Connected" });
-    if (connection.status.state === "needs-auth")
-      return t("apps.needsAuth", { defaultValue: "Authorization required" });
-    return t("apps.failed", { defaultValue: "Connection failed" });
+  function connectLabel(applicationId: ApplicationId) {
+    const connected = (data ?? []).some(
+      (item) =>
+        item.applicationId === applicationId && isApplicationConnected(item),
+    );
+    return connected
+      ? t("apps.connectAnother", { defaultValue: "Connect another account" })
+      : t("apps.connect", { defaultValue: "Connect" });
   }
+
+  const waitingConnection = data?.find((item) => item.id === login.waiting?.id);
+  const busy = adding !== null || login.busyId !== null;
 
   return (
     <section
@@ -110,10 +126,19 @@ export function ApplicationsView() {
             </Button>
           </div>
         ) : null}
+        {waitingConnection ? (
+          <div className="mb-6">
+            <ApplicationLoginPanel
+              login={login}
+              name={waitingConnection.displayName}
+            />
+          </div>
+        ) : null}
         {selected ? (
           <ApplicationDetail
-            key={`${selected.id}:${selected.revision}`}
+            key={selected.id}
             connection={selected}
+            login={login}
             agents={agents}
             onChanged={() => mutate()}
             onRemoved={() => {
@@ -165,7 +190,7 @@ export function ApplicationsView() {
                       </span>
                     </span>
                     <span className="shrink-0 text-meta text-muted-foreground">
-                      {stateLabel(connection)}
+                      {applicationStateLabel(connection, t)}
                     </span>
                   </button>
                 ))
@@ -204,12 +229,12 @@ export function ApplicationsView() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      disabled={adding !== null}
-                      aria-label={`${t("apps.add", { defaultValue: "Add" })} ${app.name}`}
-                      onClick={() => void add(app.id)}
+                      disabled={busy}
+                      aria-label={`${connectLabel(app.id)} ${app.name}`}
+                      onClick={() => void connect(app.id)}
                     >
-                      <Plus className="size-3.5" />
-                      {t("apps.add", { defaultValue: "Add" })}
+                      <Plug className="size-3.5" />
+                      {connectLabel(app.id)}
                     </Button>
                   </div>
                 ),

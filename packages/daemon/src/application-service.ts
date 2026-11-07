@@ -20,6 +20,11 @@ export interface ApplicationPrincipal {
   delegated: boolean;
 }
 
+function connectionRevision(config: McpServerConfig) {
+  const { cocurdex: _metadata, enabled, ...connection } = config;
+  return JSON.stringify({ ...connection, enabled: enabled !== false });
+}
+
 export class ApplicationService {
   private readonly statuses = new Map<
     string,
@@ -32,6 +37,7 @@ export class ApplicationService {
     private readonly mcp: DaemonMcpService,
     private readonly personaExists: (id: string) => Promise<boolean>,
     private readonly clientFactory = createPiApplicationClient,
+    private readonly announceChanged: () => void = () => {},
   ) {}
 
   async list(
@@ -66,7 +72,7 @@ export class ApplicationService {
           callbackPort:
             typeof oauth.callbackPort === "number" ? oauth.callbackPort : null,
           status:
-            checked?.revision === JSON.stringify(config)
+            checked?.revision === connectionRevision(config)
               ? checked.status
               : null,
         },
@@ -102,6 +108,7 @@ export class ApplicationService {
         },
       ),
     );
+    this.announceChanged();
     return this.connection(id);
   }
 
@@ -147,7 +154,7 @@ export class ApplicationService {
         },
       );
     });
-    this.statuses.delete(payload.id);
+    this.announceChanged();
     return this.connection(payload.id);
   }
 
@@ -158,6 +165,7 @@ export class ApplicationService {
     await this.mcp.logout(id);
     await this.mcp.config.removeServer(id);
     this.statuses.delete(id);
+    this.announceChanged();
   }
 
   async logout(id: string) {
@@ -166,6 +174,7 @@ export class ApplicationService {
     await this.closeClients(id);
     await this.mcp.logout(id);
     this.statuses.delete(id);
+    this.announceChanged();
     return this.connection(id);
   }
 
@@ -177,7 +186,8 @@ export class ApplicationService {
         "Register your GitHub OAuth app and configure its client ID and callback port first.",
       );
     const status = await this.mcp.test(id, config);
-    this.statuses.set(id, { revision: JSON.stringify(config), status });
+    this.statuses.set(id, { revision: connectionRevision(config), status });
+    this.announceChanged();
     return this.connection(id);
   }
 
@@ -199,6 +209,7 @@ export class ApplicationService {
     } finally {
       this.logins.delete(loginId);
       this.statuses.delete(id);
+      this.announceChanged();
     }
   }
 

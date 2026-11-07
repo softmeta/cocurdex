@@ -21,6 +21,7 @@ export const cocurdexDataAreas = [
   "memory",
   "personal",
   "routines",
+  "applications",
 ] as const;
 
 export type CocurdexDataArea = (typeof cocurdexDataAreas)[number];

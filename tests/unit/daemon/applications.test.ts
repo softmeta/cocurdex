@@ -208,6 +208,30 @@ describe("application connections", () => {
     expect(await apps.list({ personaId: "a", delegated: true })).toEqual([]);
   });
 
+  it("keeps a checked status across grant edits and drops it when the connection itself changes", async () => {
+    const { mcp, apps, added } = await setup();
+    vi.spyOn(mcp, "test").mockResolvedValue({
+      name: added.id,
+      scope: "global",
+      state: "connected",
+      tools: [],
+      error: null,
+      oauth: true,
+      signedIn: true,
+      checkedAt: new Date(0).toISOString(),
+    });
+    const checked = await apps.check(added.id);
+    expect(checked.status?.state).toBe("connected");
+    const granted = await apps.update({
+      ...edit(checked),
+      personaIds: ["a", "b"],
+      allowDelegatedWork: true,
+      displayName: "Team notes",
+    });
+    expect(granted.status?.state).toBe("connected");
+    const disabled = await apps.update({ ...edit(granted), enabled: false });
+    expect(disabled.status).toBeNull();
+  });
   it("requires GitHub client configuration, keeps secrets private, and removes only the selected connection", async () => {
     const { apps, added } = await setup();
     const github = await apps.add({

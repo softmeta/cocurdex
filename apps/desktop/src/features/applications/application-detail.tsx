@@ -2,39 +2,46 @@ import {
   APPLICATION_CATALOG,
   type ApplicationConnection,
   type PersonalAgentRecord,
+  type UpdateApplicationPayload,
 } from "@cocurdex/shared";
-import { ArrowUpRight, LogOut, Plug, RefreshCw, Save } from "lucide-react";
+import { ArrowUpRight, LogOut, Plug, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppRemoveButton, SettingRow, SettingsGroup } from "@/components";
 import { Button, Input, Label, Switch } from "@/components/ui";
 import { desktopApi, requestDaemon } from "@/lib";
+import {
+  type ApplicationOAuthChanges,
+  ApplicationOAuthSetup,
+} from "./application-oauth-setup";
+import {
+  applicationStateLabel,
+  isApplicationConnected,
+} from "./application-state";
 import { ApplicationTools } from "./application-tools";
-import { useApplicationLogin } from "./use-application-login";
+import type { ApplicationLogin } from "./use-application-login";
+
+type ApplicationChanges = Partial<
+  Omit<UpdateApplicationPayload, "id" | "revision">
+>;
 
 export function ApplicationDetail({
   connection,
   agents,
+  login,
   onChanged,
   onRemoved,
 }: {
   connection: ApplicationConnection;
   agents: PersonalAgentRecord[];
+  login: ApplicationLogin;
   onChanged(): Promise<unknown>;
   onRemoved(): void;
 }) {
   const { t } = useTranslation("personal");
   const [name, setName] = useState(connection.displayName);
-  const [personaIds, setPersonaIds] = useState(connection.personaIds);
-  const [delegated, setDelegated] = useState(connection.allowDelegatedWork);
-  const [enabled, setEnabled] = useState(connection.enabled);
-  const [clientId, setClientId] = useState(connection.clientId ?? "");
-  const [clientSecret, setClientSecret] = useState("");
-  const [port, setPort] = useState(String(connection.callbackPort ?? 19173));
-  const [returnUrl, setReturnUrl] = useState("");
   const [busy, setBusy] = useState(false);
-  const login = useApplicationLogin(connection.id, onChanged);
   const app = APPLICATION_CATALOG.find(
     (item) => item.id === connection.applicationId,
   );
@@ -44,68 +51,53 @@ export function ApplicationDetail({
     try {
       await action();
       await onChanged();
+      return true;
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : String(cause));
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
-  async function save() {
-    await run(async () => {
-      const callbackPort = Number(port);
-      if (
-        app?.requiresClient &&
-        (!Number.isInteger(callbackPort) ||
-          callbackPort < 1024 ||
-          callbackPort > 65535)
-      )
-        throw new Error(
-          t("apps.invalidPort", {
-            defaultValue: "Choose a callback port between 1024 and 65535",
-          }),
-        );
-      await requestDaemon("application.update", {
+  function update(changes: ApplicationChanges) {
+    return run(() =>
+      requestDaemon("application.update", {
         id: connection.id,
         revision: connection.revision,
-        displayName: name,
-        personaIds,
-        allowDelegatedWork: delegated,
-        enabled,
-        ...(app?.requiresClient
-          ? {
-              clientId,
-              callbackPort,
-              ...(clientSecret ? { clientSecret } : {}),
-            }
-          : {}),
-      });
-      setClientSecret("");
-    });
+        displayName: connection.displayName,
+        personaIds: connection.personaIds,
+        allowDelegatedWork: connection.allowDelegatedWork,
+        enabled: connection.enabled,
+        ...changes,
+      }),
+    );
   }
 
-  let stateLabel: string = t("apps.notChecked", {
-    defaultValue: "Not checked",
-  });
-  if (!connection.enabled)
-    stateLabel = t("apps.disabled", { defaultValue: "Disabled" });
-  else if (!connection.configured)
-    stateLabel = t("apps.setupRequired", { defaultValue: "Setup required" });
-  else if (connection.status?.state === "connected")
-    stateLabel = t("apps.connected", { defaultValue: "Connected" });
-  else if (connection.status?.state === "needs-auth")
-    stateLabel = t("apps.needsAuth", {
-      defaultValue: "Authorization required",
-    });
-  else if (connection.status?.state === "failed")
-    stateLabel = t("apps.failed", { defaultValue: "Connection failed" });
-  const disabled = busy || login.busy;
+  function commitName() {
+    const next = name.trim();
+    if (!next) {
+      setName(connection.displayName);
+      return;
+    }
+    if (next !== connection.displayName) void update({ displayName: next });
+  }
+
+  function saveOAuth(changes: ApplicationOAuthChanges) {
+    return update(changes);
+  }
+
+  const disabled = busy || login.busyId !== null;
+  const connected = isApplicationConnected(connection);
+  const authorizeLabel = connected
+    ? t("apps.reauthorize", { defaultValue: "Reauthorize" })
+    : t("apps.connect", { defaultValue: "Connect" });
   return (
     <div className="flex flex-col gap-6">
       <p className="text-body text-muted-foreground">
         {t("apps.hostCredentials", {
           defaultValue:
-            "Credentials stay on this host. The provider controls account and workspace access during authorization. Adding a connection does not authorize it.",
+            "Credentials stay on this host. The provider controls account and workspace access during authorization.",
         })}
       </p>
       <SettingsGroup
@@ -119,20 +111,24 @@ export function ApplicationDetail({
             id="application-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
+            onBlur={commitName}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
             disabled={disabled}
             maxLength={160}
           />
         </div>
         <SettingRow title={t("apps.enabled", { defaultValue: "Enabled" })}>
           <Switch
-            checked={enabled}
-            onCheckedChange={setEnabled}
+            checked={connection.enabled}
+            onCheckedChange={(enabled) => void update({ enabled })}
             disabled={disabled}
             aria-label={t("apps.enabled", { defaultValue: "Enabled" })}
           />
         </SettingRow>
         <div className="py-3.5 text-body">
-          {stateLabel}
+          {applicationStateLabel(connection, t)}
           {connection.status?.checkedAt ? (
             <span className="ms-2 text-meta text-muted-foreground">
               {new Date(connection.status.checkedAt).toLocaleString()}
@@ -151,22 +147,21 @@ export function ApplicationDetail({
       <SettingsGroup
         title={t("apps.permissions", { defaultValue: "Assistant access" })}
         description={t("apps.permissionDescription", {
-          defaultValue:
-            "Only selected assistants can use this connection. Save changes before connecting.",
+          defaultValue: "Only selected assistants can use this connection.",
         })}
       >
         {agents.map((agent) => (
           <SettingRow key={agent.id} title={agent.role.name}>
             <Switch
               aria-label={agent.role.name}
-              checked={personaIds.includes(agent.id)}
+              checked={connection.personaIds.includes(agent.id)}
               disabled={disabled}
               onCheckedChange={(value) =>
-                setPersonaIds((current) =>
-                  value
-                    ? [...current, agent.id]
-                    : current.filter((id) => id !== agent.id),
-                )
+                void update({
+                  personaIds: value
+                    ? [...connection.personaIds, agent.id]
+                    : connection.personaIds.filter((id) => id !== agent.id),
+                })
               }
             />
           </SettingRow>
@@ -179,8 +174,10 @@ export function ApplicationDetail({
           })}
         >
           <Switch
-            checked={delegated}
-            onCheckedChange={setDelegated}
+            checked={connection.allowDelegatedWork}
+            onCheckedChange={(allowDelegatedWork) =>
+              void update({ allowDelegatedWork })
+            }
             disabled={disabled}
             aria-label={t("apps.delegated", {
               defaultValue: "Allow delegated work",
@@ -189,81 +186,20 @@ export function ApplicationDetail({
         </SettingRow>
       </SettingsGroup>
       {app?.requiresClient ? (
-        <SettingsGroup
-          title={t("apps.oauthSetup", {
-            defaultValue: "GitHub OAuth application",
-          })}
-          description={t("apps.oauthDescription", {
-            defaultValue:
-              "Register an OAuth application owned by you. Use the callback URL below and enter its client credentials. Secrets are never shown again.",
-          })}
-        >
-          <div className="flex flex-col gap-3 py-3.5">
-            <Label htmlFor="application-client">
-              {t("apps.clientId", { defaultValue: "Client ID" })}
-            </Label>
-            <Input
-              id="application-client"
-              value={clientId}
-              onChange={(event) => setClientId(event.target.value)}
-              disabled={disabled}
-              autoComplete="off"
-            />
-            <Label htmlFor="application-secret">
-              {t("apps.clientSecret", {
-                defaultValue: "Client secret (leave blank to keep existing)",
-              })}
-            </Label>
-            <Input
-              id="application-secret"
-              type="password"
-              value={clientSecret}
-              onChange={(event) => setClientSecret(event.target.value)}
-              disabled={disabled}
-              autoComplete="new-password"
-            />
-            <Label htmlFor="application-port">
-              {t("apps.callbackPort", { defaultValue: "Callback port" })}
-            </Label>
-            <Input
-              id="application-port"
-              inputMode="numeric"
-              value={port}
-              onChange={(event) => setPort(event.target.value)}
-              disabled={disabled}
-            />
-            <div className="break-all text-meta text-muted-foreground">
-              http://127.0.0.1:{port}/callback
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                void desktopApi.openExternal(
-                  "https://github.com/settings/developers",
-                )
-              }
-            >
-              <ArrowUpRight className="size-3.5" />
-              {t("apps.registerOAuth", {
-                defaultValue: "Register OAuth application",
-              })}
-            </Button>
-          </div>
-        </SettingsGroup>
+        <ApplicationOAuthSetup
+          connection={connection}
+          disabled={disabled}
+          onSave={saveOAuth}
+        />
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button disabled={disabled || !name.trim()} onClick={() => void save()}>
-          <Save className="size-3.5" />
-          {t("apps.save", { defaultValue: "Save access" })}
-        </Button>
         <Button
           variant="ghost"
           disabled={disabled || !connection.configured || !connection.enabled}
-          onClick={() => void login.start()}
+          onClick={() => void login.start(connection.id)}
         >
           <Plug className="size-3.5" />
-          {t("apps.authorize", { defaultValue: "Authorize" })}
+          {authorizeLabel}
         </Button>
         <Button
           variant="ghost"
@@ -278,70 +214,6 @@ export function ApplicationDetail({
           {t("apps.check", { defaultValue: "Check connection" })}
         </Button>
       </div>
-      {login.busy && !login.waiting ? (
-        <p role="status" className="text-body text-muted-foreground">
-          {t("apps.starting", { defaultValue: "Preparing authorization…" })}
-        </p>
-      ) : null}
-      {login.waiting ? (
-        <SettingsGroup
-          title={t("apps.waiting", {
-            defaultValue: "Waiting for authorization",
-          })}
-        >
-          <div className="flex flex-col gap-3 py-3.5">
-            <Button
-              variant="ghost"
-              onClick={() =>
-                void desktopApi.openExternal(login.waiting?.authUrl ?? "")
-              }
-            >
-              <ArrowUpRight className="size-3.5" />
-              {t("apps.openAuthorization", {
-                defaultValue: "Open authorization page",
-              })}
-            </Button>
-            <p className="text-meta text-muted-foreground">
-              {t("apps.remoteReturn", {
-                defaultValue:
-                  "Using another device? After authorization, copy the complete localhost return URL from the browser and paste it here. Treat it as a secret; do not send it in chat.",
-              })}
-            </p>
-            <Input
-              type="password"
-              autoComplete="off"
-              value={returnUrl}
-              onChange={(event) => setReturnUrl(event.target.value)}
-              aria-label={t("apps.returnUrl", {
-                defaultValue: "Authorization return URL",
-              })}
-            />
-            <Button
-              variant="ghost"
-              disabled={!returnUrl.trim()}
-              onClick={() =>
-                void run(async () => {
-                  if (!login.waiting) return;
-                  const url = returnUrl;
-                  setReturnUrl("");
-                  await requestDaemon("application.login.return", {
-                    id: connection.id,
-                    loginId: login.waiting.loginId,
-                    url,
-                  });
-                })
-              }
-            >
-              {t("apps.submitReturn", {
-                defaultValue: "Complete authorization",
-              })}
-            </Button>
-            <Button variant="ghost" onClick={login.cancel}>
-              {t("apps.cancel", { defaultValue: "Cancel" })}
-            </Button>
-          </div>
-        </SettingsGroup>
-      ) : null}
       <ApplicationTools connection={connection} />
       <div className="flex flex-wrap items-center gap-2">
         <Button

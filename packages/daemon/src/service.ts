@@ -711,6 +711,12 @@ export class CocurdexDaemonService {
     this.applications = new ApplicationService(
       this.mcp,
       async (id) => (await this.personalAgents.get(id)) !== null,
+      undefined,
+      () =>
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["applications"],
+        }),
     );
     registerApplicationTools(
       this.agentTools.registry,

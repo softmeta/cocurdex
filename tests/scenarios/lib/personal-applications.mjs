@@ -4,73 +4,76 @@ import { daemonRequest } from "./daemon-rpc.mjs";
 import { clickByRole, waitForRole } from "./locate.mjs";
 import { showPanelView, translate } from "./navigate.mjs";
 
+async function findConnection(session, id) {
+  const connections = await daemonRequest(session, "application.list");
+  return connections.find((item) => item.id === id);
+}
+
+async function waitForConnection(session, id, predicate, label) {
+  const deadline = Date.now() + 5000;
+  let connection = await findConnection(session, id);
+  while (!predicate(connection) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    connection = await findConnection(session, id);
+  }
+  check(predicate(connection), label, connection);
+  return connection;
+}
+
+async function removeOpenConnection(session, t) {
+  await clickByRole(session, { role: "button", name: await t("remove") });
+  await clickByRole(session, {
+    role: "button",
+    name: await t("remove"),
+    within: { role: "dialog" },
+  });
+}
+
 export function assistantApplicationsStep(state) {
   return [
-    "applications support catalog, scoped grants, GitHub setup, and removal in both themes",
+    "applications connect from the catalog, save grants immediately, and remove in both themes",
     async ({ session }) => {
       const t = (key) => translate(session, `personal:apps.${key}`);
       const created = [];
       for (const theme of ["light", "dark"]) {
         await emulateColorScheme(session, theme);
-        await showPanelView(session, "applications");
-        await clickByRole(session, {
-          role: "button",
-          name: `${await t("add")} Notion`,
+        const connection = await daemonRequest(session, "application.add", {
+          applicationId: "notion",
+          displayName: "Notion",
+          personaIds: [state.personaId],
+          allowDelegatedWork: false,
         });
-        await waitForRole(session, { role: "textbox", name: await t("name") });
-        const connections = await daemonRequest(session, "application.list");
-        const connection = connections.find(
-          (item) => item.applicationId === "notion",
-        );
-        check(connection !== undefined, "catalog saves a connection");
-        check(
-          connection.personaIds.includes(state.personaId),
-          "only the selected assistant is granted access",
-        );
+        await showPanelView(session, "applications");
+        created.push(connection.id);
         check(
           connection.status === null && connection.allowDelegatedWork === false,
-          "added is not falsely marked connected and delegated access defaults off",
+          "a new connection is not falsely marked connected and delegated access defaults off",
         );
-        created.push(connection.id);
+        await clickByRole(session, { role: "button", name: /^Notion\s/ });
+        await waitForRole(session, { role: "textbox", name: await t("name") });
         await clickByRole(session, {
           role: "switch",
           name: await t("delegated"),
         });
-        await clickByRole(session, { role: "button", name: await t("save") });
-        await session.waitUntil(
-          (label) => {
-            const button = [...document.querySelectorAll("button")].find(
-              (item) => item.textContent.trim() === label,
-            );
-            return button && !button.disabled;
-          },
-          await t("save"),
-          5000,
+        await waitForConnection(
+          session,
+          connection.id,
+          (item) => item?.allowDelegatedWork === true,
+          "the delegated switch saves without a separate save step",
         );
-        await waitForRole(session, { role: "button", name: await t("back") });
         await clickByRole(session, { role: "button", name: await t("back") });
         await clickByRole(session, { role: "button", name: /^Notion\s/ });
-        const saved = (await daemonRequest(session, "application.list")).find(
-          (item) => item.id === connection.id,
-        );
+        const reopened = await findConnection(session, connection.id);
         check(
-          saved.allowDelegatedWork === true,
-          "delegated grant persists after returning to connection",
+          reopened.allowDelegatedWork === true &&
+            reopened.personaIds.includes(state.personaId),
+          "grants persist after returning to the connection",
+          reopened,
         );
-        await clickByRole(session, { role: "button", name: await t("remove") });
-        await clickByRole(session, {
-          role: "button",
-          name: await t("remove"),
-          within: { role: "dialog" },
-        });
-        await waitForRole(session, {
-          role: "button",
-          name: `${await t("add")} GitHub`,
-        });
-        await clickByRole(session, {
-          role: "button",
-          name: `${await t("add")} GitHub`,
-        });
+        await removeOpenConnection(session, t);
+        const githubConnect = `${await t("connect")} GitHub`;
+        await waitForRole(session, { role: "button", name: githubConnect });
+        await clickByRole(session, { role: "button", name: githubConnect });
         await waitForRole(session, {
           role: "textbox",
           name: await t("clientId"),
@@ -79,18 +82,15 @@ export function assistantApplicationsStep(state) {
           (item) => item.applicationId === "github",
         );
         check(
-          github.configured === false,
-          "GitHub clearly requires the owner's OAuth application",
+          github?.configured === false &&
+            github.personaIds.includes(state.personaId),
+          "connecting GitHub opens its OAuth setup for the current assistant",
+          github,
         );
-        await clickByRole(session, { role: "button", name: await t("remove") });
-        await clickByRole(session, {
-          role: "button",
-          name: await t("remove"),
-          within: { role: "dialog" },
-        });
+        await removeOpenConnection(session, t);
         await waitForRole(session, {
           role: "button",
-          name: `${await t("add")} Notion`,
+          name: `${await t("connect")} Notion`,
         });
       }
       await clearColorScheme(session);

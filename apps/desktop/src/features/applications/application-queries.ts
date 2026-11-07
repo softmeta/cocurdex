@@ -1,8 +1,18 @@
 import useSWR from "swr";
-import { requestDaemon } from "@/lib";
+import { desktopApi, requestDaemon, useMountEffect } from "@/lib";
 
 export function useApplications() {
-  return useSWR("application.list", () => requestDaemon("application.list"), {
-    dedupingInterval: 0,
-  });
+  const query = useSWR(
+    "application.list",
+    () => requestDaemon("application.list"),
+    { dedupingInterval: 0 },
+  );
+
+  useMountEffect(() =>
+    desktopApi.onDataChanged((event) => {
+      if (event.areas.includes("applications")) void query.mutate();
+    }),
+  );
+
+  return query;
 }
