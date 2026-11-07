@@ -1,17 +1,8 @@
 import { Undo2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
+import { AppConfirmDialog } from "@/components/app";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { IconButton } from "@/components/ui/icon-button";
 import {
   Tooltip,
@@ -98,30 +89,16 @@ function DiscardFileButton({
           {label}
         </TooltipContent>
       </Tooltip>
-      <Dialog onOpenChange={setOpen} open={open}>
-        <DialogContent size="compact">
-          <DialogHeader>
-            <DialogTitle>{label}</DialogTitle>
-            <DialogDescription>
-              {t("git.discardConfirm", { file: fileName })}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose
-              render={<Button variant="ghost">{t("git.cancel")}</Button>}
-            />
-            <Button
-              onClick={() => {
-                onDiscard(path);
-                setOpen(false);
-              }}
-              variant="destructive"
-            >
-              {t("git.discard")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AppConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={label}
+        description={t("git.discardConfirm", { file: fileName })}
+        cancelLabel={t("git.cancel")}
+        confirmLabel={t("git.discard")}
+        variant="destructive"
+        onConfirm={() => onDiscard(path)}
+      />
     </>
   );
 }

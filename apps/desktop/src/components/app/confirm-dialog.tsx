@@ -34,16 +34,21 @@ export function AppConfirmDialog({
 
   return (
     <Dialog disablePointerDismissal open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} size="compact">
+      <DialogContent showCloseButton={false} size="alert">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter actions="fill">
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             {cancelLabel}
           </Button>
           <Button
+            size="lg"
             variant={destructive ? "destructive" : "default"}
             onClick={() => {
               onConfirm();

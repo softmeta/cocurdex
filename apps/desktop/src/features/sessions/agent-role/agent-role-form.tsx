@@ -294,7 +294,7 @@ export function AgentRoleForm({
           />
         </Field>
       </FieldGroup>
-      <DialogFooter className="py-3">
+      <DialogFooter>
         <Button onClick={onCancel} type="button" variant="outline">
           {t("settings:agentRoles.cancel")}
         </Button>

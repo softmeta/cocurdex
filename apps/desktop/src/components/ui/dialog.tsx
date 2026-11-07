@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const dialogContentSizeClassName = {
+  alert: "gap-4 p-5 sm:max-w-sm",
   compact: "sm:max-w-sm",
   default: "sm:max-w-lg",
   palette: "sm:max-w-2xl",
@@ -143,7 +144,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2", className)}
+      className={cn("flex flex-col gap-3", className)}
       {...props}
     />
   );
@@ -152,17 +153,23 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 function DialogFooter({
   className,
   showCloseButton = false,
+  actions = "end",
   children,
   ...props
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean;
+  actions?: "end" | "fill";
 }) {
   const { t } = useTranslation("common");
   return (
     <div
       data-slot="dialog-footer"
+      data-actions={actions}
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        {
+          end: "flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end",
+          fill: "grid grid-cols-2 gap-3 pt-3",
+        }[actions],
         className,
       )}
       {...props}
