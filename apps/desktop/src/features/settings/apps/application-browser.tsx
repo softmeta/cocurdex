@@ -168,6 +168,7 @@ function ApplicationRow({
     >
       <ApplicationTile applicationId={app.id} />
       <button
+        aria-label={app.name}
         className="flex min-w-0 flex-1 flex-col text-start outline-none after:absolute after:inset-0 after:rounded-card focus-visible:after:ring-2 focus-visible:after:ring-ring/50"
         type="button"
         onClick={onOpen}

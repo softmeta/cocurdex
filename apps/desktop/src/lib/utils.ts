@@ -9,6 +9,9 @@ import { extendTailwindMerge } from "tailwind-merge";
  */
 const twMerge = extendTailwindMerge({
   extend: {
+    theme: {
+      radius: ["micro", "dense", "control", "card", "panel", "overlay"],
+    },
     classGroups: {
       "font-size": [
         {

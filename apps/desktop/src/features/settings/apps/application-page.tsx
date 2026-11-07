@@ -45,7 +45,7 @@ export function ApplicationPage({
   const waiting = connections.find((item) => item.id === login.waiting?.id);
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <section aria-label={app.name} className="flex min-w-0 flex-col gap-6">
       <Button
         className="-ms-2 self-start text-muted-foreground"
         size="sm"
@@ -138,6 +138,6 @@ export function ApplicationPage({
           </Button>
         </div>
       )}
-    </div>
+    </section>
   );
 }

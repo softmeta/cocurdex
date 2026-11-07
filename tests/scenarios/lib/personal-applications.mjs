@@ -49,13 +49,23 @@ export function assistantApplicationsStep(state) {
           connection.status === null && connection.allowDelegatedWork === false,
           "a new connection is not falsely marked connected and delegated access defaults off",
         );
-        const connectionRow = {
-          role: "button",
-          name: /^Notion\s/,
-          within: { role: "region", name: await t("added") },
+        const openApplication = async () => {
+          await clickByRole(session, {
+            role: "button",
+            name: "Notion",
+            within: { role: "region", name: await t("categories.knowledge") },
+          });
+          await clickByRole(session, {
+            role: "button",
+            name: await t("advanced"),
+            within: { role: "region", name: "Notion" },
+          });
+          await waitForRole(session, {
+            role: "textbox",
+            name: await t("name"),
+          });
         };
-        await clickByRole(session, connectionRow);
-        await waitForRole(session, { role: "textbox", name: await t("name") });
+        await openApplication();
         await clickByRole(session, {
           role: "switch",
           name: await t("delegated"),
@@ -68,11 +78,10 @@ export function assistantApplicationsStep(state) {
         );
         await clickByRole(session, {
           role: "button",
-          name: /^Notion\s/,
-          within: { role: "region", name: await t("catalog") },
+          name: await translate(session, "settings:sections.apps"),
+          within: { role: "region", name: "Notion" },
         });
-        await clickByRole(session, connectionRow);
-        await waitForRole(session, { role: "textbox", name: await t("name") });
+        await openApplication();
         const reopened = await findConnection(session, connection.id);
         check(
           reopened.allowDelegatedWork === true &&
@@ -84,6 +93,11 @@ export function assistantApplicationsStep(state) {
         await waitForRole(session, {
           role: "button",
           name: `${await t("connect")} Notion`,
+        });
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "settings:sections.apps"),
+          within: { role: "region", name: "Notion" },
         });
       }
       await clearColorScheme(session);
