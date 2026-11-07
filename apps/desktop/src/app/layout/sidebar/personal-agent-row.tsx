@@ -98,7 +98,7 @@ export function PersonalAgentRow({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <SidebarListRow
-          className="h-auto gap-2.5 py-1.5 ps-1"
+          className="h-auto gap-2.5 py-1.5 ps-1 pe-1.75"
           data-avatar-hover=""
           onPointerLeave={gaze.onPointerLeave}
           onPointerMove={gaze.onPointerMove}
