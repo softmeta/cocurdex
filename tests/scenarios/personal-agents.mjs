@@ -612,6 +612,64 @@ runScenario("personal-agents", {
       },
     ],
     [
+      "messaging from the empty assistants tab creates an assistant and sends to it",
+      async ({ session }) => {
+        for (const agent of await personas(session)) {
+          await daemonRequest(session, "personalAgent.delete", {
+            id: agent.id,
+          });
+        }
+        const invite = {
+          role: "region",
+          name: await translate(session, "personal:empty.title"),
+        };
+        await waitForRole(session, invite, UI_TIMEOUT_MS);
+        const [composer] = await waitForRole(
+          session,
+          {
+            role: "textbox",
+            name: await translate(session, "personal:empty.placeholder"),
+            exact: false,
+          },
+          UI_TIMEOUT_MS,
+        );
+        stub.plan = { kind: "stream", chunks: ["On it."] };
+        await typeInto(session, composer, "Plan my week");
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "common:actions.send"),
+        });
+        await waitForNoRole(session, invite, UI_TIMEOUT_MS);
+        const [assistant] = await personas(session);
+        check(assistant?.isDefault, "the message created a default assistant");
+        const thread = await waitForMessages(
+          session,
+          assistant.homeSessionId,
+          (messages) =>
+            messages.some((message) => message.role === "assistant"),
+        );
+        check(
+          thread.messages[0]?.content === "Plan my week" &&
+            !thread.messages.some((m) => m.origin?.kind === "greeting"),
+          "the user's message opens the thread without a greeting",
+          thread.messages.map(({ role, content, origin }) => ({
+            role,
+            content,
+            origin,
+          })),
+        );
+        await session.waitUntil(
+          (text) =>
+            [...document.querySelectorAll("article")].some((node) =>
+              node.textContent.includes(text),
+            ),
+          "On it.",
+          UI_TIMEOUT_MS,
+        );
+        return {};
+      },
+    ],
+    [
       "renderer has no errors",
       async ({ session }) => {
         const errors = await session.run(() => window.__scenario.errors);

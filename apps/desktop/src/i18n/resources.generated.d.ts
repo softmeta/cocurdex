@@ -1600,6 +1600,7 @@ export default interface Resources {
     };
     empty: {
       description: "An assistant remembers what matters to you, briefs you each morning, reminds you on time, and hands project work to coding agents.";
+      placeholder: "Tell your assistant what you need…";
       title: "Create your first assistant";
     };
     inbox: {

@@ -231,7 +231,12 @@ export function AgentRoleForm({
           </FieldLabel>
           <div className="flex items-center gap-2">
             <AgentRoleAvatarPicker
-              role={{ id: role.id ?? "new", name, agentId, avatar }}
+              role={{
+                id: role.id ?? "new",
+                name,
+                agentId: agentLocked ? undefined : agentId,
+                avatar,
+              }}
               onChange={setAvatar}
             />
             <Input

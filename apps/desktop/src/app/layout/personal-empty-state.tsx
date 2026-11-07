@@ -4,9 +4,13 @@ import { Bot, Plus } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, EmptyState } from "@/components/ui";
+import { ChatComposer, EmptyStage } from "@/features/composer";
 import { usePersonalAgents } from "@/features/personal";
 import { selectSessionAtom } from "@/features/sessions";
-import { useCreatePersonalAgent } from "./use-create-personal-agent";
+import {
+  useCreatePersonalAgent,
+  useStartPersonalAgent,
+} from "./use-create-personal-agent";
 
 function useOpenFirstAssistant(
   agents: readonly PersonalAgentRecord[],
@@ -33,25 +37,37 @@ export function PersonalEmptyState({
   const { agents, loaded } = usePersonalAgents();
   const selectSession = useSetAtom(selectSessionAtom);
   const createAssistant = useCreatePersonalAgent(selectSession);
+  const startAssistant = useStartPersonalAgent(selectSession);
   useOpenFirstAssistant(agents, selectedSessionId);
   if (!loaded || agents.length > 0) return <div className="h-full" />;
   return (
-    <section
-      aria-label={t("empty.title")}
-      className="flex h-full items-center justify-center"
+    <EmptyStage
+      identity={
+        <section aria-label={t("empty.title")} className="flex justify-center">
+          <EmptyState
+            action={
+              <Button onClick={() => void createAssistant()} variant="outline">
+                <Plus />
+                {t("roster.new")}
+              </Button>
+            }
+            className="max-w-sm"
+            description={t("empty.description")}
+            icon={<Bot />}
+            title={t("empty.title")}
+          />
+        </section>
+      }
     >
-      <EmptyState
-        action={
-          <Button onClick={() => void createAssistant()}>
-            <Plus />
-            {t("roster.new")}
-          </Button>
+      <ChatComposer
+        agentType="pi"
+        draftKey="personal-empty"
+        placeholderOverride={t("empty.placeholder")}
+        runtimeControls={false}
+        onSend={async (text, attachments) =>
+          (await startAssistant({ text, attachments })) ? "sent" : "kept"
         }
-        className="max-w-sm"
-        description={t("empty.description")}
-        icon={<Bot />}
-        title={t("empty.title")}
       />
-    </section>
+    </EmptyStage>
   );
 }
