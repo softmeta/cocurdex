@@ -30,12 +30,3 @@ export function applicationStateTone(
   if (connection.status.state === "needs-auth") return "attention";
   return "danger";
 }
-
-export function applicationAccessLabel(
-  connection: ApplicationConnection,
-  t: TFunction<"personal">,
-): string {
-  if (connection.allPersonas) return t("apps.allAssistants");
-  if (connection.personaIds.length === 0) return t("apps.noAssistants");
-  return t("apps.assistantCount", { count: connection.personaIds.length });
-}

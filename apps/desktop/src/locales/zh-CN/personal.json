@@ -1,7 +1,10 @@
 {
   "apps": {
+    "accounts": "账号",
     "added": "已添加的连接",
-    "advanced": "自定义 MCP",
+    "addedCount_other": "{{count}} 个已添加",
+    "addedState": "已添加",
+    "advanced": "高级设置",
     "allAssistants": "所有助理",
     "allAssistantsDescription": "包括以后新建的助理。",
     "assistantCount_other": "{{count}} 位助理",
@@ -9,6 +12,13 @@
     "browserOAuth": "在浏览器中授权",
     "cancel": "取消",
     "catalog": "可连接的应用",
+    "categories": {
+      "all": "全部",
+      "connected": "已添加",
+      "development": "开发",
+      "knowledge": "知识与文档"
+    },
+    "categoryLabel": "分类",
     "check": "检查连接",
     "connect": "连接",
     "connectAnother": "连接其他账号",

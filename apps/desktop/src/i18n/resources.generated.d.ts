@@ -1537,8 +1537,12 @@ export default interface Resources {
   };
   personal: {
     apps: {
+      accounts: "Accounts";
       added: "Added connections";
-      advanced: "Custom MCP";
+      addedCount_one: "{{count}} added";
+      addedCount_other: "{{count}} added";
+      addedState: "Added";
+      advanced: "Advanced settings";
       allAssistants: "All assistants";
       allAssistantsDescription: "Includes assistants you create later.";
       assistantCount_one: "{{count}} assistant";
@@ -1547,6 +1551,13 @@ export default interface Resources {
       browserOAuth: "Authorize in your browser";
       cancel: "Cancel";
       catalog: "Available applications";
+      categories: {
+        all: "All";
+        connected: "Added";
+        development: "Development";
+        knowledge: "Knowledge";
+      };
+      categoryLabel: "Category";
       check: "Check connection";
       connect: "Connect";
       connectAnother: "Connect another account";
