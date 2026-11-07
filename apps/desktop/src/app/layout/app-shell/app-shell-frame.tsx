@@ -163,6 +163,8 @@ export function AppShellFrame({
   const appBootstrapped = useAtomValue(appBootstrappedAtom);
   const workspaces = useAtomValue(workspacesAtom);
   const providerConfigs = useAtomValue(providerConfigsAtom);
+  const [sidebarTab, setSidebarTab] = useAtom(sidebarTabAtom);
+  const isAssistantSidebar = sidebarTab === "personal";
   const providerModelsLoaded = useAtomValue(providerModelsLoadedAtom);
   const onboardingDismissed = useAtomValue(onboardingDismissedAtom);
   // Decided once, when the snapshot and provider rows are both in: opening a
@@ -181,7 +183,6 @@ export function AppShellFrame({
   const [onboardingEntered, setOnboardingEntered] = useAtom(
     onboardingEnteredAtom,
   );
-  const setSidebarTab = useSetAtom(sidebarTabAtom);
   const composerRef = useChatContext(() => onChatDockVisibilityChange("open"));
   useChatBrowserContext();
   useOpenEntityBridge();
@@ -340,10 +341,12 @@ export function AppShellFrame({
                   isRightPanelOpen={isRightPanelOpen}
                   onToggleRightPanel={onToggleRightPanel}
                 />
-                <div className="ms-auto flex items-center gap-1">
-                  <NavigationButtons />
-                  <SearchPaletteButton />
-                </div>
+                {isAssistantSidebar ? null : (
+                  <div className="ms-auto flex items-center gap-1">
+                    <NavigationButtons />
+                    <SearchPaletteButton />
+                  </div>
+                )}
               </div>
             </div>
 
