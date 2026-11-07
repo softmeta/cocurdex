@@ -1,7 +1,13 @@
 import type { TabTriggerSlotProps } from "expo-router/ui";
 import { type AndroidSymbol, type SFSymbol, SymbolView } from "expo-symbols";
-import type { ReactNode } from "react";
-import { Pressable, StyleSheet, View, type ViewProps } from "react-native";
+import type { ReactNode, Ref } from "react";
+import {
+  type HostInstance,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewProps,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { space, useThemeColors } from "@/theme";
 import { useFloatingSurface } from "@/ui";
@@ -44,18 +50,22 @@ export function FloatingTab({
   icon,
   label,
   isFocused,
+  modeSwitch = false,
   style,
   ref,
   ...props
-}: TabTriggerSlotProps & {
+}: Omit<TabTriggerSlotProps, "ref"> & {
   icon: { ios: SFSymbol; android: AndroidSymbol };
   label: string;
+  modeSwitch?: boolean;
+  ref?: Ref<HostInstance>;
 }) {
   const colors = useThemeColors();
   return (
     <Pressable
       {...props}
-      accessibilityRole="tab"
+      ref={ref}
+      accessibilityRole={modeSwitch ? "button" : "tab"}
       accessibilityLabel={label}
       accessibilityState={{ selected: isFocused }}
       android_ripple={{ color: colors.muted, borderless: true }}
@@ -66,6 +76,14 @@ export function FloatingTab({
         size={24}
         tintColor={isFocused ? colors.foreground : colors.mutedForeground}
       />
+      {modeSwitch ? (
+        <SymbolView
+          name={{ ios: "chevron.up.chevron.down", android: "unfold_more" }}
+          size={10}
+          tintColor={colors.mutedForeground}
+          style={styles.modeIndicator}
+        />
+      ) : null}
     </Pressable>
   );
 }
@@ -87,4 +105,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  modeIndicator: { position: "absolute", right: 3 },
 });

@@ -46,6 +46,14 @@
     "restore": "Restore",
     "restoreSession": "Restore {{title}}"
   },
+  "chat": {
+    "empty": "No chats yet",
+    "modelsFailed": "Could not load chat models",
+    "new": "New Chat",
+    "noModels": "Set up a chat model on your computer to start chatting",
+    "prompt": "Message a model",
+    "search": "Search chats"
+  },
   "composer": {
     "attach": "Attach Photo",
     "imageFailed": "The image couldn't be uploaded. Check the connection and try again.",

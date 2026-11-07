@@ -45,7 +45,7 @@ const ACTION_GROUPS: Record<SessionAction, string> = {
   delete: "remove",
 };
 
-export function useSessionActions(host: SavedHost) {
+export function useSessionActions(host: SavedHost, allowFork: boolean) {
   const router = useRouter();
   const { t } = useTranslation("sessions");
   const menu = useAnchoredMenu("session-actions");
@@ -133,7 +133,7 @@ export function useSessionActions(host: SavedHost) {
     const actions: SessionAction[] = [
       ...pinAction,
       ...(canInteract ? (["rename", "markUnread"] as const) : []),
-      ...(canExecute ? (["fork"] as const) : []),
+      ...(canExecute && allowFork ? (["fork"] as const) : []),
       ...(canInteract ? (["archive", "delete"] as const) : []),
     ];
     const rowHandlers = handlers(row);

@@ -68,7 +68,6 @@ export default function RootLayout() {
             name="session/[hostId]/[sessionId]"
             options={{
               title: "",
-              headerBackTitle: t("tabs.sessions"),
               animation: PUSH_ANIMATION,
               headerStyle: { backgroundColor: colors.background },
               contentStyle: { backgroundColor: colors.background },
@@ -221,10 +220,19 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="new-chat/[hostId]"
+            options={{
+              title: "",
+              headerBackTitle: t("tabs.chat"),
+              animation: PUSH_ANIMATION,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
+          <Stack.Screen
             name="new-session/index"
             options={{
               title: "",
-              headerBackTitle: t("tabs.sessions"),
+              headerBackTitle: t("tabs.work"),
               animation: PUSH_ANIMATION,
               contentStyle: { backgroundColor: colors.background },
             }}

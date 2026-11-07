@@ -1,0 +1,5 @@
+appId: dev.cocurdex.mobile
+---
+- tapOn:
+    id: session-mode-switch
+- tapOn: ${TAB_SESSIONS}

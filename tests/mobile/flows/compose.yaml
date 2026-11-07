@@ -187,9 +187,9 @@ appId: dev.cocurdex.mobile
       notifications: allow
 - extendedWaitUntil:
     visible:
-      id: "assistant-section-inbox"
+      id: "session-mode-switch"
     timeout: 30000
-- tapOn: ${TAB_SESSIONS}
+- runFlow: shared/open-work.yaml
 - extendedWaitUntil:
     visible: ${NEW_SESSION_ACTION}
     timeout: 10000

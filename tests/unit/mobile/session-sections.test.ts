@@ -72,6 +72,7 @@ const WORKSPACES = [
 function sections(
   sessions: SessionRecord[],
   options: {
+    mode?: "work" | "chat";
     attention?: SessionAttentionSnapshot[];
     query?: string;
     view?: Partial<SessionListView>;
@@ -80,6 +81,7 @@ function sections(
   } = {},
 ) {
   return buildSessionSections({
+    mode: options.mode,
     workspaces: WORKSPACES,
     sessions,
     attention: options.attention ?? [],
@@ -99,6 +101,24 @@ function ids(result: ReturnType<typeof sections>) {
 }
 
 describe("buildSessionSections", () => {
+  it("lists desktop and mobile chats without leaking work or assistant sessions", () => {
+    const result = sections(
+      [
+        session("work", "shop", null),
+        session("assistant", "personal", null, { sessionKind: "personal" }),
+        session("chat", "chat", null, { sessionKind: "chat" }),
+        session("archived-chat", "chat", null, {
+          sessionKind: "chat",
+          archivedAt: "2026-10-23T00:00:00.000Z",
+        }),
+      ],
+      { mode: "chat", view: { grouping: "none" } },
+    );
+    expect(
+      result.flatMap((section) => section.rows.map((row) => row.id)),
+    ).toEqual(["chat"]);
+  });
+
   it("groups by workspace, newest activity first in rows and sections", () => {
     const result = sections([
       session("a", "shop", "2026-10-20T10:00:00.000Z"),

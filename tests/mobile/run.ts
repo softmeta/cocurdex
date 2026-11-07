@@ -1,7 +1,12 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { isFormWorkspaceId, type SupportedLocale } from "@cocurdex/shared";
+import {
+  CHAT_WORKSPACE_ID,
+  isChatSession,
+  isFormWorkspaceId,
+  type SupportedLocale,
+} from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
   FIXTURE_ISSUES,
@@ -102,11 +107,14 @@ function flowLabels(locale: SupportedLocale) {
   const notes = readMessages(locale, "notes");
   const assistant = readMessages(locale, "assistant");
   return {
+    TAB_CHAT: common.tabs.chat,
+    NEW_CHAT: sessions.chat.new,
+    CHAT_PROMPT: "Explain how shopping carts work",
     CLOSE_ACTION: common.actions.close,
+    EDIT_ASSISTANT: assistant.actions.edit,
     SAVE_ASSISTANT: assistant.form.save,
-    TAB_ASSISTANT: common.tabs.assistant,
     TAB_SETTINGS: common.tabs.settings,
-    TAB_SESSIONS: common.tabs.sessions,
+    TAB_SESSIONS: common.tabs.work,
     TAB_ISSUES: common.tabs.issues,
     TAB_NOTES: common.tabs.notes,
     IN_PROGRESS_ISSUE_TITLE: fixtureIssue("Checkout fails for some carts")
@@ -407,6 +415,14 @@ async function main() {
                   `Model test assistant - ${appearance}`,
                 )
               : null;
+          const existingChats =
+            flow === "pairing"
+              ? new Set(
+                  (await daemon.sessions())
+                    .filter(isChatSession)
+                    .map((session) => session.id),
+                )
+              : null;
           await runFlow(
             target,
             `${flow}.yaml`,
@@ -417,6 +433,7 @@ async function main() {
               NEW_SESSION_MODEL: daemon.agentModelName,
               AGENT_MODEL_ID: daemon.agentModelId,
               MODEL_TEST_ASSISTANT: modelTestAssistant?.role.name ?? "",
+              MODEL_TEST_ASSISTANT_ID: modelTestAssistant?.id ?? "",
               PAIRING_LINK: await daemon.createPairingLink(),
               HOST_ADDRESS: daemon.hostAddress,
               LINK_NOTE_TITLE,
@@ -432,6 +449,22 @@ async function main() {
             path.join(outputRoot, `${appearance}-${locale}`, flow),
             daemon.diagnostics,
           );
+          if (existingChats) {
+            const chats = (await daemon.sessions()).filter(isChatSession);
+            if (
+              !chats.some(
+                (session) =>
+                  !existingChats.has(session.id) &&
+                  session.workspaceId === CHAT_WORKSPACE_ID &&
+                  session.writeMode === "read-only" &&
+                  session.providerSnapshot?.modelId === daemon.agentModelId,
+              )
+            ) {
+              throw new Error(
+                "Mobile Chat did not create a read-only chat with the selected model",
+              );
+            }
+          }
         }
       }
       if (flows.includes("transcript")) {

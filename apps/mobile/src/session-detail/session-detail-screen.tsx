@@ -1,9 +1,10 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
-import type {
-  AgentPlanApprovalOutcome,
-  ImageAttachment,
-  SessionObservationSnapshot,
-  WorkspaceRecord,
+import {
+  type AgentPlanApprovalOutcome,
+  type ImageAttachment,
+  isChatSession,
+  type SessionObservationSnapshot,
+  type WorkspaceRecord,
 } from "@cocurdex/shared";
 import { randomUUID } from "expo-crypto";
 import { Stack, useRouter } from "expo-router";
@@ -81,6 +82,8 @@ export function SessionDetailScreen({
   const viewed = useViewedSession(host.hostId, sessionId);
   const workspaces = viewed.workspaces;
   const listed = viewed.sessions.find((entry) => entry.id === sessionId);
+  const session = observation?.session ?? listed;
+  const chat = session !== undefined && isChatSession(session);
   const persona = usePersonaOfSession(host.hostId, sessionId);
   const personaBubble = usePersonaBubble(persona?.role ?? null);
   const workspace = sessionWorkspace(observation, workspaces);
@@ -103,7 +106,7 @@ export function SessionDetailScreen({
         : sends,
     [sends, observation],
   );
-  const isPersonaThread = persona !== null;
+  const conversation = persona !== null || chat;
   const items = useMemo(() => {
     const transcriptItems = [
       ...(observation
@@ -112,7 +115,7 @@ export function SessionDetailScreen({
       ...unconfirmed.map(pendingSendItem),
     ];
     const busy = running || unconfirmed.length > 0;
-    if (isPersonaThread) return conversationTranscript(transcriptItems, busy);
+    if (conversation) return conversationTranscript(transcriptItems, busy);
     return condenseTranscript(
       transcriptItems,
       observation?.toolCalls ?? [],
@@ -125,17 +128,18 @@ export function SessionDetailScreen({
     running,
     unconfirmed,
     runStartedAt,
-    isPersonaThread,
+    conversation,
   ]);
   const pending = observation
     ? pendingInteraction(observation.interactions)
     : null;
   const connection = hostConnection(host.hostId);
   const canInteract = host.scopes.includes("interact");
-  const needsExecute = useNeedsExecuteToDrive(host, sessionId);
+  const unattended = useNeedsExecuteToDrive(host, sessionId);
+  const needsExecute = !chat && unattended;
   const canApprove = host.scopes.includes("approvals");
-  const canFork = host.scopes.includes("execute");
-  const canReadFiles = host.scopes.includes("files.read");
+  const canFork = !chat && host.scopes.includes("execute");
+  const canReadFiles = !chat && host.scopes.includes("files.read");
   const failed = observation?.session.status === "error";
 
   const attempt = async (run: () => Promise<unknown>) => {
@@ -225,6 +229,9 @@ export function SessionDetailScreen({
     items.length === 0 &&
     canInteract;
   const status = failed ? t("detail.failed") : null;
+  const personaPlaceholder = persona
+    ? t("assistant:thread.placeholder", { name: persona.role.name })
+    : undefined;
 
   const headerActions: HeaderButtonItem[] = persona
     ? [
@@ -266,7 +273,7 @@ export function SessionDetailScreen({
         ref={transcript}
         sentMessageId={sends.at(-1)?.id}
         items={items}
-        presentation={persona ? "assistant" : "work"}
+        presentation={conversation ? "assistant" : "work"}
         userBubble={personaBubble ?? undefined}
         bottomInset={dockHeight ?? 0}
         actions={{
@@ -305,14 +312,16 @@ export function SessionDetailScreen({
             <SessionTitle
               title={title}
               subtitle={
-                persona ? null : sessionSubtitle(observation, workspace)
+                persona
+                  ? null
+                  : sessionSubtitle(observation, chat ? null : workspace)
               }
             />
           ),
         }}
       />
       <PromptOutline
-        items={persona ? [] : items}
+        items={conversation ? [] : items}
         actions={headerActions}
         onJump={(id) => transcript.current?.jumpToItem(id)}
       />
@@ -362,19 +371,13 @@ export function SessionDetailScreen({
                     detail.loaded &&
                     !detail.missing
                   }
-                  placeholder={
-                    persona
-                      ? t("assistant:thread.placeholder", {
-                          name: persona.role.name,
-                        })
-                      : undefined
-                  }
+                  placeholder={chat ? t("chat.prompt") : personaPlaceholder}
                   onSend={send}
                   onStop={stop}
                   onPickImages={pickImages}
                   onUploadImage={(image) => uploadImage(host.hostId, image)}
                   accessory={
-                    persona ? undefined : (
+                    conversation ? undefined : (
                       <SessionConfigChips host={host} sessionId={sessionId} />
                     )
                   }

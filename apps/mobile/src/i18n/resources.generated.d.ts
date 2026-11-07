@@ -163,10 +163,12 @@ export default interface Resources {
     };
     tabs: {
       assistant: "Assistant";
+      chat: "Chat";
       issues: "Issues";
       notes: "Notes";
-      sessions: "Sessions";
       settings: "Settings";
+      switchMode: "Switch mode ({{mode}})";
+      work: "Work";
     };
   };
   files: {
@@ -441,6 +443,14 @@ export default interface Resources {
       empty: "No Archived Sessions";
       restore: "Restore";
       restoreSession: "Restore {{title}}";
+    };
+    chat: {
+      empty: "No chats yet";
+      modelsFailed: "Could not load chat models";
+      "new": "New Chat";
+      noModels: "Set up a chat model on your computer to start chatting";
+      prompt: "Message a model";
+      search: "Search chats";
     };
     composer: {
       attach: "Attach Photo";

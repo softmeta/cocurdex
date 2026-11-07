@@ -65,9 +65,11 @@
   },
   "tabs": {
     "assistant": "Assistant",
+    "chat": "Chat",
     "issues": "Issues",
     "notes": "Notes",
-    "sessions": "Sessions",
-    "settings": "Settings"
+    "settings": "Settings",
+    "switchMode": "Switch mode ({{mode}})",
+    "work": "Work"
   }
 }

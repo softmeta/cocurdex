@@ -82,11 +82,16 @@ appId: dev.cocurdex.mobile
 - extendedWaitUntil:
     visible: ${MODEL_TEST_ASSISTANT}
     timeout: 30000
-- assertVisible: ${TAB_ASSISTANT}
+- assertVisible:
+    id: session-mode-switch
 - takeScreenshot: assistant
-- longPressOn: ${MODEL_TEST_ASSISTANT}
-- tapOn:
-    id: assistant-action-edit
+- retry:
+    maxRetries: 2
+    commands:
+      - longPressOn:
+          id: assistant-${MODEL_TEST_ASSISTANT_ID}
+      - assertVisible: ${EDIT_ASSISTANT}
+- tapOn: ${EDIT_ASSISTANT}
 - tapOn:
     id: assistant-form-model
 - tapOn: ".*${NEW_SESSION_MODEL}.*"
@@ -94,18 +99,78 @@ appId: dev.cocurdex.mobile
 - extendedWaitUntil:
     visible: ${MODEL_TEST_ASSISTANT}
     timeout: 10000
-- longPressOn: ${MODEL_TEST_ASSISTANT}
-- tapOn:
-    id: assistant-action-edit
+- retry:
+    maxRetries: 2
+    commands:
+      - longPressOn:
+          id: assistant-${MODEL_TEST_ASSISTANT_ID}
+      - assertVisible: ${EDIT_ASSISTANT}
+- tapOn: ${EDIT_ASSISTANT}
 - assertVisible: ".*${NEW_SESSION_MODEL}.*"
 - tapOn: ${CLOSE_ACTION}
 - extendedWaitUntil:
     visible: ${MODEL_TEST_ASSISTANT}
     timeout: 30000
+- tapOn:
+    id: session-mode-switch
+- assertVisible:
+    id: session-mode-assistant
+- assertVisible:
+    id: session-mode-work
+- assertVisible:
+    id: session-mode-chat
+- takeScreenshot: session-modes
+- tapOn: ${TAB_CHAT}
+- assertNotVisible: ${MODEL_TEST_ASSISTANT}
+- assertNotVisible: ${WORKSPACE_NAME}
+- tapOn: ${NEW_CHAT}
+- extendedWaitUntil:
+    visible:
+      id: new-chat-model
+    timeout: 10000
+- tapOn:
+    id: new-chat-model
+- tapOn: ".*${NEW_SESSION_MODEL}.*"
+- tapOn:
+    id: new-chat-prompt
+- waitForAnimationToEnd
+- setClipboard: ${CHAT_PROMPT}
+- pasteText
+- extendedWaitUntil:
+    visible:
+      id: new-chat-prompt
+      text: ${CHAT_PROMPT}
+    timeout: 10000
+- tapOn: ${SEND_ACTION}
+- extendedWaitUntil:
+    visible:
+      id: composer-input
+    timeout: 15000
+- assertVisible: ${CHAT_PROMPT}
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: ${MODEL_TEST_ASSISTANT}
+    timeout: 30000
+- tapOn:
+    id: session-mode-switch
+- tapOn: ${TAB_CHAT}
+- extendedWaitUntil:
+    visible:
+      id: "session-row-.*"
+    timeout: 15000
+- takeScreenshot: chat
+- tapOn:
+    id: session-mode-switch
+- tapOn:
+    id: session-mode-assistant
+- extendedWaitUntil:
+    visible: ${MODEL_TEST_ASSISTANT}
+    timeout: 10000
 - retry:
     maxRetries: 2
     commands:
-      - tapOn: ${TAB_SESSIONS}
+      - runFlow: shared/open-work.yaml
       - extendedWaitUntil:
           visible: ${WORKSPACE_NAME}
           timeout: 30000

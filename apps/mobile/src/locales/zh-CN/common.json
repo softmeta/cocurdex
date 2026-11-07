@@ -60,9 +60,11 @@
   },
   "tabs": {
     "assistant": "助理",
+    "chat": "聊天",
     "issues": "事项",
     "notes": "笔记",
-    "sessions": "会话",
-    "settings": "设置"
+    "settings": "设置",
+    "switchMode": "切换模式（当前为{{mode}}）",
+    "work": "工作"
   }
 }

@@ -22,7 +22,7 @@ export default function SessionsScreen() {
   if (!host) {
     return (
       <>
-        <ListScreenHeader title={t("common:screens.sessions")} />
+        <ListScreenHeader title={t("common:tabs.work")} />
         <EmptyHosts onScan={() => void openScan()} onPaste={openPaste} />
       </>
     );
@@ -65,7 +65,7 @@ function HostSessionsScreen({
   return (
     <>
       <ListScreenHeader
-        title={t("common:screens.sessions")}
+        title={t("common:tabs.work")}
         search={{ placeholder: t("search"), onQuery }}
         actions={[
           {
