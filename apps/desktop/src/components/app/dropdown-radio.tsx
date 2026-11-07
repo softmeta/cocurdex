@@ -55,18 +55,17 @@ function AppDropdownRadioItem({
       )}
     >
       {option.icon ? (
-        <span className={cn("shrink-0 [&_svg]:size-4", multiLine && "mt-0.5")}>
+        <span
+          className={cn(
+            "shrink-0 text-muted-foreground [&_svg]:size-4",
+            multiLine && "mt-0.5",
+          )}
+        >
           {option.icon}
         </span>
       ) : null}
       <span className="min-w-0 flex-1">
-        <span
-          id={labelId}
-          className={cn(
-            "block truncate",
-            option.description ? "font-medium" : undefined,
-          )}
-        >
+        <span id={labelId} className="block truncate">
           {option.label}
         </span>
         {option.description ? (

@@ -106,7 +106,7 @@ function ContextMenuContent({
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-content"
           className={cn(
-            "z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-lg bg-popover text-popover-foreground shadow-lg shadow-black/20 ring-1 ring-foreground/10 p-1 min-w-(--anchor-width) max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
+            "z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-lg bg-popover text-popover-foreground shadow-menu ring-1 ring-menu-ring p-1 min-w-(--anchor-width) max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
             className,
           )}
           {...props}
@@ -185,7 +185,7 @@ function ContextMenuSubContent({
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-sub-content"
           className={cn(
-            "z-50 origin-(--transform-origin) overflow-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-lg bg-popover text-popover-foreground shadow-lg shadow-black/20 ring-1 ring-foreground/10 p-1 max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
+            "z-50 origin-(--transform-origin) overflow-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-lg bg-popover text-popover-foreground shadow-menu ring-1 ring-menu-ring p-1 max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
             className,
           )}
           {...props}
