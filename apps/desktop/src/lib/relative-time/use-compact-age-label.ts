@@ -2,6 +2,7 @@ import { getCompactRelativeTime } from "@cocurdex/shared";
 import { useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { formatActivityTime } from "./activity-time-label";
+import { formatListTime } from "./list-time-label";
 
 const TICK_MS = 30_000;
 
@@ -58,5 +59,15 @@ export function useActivityTimeLabel(timestamp: string) {
     useMinuteNow(),
     i18n.language,
     t("sidebar.ageNow"),
+  );
+}
+
+export function useListTimeLabel(timestamp: string) {
+  const { t, i18n } = useTranslation("sessions");
+  return formatListTime(
+    timestamp,
+    useMinuteNow(),
+    i18n.language,
+    t("sidebar.yesterday"),
   );
 }

@@ -56,7 +56,7 @@ import {
   useOpenEntityBridge,
 } from "../search-palette";
 import { SessionSplitLayout } from "../session-split";
-import { SidebarToggleButton } from "../sidebar";
+import { SidebarCreateButton, SidebarToggleButton } from "../sidebar";
 import { PersonaEditDialogHost } from "../sidebar/persona-edit-dialog-host";
 import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
 import { appBootstrappedAtom } from "./app-bootstrap-store";
@@ -355,6 +355,7 @@ export function AppShellFrame({
                 <div className="ms-auto flex items-center gap-1">
                   {isAssistantSidebar ? null : <NavigationButtons />}
                   <SearchPaletteButton />
+                  <SidebarCreateButton />
                 </div>
               </div>
             </div>

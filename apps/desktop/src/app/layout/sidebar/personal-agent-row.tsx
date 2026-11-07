@@ -124,6 +124,7 @@ export function PersonalAgentRow({
                 isUnread={isUnread && !isActive && !isMuted}
                 needsAttention={needsAttention}
                 showTimestamp={homeSession?.lastMessageAt != null}
+                timeFormat="clock"
                 timestamp={activityAt}
               />
             </span>

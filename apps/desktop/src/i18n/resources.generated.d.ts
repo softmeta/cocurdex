@@ -2244,6 +2244,7 @@ export default interface Resources {
       };
       workspacesGroup: "Work";
       workspacesHint: "Build, fix, and ship in your projects";
+      yesterday: "Yesterday";
     };
     split: {
       actions: "Actions";

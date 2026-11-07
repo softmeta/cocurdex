@@ -202,13 +202,13 @@
    * the same control rather than two different colors. */
   --sidebar-surface-hover: color-mix(
     in srgb,
-    var(--sidebar-foreground) 5%,
-    var(--sidebar-accent)
+    var(--sidebar-foreground) 3%,
+    var(--sidebar)
   );
   --sidebar-surface-active: color-mix(
     in srgb,
-    var(--sidebar-foreground) 8%,
-    var(--sidebar-accent)
+    var(--sidebar-foreground) 5%,
+    var(--sidebar)
   );
   --sidebar-divider: color-mix(in srgb, var(--sidebar-border) 74%, transparent);
   --sidebar-text: var(--sidebar-foreground);
@@ -370,7 +370,7 @@
   );
 
   --control-thumb: var(--background);
-  --sidebar: color-mix(in srgb, var(--foreground) 6%, var(--background));
+  --sidebar: color-mix(in srgb, var(--foreground) 3%, var(--background));
   --settings-surface: color-mix(
     in srgb,
     var(--foreground) 3%,
