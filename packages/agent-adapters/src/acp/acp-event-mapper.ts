@@ -237,8 +237,7 @@ export function mapAcpPromptUsage(
       : null;
 
   const contextTokensUsed =
-    readTotalTokensFromMeta(meta) ??
-    (usage ? readNonNegativeInt(usage.totalTokens) : null);
+    readTotalTokensFromMeta(meta) ?? readNonNegativeInt(usage?.totalTokens);
 
   // Prefer Grok's per-turn meta; do not treat ACP `usage.*Tokens` as deltas.
   const inputTokens = readNonNegativeInt(meta?.inputTokens) ?? 0;
@@ -266,11 +265,29 @@ export function mapAcpPromptUsage(
   };
 }
 
+interface PromptContextSamples {
+  count: number;
+  sum: number;
+  last: number;
+}
+
+function verifyPromptContext(
+  samples: PromptContextSamples,
+  usage: PromptResponse["usage"],
+): number | null {
+  const total = readNonNegativeInt(usage?.totalTokens);
+  const cached = readNonNegativeInt(usage?.cachedReadTokens) ?? 0;
+  if (total == null || samples.count === 0) return null;
+  if (samples.sum === total) return samples.last;
+  return samples.count === 1 && samples.sum === total + cached ? total : null;
+}
+
 export class AcpEventMapper {
   private readonly activeMessageSegments = new Map<string, string>();
   private lastTimelineTimestampMs = Number.NEGATIVE_INFINITY;
-  private lastContextTokensUsed: number | null = null;
+  private lastContextTokensUsed: number | null | undefined;
   private lastContextWindowSize: number | null = null;
+  private promptContextSamples: PromptContextSamples | null = null;
   private lastReportedCostUsd: number | null = null;
   private lastTurnUsage: AgentUsageRecord | null = null;
   private readonly messages = new Map<string, MessageBuffer>();
@@ -291,6 +308,9 @@ export class AcpEventMapper {
       toolCall: AgentToolCallRecord,
     ) => AgentToolCallRecord | null = (toolCall) => toolCall,
     private readonly workspaceRootPath: string | null = null,
+    private readonly usageOptions: {
+      usePromptResponseForContext?: boolean;
+    } = {},
   ) {
     this.updateNativeSessionTitle = createNativeSessionTitleTracker({
       initialTitle: initialSessionTitle,
@@ -311,6 +331,17 @@ export class AcpEventMapper {
   beginTurn(userMessageId: string) {
     this.userMessageId = userMessageId;
     this.turnDiffs.clear();
+  }
+
+  beginPrompt() {
+    if (this.usageOptions.usePromptResponseForContext) {
+      this.promptContextSamples = { count: 0, sum: 0, last: 0 };
+    }
+  }
+
+  failPrompt() {
+    const usage = this.finishPromptContext();
+    if (usage) this.emitUsage(usage);
   }
 
   collectNativeEvidence() {
@@ -407,7 +438,9 @@ export class AcpEventMapper {
   handle(notification: SessionNotification) {
     // Grok (and similar agents) stamp context fill on every notification's
     // `_meta.totalTokens` instead of sending a dedicated `usage_update`.
-    this.emitContextFromMeta(readMetaRecord(notification._meta));
+    if (!this.usageOptions.usePromptResponseForContext) {
+      this.emitContextFromMeta(readMetaRecord(notification._meta));
+    }
 
     const { update } = notification;
     switch (update.sessionUpdate) {
@@ -518,6 +551,12 @@ export class AcpEventMapper {
           cost?: unknown;
         };
         const used = readNonNegativeInt(record.used);
+        const samples = this.promptContextSamples;
+        if (samples && used != null && used > 0) {
+          samples.count += 1;
+          samples.sum += used;
+          samples.last = used;
+        }
         const size = readNonNegativeInt(record.size);
         const cumulativeCostUsd = readCostUsd(record.cost);
         let totalCostUsd: number | undefined;
@@ -531,7 +570,9 @@ export class AcpEventMapper {
         this.emitUsage({
           inputTokens: 0,
           outputTokens: 0,
-          ...(used != null ? { contextTokensUsed: used } : {}),
+          ...(used != null && !this.usageOptions.usePromptResponseForContext
+            ? { contextTokensUsed: used }
+            : {}),
           ...(size != null ? { contextWindowSize: size } : {}),
           ...(totalCostUsd != null ? { totalCostUsd } : {}),
         });
@@ -569,7 +610,9 @@ export class AcpEventMapper {
     durationMs: number,
     promptResponse?: PromptResponse | null,
   ): MessageRecord {
-    const promptUsage = mapAcpPromptUsage(promptResponse);
+    const promptUsage = this.usageOptions.usePromptResponseForContext
+      ? this.finishPromptContext(promptResponse?.usage)
+      : mapAcpPromptUsage(promptResponse);
     if (promptUsage) {
       this.lastTurnUsage = promptUsage;
       this.emitUsage(promptUsage);
@@ -641,6 +684,22 @@ export class AcpEventMapper {
     return result;
   }
 
+  private finishPromptContext(
+    usage?: PromptResponse["usage"],
+  ): AgentUsageRecord | null {
+    const samples = this.promptContextSamples;
+    this.promptContextSamples = null;
+    if (!samples || (samples.count === 0 && !usage)) return null;
+    return {
+      inputTokens: 0,
+      outputTokens: 0,
+      contextTokensUsed: verifyPromptContext(samples, usage),
+      ...(this.lastContextWindowSize != null
+        ? { contextWindowSize: this.lastContextWindowSize }
+        : {}),
+    };
+  }
+
   private emitContextFromMeta(meta: Record<string, unknown> | null) {
     const totalTokens = readTotalTokensFromMeta(meta);
     if (totalTokens == null) {
@@ -658,7 +717,7 @@ export class AcpEventMapper {
   }
 
   private emitUsage(usage: AgentUsageRecord) {
-    const nextUsed = usage.contextTokensUsed ?? null;
+    const nextUsed = usage.contextTokensUsed;
     const nextSize = usage.contextWindowSize ?? null;
     const hasBilling =
       usage.inputTokens > 0 ||
@@ -667,7 +726,7 @@ export class AcpEventMapper {
       (usage.cacheCreationInputTokens ?? 0) > 0 ||
       usage.totalCostUsd != null;
     const contextUnchanged =
-      (nextUsed == null || nextUsed === this.lastContextTokensUsed) &&
+      (nextUsed === undefined || nextUsed === this.lastContextTokensUsed) &&
       (nextSize == null || nextSize === this.lastContextWindowSize);
 
     // Skip pure context-only updates that do not change the window fill.
@@ -675,7 +734,7 @@ export class AcpEventMapper {
       return;
     }
 
-    if (nextUsed != null) {
+    if (nextUsed !== undefined) {
       this.lastContextTokensUsed = nextUsed;
     }
     if (nextSize != null) {

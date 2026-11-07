@@ -1109,7 +1109,7 @@ export interface AgentUsageRecord {
   reasoningOutputTokens?: number;
   totalCostUsd?: number;
   /** Absolute tokens currently filling the model context window. */
-  contextTokensUsed?: number;
+  contextTokensUsed?: number | null;
   /** Absolute context window size reported by the agent, when available. */
   contextWindowSize?: number;
 }
@@ -1134,7 +1134,10 @@ export function mergeUsageRecords(
       delta.totalCostUsd == null && current?.totalCostUsd == null
         ? undefined
         : (current?.totalCostUsd ?? 0) + (delta.totalCostUsd ?? 0),
-    contextTokensUsed: delta.contextTokensUsed ?? current?.contextTokensUsed,
+    contextTokensUsed:
+      delta.contextTokensUsed === undefined
+        ? current?.contextTokensUsed
+        : delta.contextTokensUsed,
     contextWindowSize: delta.contextWindowSize ?? current?.contextWindowSize,
   };
 }

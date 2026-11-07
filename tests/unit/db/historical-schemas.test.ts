@@ -93,6 +93,51 @@ function migrateHistoricalDatabase(version: number) {
 }
 
 describe("historical schema fixtures", () => {
+  it("removes unverified Antigravity context counts without clearing other usage", () => {
+    const database = new DatabaseSync(":memory:");
+    try {
+      seedHistoricalDatabase(database, 44, "/acme-shop");
+      database.exec(`
+        INSERT INTO sessions (
+          id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at
+        ) SELECT
+          'antigravity-session', workspace_id, title, 'acp:antigravity-acp',
+          status, write_mode, created_at, updated_at
+        FROM sessions WHERE id = 'historical-session';
+      `);
+      const usage = {
+        inputTokens: 125,
+        outputTokens: 25,
+        contextTokensUsed: 49_305,
+        contextWindowSize: 1_048_576,
+      };
+      const insert = database.prepare(
+        "INSERT INTO session_usage (session_id, usage_json, updated_at) VALUES (?, ?, ?)",
+      );
+      for (const id of ["antigravity-session", "historical-session"]) {
+        insert.run(id, JSON.stringify(usage), "2026-06-25T00:00:00.000Z");
+      }
+      initializeDatabase(database);
+
+      const readUsage = database.prepare(
+        "SELECT usage_json FROM session_usage WHERE session_id = ?",
+      );
+      expect(
+        JSON.parse(String(readUsage.get("antigravity-session")?.usage_json)),
+      ).toEqual({
+        inputTokens: 125,
+        outputTokens: 25,
+        contextTokensUsed: null,
+        contextWindowSize: 1_048_576,
+      });
+      expect(
+        JSON.parse(String(readUsage.get("historical-session")?.usage_json)),
+      ).toEqual(usage);
+    } finally {
+      database.close();
+    }
+  });
+
   it("cover every migratable schema version", () => {
     const expected = Array.from(
       { length: CURRENT_SCHEMA_VERSION - FIRST_MIGRATABLE_SCHEMA_VERSION },

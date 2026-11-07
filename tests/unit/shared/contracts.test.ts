@@ -1,6 +1,7 @@
 import {
   formatContextFileChipLabel,
   getContextUsageTokens,
+  mergeUsageRecords,
 } from "@cocurdex/shared/internal/contracts";
 import { describe, expect, it } from "vitest";
 
@@ -19,6 +20,33 @@ describe("getContextUsageTokens", () => {
         contextTokensUsed: 90,
       }),
     ).toBe(90);
+  });
+});
+
+describe("mergeUsageRecords", () => {
+  it("clears an unavailable context count while keeping the window and totals", () => {
+    const usage = {
+      inputTokens: 120,
+      outputTokens: 30,
+      contextTokensUsed: 90,
+      contextWindowSize: 100,
+    };
+    const cleared = mergeUsageRecords(usage, {
+      inputTokens: 0,
+      outputTokens: 0,
+      contextTokensUsed: null,
+    });
+    expect(cleared).toMatchObject({ ...usage, contextTokensUsed: null });
+    expect(getContextUsageTokens(cleared)).toBeNull();
+    expect(
+      getContextUsageTokens(
+        mergeUsageRecords(cleared, {
+          inputTokens: 0,
+          outputTokens: 0,
+          contextTokensUsed: 82,
+        }),
+      ),
+    ).toBe(82);
   });
 });
 

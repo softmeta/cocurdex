@@ -28,6 +28,7 @@ export function ChatContextMeter({
         usage?.contextWindowSize ??
         null
       }
+      contextUnavailable={usage?.contextTokensUsed === null}
       used={usage ? getSessionContextTokens(usage) : null}
     />
   );

@@ -110,6 +110,7 @@ export interface AcpAgentAdapterOptions {
     buildParams(providerSessionId: string): Record<string, unknown>;
     mapResponse(value: unknown): AcpContextUsage | null;
   };
+  usePromptResponseForContext?: boolean;
   // Agents that expose a live MCP catalog (Grok's `x.ai/mcp/list`) report it
   // here so the session runtime menu can list connected servers.
   mcpServersRequest?: {
@@ -283,6 +284,7 @@ export class AcpAgentAdapter implements AgentAdapter {
       (toolCall) =>
         subagentBridge ? subagentBridge.transform(toolCall) : toolCall,
       payload.workspaceRootPath,
+      { usePromptResponseForContext: this.options.usePromptResponseForContext },
     );
     const createChildMapper = (session: SessionRecord) => {
       const existing = childMappers.get(session.id);
@@ -296,6 +298,9 @@ export class AcpAgentAdapter implements AgentAdapter {
         null,
         undefined,
         payload.workspaceRootPath,
+        {
+          usePromptResponseForContext: this.options.usePromptResponseForContext,
+        },
       );
       childMappers.set(session.id, childMapper);
       return childMapper;
@@ -1018,13 +1023,15 @@ export class AcpAgentAdapter implements AgentAdapter {
             prompt: messagePayload.content,
             sessionId: payload.session.id,
           });
+          const promptContent = await buildAcpPrompt(
+            messagePayload.content,
+            messagePayload.attachments ?? [],
+            capabilities,
+          );
+          mapper.beginPrompt();
           prompt = connection.prompt({
             sessionId: providerSessionId,
-            prompt: await buildAcpPrompt(
-              messagePayload.content,
-              messagePayload.attachments ?? [],
-              capabilities,
-            ),
+            prompt: promptContent,
           });
           activePrompt = prompt;
           const response = await prompt.finally(() => {
@@ -1058,6 +1065,7 @@ export class AcpAgentAdapter implements AgentAdapter {
             });
             return message;
           }
+          mapper.failPrompt();
           const error = mapTurnError(caught, turnConnection);
           const message =
             error instanceof Error ? error.message : "ACP prompt failed";
