@@ -20,10 +20,10 @@ export const sidebarListRowVariants = cva(
       variant: {
         // Selectable leaf: idle secondary text, hover step, deeper selected step.
         default:
-          "text-sidebar-fg-secondary hover:bg-sidebar-surface-hover hover:text-sidebar-fg data-active:bg-sidebar-surface-active data-active:font-medium data-active:text-sidebar-fg data-active:hover:bg-sidebar-surface-active data-active:hover:text-sidebar-fg",
+          "text-sidebar-fg-secondary hover:bg-sidebar-surface-hover hover:text-sidebar-fg data-active:bg-sidebar-surface-active data-active:text-sidebar-fg data-active:hover:bg-sidebar-surface-active data-active:hover:text-sidebar-fg",
         // Quieter idle text (e.g. pure-chat list); same hover/selected surfaces.
         muted:
-          "text-sidebar-fg-muted hover:bg-sidebar-surface-hover hover:text-sidebar-fg-secondary data-active:bg-sidebar-surface-active data-active:font-medium data-active:text-sidebar-fg data-active:hover:bg-sidebar-surface-active data-active:hover:text-sidebar-fg",
+          "text-sidebar-fg-muted hover:bg-sidebar-surface-hover hover:text-sidebar-fg-secondary data-active:bg-sidebar-surface-active data-active:text-sidebar-fg data-active:hover:bg-sidebar-surface-active data-active:hover:text-sidebar-fg",
         // Parent/group row (e.g. workspace): selected is color only, same weight.
         subtle:
           "font-normal text-sidebar-fg-secondary hover:bg-sidebar-surface-hover hover:text-sidebar-fg data-active:font-normal data-active:text-sidebar-fg",
