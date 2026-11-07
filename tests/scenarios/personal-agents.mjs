@@ -211,26 +211,87 @@ runScenario("personal-agents", {
         const trigger = { role: "button", name: overviewLabel };
         const [button] = await waitForRole(session, trigger);
         const point = await centerOf(session, button.backendNodeId);
-        await session.send("Input.dispatchMouseEvent", {
-          type: "mouseMoved",
-          x: point.x + 5,
-          y: point.y,
+        const movePointer = (x, y) =>
+          session.send("Input.dispatchMouseEvent", {
+            type: "mouseMoved",
+            x,
+            y,
+          });
+        for (const theme of ["light", "dark"]) {
+          await emulateColorScheme(session, theme);
+          await movePointer(point.x, point.y + 80);
+          const rest = await session.run(async ({ x, y }) => {
+            const button = document.elementFromPoint(x, y).closest("button");
+            await Promise.all(
+              button
+                .getAnimations({ subtree: true })
+                .map((animation) => animation.finished),
+            );
+            return {
+              background: getComputedStyle(button).backgroundColor,
+              width: button.getBoundingClientRect().width,
+            };
+          }, point);
+          await movePointer(point.x, point.y);
+          await session.waitUntil(
+            ({ x, y, rest }) => {
+              const button = document.elementFromPoint(x, y)?.closest("button");
+              if (!button) return false;
+              const avatar = button.querySelector("[data-avatar]");
+              return (
+                Number(avatar?.style.getPropertyValue("--avatar-look-x")) > 0 &&
+                getComputedStyle(button).backgroundColor !== rest.background &&
+                button.getBoundingClientRect().width > rest.width
+              );
+            },
+            { ...point, rest },
+            UI_TIMEOUT_MS,
+          );
+        }
+        await session.send("Emulation.setEmulatedMedia", {
+          features: [
+            { name: "prefers-reduced-motion", value: "no-preference" },
+          ],
         });
-        await session.waitUntil(
-          ({ x, y }) =>
-            Number(
-              document
-                .elementFromPoint(x, y)
-                ?.closest("button")
-                ?.querySelector("[data-avatar]")
-                ?.style.getPropertyValue("--avatar-look-x"),
-            ) > 0,
-          { x: point.x + 5, y: point.y },
-          UI_TIMEOUT_MS,
+        const panelMotion = session.run(
+          () =>
+            new Promise((resolve) => {
+              const observer = new MutationObserver(() => {
+                const panel = document.querySelector(
+                  '[data-testid="shell-right-panel"]',
+                );
+                if (!panel) return;
+                observer.disconnect();
+                requestAnimationFrame(async () => {
+                  const initial = panel.getBoundingClientRect().left;
+                  await Promise.all(
+                    panel
+                      .getAnimations()
+                      .map((animation) => animation.finished),
+                  );
+                  resolve({
+                    initial,
+                    settled: panel.getBoundingClientRect().left,
+                  });
+                });
+              });
+              observer.observe(document.querySelector("main"), {
+                childList: true,
+              });
+            }),
         );
-        await clickByRole(session, trigger);
+        const [, motion] = await Promise.all([
+          clickByRole(session, trigger),
+          panelMotion,
+        ]);
         await waitForRole(session, { role: "region", name: overviewLabel });
-        return {};
+        check(
+          motion.initial > motion.settled,
+          "the overview slides in from the right",
+          motion,
+        );
+        await clearColorScheme(session);
+        return { motion };
       },
     ],
     assistantPanelsStep(),

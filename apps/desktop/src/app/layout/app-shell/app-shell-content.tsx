@@ -16,7 +16,10 @@ import { resolveChatDockPinLayout } from "../chat-dock-sizing";
 import { DetachedChatPlaceholder, useChatWindowActions } from "../chat-window";
 import { NavigationButtons } from "../navigation";
 import { RightEditorPanel } from "../right-editor-panel-lazy";
-import { rightPanelDockedAtom } from "../right-editor-panel-store";
+import {
+  rightPanelDockedAtom,
+  rightPanelResolvedActiveViewAtom,
+} from "../right-editor-panel-store";
 import { LeftSidebar, ResizableSidebarSlot, ResizeSeparator } from "../sidebar";
 import { useChatDockViewportWidth } from "../use-chat-dock-viewport";
 import { MIN_CHAT_WIDTH, PANEL_SEPARATOR_WIDTH } from "./panel-geometry";
@@ -82,6 +85,7 @@ export function AppShellContent({
   const isCompact = isRightPanelCompact && !isRightPanelMaximized;
   const { t } = useTranslation("editor");
   const isRightPanelDocked = useAtomValue(rightPanelDockedAtom);
+  const rightPanelView = useAtomValue(rightPanelResolvedActiveViewAtom);
   const chatOverlayInset =
     isRightPanelOpen && !isPanelFullWidth
       ? rightWidth + PANEL_SEPARATOR_WIDTH
@@ -107,6 +111,9 @@ export function AppShellContent({
             isPanelFullWidth
               ? "flex-1"
               : "absolute inset-y-0 end-0 z-40 max-w-full",
+            !isPanelFullWidth &&
+              rightPanelView === "overview" &&
+              "assistant-overview-slide-in",
           )}
           style={
             isPanelFullWidth

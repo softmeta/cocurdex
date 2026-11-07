@@ -69,7 +69,12 @@ export function SessionPaneHeader({
         {leading ? (
           <div className="pointer-events-auto relative">{leading}</div>
         ) : null}
-        <div className="absolute inset-x-0 top-1.5 flex justify-center">
+        <div
+          className={cn(
+            "absolute inset-x-0 flex justify-center",
+            occupiesTitlebar ? "top-8" : "top-1.5",
+          )}
+        >
           <PersonaTitle
             onOpenOverview={onOpenAssistantOverview}
             role={personaRole}
