@@ -1,10 +1,10 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { RotateCcw, Search } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { SettingsGroup } from "@/components/app";
-import { Button, EmptyState, Input } from "@/components/ui";
+import { AppSearchInput, SettingsGroup } from "@/components/app";
+import { Button, EmptyState } from "@/components/ui";
 import type { ShortcutCombo } from "@/lib";
 
 import {
@@ -125,14 +125,12 @@ export function ShortcutsSettingsPanel() {
       </p>
 
       <div className="flex items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
+        <div className="min-w-0 flex-1">
+          <AppSearchInput
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("shortcuts.searchPlaceholder")}
             aria-label={t("shortcuts.searchPlaceholder")}
-            className="ps-8"
           />
         </div>
         <Button

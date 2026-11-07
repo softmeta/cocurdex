@@ -16,8 +16,11 @@ export {
   AppRemoveButton,
   AppSearchableSelect,
   type AppSearchableSelectOption,
+  AppSearchInput,
   AppSelect,
   AppSidebarRowTitle,
+  AppStatusDot,
+  type AppStatusTone,
   SettingRow,
   SettingsGroup,
 } from "./app";

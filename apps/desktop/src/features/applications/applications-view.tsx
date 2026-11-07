@@ -1,22 +1,20 @@
 import { APPLICATION_CATALOG, type ApplicationId } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import { ArrowLeft, ArrowUpRight, Plug, Search } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Plug } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { SettingsGroup } from "@/components";
-import { Button, Input } from "@/components/ui";
+import { AppSearchInput, SettingsGroup } from "@/components";
+import { Button } from "@/components/ui";
 import { usePersonalAgents } from "@/features/personal";
 import { activeSessionIdAtom, sessionsAtom } from "@/features/sessions";
 import { openSettings } from "@/features/settings";
 import { requestDaemon } from "@/lib";
+import { ApplicationConnectionRow } from "./application-connection-row";
 import { ApplicationDetail } from "./application-detail";
 import { ApplicationLoginPanel } from "./application-login-panel";
 import { useApplications } from "./application-queries";
-import {
-  applicationStateLabel,
-  isApplicationConnected,
-} from "./application-state";
+import { isApplicationConnected } from "./application-state";
 import { useApplicationLogin } from "./use-application-login";
 
 export function ApplicationsView() {
@@ -152,50 +150,28 @@ export function ApplicationsView() {
         ) : (
           <div className="flex flex-col gap-6">
             <p className="text-body text-muted-foreground">
-              {t("apps.description", {
-                defaultValue:
-                  "Connect your accounts on this host, then choose which assistants may use them. Custom MCP connections remain available in advanced settings.",
-              })}
+              {t("apps.description")}
             </p>
-            <div className="relative">
-              <Search className="pointer-events-none absolute start-3 top-2.5 size-4 text-muted-foreground" />
-              <Input
-                className="ps-9"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("apps.search", {
-                  defaultValue: "Search applications",
-                })}
-                aria-label={t("apps.search", {
-                  defaultValue: "Search applications",
-                })}
-              />
-            </div>
+            <AppSearchInput
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("apps.search", {
+                defaultValue: "Search applications",
+              })}
+              aria-label={t("apps.search", {
+                defaultValue: "Search applications",
+              })}
+            />
             <SettingsGroup
               title={t("apps.added", { defaultValue: "Added connections" })}
             >
               {connections.length ? (
                 connections.map((connection) => (
-                  <button
-                    type="button"
+                  <ApplicationConnectionRow
                     key={connection.id}
-                    onClick={() => setSelectedId(connection.id)}
-                    className="flex w-full items-center justify-between gap-3 py-3.5 text-start"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-body">
-                        {connection.displayName}
-                      </span>
-                      <span className="text-meta text-muted-foreground">
-                        {connection.applicationId} ·{" "}
-                        {connection.personaIds.length}{" "}
-                        {t("apps.assistants", { defaultValue: "assistants" })}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-meta text-muted-foreground">
-                      {applicationStateLabel(connection, t)}
-                    </span>
-                  </button>
+                    connection={connection}
+                    onOpen={() => setSelectedId(connection.id)}
+                  />
                 ))
               ) : (
                 <p className="py-4 text-body text-muted-foreground">

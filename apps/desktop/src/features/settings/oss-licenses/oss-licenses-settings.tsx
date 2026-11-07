@@ -3,11 +3,11 @@ import { Scale } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { AppSearchInput } from "@/components";
 import { Button, EmptyState, Text } from "@/components/ui";
 import { desktopApi, useMountEffect } from "@/lib";
 import type { OssLicensesPayload } from "@/lib/types";
 import { SettingsListItem } from "../settings-list-item";
-import { SettingsSearchInput } from "../settings-search-input";
 import {
   buildOssLicenseRows,
   filterOssLicenseRows,
@@ -104,7 +104,7 @@ function OssLicensesBrowser({
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(16rem,18rem)_minmax(0,1fr)] gap-6">
         <div className="flex min-h-0 flex-col gap-2">
           <div className="shrink-0">
-            <SettingsSearchInput
+            <AppSearchInput
               aria-label={t("licenses.searchPlaceholder")}
               autoComplete="off"
               placeholder={t("licenses.searchPlaceholder")}

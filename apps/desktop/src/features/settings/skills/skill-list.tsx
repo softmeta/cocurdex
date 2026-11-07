@@ -2,9 +2,9 @@ import type { InstalledSkill } from "@cocurdex/shared";
 import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { AppSearchInput } from "@/components";
 import { IconButton, Spinner, Text } from "@/components/ui";
 import { SettingsListItem } from "../settings-list-item";
-import { SettingsSearchInput } from "../settings-search-input";
 import {
   type InstalledSkillGroups,
   type SkillDotState,
@@ -104,7 +104,7 @@ export function SkillList({
     <div className="flex min-h-0 w-72 shrink-0 flex-col gap-3">
       <div className="flex shrink-0 items-center gap-2">
         <div className="min-w-0 flex-1">
-          <SettingsSearchInput
+          <AppSearchInput
             aria-label={t("skills.list.filter")}
             placeholder={t("skills.list.filter")}
             value={query}

@@ -1,11 +1,11 @@
 import type { McpServerConfig, McpServerScope } from "@cocurdex/shared";
 import { Download } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { AppSearchInput } from "@/components";
 import { Badge, DropdownMenuItem, Text } from "@/components/ui";
 import { JsonAddMenu } from "../json-add-menu";
 import type { JsonTextHandler } from "../json-file-import";
 import { SettingsListItem } from "../settings-list-item";
-import { SettingsSearchInput } from "../settings-search-input";
 import {
   type McpSelection,
   matchesServerQuery,
@@ -107,7 +107,7 @@ export function McpServerList({
     <div className="flex min-h-0 w-72 shrink-0 flex-col gap-3">
       <div className="flex shrink-0 items-center gap-2">
         <div className="min-w-0 flex-1">
-          <SettingsSearchInput
+          <AppSearchInput
             aria-label={t("mcp.list.search")}
             placeholder={t("mcp.list.search")}
             value={query}

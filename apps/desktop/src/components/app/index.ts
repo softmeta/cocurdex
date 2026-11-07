@@ -23,6 +23,7 @@ export { AppInlineRenameInput } from "./inline-rename-input";
 export { AppPanelTab } from "./panel-tab";
 export { AppPreviewCardTooltipContent } from "./preview-card-tooltip";
 export { AppRemoveButton } from "./remove-button";
+export { AppSearchInput } from "./search-input";
 export {
   AppSearchableSelect,
   type AppSearchableSelectOption,
@@ -38,4 +39,5 @@ export {
   type AppSidebarIconButtonProps,
 } from "./sidebar-icon-button";
 export { AppSidebarRowTitle } from "./sidebar-row-title";
+export { AppStatusDot, type AppStatusTone } from "./status-dot";
 export { AppWindowOverlayHeader } from "./window-overlay-header";

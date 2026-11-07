@@ -124,11 +124,19 @@ export function ApplicationDetail({
       </SettingsGroup>
       <SettingsGroup
         title={t("apps.permissions", { defaultValue: "Assistant access" })}
-        description={t("apps.permissionDescription", {
-          defaultValue: "Only selected assistants can use this connection.",
-        })}
       >
-        {agents.map((agent) => (
+        <SettingRow
+          title={t("apps.allAssistants")}
+          description={t("apps.allAssistantsDescription")}
+        >
+          <Switch
+            aria-label={t("apps.allAssistants")}
+            checked={view.allPersonas}
+            disabled={disabled}
+            onCheckedChange={(allPersonas) => save({ allPersonas })}
+          />
+        </SettingRow>
+        {(view.allPersonas ? [] : agents).map((agent) => (
           <SettingRow key={agent.id} title={agent.role.name}>
             <Switch
               aria-label={agent.role.name}

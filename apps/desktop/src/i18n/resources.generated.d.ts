@@ -1539,7 +1539,10 @@ export default interface Resources {
     apps: {
       added: "Added connections";
       advanced: "Custom MCP";
-      assistants: "assistants";
+      allAssistants: "All assistants";
+      allAssistantsDescription: "Includes assistants you create later.";
+      assistantCount_one: "{{count}} assistant";
+      assistantCount_other: "{{count}} assistants";
       back: "Back to applications";
       browserOAuth: "Authorize in your browser";
       cancel: "Cancel";
@@ -1551,7 +1554,7 @@ export default interface Resources {
       connection: "Connection";
       delegated: "Allow delegated work";
       delegatedDescription: "Work sessions and teammates these assistants delegate can also use this account.";
-      description: "Connect your accounts on this host, then choose which assistants may use them. Custom MCP connections remain available in advanced settings.";
+      description: "Connect accounts on this host and choose which assistants can use them.";
       deviceCode: "Authorization code";
       deviceCodeHint: "Enter this code on the GitHub page in your browser. This page updates when you finish.";
       disabled: "Disabled";
@@ -1562,10 +1565,10 @@ export default interface Resources {
       inspectTools: "Inspect tools";
       name: "Connection name";
       needsAuth: "Authorization required";
+      noAssistants: "No assistants";
       noConnections: "No matching connections";
       notChecked: "Not checked";
       openAuthorization: "Open authorization page";
-      permissionDescription: "Only selected assistants can use this connection.";
       permissions: "Assistant access";
       providerDocs: "Provider instructions";
       reauthorize: "Reauthorize";
