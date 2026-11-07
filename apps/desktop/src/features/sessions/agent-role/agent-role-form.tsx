@@ -214,7 +214,6 @@ export function AgentRoleForm({
         openCodeVariant: openCodeVariant || null,
         avatar,
       });
-      toast.success(t("settings:agentRoles.saved"));
       onSaved(saved);
     } catch {
       setSaving(false);
@@ -250,7 +249,7 @@ export function AgentRoleForm({
           </FieldLabel>
           <Textarea
             id="agent-role-description"
-            className="max-h-40 min-h-20"
+            className="max-h-40 min-h-0"
             maxLength={AGENT_ROLE_DESCRIPTION_MAX_LENGTH}
             placeholder={
               descriptionPlaceholder ??

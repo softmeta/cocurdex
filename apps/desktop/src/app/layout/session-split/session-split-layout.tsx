@@ -54,7 +54,7 @@ function SessionPaneFrame({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: pointer down focuses this pane
     <div
-      className="flex h-full min-h-0 min-w-0 flex-col"
+      className="relative flex h-full min-h-0 min-w-0 flex-col"
       onMouseDown={onActivate}
       ref={frameRef}
     >
@@ -65,6 +65,7 @@ function SessionPaneFrame({
 
 interface SessionSplitLayoutProps {
   composerRef?: Ref<ChatComposerHandle>;
+  onOpenAssistantOverview?(): void;
   hideTitlebarSpacer?: boolean;
   /** Set when the surrounding shell renders the pane header for a lone pane. */
   hideSinglePaneHeader?: boolean;
@@ -74,6 +75,7 @@ interface SessionSplitLayoutProps {
 
 export function SessionSplitLayout({
   composerRef,
+  onOpenAssistantOverview,
   hideTitlebarSpacer = false,
   hideSinglePaneHeader = false,
   headerEndInset = 0,
@@ -219,11 +221,19 @@ export function SessionSplitLayout({
                 : 0
             }
             canClose={paneCount > 1}
+            floatingPersona
             isFocused={isFocused}
             occupiesTitlebar={occupiesTitlebar && !hideTitlebarSpacer}
             paneId={node.pane.id}
             sessionId={node.pane.sessionId}
             title={sessionPaneTitle(node.pane, sessions)}
+            onOpenAssistantOverview={
+              onOpenAssistantOverview &&
+              (() => {
+                handleActivate(node.pane);
+                onOpenAssistantOverview();
+              })
+            }
             onClose={() => handleClose(node.pane.id)}
             onCloseAll={() => handleCloseAll(node.pane.id)}
             onSplitDown={() => splitPaneById(node.pane.id, "down")}
@@ -238,6 +248,7 @@ export function SessionSplitLayout({
                 assignComposerRef(composerRef, handle);
               }
             }}
+            floatingHeader={showPaneHeader}
             hideTitlebarSpacer
             isFocused={isFocused}
             pane={node.pane}

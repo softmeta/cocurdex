@@ -3,7 +3,10 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import type { Ref } from "react";
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { setChatComposerAttachmentAtom } from "@/features/editor";
+import {
+  editorPanelOpenAtom,
+  setChatComposerAttachmentAtom,
+} from "@/features/editor";
 import {
   OnboardingView,
   onboardingDismissedAtom,
@@ -46,6 +49,7 @@ import type { ChatLayoutMode } from "../chat-layout-preference";
 import { useChatBrowserContext } from "../chat-window/chat-browser-context";
 import { useChatContext } from "../chat-window/use-chat-context";
 import { NavigationButtons } from "../navigation";
+import { rightPanelResolvedActiveViewAtom } from "../right-editor-panel-store";
 import {
   SearchPalette,
   SearchPaletteButton,
@@ -53,6 +57,7 @@ import {
 } from "../search-palette";
 import { SessionSplitLayout } from "../session-split";
 import { SidebarToggleButton } from "../sidebar";
+import { PersonaEditDialogHost } from "../sidebar/persona-edit-dialog-host";
 import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
 import { appBootstrappedAtom } from "./app-bootstrap-store";
 import { AppShellContent } from "./app-shell-content";
@@ -163,6 +168,8 @@ export function AppShellFrame({
   const appBootstrapped = useAtomValue(appBootstrappedAtom);
   const workspaces = useAtomValue(workspacesAtom);
   const providerConfigs = useAtomValue(providerConfigsAtom);
+  const [sidebarTab, setSidebarTab] = useAtom(sidebarTabAtom);
+  const isAssistantSidebar = sidebarTab === "personal";
   const providerModelsLoaded = useAtomValue(providerModelsLoadedAtom);
   const onboardingDismissed = useAtomValue(onboardingDismissedAtom);
   // Decided once, when the snapshot and provider rows are both in: opening a
@@ -181,11 +188,12 @@ export function AppShellFrame({
   const [onboardingEntered, setOnboardingEntered] = useAtom(
     onboardingEnteredAtom,
   );
-  const setSidebarTab = useSetAtom(sidebarTabAtom);
   const composerRef = useChatContext(() => onChatDockVisibilityChange("open"));
   useChatBrowserContext();
   useOpenEntityBridge();
   const dock = useDockGeometry();
+  const setRightPanelOpen = useSetAtom(editorPanelOpenAtom);
+  const setRightPanelView = useSetAtom(rightPanelResolvedActiveViewAtom);
   const requestChatContext = useSetAtom(requestChatContextAtom);
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
@@ -246,6 +254,10 @@ export function AppShellFrame({
       composerRef={composerRef}
       hideTitlebarSpacer={isRightPanelMaximized}
       hideSinglePaneHeader={isRightPanelMaximized}
+      onOpenAssistantOverview={() => {
+        setRightPanelView("overview");
+        setRightPanelOpen(true);
+      }}
     />
   );
 
@@ -340,10 +352,12 @@ export function AppShellFrame({
                   isRightPanelOpen={isRightPanelOpen}
                   onToggleRightPanel={onToggleRightPanel}
                 />
-                <div className="ms-auto flex items-center gap-1">
-                  <NavigationButtons />
-                  <SearchPaletteButton />
-                </div>
+                {isAssistantSidebar ? null : (
+                  <div className="ms-auto flex items-center gap-1">
+                    <NavigationButtons />
+                    <SearchPaletteButton />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -400,6 +414,7 @@ export function AppShellFrame({
           open={isSearchOpen}
         />
         <DeviceApprovalPrompt />
+        <PersonaEditDialogHost />
       </div>
 
       {activeScreen === "settings" ? (

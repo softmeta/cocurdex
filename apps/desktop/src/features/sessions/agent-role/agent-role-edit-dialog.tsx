@@ -24,7 +24,7 @@ export function AgentRoleEditDialog({
   title,
   size = "compact",
 }: {
-  role?: AgentRoleRecord | null;
+  role?: AgentRoleRecord | SaveAgentRolePayload | null;
   agentLocked?: boolean;
   descriptionPlaceholder?: string;
   children?: ReactNode;

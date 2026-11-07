@@ -8,10 +8,10 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { Components } from "streamdown";
-import { Streamdown } from "streamdown";
+import { type Components, defaultRehypePlugins, Streamdown } from "streamdown";
 import { cn } from "@/lib";
 import { normalizeMarkdownCodeFenceLanguages } from "./markdown-code-fence";
+import { rehypeEntityLinks } from "./markdown-entity-link";
 import type { MarkdownFilePathHandlers } from "./markdown-file-path";
 import { rewriteMarkdownLocalFileLinks } from "./markdown-file-path";
 import type { HeavyPluginKind } from "./markdown-heavy-plugins";
@@ -54,9 +54,12 @@ interface MarkdownRendererProps {
 // - cjk: critical for a Chinese chat UI — fixes bold/italic that wraps
 //   Chinese punctuation and prevents autolinks from swallowing trailing
 //   ideographic punctuation. Cheap, so it always ships.
-// We do NOT pass rehypePlugins / remarkPlugins overrides: Streamdown's prop
-// REPLACES (not merges) the defaults, so overriding would silently disable
-// the built-in rehype-sanitize + rehype-harden security layers.
+const markdownRehypePlugins = [
+  defaultRehypePlugins.raw,
+  rehypeEntityLinks,
+  defaultRehypePlugins.sanitize,
+  defaultRehypePlugins.harden,
+];
 
 // Per-plugin so a transcript of code fences never pulls in Mermaid. Inline
 // code is deliberately absent: `inlineCode` is a core Streamdown component, so
@@ -263,6 +266,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
           mode={hasStreamed || streaming ? "streaming" : "static"}
           parseIncompleteMarkdown={streaming}
           plugins={plugins}
+          rehypePlugins={markdownRehypePlugins}
         >
           {normalizedContent}
         </Streamdown>

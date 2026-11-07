@@ -1,9 +1,8 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
-import type { AgentId, InboxItem } from "@cocurdex/shared";
+import type { InboxItem } from "@cocurdex/shared";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { SectionList, StyleSheet } from "react-native";
-import { useAgents } from "@/agents";
 import {
   ListNotice,
   ListSectionHeader,
@@ -13,6 +12,7 @@ import {
   useTabBarInset,
 } from "@/ui";
 import {
+  greetPersonalAgent,
   readInboxItem,
   revalidateAssistant,
   useBrief,
@@ -42,16 +42,12 @@ export function AssistantHome({ host }: { host: SavedHost }) {
   const scrollIndicator = useScrollIndicatorWhileScrolling();
   const tabBarInset = useTabBarInset();
   const titles = useSectionTitles();
-  const agents = usePersonalAgents(host, t("defaultName"));
+  const agents = usePersonalAgents(host.hostId);
   const inbox = useInbox(host.hostId);
   const brief = useBrief(host.hostId);
-  const descriptors = useAgents(host.hostId).data;
   const pull = usePullToRefresh(() => revalidateAssistant(host.hostId));
   useAssistantRevalidation(host.hostId);
 
-  const agentLabels = new Map<AgentId, string>(
-    descriptors?.map((agent) => [agent.id, agent.label]),
-  );
   const openSession = (sessionId: string) =>
     router.push({
       pathname: "/session/[hostId]/[sessionId]",
@@ -90,14 +86,15 @@ export function AssistantHome({ host }: { host: SavedHost }) {
       return <InboxRow item={item.item} onOpen={openItem} />;
     }
     const { role } = item.agent;
-    const subtitle = [agentLabels.get(role.agentId), role.modelName]
-      .filter(Boolean)
-      .join(" · ");
+    const subtitle = role.description ?? "";
     return (
       <AgentRow
         agent={item.agent}
         subtitle={subtitle}
-        onOpen={(agent) => openSession(agent.homeSessionId)}
+        onOpen={(agent) => {
+          greetPersonalAgent(host, agent.id);
+          openSession(agent.homeSessionId);
+        }}
       />
     );
   };

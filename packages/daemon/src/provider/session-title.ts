@@ -1,6 +1,7 @@
 import {
   generateCodexConversationTitle,
   generatePiConversationTitle,
+  generatePiText,
 } from "@cocurdex/agent-adapters";
 import type {
   AgentRuntimeProviderConfig,
@@ -160,6 +161,41 @@ export async function generateProviderSessionTitle(
       sessionId: session.id,
     });
     return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function generateSessionText(
+  deps: SessionTitleDeps,
+  session: SessionRecord,
+  prompt: { systemPrompt: string; message: string; maxTokens: number },
+): Promise<string | null> {
+  if (session.agentType !== "pi") return null;
+  const records = await resolveSessionTitleModel(deps, session);
+  if (!records) {
+    logDaemonDiagnostic("info", "sessionText.modelUnresolved", {
+      sessionId: session.id,
+      hasSnapshot: session.providerSnapshot !== null,
+    });
+    return null;
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    TITLE_GENERATION_TIMEOUT_MS,
+  );
+  try {
+    return await generatePiText({
+      provider: records.provider,
+      model: records.model,
+      apiKey: records.apiKey,
+      systemPrompt: prompt.systemPrompt,
+      message: prompt.message,
+      maxTokens: prompt.maxTokens,
+      sessionId: session.id,
+      signal: controller.signal,
+    });
   } finally {
     clearTimeout(timeout);
   }

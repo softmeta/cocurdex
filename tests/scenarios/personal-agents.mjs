@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
+import { clearColorScheme, emulateColorScheme } from "./lib/appearance.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import {
   centerOf,
@@ -13,6 +14,7 @@ import {
   waitForRole,
 } from "./lib/locate.mjs";
 import {
+  closeEditorPanel,
   openAssistantsTab,
   showPanelView,
   translate,
@@ -41,6 +43,10 @@ const { startStubLlmServer } = await tsImport(
 
 const UI_TIMEOUT_MS = 30_000;
 const REPLY = "Ten push-ups, then stretch.";
+const COACH_GREETING =
+  "Hi, I'm Coach! I can plan your workouts and check in on your week. What are you training for?";
+const FIRST_GREETING =
+  "Hey, I'm your new assistant. I can keep your day in view and nudge you on time. What's on your plate?";
 const args = readScenarioArgs();
 let stub;
 const state = {};
@@ -57,10 +63,21 @@ async function composerQuery(session) {
   return {
     role: "textbox",
     name: await translate(session, "personal:thread.placeholder", {
-      name: await translate(session, "personal:defaultName"),
+      name: state.assistantName,
     }),
     exact: false,
   };
+}
+
+async function waitForMessages(session, sessionId, predicate) {
+  const deadline = Date.now() + UI_TIMEOUT_MS;
+  for (;;) {
+    const snapshot = await daemonRequest(session, "session.snapshot", {
+      sessionId,
+    });
+    if (predicate(snapshot.messages) || Date.now() > deadline) return snapshot;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 }
 
 async function typeInto(session, field, text) {
@@ -108,43 +125,46 @@ runScenario("personal-agents", {
   },
   steps: [
     [
-      "the assistants tab creates and opens the default assistant",
+      "an empty assistants tab invites the user to create the first assistant",
       async ({ session }) => {
         await openAssistantsTab(session);
-        const defaultName = await translate(session, "personal:defaultName");
-        await waitForRole(
-          session,
-          { role: "button", name: rowName(defaultName) },
-          UI_TIMEOUT_MS,
+        check(
+          (await personas(session)).length === 0,
+          "no assistant exists until the user creates one",
         );
-        await waitForRole(session, await composerQuery(session), UI_TIMEOUT_MS);
+        const invite = {
+          role: "region",
+          name: await translate(session, "personal:empty.title"),
+        };
+        await waitForRole(session, invite, UI_TIMEOUT_MS);
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "personal:roster.new"),
+          within: invite,
+        });
+        const dialog = {
+          role: "dialog",
+          name: await translate(session, "personal:edit.title"),
+        };
+        await waitForRole(session, dialog, UI_TIMEOUT_MS);
+        check(
+          (await personas(session)).length === 0,
+          "opening the dialog creates nothing until it is saved",
+        );
+        stub.plan = { kind: "stream", chunks: [FIRST_GREETING] };
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "settings:agentRoles.save"),
+          within: dialog,
+        });
+        await waitForNoRole(session, dialog, UI_TIMEOUT_MS);
         const [assistant] = await personas(session);
         check(
-          assistant?.isDefault && assistant.role.name === defaultName,
-          "daemon holds one localized default assistant",
+          assistant?.isDefault,
+          "the first assistant becomes the default",
           assistant,
         );
-        const {
-          id: _id,
-          createdAt: _c,
-          updatedAt: _u,
-          ...role
-        } = assistant.role;
-        await daemonRequest(session, "personalAgent.update", {
-          id: assistant.id,
-          role: {
-            ...role,
-            providerId: "personal-scenario",
-            modelId: "personal-model",
-            modelName: "Personal model",
-          },
-        });
-        await clickByRole(
-          session,
-          { role: "button", name: rowName(defaultName) },
-          UI_TIMEOUT_MS,
-        );
-        await waitForRole(session, await composerQuery(session), UI_TIMEOUT_MS);
+        await waitForNoRole(session, invite, UI_TIMEOUT_MS);
         const selected = await session.run(
           (id) =>
             document
@@ -152,10 +172,147 @@ runScenario("personal-agents", {
               ?.hasAttribute("data-active") ?? false,
           assistant.id,
         );
-        check(selected, "the default assistant row is selected");
+        check(selected, "the new assistant row is selected");
+        const opening = await waitForMessages(
+          session,
+          assistant.homeSessionId,
+          (messages) => messages.length > 0,
+        );
+        const [greeting] = opening.messages;
+        check(
+          opening.messages.length === 1 &&
+            greeting.origin?.kind === "greeting" &&
+            greeting.content === FIRST_GREETING,
+          "the new assistant greets in its own words once saved",
+          opening.messages,
+        );
+        await session.waitUntil(
+          (text) =>
+            [...document.querySelectorAll("article")].some((node) =>
+              node.textContent.includes(text),
+            ),
+          FIRST_GREETING,
+          UI_TIMEOUT_MS,
+        );
+        state.assistantName = assistant.role.name;
         state.homeSessionId = assistant.homeSessionId;
         state.personaId = assistant.id;
         return { homeSessionId: assistant.homeSessionId };
+      },
+    ],
+    [
+      "the assistant header opens the overview after following the pointer",
+      async ({ session }) => {
+        await closeEditorPanel(session);
+        const overviewLabel = await translate(
+          session,
+          "editor:actions.showAssistantOverview",
+        );
+        const trigger = { role: "button", name: overviewLabel };
+        const [button] = await waitForRole(session, trigger);
+        const point = await centerOf(session, button.backendNodeId);
+        const movePointer = (x, y) =>
+          session.send("Input.dispatchMouseEvent", {
+            type: "mouseMoved",
+            x,
+            y,
+          });
+        for (const theme of ["light", "dark"]) {
+          await emulateColorScheme(session, theme);
+          await movePointer(point.x, point.y + 80);
+          const rest = await session.run(async ({ x, y }) => {
+            const button = document.elementFromPoint(x, y).closest("button");
+            await Promise.all(
+              button
+                .getAnimations({ subtree: true })
+                .map((animation) => animation.finished),
+            );
+            return {
+              background: getComputedStyle(button).backgroundColor,
+              width: button.getBoundingClientRect().width,
+            };
+          }, point);
+          await movePointer(point.x, point.y);
+          await session.waitUntil(
+            ({ x, y, rest }) => {
+              const button = document.elementFromPoint(x, y)?.closest("button");
+              if (!button) return false;
+              const avatar = button.querySelector("[data-avatar]");
+              return (
+                Number(avatar?.style.getPropertyValue("--avatar-look-x")) > 0 &&
+                getComputedStyle(button).backgroundColor !== rest.background &&
+                button.getBoundingClientRect().width > rest.width
+              );
+            },
+            { ...point, rest },
+            UI_TIMEOUT_MS,
+          );
+        }
+        await session.send("Emulation.setEmulatedMedia", {
+          features: [
+            { name: "prefers-reduced-motion", value: "no-preference" },
+          ],
+        });
+        const panelMotion = session.run(
+          () =>
+            new Promise((resolve) => {
+              const observer = new MutationObserver(() => {
+                const panel = document.querySelector(
+                  '[data-testid="shell-right-panel"]',
+                );
+                if (!panel) return;
+                observer.disconnect();
+                requestAnimationFrame(async () => {
+                  const chat = document.querySelector(
+                    '[data-testid="shell-chat-surface"]',
+                  );
+                  const gap = () =>
+                    panel.getBoundingClientRect().left -
+                    (chat.getBoundingClientRect().right -
+                      Number.parseFloat(
+                        getComputedStyle(chat).paddingInlineEnd,
+                      ));
+                  const initial = panel.getBoundingClientRect().left;
+                  let maximumGap = Math.abs(gap());
+                  const animations = [
+                    ...panel.getAnimations(),
+                    ...panel.parentElement.getAnimations(),
+                  ];
+                  while (
+                    animations.some(({ playState }) => playState === "running")
+                  ) {
+                    await new Promise(requestAnimationFrame);
+                    maximumGap = Math.max(maximumGap, Math.abs(gap()));
+                  }
+                  resolve({
+                    initial,
+                    settled: panel.getBoundingClientRect().left,
+                    maximumGap,
+                  });
+                });
+              });
+              observer.observe(document.querySelector("main"), {
+                childList: true,
+              });
+            }),
+        );
+        const [, motion] = await Promise.all([
+          clickByRole(session, trigger),
+          panelMotion,
+        ]);
+        await waitForRole(session, { role: "region", name: overviewLabel });
+        check(
+          motion.initial > motion.settled,
+          "the overview slides in from the right",
+          motion,
+        );
+        check(
+          motion.maximumGap <= 1,
+          "the chat edge tracks the overview throughout the opening",
+          motion,
+        );
+        await clearColorScheme(session);
+        return { motion };
       },
     ],
     assistantPanelsStep(),
@@ -164,22 +321,28 @@ runScenario("personal-agents", {
       "the assistant answers in its home thread",
       async ({ session }) => {
         const { homeSessionId } = state;
+        const noteBody = "Rest for one minute between sets.";
+        const note = await daemonRequest(session, "note.create", {
+          title: "Workout plan",
+          bodyMarkdown: noteBody,
+        });
         stub.plan = {
           kind: "stream",
           chunks: [
             "Ten push-ups,",
-            ` then stretch.\n\n[Assistant result](${state.outputPath})`,
+            ` then stretch.\n\n[Assistant result](${state.outputPath})\n\n[Workout details](<cocurdex://note/${note.id}>)`,
           ],
         };
-        const suggestion = await translate(
+        const [composer] = await waitForRole(
           session,
-          "personal:thread.suggestions.attention",
-        );
-        await clickByRole(
-          session,
-          { role: "button", name: suggestion },
+          await composerQuery(session),
           UI_TIMEOUT_MS,
         );
+        await typeInto(session, composer, "What needs my attention today?");
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "common:actions.send"),
+        });
         const shown = await session
           .waitUntil(
             (reply) =>
@@ -213,12 +376,38 @@ runScenario("personal-agents", {
           })),
         });
         check(
-          contents.includes(suggestion) &&
+          contents.includes("What needs my attention today?") &&
             contents.some((content) => content.startsWith(REPLY)),
           "the exchange is stored in the assistant's home thread",
           contents,
         );
-        return {};
+        const bubbleColors = {};
+        for (const theme of ["light", "dark"]) {
+          await emulateColorScheme(session, theme);
+          bubbleColors[theme] = await session.run((reply) => {
+            const article = [...document.querySelectorAll("article")].find(
+              (node) => node.textContent.includes(reply),
+            );
+            return getComputedStyle(article).backgroundColor;
+          }, REPLY);
+          check(
+            bubbleColors[theme] !== "rgba(0, 0, 0, 0)",
+            "the assistant reply has a bubble background",
+            { theme, color: bubbleColors[theme] },
+          );
+        }
+        await clearColorScheme(session);
+        await clickByRole(
+          session,
+          { role: "link", name: "Workout details" },
+          UI_TIMEOUT_MS,
+        );
+        await session.waitUntil(
+          (body) => document.body.textContent.includes(body),
+          noteBody,
+          UI_TIMEOUT_MS,
+        );
+        return { bubbleColors };
       },
     ],
     assistantFilesStep(),
@@ -310,12 +499,11 @@ runScenario("personal-agents", {
     [
       "the next turn tells the assistant what was posted to its thread",
       async ({ session }) => {
-        const defaultName = await translate(session, "personal:defaultName");
         await clickByRole(
           session,
           {
             role: "button",
-            name: rowName(defaultName),
+            name: rowName(state.assistantName),
             within: {
               role: "region",
               name: await translate(session, "personal:roster.label"),
@@ -405,6 +593,11 @@ runScenario("personal-agents", {
           );
           await session.send("Input.insertText", { text });
         }
+        check(
+          (await personas(session)).length === 1,
+          "a new assistant does not exist until its edit dialog is saved",
+        );
+        stub.plan = { kind: "stream", chunks: [COACH_GREETING] };
         await clickByRole(session, {
           role: "button",
           name: await translate(session, "settings:agentRoles.save"),
@@ -426,10 +619,37 @@ runScenario("personal-agents", {
           },
           UI_TIMEOUT_MS,
         );
-        await waitForRole(
+        const saved = (await personas(session)).find(
+          (agent) => agent.role.name === "Coach",
+        );
+        const greeted = await waitForMessages(
           session,
-          { role: "region", name: "Coach" },
+          saved.homeSessionId,
+          (messages) => messages.length > 0,
+        );
+        check(
+          greeted.messages[0]?.content === COACH_GREETING,
+          "the saved assistant greets once its edit dialog closes",
+          {
+            messages: greeted.messages,
+            requests: stub.requests.length,
+            last: JSON.stringify(stub.requests.at(-1) ?? null).slice(0, 300),
+          },
+        );
+        await session.waitUntil(
+          (greeting) =>
+            [...document.querySelectorAll("article")].some((node) =>
+              node.textContent.includes(greeting),
+            ),
+          COACH_GREETING,
           UI_TIMEOUT_MS,
+        );
+        const greetingRequest = JSON.stringify(stub.requests.at(-1) ?? null);
+        check(
+          greetingRequest.includes("Coach") &&
+            greetingRequest.includes("Plan workouts"),
+          "the assistant writes its greeting with its own model, name, and instructions",
+          greetingRequest.slice(0, 400),
         );
         const [composer] = await waitForRole(session, {
           role: "textbox",
@@ -441,7 +661,7 @@ runScenario("personal-agents", {
         const viewport = await session.run(() => window.innerHeight);
         check(
           composerTop > viewport * 0.7,
-          "an empty thread shows the intro with the composer docked below",
+          "a new thread shows the greeting with the composer docked below",
           { composerTop, viewport },
         );
         const coach = (await personas(session)).find(
@@ -535,6 +755,64 @@ runScenario("personal-agents", {
           remaining.length === 1 && remaining[0].isDefault && home === null,
           "only the default assistant remains and the thread is gone",
           { remaining: remaining.map((agent) => agent.role.name), home },
+        );
+        return {};
+      },
+    ],
+    [
+      "messaging from the empty assistants tab creates an assistant and sends to it",
+      async ({ session }) => {
+        for (const agent of await personas(session)) {
+          await daemonRequest(session, "personalAgent.delete", {
+            id: agent.id,
+          });
+        }
+        const invite = {
+          role: "region",
+          name: await translate(session, "personal:empty.title"),
+        };
+        await waitForRole(session, invite, UI_TIMEOUT_MS);
+        const [composer] = await waitForRole(
+          session,
+          {
+            role: "textbox",
+            name: await translate(session, "personal:empty.placeholder"),
+            exact: false,
+          },
+          UI_TIMEOUT_MS,
+        );
+        stub.plan = { kind: "stream", chunks: ["On it."] };
+        await typeInto(session, composer, "Plan my week");
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "common:actions.send"),
+        });
+        await waitForNoRole(session, invite, UI_TIMEOUT_MS);
+        const [assistant] = await personas(session);
+        check(assistant?.isDefault, "the message created a default assistant");
+        const thread = await waitForMessages(
+          session,
+          assistant.homeSessionId,
+          (messages) =>
+            messages.some((message) => message.role === "assistant"),
+        );
+        check(
+          thread.messages[0]?.content === "Plan my week" &&
+            !thread.messages.some((m) => m.origin?.kind === "greeting"),
+          "the user's message opens the thread without a greeting",
+          thread.messages.map(({ role, content, origin }) => ({
+            role,
+            content,
+            origin,
+          })),
+        );
+        await session.waitUntil(
+          (text) =>
+            [...document.querySelectorAll("article")].some((node) =>
+              node.textContent.includes(text),
+            ),
+          "On it.",
+          UI_TIMEOUT_MS,
         );
         return {};
       },

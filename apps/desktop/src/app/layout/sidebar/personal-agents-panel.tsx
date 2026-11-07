@@ -1,5 +1,5 @@
 import type { InboxItem, PersonalAgentRecord } from "@cocurdex/shared";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -10,7 +10,6 @@ import { MemoryOnboarding } from "@/features/memory";
 import { personalApi, usePersonalAgents } from "@/features/personal";
 import { sessionsAtom } from "@/features/sessions";
 import { InboxSection } from "./inbox-section";
-import { PersonaEditDialog } from "./persona-edit-dialog";
 import { personalAgentEditIdAtom } from "./personal-agent-edit-store";
 import {
   PersonalAgentRow,
@@ -32,12 +31,11 @@ export function PersonalAgentsPanel({
   onSelectSession(sessionId: string): void;
 }) {
   const { t } = useTranslation("personal");
-  const { agents } = usePersonalAgents(t("defaultName"));
+  const { agents } = usePersonalAgents();
   const inbox = useInbox();
   const sessions = useAtomValue(sessionsAtom);
-  const [editId, setEditId] = useAtom(personalAgentEditIdAtom);
+  const setEditId = useSetAtom(personalAgentEditIdAtom);
   const [deleting, setDeleting] = useState<PersonalAgentRecord | null>(null);
-  const editing = agents.find((agent) => agent.id === editId) ?? null;
 
   const actions: PersonalAgentRowActions = {
     onSelect: (agent) => onSelectSession(agent.homeSessionId),
@@ -95,13 +93,6 @@ export function PersonalAgentsPanel({
         />
       </SidebarScrollArea>
       <MemoryOnboarding />
-      <PersonaEditDialog
-        agent={editing}
-        key={editing?.id ?? "none"}
-        onOpenChange={(open) => {
-          if (!open) setEditId(null);
-        }}
-      />
       <AppConfirmDialog
         cancelLabel={t("delete.cancel")}
         confirmLabel={t("delete.confirm")}

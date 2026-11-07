@@ -145,7 +145,6 @@
     "roleDescriptionPlaceholder": "What this role does and what it is good at. Team leads use it to pick teammates.",
     "runtime": "Agent and model",
     "save": "Save",
-    "saved": "Role updated",
     "saveFailed": "Could not save this role."
   },
   "appearance": {

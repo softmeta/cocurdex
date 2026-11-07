@@ -25,7 +25,6 @@ import { useLatestReply } from "@/features/personal";
 import {
   AgentRoleAvatar,
   canMarkSessionUnread,
-  getAgentDisplayLabel,
   markSessionUnreadAtom,
   sessionResultAttentionAtom,
   unreadSessionIdsAtom,
@@ -86,18 +85,14 @@ export function PersonalAgentRow({
   const isMuted = agent.mutedAt !== null;
   const activityAt =
     homeSession?.lastMessageAt ?? homeSession?.updatedAt ?? agent.updatedAt;
-  const engine = [
-    getAgentDisplayLabel(agent.role.agentId),
-    agent.role.modelName ?? agent.role.modelId,
-  ]
-    .filter(Boolean)
-    .join(" · ");
   const reply = useLatestReply(
     agent.homeSessionId,
     homeSession?.lastMessageAt ?? null,
   );
   const preview = reply ? previewLine(reply.content) : "";
-  const subtitle = isRunning ? t("roster.working") : preview || engine;
+  const subtitle = isRunning
+    ? t("roster.working")
+    : preview || agent.role.description || "\u00a0";
 
   return (
     <ContextMenu>

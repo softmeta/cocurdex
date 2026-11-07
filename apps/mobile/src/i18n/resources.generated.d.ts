@@ -7,7 +7,6 @@ export default interface Resources {
     brief: {
       title: "Today";
     };
-    defaultName: "Assistant";
     empty: {
       description: "Create an assistant on {{host}} to see it here.";
       title: "No assistants yet";

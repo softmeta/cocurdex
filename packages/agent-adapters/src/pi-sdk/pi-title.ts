@@ -10,6 +10,7 @@ import {
   parseHeaders,
   parseJsonObject,
 } from "./pi-model-utils";
+import { piRequestApiKey } from "./pi-provider-catalog";
 
 const TITLE_PROMPT = `Summarize the user's first message into a concise chat title.
 
@@ -109,7 +110,7 @@ export async function generatePiText(params: {
   };
 
   const result = await completeSimple(model, context, {
-    apiKey: params.apiKey ?? undefined,
+    apiKey: piRequestApiKey(params.provider.id, params.apiKey) ?? undefined,
     signal: params.signal,
     maxTokens: params.maxTokens,
   });

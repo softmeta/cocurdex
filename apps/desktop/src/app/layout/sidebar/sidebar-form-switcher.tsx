@@ -20,16 +20,19 @@ export function SidebarFormSwitcher({
     {
       value: "workspaces",
       label: t("sessions:sidebar.workspacesGroup"),
+      description: t("sessions:sidebar.workspacesHint"),
       icon: <Briefcase className="size-3.5" />,
     },
     {
       value: "chat",
       label: t("chat:sidebar.title"),
+      description: t("chat:sidebar.hint"),
       icon: <MessageCircle className="size-3.5" />,
     },
     {
       value: "personal",
       label: t("personal:sidebar.title"),
+      description: t("personal:sidebar.hint"),
       icon: <Contact className="size-3.5" />,
     },
   ] as const;
@@ -46,7 +49,7 @@ export function SidebarFormSwitcher({
         <span className="truncate">{current?.label}</span>
         <ChevronDown className="size-3.5 shrink-0 text-sidebar-fg-muted" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
+      <DropdownMenuContent align="start" className="min-w-56">
         <AppDropdownRadioList
           onValueChange={(next) => onValueChange(next as SidebarTab)}
           options={options}

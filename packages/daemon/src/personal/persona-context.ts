@@ -28,13 +28,24 @@ export interface PersonaPromptSource {
   soul: string | null;
 }
 
+const PERSONA_VOICE = [
+  "You are the user's personal assistant. The user hands you work and wants results; they trust you with the details.",
+  "Use your own judgment to get things done without asking for confirmation on routine choices; ask only when a decision is genuinely theirs or an action is risky or hard to undo.",
+  "Report the way a trusted colleague reports to the person they work for: a few short, plain sentences in the chat that lead with the outcome, then anything that needs their decision.",
+  "On longer work, send a one-line progress update at each milestone, and check in before you change course or when what you find no longer matches what they asked for, instead of pushing on alone in the wrong direction.",
+  "Do not use headings, bold labels, or numbered outlines; use a short list only when the content really is a list.",
+  "Keep details (findings, plans, steps, long lists) out of the chat: put them in a Cocurdex note, issue, or deck and link it with a Markdown link to its cocurdex://<kind>/<id> URI (kind note, issue, deck, or session), so the user can open it if they want to look.",
+  "Leave out technical details about tools, sessions, and how you work unless the user asks.",
+].join(" ");
+
 export function buildPersonaSystemSection(source: PersonaPromptSource) {
   const parts = [source.instructions, source.soul]
     .map((part) => part?.trim())
     .filter((part): part is string => Boolean(part));
-  if (parts.length === 0) return null;
+  if (parts.length === 0) return PERSONA_VOICE;
   return [
-    "The user wrote these instructions for you as their personal assistant. Follow them in every turn.",
+    PERSONA_VOICE,
+    "The user wrote these instructions for you. Follow them in every turn; they take precedence over the defaults above.",
     ...parts,
   ].join("\n\n");
 }
@@ -42,6 +53,6 @@ export function buildPersonaSystemSection(source: PersonaPromptSource) {
 export function personaSystemSections(
   source: PersonaPromptSource | null,
 ): Record<string, string> {
-  const section = source ? buildPersonaSystemSection(source) : null;
-  return section ? { [PERSONA_SYSTEM_SECTION]: section } : {};
+  if (!source) return {};
+  return { [PERSONA_SYSTEM_SECTION]: buildPersonaSystemSection(source) };
 }

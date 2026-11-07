@@ -2,6 +2,7 @@ import type { MessageOrigin, MessageRecord } from "@cocurdex/shared";
 
 function postedLabel(origin: MessageOrigin | null | undefined) {
   if (origin?.kind === "brief") return `Daily brief for ${origin.day}`;
+  if (origin?.kind === "greeting") return "Your greeting to the user";
   if (origin?.kind === "routine") {
     return `Result of the routine "${origin.routineName}"`;
   }

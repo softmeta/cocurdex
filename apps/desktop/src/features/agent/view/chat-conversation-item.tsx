@@ -41,7 +41,11 @@ import {
 import { useTurnChangeSet } from "@/features/turn-workspace-changes";
 import { TurnChangesCard } from "@/features/turn-workspace-changes/turn-changes-card";
 import { cn } from "@/lib";
-import { useActivityDisplay, useChatPresentation } from "../chat-display";
+import {
+  type ChatPresentation,
+  useActivityDisplay,
+  useChatPresentation,
+} from "../chat-display";
 import { PermissionCard } from "../permission";
 import { QuestionCard } from "../question";
 // Deep imports (not the tool-call barrel): the barrel pulls in the subagent
@@ -79,7 +83,10 @@ import { MessageTime } from "./message-time";
 import { PeerPrompt } from "./peer-prompt";
 import { useMessageFilePathHandlers } from "./use-message-file-path-handlers";
 
-function getMessageArticleClassName(message: MessageRecord) {
+function getMessageArticleClassName(
+  message: MessageRecord,
+  presentation: ChatPresentation = "work",
+) {
   const isReasoning = isReasoningMessage(message);
 
   if (isReasoning) {
@@ -96,6 +103,10 @@ function getMessageArticleClassName(message: MessageRecord) {
     return cn(
       "min-w-0 max-w-3xl rounded-panel rounded-tr-md bg-chat-user-bubble px-3.5 py-2.5 text-chat-user-bubble-fg [--color-chat-fg:var(--color-chat-user-bubble-fg)]",
     );
+  }
+
+  if (presentation === "assistant") {
+    return "w-fit min-w-0 max-w-full rounded-panel rounded-ss-md bg-chat-surface-bubble px-3.5 py-2.5 text-chat-fg";
   }
 
   return "w-full min-w-0 max-w-3xl text-chat-fg";
@@ -528,6 +539,7 @@ const MessageArticle = memo(function MessageArticle({
   // is running, same gate the assistant body below uses.
   const isReasoningStreaming = isRunning && isStreamingLatest;
   const activityDisplay = useActivityDisplay();
+  const presentation = useChatPresentation();
   const turnChangeSet = useTurnChangeSet(message.id);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const hasAssistantBody =
@@ -552,7 +564,7 @@ const MessageArticle = memo(function MessageArticle({
       )}
     >
       <div className="group w-full min-w-0 max-w-3xl">
-        <article className={getMessageArticleClassName(message)}>
+        <article className={getMessageArticleClassName(message, presentation)}>
           {isSystem ? (
             <div className="mb-1.5 text-meta font-medium uppercase tracking-[0.18em] text-chat-system-muted">
               {t("system")}

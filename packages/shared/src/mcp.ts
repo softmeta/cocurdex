@@ -33,6 +33,7 @@ export interface McpProjectConfigFile {
 export interface McpLoginStartResult {
   loginId: string | null;
   authUrl: string | null;
+  userCode?: string;
 }
 
 export interface McpLoginOutcome {

@@ -25,7 +25,7 @@ export function ApplicationTools({
       <div className="py-3.5">
         <Button
           variant="ghost"
-          disabled={!connection.configured || !connection.enabled}
+          disabled={!connection.enabled}
           onClick={() => setShowTools((value) => !value)}
         >
           {t("apps.inspectTools", { defaultValue: "Inspect tools" })}

@@ -33,10 +33,6 @@ function rowName(name) {
   return new RegExp(`^${name}\\s`);
 }
 
-async function personas(session) {
-  return daemonRequest(session, "personalAgent.list");
-}
-
 async function typeInto(session, field, text) {
   await clickPoint(session, await centerOf(session, field.backendNodeId));
   await session.send("Input.insertText", { text });
@@ -72,24 +68,29 @@ async function seedStubModel(session) {
 }
 
 async function setUpAssistant(session) {
-  await openAssistantsTab(session);
-  const defaultName = await translate(session, "personal:defaultName");
-  await waitForRole(
-    session,
-    { role: "button", name: rowName(defaultName) },
-    UI_TIMEOUT_MS,
-  );
-  const [assistant] = await personas(session);
-  const { id: _id, createdAt: _c, updatedAt: _u, ...role } = assistant.role;
-  await daemonRequest(session, "personalAgent.update", {
-    id: assistant.id,
+  const assistant = await daemonRequest(session, "personalAgent.create", {
     role: {
-      ...role,
+      name: "Morning",
+      agentId: "pi",
       providerId: "personal-scenario",
       modelId: "personal-model",
       modelName: "Personal model",
+      permissionMode: null,
+      sessionModeId: null,
+      reasoningEffort: null,
+      serviceTier: null,
+      fastMode: null,
+      thinkingLevel: null,
+      openCodeAgent: null,
+      openCodeVariant: null,
     },
   });
+  await openAssistantsTab(session);
+  await waitForRole(
+    session,
+    { role: "button", name: rowName(assistant.role.name) },
+    UI_TIMEOUT_MS,
+  );
   return assistant;
 }
 

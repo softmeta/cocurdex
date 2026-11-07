@@ -6,7 +6,8 @@ function dependencies(): ApplicationPrincipalDependencies {
   return {
     getSession: async (id) => ({
       id,
-      sessionKind: id === "home" ? "personal" : "main",
+      agentType: id === "codex-work" ? "codex" : "pi",
+      sessionKind: id === "home" ? "personal" : id === "chat" ? "chat" : "main",
       parentSessionId:
         id === "child" ? "work" : id === "cycle" ? "cycle" : null,
     }),
@@ -22,16 +23,29 @@ describe("application caller identity", () => {
     expect(await resolveApplicationPrincipal("home", deps)).toEqual({
       personaId: "assistant-a",
       delegated: false,
+      workSession: false,
     });
     for (const id of ["work", "child", "teammate"])
       expect(await resolveApplicationPrincipal(id, deps)).toEqual({
         personaId: "assistant-a",
         delegated: true,
+        workSession: false,
       });
+  });
+
+  it("treats a pi work session outside any assistant as a work session", async () => {
+    const deps = dependencies();
     for (const id of ["other", "cycle"])
       expect(await resolveApplicationPrincipal(id, deps)).toEqual({
         personaId: null,
-        delegated: true,
+        delegated: false,
+        workSession: true,
+      });
+    for (const id of ["codex-work", "chat"])
+      expect(await resolveApplicationPrincipal(id, deps)).toEqual({
+        personaId: null,
+        delegated: false,
+        workSession: false,
       });
   });
 
@@ -39,13 +53,15 @@ describe("application caller identity", () => {
     const deps = dependencies();
     deps.getSession = async (id) => ({
       id,
+      agentType: "codex",
       agentRoleId: "personal-role",
       sessionKind: id === "home" ? "personal" : "main",
       parentSessionId: id === "unrelated" ? "home" : null,
     });
     expect(await resolveApplicationPrincipal("unrelated", deps)).toEqual({
       personaId: null,
-      delegated: true,
+      delegated: false,
+      workSession: false,
     });
   });
 });

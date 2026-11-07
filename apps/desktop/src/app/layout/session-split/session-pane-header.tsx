@@ -2,15 +2,18 @@ import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/ui";
+import { AgentRoleAvatar } from "@/features/sessions";
 import { cn } from "@/lib";
 import { TitlebarIconButton } from "../titlebar-icon-button";
-import { PersonaTitleAvatar } from "./persona-title-avatar";
+import { PersonaTitle } from "./persona-title";
 import { SessionSplitMenu } from "./session-split-menu";
+import { usePersonaPaneRole } from "./use-persona-pane-role";
 
 interface SessionPaneHeaderProps {
   canClose: boolean;
   isFocused: boolean;
   occupiesTitlebar?: boolean;
+  floatingPersona?: boolean;
   endInset?: number | string;
   startInset?: number;
   paneId: string;
@@ -20,6 +23,7 @@ interface SessionPaneHeaderProps {
   leading?: ReactNode;
   trailing?: ReactNode;
   className?: string;
+  onOpenAssistantOverview?(): void;
   onClose?(): void;
   onCloseAll?(): void;
   onSplitDown(): void;
@@ -30,6 +34,7 @@ export function SessionPaneHeader({
   canClose,
   isFocused,
   occupiesTitlebar = false,
+  floatingPersona = false,
   endInset = 0,
   startInset = 0,
   paneId,
@@ -38,12 +43,51 @@ export function SessionPaneHeader({
   leading,
   trailing,
   className,
+  onOpenAssistantOverview,
   onClose,
   onCloseAll,
   onSplitDown,
   onSplitRight,
 }: SessionPaneHeaderProps) {
   const { t } = useTranslation("sessions");
+  const personaRole = usePersonaPaneRole(sessionId);
+  const insetStyle = {
+    paddingInlineStart: startInset || undefined,
+    paddingInlineEnd: endInset || undefined,
+  };
+
+  if (personaRole && floatingPersona) {
+    return (
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 z-10 flex h-8 items-center",
+          className,
+        )}
+        style={insetStyle}
+      >
+        <div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-chat-canvas via-chat-canvas/85 to-transparent" />
+        {leading ? (
+          <div className="pointer-events-auto relative">{leading}</div>
+        ) : null}
+        <div
+          className={cn(
+            "absolute inset-x-0 flex justify-center",
+            occupiesTitlebar ? "top-8" : "top-1.5",
+          )}
+        >
+          <PersonaTitle
+            onOpenOverview={onOpenAssistantOverview}
+            role={personaRole}
+          />
+        </div>
+        <div className="min-w-0 flex-1" />
+        {trailing ? (
+          <div className="pointer-events-auto relative">{trailing}</div>
+        ) : null}
+      </div>
+    );
+  }
+
   let surfaceClass = "bg-app";
   if (occupiesTitlebar) {
     surfaceClass = "bg-transparent";
@@ -58,38 +102,39 @@ export function SessionPaneHeader({
         surfaceClass,
         className,
       )}
-      style={{
-        paddingInlineStart: startInset || undefined,
-        paddingInlineEnd: endInset || undefined,
-      }}
+      style={insetStyle}
     >
       {leading}
-      <div
-        className={cn(
-          "flex items-center gap-1",
-          occupiesTitlebar && "relative z-[60]",
-        )}
-      >
-        <SessionSplitMenu
-          canClose={canClose}
-          paneId={paneId}
-          onClose={onClose}
-          onCloseAll={onCloseAll}
-          onSplitDown={onSplitDown}
-          onSplitRight={onSplitRight}
-        />
-        {canClose && onClose ? (
-          <TitlebarIconButton
-            aria-label={t("split.close")}
-            cursor="default"
-            onClick={onClose}
-          >
-            <X className="size-3.5" />
-          </TitlebarIconButton>
-        ) : null}
-      </div>
+      {personaRole ? null : (
+        <div
+          className={cn(
+            "flex items-center gap-1",
+            occupiesTitlebar && "relative z-[60]",
+          )}
+        >
+          <SessionSplitMenu
+            canClose={canClose}
+            paneId={paneId}
+            onClose={onClose}
+            onCloseAll={onCloseAll}
+            onSplitDown={onSplitDown}
+            onSplitRight={onSplitRight}
+          />
+          {canClose && onClose ? (
+            <TitlebarIconButton
+              aria-label={t("split.close")}
+              cursor="default"
+              onClick={onClose}
+            >
+              <X className="size-3.5" />
+            </TitlebarIconButton>
+          ) : null}
+        </div>
+      )}
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        {sessionId ? <PersonaTitleAvatar sessionId={sessionId} /> : null}
+        {personaRole ? (
+          <AgentRoleAvatar role={personaRole} showAgent={false} size="sm" />
+        ) : null}
         {title ? (
           <Text
             className="truncate"

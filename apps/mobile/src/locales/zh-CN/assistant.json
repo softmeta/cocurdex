@@ -5,7 +5,6 @@
   "brief": {
     "title": "今天"
   },
-  "defaultName": "助理",
   "empty": {
     "description": "在 {{host}} 上创建助理后会出现在这里。",
     "title": "还没有助理"

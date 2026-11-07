@@ -31,10 +31,12 @@ export interface ChatComposerOverride {
 }
 
 export interface ChatViewProps {
+  floatingHeader?: boolean;
   chatComposer?: ChatComposerOverride;
   composerRole?: AgentRoleRecord | null;
   composerPlaceholder?: string;
   emptyState?: ReactNode;
+  emptyStateAlign?: "center" | "start";
   messages: MessageRecord[];
   permissionRequests?: AgentPermissionRequestRecord[];
   questions?: AgentQuestionRequestRecord[];

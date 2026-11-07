@@ -3,10 +3,17 @@ import {
   resolveAgentRoleAvatar,
   type SessionRecord,
 } from "@cocurdex/shared";
+import { useAtomValue } from "jotai";
 import { type MutableRefObject, type Ref, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatComposerHandle } from "@/features/composer";
-import { PersonaIntro, usePersonaRole } from "@/features/personal";
+import {
+  PersonaGreetingActivity,
+  PersonaIntro,
+  usePersonaGreeting,
+  usePersonaOfRole,
+} from "@/features/personal";
+import { personalAgentEditIdAtom } from "./sidebar/personal-agent-edit-store";
 
 function assignRef(
   ref: Ref<ChatComposerHandle> | undefined,
@@ -27,12 +34,18 @@ export function usePersonalSessionView(
   const { t } = useTranslation("personal");
   const composer = useRef<ChatComposerHandle | null>(null);
   const isPersonal = Boolean(session && isPersonalSession(session));
-  const storedRole = usePersonaRole(
+  const persona = usePersonaOfRole(
     isPersonal ? (session?.agentRoleId ?? null) : null,
-    t("defaultName"),
   );
-  if (!session || !storedRole) return null;
-  const role = { ...storedRole, agentId: session.agentType };
+  const editingId = useAtomValue(personalAgentEditIdAtom);
+  const personaId = persona?.id ?? null;
+  const isEmpty = session?.lastMessageAt == null;
+  const greeting = usePersonaGreeting(
+    personaId,
+    isEmpty && editingId !== personaId,
+  );
+  if (!session || !persona) return null;
+  const role = { ...persona.role, agentId: session.agentType };
 
   return {
     composerRole: role,
@@ -42,9 +55,11 @@ export function usePersonalSessionView(
       composer.current = handle;
       assignRef(composerRef, handle);
     },
-    emptyState: (
+    emptyStateAlign: greeting ? ("start" as const) : ("center" as const),
+    emptyState: greeting ? (
+      <PersonaGreetingActivity role={role} />
+    ) : (
       <PersonaIntro
-        role={role}
         onPickSuggestion={(text) => composer.current?.sendText(text)}
       />
     ),

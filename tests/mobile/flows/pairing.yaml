@@ -75,7 +75,7 @@ appId: dev.cocurdex.mobile
           timeout: 30000
 - extendedWaitUntil:
     visible:
-      id: "assistant-section-agents"
+      id: "assistant-section-inbox"
     timeout: 60000
 - assertNotVisible: ${LINK_PLACEHOLDER}
 - assertVisible: ${TAB_ASSISTANT}

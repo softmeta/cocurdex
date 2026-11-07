@@ -1,19 +1,24 @@
 import {
   PERSONAL_AGENT_SOUL_MAX_LENGTH,
   type PersonalAgentRecord,
+  type PersonalAgentRolePayload,
   type SaveAgentRolePayload,
 } from "@cocurdex/shared";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Field, FieldLabel, Textarea } from "@/components/ui";
-import { personalApi } from "@/features/personal";
+import { personalApi, revalidatePersonalAgents } from "@/features/personal";
 import { AgentRoleEditDialog } from "@/features/sessions/agent-role";
 
 export function PersonaEditDialog({
-  agent,
+  agent = null,
+  draft = null,
+  onCreated,
   onOpenChange,
 }: {
-  agent: PersonalAgentRecord | null;
+  agent?: PersonalAgentRecord | null;
+  draft?: PersonalAgentRolePayload | null;
+  onCreated?(created: PersonalAgentRecord): void;
   onOpenChange(open: boolean): void;
 }) {
   const { t } = useTranslation("personal");
@@ -23,14 +28,17 @@ export function PersonaEditDialog({
   const [soul, setSoul] = useState(agent?.soul ?? "");
 
   const save = async (payload: SaveAgentRolePayload) => {
-    if (!agent) throw new Error("No assistant to save");
-    const { id: _id, ...role } = payload;
-    const saved = await personalApi.update({
-      id: agent.id,
-      role: { ...role, instructions: instructions.trim() || null },
-      soul,
-    });
-    return saved.role;
+    const { id: _id, ...fields } = payload;
+    const role = { ...fields, instructions: instructions.trim() || null };
+    if (agent) {
+      const saved = await personalApi.update({ id: agent.id, role, soul });
+      return saved.role;
+    }
+    if (!draft) throw new Error("No assistant to save");
+    const created = await personalApi.create({ role, soul });
+    await revalidatePersonalAgents();
+    onCreated?.(created);
+    return created.role;
   };
 
   return (
@@ -39,8 +47,8 @@ export function PersonaEditDialog({
       size="default"
       descriptionPlaceholder={t("edit.descriptionPlaceholder")}
       onOpenChange={onOpenChange}
-      open={agent !== null}
-      role={agent?.role ?? null}
+      open={agent !== null || draft !== null}
+      role={agent?.role ?? draft}
       save={save}
       title={t("edit.title")}
     >

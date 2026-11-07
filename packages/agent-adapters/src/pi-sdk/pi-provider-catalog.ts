@@ -131,6 +131,15 @@ export function listPiBuiltInProviderIds(): string[] {
   return getBuiltinProviders();
 }
 
+const KEYLESS_PROVIDER_API_KEY = "cocurdex-keyless";
+
+export function piRequestApiKey(providerId: string, apiKey: string | null) {
+  if (apiKey) return apiKey;
+  return listPiBuiltInProviderIds().includes(providerId)
+    ? null
+    : KEYLESS_PROVIDER_API_KEY;
+}
+
 export async function listPiProviderModels(
   config: Pick<ProviderConfigRecord, "id">,
 ): Promise<ProviderModelRecord[] | null> {

@@ -11,6 +11,7 @@ export function messageOriginLabel(
   if (origin.kind === "brief") {
     return t("peerMessage.fromBrief");
   }
+  if (origin.kind === "greeting") return null;
   if (origin.kind === "scriptRun") {
     return t("peerMessage.fromScriptRun", { name: origin.runName });
   }

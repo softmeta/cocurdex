@@ -143,11 +143,10 @@ export function assistantWorkStep(state, getStub) {
         null,
         UI_TIMEOUT_MS,
       );
-      const defaultName = await translate(session, "personal:defaultName");
       await openAssistantsTab(session);
       await clickByRole(session, {
         role: "button",
-        name: rowName(defaultName),
+        name: rowName(state.assistantName),
         within: {
           role: "region",
           name: await translate(session, "personal:roster.label"),

@@ -159,11 +159,7 @@ export function AgentRow({
       value={subtitle}
     >
       <View style={styles.agentLine}>
-        <RoleAvatar
-          agentId={agent.role.agentId}
-          role={agent.role}
-          size={layout.avatarTile}
-        />
+        <RoleAvatar role={agent.role} size={layout.avatarTile} />
         <View style={styles.agentText}>
           <Text
             numberOfLines={1}

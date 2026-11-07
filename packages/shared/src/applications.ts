@@ -8,7 +8,6 @@ export const APPLICATION_CATALOG = [
     url: "https://mcp.notion.com/mcp",
     documentationUrl:
       "https://developers.notion.com/guides/mcp/get-started-with-mcp",
-    requiresClient: false,
   },
   {
     id: "linear",
@@ -16,7 +15,6 @@ export const APPLICATION_CATALOG = [
     category: "development",
     url: "https://mcp.linear.app/mcp",
     documentationUrl: "https://linear.app/docs/mcp",
-    requiresClient: false,
   },
   {
     id: "github",
@@ -24,7 +22,6 @@ export const APPLICATION_CATALOG = [
     category: "development",
     url: "https://api.githubcopilot.com/mcp/",
     documentationUrl: "https://github.com/github/github-mcp-server",
-    requiresClient: true,
   },
 ] as const;
 
@@ -36,6 +33,7 @@ export interface ApplicationMetadata {
   displayName: string;
   personaIds: string[];
   allowDelegatedWork: boolean;
+  allowWorkSessions: boolean;
   revision: string;
   createdAt: string;
   updatedAt: string;
@@ -44,9 +42,6 @@ export interface ApplicationMetadata {
 export interface ApplicationConnection extends ApplicationMetadata {
   id: string;
   enabled: boolean;
-  configured: boolean;
-  clientId: string | null;
-  callbackPort: number | null;
   status: McpServerStatus | null;
 }
 
@@ -55,6 +50,7 @@ export interface AddApplicationPayload {
   displayName: string;
   personaIds: string[];
   allowDelegatedWork: boolean;
+  allowWorkSessions?: boolean;
 }
 
 export interface UpdateApplicationPayload {
@@ -63,10 +59,14 @@ export interface UpdateApplicationPayload {
   displayName: string;
   personaIds: string[];
   allowDelegatedWork: boolean;
+  allowWorkSessions?: boolean;
   enabled: boolean;
-  clientId?: string;
-  clientSecret?: string;
-  callbackPort?: number;
+}
+
+export interface ApplicationPrincipal {
+  personaId: string | null;
+  delegated: boolean;
+  workSession: boolean;
 }
 
 export interface ApplicationTool {
@@ -103,6 +103,7 @@ export function readApplicationMetadata(
     !Array.isArray(value.personaIds) ||
     !value.personaIds.every((id) => typeof id === "string" && id.length > 0) ||
     typeof value.allowDelegatedWork !== "boolean" ||
+    !["boolean", "undefined"].includes(typeof value.allowWorkSessions) ||
     typeof value.revision !== "string" ||
     !value.revision ||
     typeof value.createdAt !== "string" ||
@@ -115,6 +116,7 @@ export function readApplicationMetadata(
     displayName: value.displayName,
     personaIds: value.personaIds,
     allowDelegatedWork: value.allowDelegatedWork,
+    allowWorkSessions: value.allowWorkSessions === true,
     revision: value.revision,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
@@ -129,17 +131,16 @@ export function withApplicationMetadata(
   return { ...config, cocurdex: { ...extension, application: metadata } };
 }
 
-export function applicationAllowsPersona(
+export function applicationAllows(
   config: McpServerConfig,
-  personaId: string | null,
-  delegated: boolean,
+  principal: ApplicationPrincipal,
 ) {
   const metadata = readApplicationMetadata(config);
-  return (
-    config.enabled !== false &&
-    metadata !== null &&
-    personaId !== null &&
-    metadata.personaIds.includes(personaId) &&
-    (!delegated || metadata.allowDelegatedWork)
-  );
+  if (config.enabled === false || metadata === null) return false;
+  if (principal.personaId !== null)
+    return (
+      metadata.personaIds.includes(principal.personaId) &&
+      (!principal.delegated || metadata.allowDelegatedWork)
+    );
+  return principal.workSession && metadata.allowWorkSessions;
 }

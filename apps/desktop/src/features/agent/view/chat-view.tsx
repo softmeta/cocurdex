@@ -59,6 +59,7 @@ export function ChatView({
   composerRole,
   composerPlaceholder,
   emptyState,
+  emptyStateAlign = "center",
   messages,
   permissionRequests = [],
   pendingPlanApproval = null,
@@ -108,6 +109,7 @@ export function ChatView({
   parentSessionTitle = null,
   onOpenParentSession,
   presentation = "work",
+  floatingHeader = false,
 }: ChatViewProps) {
   const { t } = useTranslation("agent");
   const [isInitialBottomSettled, setIsInitialBottomSettled] = useState(false);
@@ -415,7 +417,11 @@ export function ChatView({
                 viewportRef={attachViewport}
               >
                 <ChatContentColumn
-                  className={cn("pt-6", timelineGroups.length === 0 && "pb-6")}
+                  className={cn(
+                    !floatingHeader && "pt-6",
+                    floatingHeader && "pt-20",
+                    timelineGroups.length === 0 && "pb-6",
+                  )}
                   ref={chatContentRef}
                 >
                   {showsEmptyState ? null : timelineGroups.length === 0 ? (
@@ -453,7 +459,13 @@ export function ChatView({
             </RenderReadinessContext>
             {showsEmptyState ? (
               <div className="absolute inset-0 flex flex-col overflow-y-auto px-2 @lg/chat:px-3 @3xl/chat:px-6">
-                <ChatContentColumn className="my-auto py-10">
+                <ChatContentColumn
+                  className={cn(
+                    emptyStateAlign === "center" && "my-auto py-10",
+                    emptyStateAlign === "start" && !floatingHeader && "pt-6",
+                    emptyStateAlign === "start" && floatingHeader && "pt-20",
+                  )}
+                >
                   {emptyState ?? <StageIdentity />}
                 </ChatContentColumn>
               </div>

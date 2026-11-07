@@ -20,6 +20,7 @@
     "error": "Request failed"
   },
   "sidebar": {
+    "hint": "Ask anything, get quick answers",
     "title": "Chat"
   }
 }

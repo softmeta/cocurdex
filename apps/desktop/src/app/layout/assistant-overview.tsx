@@ -29,7 +29,6 @@ import {
 import {
   AgentRoleAvatar,
   activeSessionIdAtom,
-  getAgentDisplayLabel,
   selectSessionAtom,
   sessionsAtom,
   upsertSessionAtom,
@@ -210,7 +209,7 @@ function AssistantOverviewContent({
                 key={item.sessionId}
                 sessionId={item.sessionId}
                 title={item.title}
-                detail={`${item.workspaceName} · ${getAgentDisplayLabel(item.agentType)} · ${stateLabels[item.state]}`}
+                detail={`${item.workspaceName} · ${stateLabels[item.state]}`}
                 icon={<Briefcase className="size-3.5 shrink-0" />}
                 onClick={() => openSession(item.sessionId)}
               />
@@ -322,9 +321,7 @@ export function AssistantOverview() {
   const sessionId = useAtomValue(activeSessionIdAtom);
   const sessions = useAtomValue(sessionsAtom);
   const session = sessions.find((item) => item.id === sessionId);
-  const { agents, loaded, error, revalidate } = usePersonalAgents(
-    t("defaultName"),
-  );
+  const { agents, loaded, error, revalidate } = usePersonalAgents();
   if (error)
     return (
       <Button variant="ghost" onClick={() => void revalidate()}>

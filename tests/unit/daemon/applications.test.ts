@@ -1,3 +1,4 @@
+import { readPiMcpAccessToken } from "@cocurdex/agent-adapters/pi-mcp";
 import { ApplicationService } from "@cocurdex/daemon/internal/application-service";
 import { DaemonMcpService } from "@cocurdex/daemon/internal/mcp-service";
 import { routineRunPolicy } from "@cocurdex/daemon/internal/routines/routine-run-policy";
@@ -8,15 +9,32 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 const dirs = createTempDirs();
 afterAll(() => dirs.cleanup());
 
-function edit({
-  clientId: _client,
-  callbackPort: _port,
-  ...connection
-}: ApplicationConnection) {
+function edit(connection: ApplicationConnection) {
   return connection;
 }
 
-async function setup() {
+function githubLogin(cliToken: string | null) {
+  return {
+    cliToken: vi.fn(async () => cliToken),
+    deviceCode: vi.fn(async () => ({
+      deviceCode: "synthetic-device",
+      userCode: "ABCD-1234",
+      verificationUri: "https://github.com/login/device",
+      intervalSeconds: 5,
+      expiresInSeconds: 900,
+    })),
+    pollToken: vi.fn(
+      async (
+        _code: unknown,
+        _signal: AbortSignal,
+      ): Promise<{ accessToken: string }> => ({
+        accessToken: "synthetic-device-token",
+      }),
+    ),
+  };
+}
+
+async function setup(github = githubLogin(null)) {
   const mcp = new DaemonMcpService(
     await dirs.create("apps-"),
     async () => null,
@@ -39,6 +57,8 @@ async function setup() {
     mcp,
     async (id) => ["a", "b"].includes(id),
     factory,
+    undefined,
+    github,
   );
   const added = await apps.add({
     applicationId: "notion",
@@ -72,14 +92,22 @@ describe("application connections", () => {
     });
     expect(second.id).not.toBe(added.id);
     expect(
-      (await apps.list({ personaId: "a", delegated: false })).map(
-        (item) => item.id,
-      ),
+      (
+        await apps.list({
+          personaId: "a",
+          delegated: false,
+          workSession: false,
+        })
+      ).map((item) => item.id),
     ).toEqual([added.id]);
     expect(
-      (await apps.list({ personaId: "b", delegated: false })).map(
-        (item) => item.id,
-      ),
+      (
+        await apps.list({
+          personaId: "b",
+          delegated: false,
+          workSession: false,
+        })
+      ).map((item) => item.id),
     ).toEqual([second.id]);
     expect(added.status).toBeNull();
     await expect(
@@ -103,10 +131,19 @@ describe("application connections", () => {
   it("checks grants before every discovery and call, including revocation after tool discovery", async () => {
     const { apps, added, client, factory } = await setup();
     await expect(
-      apps.tools(added.id, { personaId: "b", delegated: false }),
+      apps.tools(added.id, {
+        personaId: "b",
+        delegated: false,
+        workSession: false,
+      }),
     ).rejects.toThrow("not allowed");
     await expect(
-      apps.call(added.id, "search", {}, { personaId: "a", delegated: true }),
+      apps.call(
+        added.id,
+        "search",
+        {},
+        { personaId: "a", delegated: true, workSession: false },
+      ),
     ).rejects.toThrow("not allowed");
     expect(factory).not.toHaveBeenCalled();
     expect(
@@ -114,7 +151,7 @@ describe("application connections", () => {
         added.id,
         "search",
         {},
-        { personaId: "a", delegated: false },
+        { personaId: "a", delegated: false, workSession: false },
       ),
     ).toMatchObject({ content: [{ text: "Found" }] });
     expect(client.close).toHaveBeenCalledTimes(1);
@@ -130,16 +167,49 @@ describe("application connections", () => {
       ];
     });
     await expect(
-      apps.call(added.id, "search", {}, { personaId: "a", delegated: false }),
+      apps.call(
+        added.id,
+        "search",
+        {},
+        { personaId: "a", delegated: false, workSession: false },
+      ),
     ).rejects.toThrow("not allowed");
     expect(client.call).toHaveBeenCalledTimes(1);
     expect(client.close).toHaveBeenCalledTimes(2);
   });
 
+  it("lets work sessions use a connection only while it is open to them", async () => {
+    const { apps, added } = await setup();
+    const work = { personaId: null, delegated: false, workSession: true };
+    expect(added.allowWorkSessions).toBe(true);
+    expect((await apps.list(work)).map((item) => item.id)).toEqual([added.id]);
+    expect(await apps.call(added.id, "search", {}, work)).toMatchObject({
+      content: [{ text: "Found" }],
+    });
+    const closed = await apps.update({
+      ...edit(added),
+      allowWorkSessions: false,
+    });
+    expect(await apps.list(work)).toEqual([]);
+    await expect(apps.read(added.id, "search", {}, work)).rejects.toThrow(
+      "not allowed",
+    );
+    const reopened = await apps.update({ ...edit(closed), enabled: true });
+    expect(reopened.allowWorkSessions).toBe(false);
+    await expect(
+      apps.list({ personaId: null, delegated: false, workSession: false }),
+    ).resolves.toEqual([]);
+  });
+
   it("allows read-only tool calls but refuses tools without an explicit read-only declaration", async () => {
     const { apps, added, client } = await setup();
     await expect(
-      apps.read(added.id, "search", {}, { personaId: "a", delegated: false }),
+      apps.read(
+        added.id,
+        "search",
+        {},
+        { personaId: "a", delegated: false, workSession: false },
+      ),
     ).resolves.toMatchObject({ content: [{ text: "Found" }] });
     client.tools.mockResolvedValueOnce([
       {
@@ -150,7 +220,12 @@ describe("application connections", () => {
       },
     ]);
     await expect(
-      apps.read(added.id, "search", {}, { personaId: "a", delegated: false }),
+      apps.read(
+        added.id,
+        "search",
+        {},
+        { personaId: "a", delegated: false, workSession: false },
+      ),
     ).rejects.toThrow("read-only");
     expect(client.call).toHaveBeenCalledTimes(1);
   });
@@ -205,30 +280,102 @@ describe("application connections", () => {
       allowDelegatedWork: true,
     });
     await apps.update({ ...edit(updated), enabled: false });
-    expect(await apps.list({ personaId: "a", delegated: true })).toEqual([]);
+    expect(
+      await apps.list({ personaId: "a", delegated: true, workSession: false }),
+    ).toEqual([]);
   });
 
-  it("requires GitHub client configuration, keeps secrets private, and removes only the selected connection", async () => {
-    const { apps, added } = await setup();
-    const github = await apps.add({
+  it("keeps a checked status across grant edits and drops it when the connection itself changes", async () => {
+    const { mcp, apps, added } = await setup();
+    vi.spyOn(mcp, "test").mockResolvedValue({
+      name: added.id,
+      scope: "global",
+      state: "connected",
+      tools: [],
+      error: null,
+      oauth: true,
+      signedIn: true,
+      checkedAt: new Date(0).toISOString(),
+    });
+    const checked = await apps.check(added.id);
+    expect(checked.status?.state).toBe("connected");
+    const granted = await apps.update({
+      ...edit(checked),
+      personaIds: ["a", "b"],
+      allowDelegatedWork: true,
+      displayName: "Team notes",
+    });
+    expect(granted.status?.state).toBe("connected");
+    const disabled = await apps.update({ ...edit(granted), enabled: false });
+    expect(disabled.status).toBeNull();
+  });
+  it("signs GitHub in with the gh token once, then uses device authorization for another account", async () => {
+    const github = githubLogin("synthetic-gh-token");
+    const { apps, mcp, added } = await setup(github);
+    const first = await apps.add({
       applicationId: "github",
       displayName: "Code",
       personaIds: [],
       allowDelegatedWork: false,
     });
-    expect(github.configured).toBe(false);
-    await expect(apps.startLogin(github.id)).rejects.toThrow("Configure");
-    const configured = await apps.update({
-      ...edit(github),
-      enabled: true,
-      clientId: "synthetic-client",
-      clientSecret: "synthetic-secret",
-      callbackPort: 19173,
+    expect(await apps.startLogin(first.id)).toEqual({
+      loginId: null,
+      authUrl: null,
     });
-    expect(configured.configured).toBe(true);
-    expect(JSON.stringify(await apps.list())).not.toContain("synthetic-secret");
-    await apps.remove(github.id);
-    expect((await apps.list()).map((item) => item.id)).toEqual([added.id]);
+    const location = await mcp.location();
+    expect(readPiMcpAccessToken(location, first.id)).toBe("synthetic-gh-token");
+    const second = await apps.add({
+      applicationId: "github",
+      displayName: "Work code",
+      personaIds: [],
+      allowDelegatedWork: false,
+    });
+    const started = await apps.startLogin(second.id);
+    expect(started).toMatchObject({
+      authUrl: "https://github.com/login/device",
+      userCode: "ABCD-1234",
+    });
+    expect(await apps.waitLogin(second.id, started.loginId ?? "")).toEqual({
+      success: true,
+      error: null,
+    });
+    expect(readPiMcpAccessToken(location, second.id)).toBe(
+      "synthetic-device-token",
+    );
+    await apps.remove(second.id);
+    expect((await apps.list()).map((item) => item.id)).toEqual([
+      added.id,
+      first.id,
+    ]);
+  });
+
+  it("cancels a pending GitHub device authorization", async () => {
+    const github = githubLogin(null);
+    github.pollToken.mockImplementation(
+      (_code, signal) =>
+        new Promise<{ accessToken: string }>((_resolve, reject) =>
+          signal.addEventListener("abort", () =>
+            reject(new Error("GitHub authorization was cancelled")),
+          ),
+        ),
+    );
+    const { apps, mcp } = await setup(github);
+    const connection = await apps.add({
+      applicationId: "github",
+      displayName: "Code",
+      personaIds: [],
+      allowDelegatedWork: false,
+    });
+    const started = await apps.startLogin(connection.id);
+    const waiting = apps.waitLogin(connection.id, started.loginId ?? "");
+    apps.cancelLogin(connection.id, started.loginId ?? "");
+    expect(await waiting).toEqual({
+      success: false,
+      error: "GitHub authorization was cancelled",
+    });
+    expect(
+      readPiMcpAccessToken(await mcp.location(), connection.id),
+    ).toBeNull();
   });
 
   it("fails closed if advanced settings replace a catalog endpoint or managed metadata", async () => {

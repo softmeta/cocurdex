@@ -168,6 +168,7 @@ import { PeerMessagingService } from "./peer-messaging";
 import {
   isPostedMessage,
   PersonalAgentService,
+  personaGreetingPrompt,
   personaMemoryScope,
   personaRoleFromHomeThread,
   personaSystemSections,
@@ -177,7 +178,10 @@ import {
 import { DaemonProviderService } from "./provider";
 import { CodexLoginSessions } from "./provider/codex-login";
 import { withServerProviderConnection } from "./provider/server-connection";
-import { generateProviderSessionTitle } from "./provider/session-title";
+import {
+  generateProviderSessionTitle,
+  generateSessionText,
+} from "./provider/session-title";
 import {
   ProviderCredentials,
   ProviderLoginSessions,
@@ -432,6 +436,26 @@ export class CocurdexDaemonService {
           title: role.name,
         }),
       removeSession: (sessionId) => this.removeSession(sessionId),
+      hasMessages: async (sessionId) =>
+        (await this.state.listMessagesBySessionId(sessionId)).length > 0,
+      writeGreeting: async (sessionId, input) => {
+        const session = await this.state.getSession(sessionId);
+        if (!session) return null;
+        return generateSessionText(
+          {
+            state: this.state,
+            readApiKey: (providerId) =>
+              this.providerCredentials.readApiKey(providerId),
+            resolveSessionProvider: (target) =>
+              this.providerCredentials.forSession(target),
+          },
+          session,
+          personaGreetingPrompt(input),
+        );
+      },
+      greet: async (sessionId, content) => {
+        await this.postToSession(sessionId, content, { kind: "greeting" });
+      },
       removeDependents: async (agentId) => {
         this.delegations.forgetPersona(agentId);
         await this.removeRoutinesOf(agentId);
@@ -711,6 +735,12 @@ export class CocurdexDaemonService {
     this.applications = new ApplicationService(
       this.mcp,
       async (id) => (await this.personalAgents.get(id)) !== null,
+      undefined,
+      () =>
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["applications"],
+        }),
     );
     registerApplicationTools(
       this.agentTools.registry,
@@ -1295,9 +1325,17 @@ export class CocurdexDaemonService {
       ? this.state.data.personalAgents.getById(agentId)
       : this.state.data.personalAgents.getDefault();
     if (!persona) return null;
+    return this.postToSession(persona.homeSessionId, content, origin);
+  }
+
+  private async postToSession(
+    sessionId: string,
+    content: string,
+    origin: MessageOrigin,
+  ) {
     const message = await this.state.appendMessage({
       id: crypto.randomUUID(),
-      sessionId: persona.homeSessionId,
+      sessionId,
       role: "assistant",
       kind: "response",
       content,

@@ -5,6 +5,7 @@ export {
   personaSystemSections,
   personaWritePartition,
 } from "./persona-context";
+export { personaGreetingPrompt } from "./persona-greeting";
 export { personaRoleFromHomeThread } from "./persona-runtime";
 export {
   PersonalAgentService,

@@ -2,6 +2,7 @@ import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import {
   type CocurdexDaemonEvent,
   PERSONAL_WORKSPACE_ID,
+  personalAgentRoleDraft,
 } from "@cocurdex/shared";
 import { saveStubProvider } from "@cocurdex/test-harness/helpers/chat-session";
 import {
@@ -28,8 +29,8 @@ describe("personal agents over the daemon socket", () => {
         daemon.options,
       );
       const assistant = await requestDaemon(
-        "personalAgent.ensureDefault",
-        { name: "助理" },
+        "personalAgent.create",
+        { role: personalAgentRoleDraft("助理") },
         daemon.options,
       );
       const home = await requestDaemon(

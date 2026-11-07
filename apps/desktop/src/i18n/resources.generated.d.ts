@@ -395,6 +395,7 @@ export default interface Resources {
       error: "Request failed";
     };
     sidebar: {
+      hint: "Ask anything, get quick answers";
       title: "Chat";
     };
   };
@@ -1534,62 +1535,58 @@ export default interface Resources {
   };
   personal: {
     apps: {
-      add: "Add";
       added: "Added connections";
       advanced: "Custom MCP";
       assistants: "assistants";
-      authorize: "Authorize";
       back: "Back to applications";
       browserOAuth: "Authorize in your browser";
-      callbackPort: "Callback port";
       cancel: "Cancel";
       catalog: "Available applications";
       check: "Check connection";
-      clientId: "Client ID";
-      clientSecret: "Client secret (leave blank to keep existing)";
+      connect: "Connect";
+      connectAnother: "Connect another account";
       connected: "Connected";
       connection: "Connection";
       delegated: "Allow delegated work";
-      delegatedDescription: "Work sessions and teammates delegated by these assistants can also use this account. Other work sessions receive no access.";
+      delegatedDescription: "Work sessions and teammates these assistants delegate can also use this account.";
       description: "Connect your accounts on this host, then choose which assistants may use them. Custom MCP connections remain available in advanced settings.";
+      deviceCode: "Authorization code";
+      deviceCodeHint: "Enter this code on the GitHub page in your browser. This page updates when you finish.";
       disabled: "Disabled";
       enabled: "Enabled";
       failed: "Connection failed";
-      hostCredentials: "Credentials stay on this host. The provider controls account and workspace access during authorization. Adding a connection does not authorize it.";
+      githubAuth: "Uses your GitHub CLI sign-in, or authorize in your browser";
+      hostCredentials: "Credentials stay on this host. The provider controls account and workspace access during authorization.";
       inspectTools: "Inspect tools";
-      invalidPort: "Choose a callback port between 1024 and 65535";
       name: "Connection name";
       needsAuth: "Authorization required";
       noConnections: "No matching connections";
       notChecked: "Not checked";
-      oauthDescription: "Register an OAuth application owned by you. Use the callback URL below and enter its client credentials. Secrets are never shown again.";
-      oauthSetup: "GitHub OAuth application";
       openAuthorization: "Open authorization page";
-      ownOAuth: "Requires your own OAuth application";
-      permissionDescription: "Only selected assistants can use this connection. Save changes before connecting.";
+      permissionDescription: "Only selected assistants can use this connection.";
       permissions: "Assistant access";
       providerDocs: "Provider instructions";
-      registerOAuth: "Register OAuth application";
+      reauthorize: "Reauthorize";
       remoteReturn: "Using another device? After authorization, copy the complete localhost return URL from the browser and paste it here. Treat it as a secret; do not send it in chat.";
       remove: "Remove connection";
       removeDescription: "Remove this host connection and its saved authorization? Provider-side authorization may also need revoking in the provider's account settings.";
       retry: "Retry";
       returnUrl: "Authorization return URL";
-      save: "Save access";
       search: "Search applications";
-      setupRequired: "Setup required";
       signOut: "Sign out";
-      starting: "Preparing authorization…";
       submitReturn: "Complete authorization";
       title: "Applications";
       tools: "Available tools";
-      waiting: "Waiting for authorization";
+      waitingFor: "Authorizing {{name}}";
+      waitingHint: "Finish authorization in your browser. This page updates when you return.";
+      workMode: "Work mode";
+      workSessions: "Available in work mode";
+      workSessionsDescription: "Pi sessions in work mode can also use this account; changes follow the session's permission mode.";
     };
     brief: {
       open: "Today's brief";
     };
     copyName: "{{name}} copy";
-    defaultName: "Assistant";
     delete: {
       cancel: "Cancel";
       confirm: "Delete";
@@ -1597,7 +1594,7 @@ export default interface Resources {
       title: "Delete {{name}}?";
     };
     edit: {
-      descriptionPlaceholder: "One line about this assistant, shown at the top of an empty thread";
+      descriptionPlaceholder: "One line about this assistant";
       instructions: "Instructions";
       instructionsPlaceholder: "What this assistant is for and how it should work";
       soul: "Persona";
@@ -1605,8 +1602,9 @@ export default interface Resources {
       title: "Edit assistant";
     };
     empty: {
-      description: "Pick an assistant on the left to continue your conversation.";
-      title: "Your assistants";
+      description: "An assistant remembers what matters to you, briefs you each morning, reminds you on time, and hands project work to coding agents.";
+      placeholder: "Tell your assistant what you need…";
+      title: "Create your first assistant";
     };
     inbox: {
       heading: "Inbox";
@@ -1632,7 +1630,7 @@ export default interface Resources {
       unmute: "Unmute";
       unpin: "Unpin";
     };
-    newName: "New assistant";
+    namePool: "Iris,Milo,Juno,Otto,Nora,Felix,Luna,Theo,Ivy,Leo,Hazel,Jasper,Ruby,Oscar,Mabel,Rowan,Clara,Hugo,Wren,Ezra,Ada,Silas,Vera,Arlo,June,Remy,Elsie,Finn,Pearl,Kai";
     overview: {
       archived: "Archived";
       cancelled: "Cancelled";
@@ -1665,7 +1663,7 @@ export default interface Resources {
       label: "Assistants";
       muted: "Muted";
       "new": "New assistant";
-      working: "Working…";
+      working: "Working";
     };
     routines: {
       access: {
@@ -1744,10 +1742,10 @@ export default interface Resources {
       timeZone: "Time zone";
     };
     sidebar: {
+      hint: "Remembers you and minds your day";
       title: "Assistants";
     };
     thread: {
-      introFallback: "Your personal assistant. It remembers you and keeps an eye on your day.";
       placeholder: "Message {{name}}";
       suggestions: {
         attention: "What needs my attention today?";
@@ -2240,6 +2238,7 @@ export default interface Resources {
         };
       };
       workspacesGroup: "Work";
+      workspacesHint: "Build, fix, and ship in your projects";
     };
     split: {
       actions: "Actions";
@@ -2470,7 +2469,6 @@ export default interface Resources {
       runtime: "Agent and model";
       save: "Save";
       saveFailed: "Could not save this role.";
-      saved: "Role updated";
     };
     appearance: {
       groupTitle: "Appearance";

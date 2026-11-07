@@ -3,6 +3,8 @@ export {
   inspectPiMcpServers,
   type PiMcpLocation,
   type PiMcpSignIn,
+  readPiMcpAccessToken,
+  savePiMcpAccessToken,
   signOutPiMcpServer,
   startPiMcpSignIn,
   testPiMcpServer,

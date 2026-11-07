@@ -1,4 +1,4 @@
-import { type InboxItem, personalAgentRoleDraft } from "@cocurdex/shared";
+import type { InboxItem } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { FolderPlus, SquarePen } from "lucide-react";
 import { type ReactNode, startTransition, useOptimistic } from "react";
@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { AppSidebarIconButton } from "@/components/app";
 import { chatSessionsAtom } from "@/features/chat";
 import { inboxApi } from "@/features/inbox";
-import { personalApi, revalidatePersonalAgents } from "@/features/personal";
 import {
   activeSessionIdAtom,
   removeSessionsByWorkspaceAtom,
@@ -31,10 +30,10 @@ import {
   markSessionSwitch,
   startSessionSwitchLongTaskObserver,
 } from "@/lib";
+import { useCreatePersonalAgent } from "../use-create-personal-agent";
 import { ArchiveGroupDialog } from "./archive-group-dialog";
 import { BriefControl } from "./brief-control";
 import { ChatSessionsPanel } from "./chat-sessions-panel";
-import { personalAgentEditIdAtom } from "./personal-agent-edit-store";
 import { PersonalAgentsPanel } from "./personal-agents-panel";
 import { SessionGroupsPanel } from "./session-groups-panel";
 import { SessionListSections } from "./session-list-sections";
@@ -100,7 +99,6 @@ export function LeftSidebar({
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const chatSessions = useAtomValue(chatSessionsAtom);
-  const setPersonalAgentEditId = useSetAtom(personalAgentEditIdAtom);
   const [optimisticActiveSessionId, setOptimisticActiveSessionId] =
     useOptimistic(activeSessionId);
   const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useAtom(
@@ -155,25 +153,7 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
-  const handleCreatePersonalAgent = async () => {
-    try {
-      const agents = await personalApi.list();
-      const template = agents.find((agent) => agent.isDefault)?.role;
-      const created = await personalApi.create({
-        role: {
-          ...personalAgentRoleDraft(t("personal:newName")),
-          providerId: template?.providerId ?? null,
-          modelId: template?.modelId ?? null,
-          modelName: template?.modelName ?? null,
-        },
-      });
-      await revalidatePersonalAgents();
-      selectFormSession(created.homeSessionId);
-      setPersonalAgentEditId(created.id);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const handleCreatePersonalAgent = useCreatePersonalAgent();
 
   const toggleWorkspace = (workspaceId: string) => {
     setCollapsedWorkspaceIds((current) =>

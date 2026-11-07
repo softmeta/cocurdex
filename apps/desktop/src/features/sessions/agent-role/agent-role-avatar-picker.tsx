@@ -9,7 +9,7 @@ import {
   normalizeAgentRoleAvatar,
   resolveAgentRoleAvatar,
 } from "@cocurdex/shared";
-import { RotateCcw } from "lucide-react";
+import { Pencil, RotateCcw } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -71,10 +71,18 @@ export function AgentRoleAvatarPicker({
       <PopoverTrigger asChild>
         <button
           aria-label={t("agentRole.avatar.change")}
-          className="shrink-0 cursor-pointer rounded-full outline-none transition-shadow hover:ring-2 hover:ring-border focus-visible:ring-2 focus-visible:ring-ring"
+          className="relative shrink-0 cursor-pointer rounded-full outline-none transition-shadow hover:ring-2 hover:ring-border focus-visible:ring-2 focus-visible:ring-ring"
           type="button"
         >
-          <AgentRoleAvatar placeholder={placeholder} role={role} size="lg" />
+          <AgentRoleAvatar
+            placeholder={placeholder}
+            role={role}
+            showAgent={false}
+            size="lg"
+          />
+          <span className="absolute -end-1 -bottom-1 inline-flex rounded-full bg-popover p-0.5 text-muted-foreground ring-1 ring-border">
+            <Pencil className="size-3.5" />
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto gap-3 rounded-card p-3">

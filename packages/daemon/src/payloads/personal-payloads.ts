@@ -1,4 +1,7 @@
-import { PERSONAL_AGENT_SOUL_MAX_LENGTH } from "@cocurdex/shared";
+import {
+  PERSONAL_AGENT_SOUL_MAX_LENGTH,
+  supportedLocales,
+} from "@cocurdex/shared";
 import { z } from "zod";
 import {
   agentIdSchema,
@@ -22,16 +25,17 @@ const roleSchema = z.looseObject({
 const soulSchema = z.string().max(PERSONAL_AGENT_SOUL_MAX_LENGTH).nullish();
 
 export const personalPayloadSchemas: PayloadSchemas = {
-  "personalAgent.ensureDefault": exact<
-    Payload<"personalAgent.ensureDefault">
-  >()(
+  "personalAgent.create": loose<Payload<"personalAgent.create">>()(
     z.object({
-      name: nameSchema,
-      description: boundedTextSchema(2000).nullish(),
+      role: roleSchema,
+      soul: soulSchema,
     }),
   ),
-  "personalAgent.create": loose<Payload<"personalAgent.create">>()(
-    z.object({ role: roleSchema, soul: soulSchema }),
+  "personalAgent.greet": exact<Payload<"personalAgent.greet">>()(
+    z.object({
+      id: idSchema,
+      locale: z.enum(supportedLocales).nullish(),
+    }),
   ),
   "personalAgent.update": loose<Payload<"personalAgent.update">>()(
     z.object({

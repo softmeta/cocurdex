@@ -657,11 +657,16 @@ export interface BriefMessageOrigin {
   day: string;
 }
 
+export interface GreetingMessageOrigin {
+  kind: "greeting";
+}
+
 export type MessageOrigin =
   | PeerMessageOrigin
   | ScriptRunMessageOrigin
   | RoutineMessageOrigin
-  | BriefMessageOrigin;
+  | BriefMessageOrigin
+  | GreetingMessageOrigin;
 
 export interface MessageRecord {
   id: string;

@@ -1,23 +1,44 @@
 import { randomUUID } from "node:crypto";
-import { createPiApplicationClient } from "@cocurdex/agent-adapters/pi-mcp";
+import {
+  createPiApplicationClient,
+  readPiMcpAccessToken,
+  savePiMcpAccessToken,
+} from "@cocurdex/agent-adapters/pi-mcp";
 import {
   type AddApplicationPayload,
   APPLICATION_CATALOG,
   type ApplicationConnection,
-  applicationAllowsPersona,
+  type ApplicationPrincipal,
+  applicationAllows,
+  type McpLoginOutcome,
+  type McpLoginStartResult,
   type McpServerConfig,
   type McpServerStatus,
   readApplicationMetadata,
   type UpdateApplicationPayload,
   withApplicationMetadata,
 } from "@cocurdex/shared";
+import {
+  createGitHubLoginClient,
+  type GitHubLoginClient,
+} from "./github-login";
 import type { DaemonMcpService } from "./mcp-service";
 
 type ApplicationClient = ReturnType<typeof createPiApplicationClient>;
 
-export interface ApplicationPrincipal {
-  personaId: string | null;
-  delegated: boolean;
+function connectionRevision(config: McpServerConfig) {
+  const { cocurdex: _metadata, enabled, ...connection } = config;
+  return JSON.stringify({ ...connection, enabled: enabled !== false });
+}
+
+interface DeviceLogin {
+  connectionId: string;
+  controller: AbortController;
+  done: Promise<void>;
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export class ApplicationService {
@@ -26,12 +47,15 @@ export class ApplicationService {
     { revision: string; status: McpServerStatus }
   >();
   private readonly logins = new Map<string, string>();
+  private readonly deviceLogins = new Map<string, DeviceLogin>();
   private readonly clients = new Map<string, Set<ApplicationClient>>();
 
   constructor(
     private readonly mcp: DaemonMcpService,
     private readonly personaExists: (id: string) => Promise<boolean>,
     private readonly clientFactory = createPiApplicationClient,
+    private readonly announceChanged: () => void = () => {},
+    private readonly github: GitHubLoginClient = createGitHubLoginClient(),
   ) {}
 
   async list(
@@ -40,33 +64,16 @@ export class ApplicationService {
     const servers = await this.mcp.config.readServers();
     return Object.entries(servers).flatMap(([id, config]) => {
       const metadata = readApplicationMetadata(config);
-      if (
-        !metadata ||
-        (principal &&
-          !applicationAllowsPersona(
-            config,
-            principal.personaId,
-            principal.delegated,
-          ))
-      )
+      if (!metadata || (principal && !applicationAllows(config, principal)))
         return [];
-      const oauth = this.oauth(config);
       const checked = this.statuses.get(id);
       return [
         {
           ...metadata,
           id,
           enabled: config.enabled !== false,
-          configured:
-            metadata.applicationId !== "github" ||
-            (typeof oauth.clientId === "string" &&
-              !!oauth.clientId &&
-              typeof oauth.callbackPort === "number"),
-          clientId: typeof oauth.clientId === "string" ? oauth.clientId : null,
-          callbackPort:
-            typeof oauth.callbackPort === "number" ? oauth.callbackPort : null,
           status:
-            checked?.revision === JSON.stringify(config)
+            checked?.revision === connectionRevision(config)
               ? checked.status
               : null,
         },
@@ -96,12 +103,14 @@ export class ApplicationService {
           displayName: payload.displayName.trim() || app.name,
           personaIds: [...new Set(payload.personaIds)],
           allowDelegatedWork: payload.allowDelegatedWork,
+          allowWorkSessions: payload.allowWorkSessions ?? true,
           revision: randomUUID(),
           createdAt: now,
           updatedAt: now,
         },
       ),
     );
+    this.announceChanged();
     return this.connection(id);
   }
 
@@ -109,45 +118,25 @@ export class ApplicationService {
     await this.validatePersonas(payload.personaIds);
     await this.cancelFor(payload.id);
     await this.closeClients(payload.id);
-    if (payload.clientId !== undefined || payload.clientSecret !== undefined) {
-      const current = await this.require(payload.id);
-      if (this.metadata(current).revision !== payload.revision)
-        throw new Error("Application changed. Reload before saving.");
-      const oauth = this.oauth(current);
-      if (
-        (payload.clientId !== undefined &&
-          payload.clientId.trim() !== oauth.clientId) ||
-        (payload.clientSecret !== undefined &&
-          payload.clientSecret !== oauth.clientSecret)
-      )
-        await this.mcp.logout(payload.id);
-    }
     await this.mcp.config.updateServer(payload.id, (config) => {
       const metadata = this.metadata(config);
       if (metadata.revision !== payload.revision)
         throw new Error("Application changed. Reload before saving.");
-      const oauth = this.oauth(config);
-      if (metadata.applicationId === "github") {
-        if (payload.clientId !== undefined)
-          oauth.clientId = payload.clientId.trim();
-        if (payload.clientSecret !== undefined)
-          oauth.clientSecret = payload.clientSecret;
-        if (payload.callbackPort !== undefined)
-          oauth.callbackPort = payload.callbackPort;
-      }
       return withApplicationMetadata(
-        { ...config, enabled: payload.enabled, oauth },
+        { ...config, enabled: payload.enabled },
         {
           ...metadata,
           displayName: payload.displayName.trim() || metadata.displayName,
           personaIds: [...new Set(payload.personaIds)],
           allowDelegatedWork: payload.allowDelegatedWork,
+          allowWorkSessions:
+            payload.allowWorkSessions ?? metadata.allowWorkSessions,
           revision: randomUUID(),
           updatedAt: new Date().toISOString(),
         },
       );
     });
-    this.statuses.delete(payload.id);
+    this.announceChanged();
     return this.connection(payload.id);
   }
 
@@ -158,6 +147,7 @@ export class ApplicationService {
     await this.mcp.logout(id);
     await this.mcp.config.removeServer(id);
     this.statuses.delete(id);
+    this.announceChanged();
   }
 
   async logout(id: string) {
@@ -166,51 +156,104 @@ export class ApplicationService {
     await this.closeClients(id);
     await this.mcp.logout(id);
     this.statuses.delete(id);
+    this.announceChanged();
     return this.connection(id);
   }
 
   async check(id: string) {
     const config = await this.require(id);
-    const connection = await this.connection(id);
-    if (!connection.configured)
-      throw new Error(
-        "Register your GitHub OAuth app and configure its client ID and callback port first.",
-      );
     const status = await this.mcp.test(id, config);
-    this.statuses.set(id, { revision: JSON.stringify(config), status });
+    this.statuses.set(id, { revision: connectionRevision(config), status });
+    this.announceChanged();
     return this.connection(id);
   }
 
-  async startLogin(id: string) {
+  async startLogin(id: string): Promise<McpLoginStartResult> {
     const config = await this.require(id);
     this.assertEnabled(config);
-    if (!(await this.connection(id)).configured)
-      throw new Error("Configure your GitHub OAuth app first.");
     await this.cancelFor(id);
+    if (this.metadata(config).applicationId === "github")
+      return this.startGitHubLogin(id, config);
     const result = await this.mcp.startLogin(id, undefined, config);
     if (result.loginId) this.logins.set(result.loginId, id);
     return result;
   }
 
-  async waitLogin(id: string, loginId: string) {
+  async waitLogin(id: string, loginId: string): Promise<McpLoginOutcome> {
     this.requireLogin(id, loginId);
     try {
-      return await this.mcp.logins.wait(loginId);
+      const device = this.deviceLogins.get(loginId);
+      if (!device) return await this.mcp.logins.wait(loginId);
+      return await device.done.then(
+        () => ({ success: true, error: null }),
+        (error: unknown) => ({ success: false, error: errorMessage(error) }),
+      );
     } finally {
+      this.deviceLogins.delete(loginId);
       this.logins.delete(loginId);
       this.statuses.delete(id);
+      this.announceChanged();
     }
   }
 
   submitRedirect(id: string, loginId: string, url: string) {
     this.requireLogin(id, loginId);
+    if (this.deviceLogins.has(loginId))
+      throw new Error("GitHub authorization finishes in the browser");
     this.mcp.logins.submitRedirectUrl(loginId, url);
   }
 
   cancelLogin(id: string, loginId: string) {
     this.requireLogin(id, loginId);
+    this.deviceLogins.get(loginId)?.controller.abort();
+    this.deviceLogins.delete(loginId);
     this.mcp.logins.cancel(loginId);
     this.logins.delete(loginId);
+  }
+
+  private async startGitHubLogin(
+    id: string,
+    config: McpServerConfig,
+  ): Promise<McpLoginStartResult> {
+    const location = await this.mcp.location();
+    const cliToken = await this.github.cliToken();
+    if (cliToken && !(await this.githubTokenInUse(cliToken, id))) {
+      await savePiMcpAccessToken(
+        location,
+        id,
+        { accessToken: cliToken },
+        config,
+      );
+      this.statuses.delete(id);
+      this.announceChanged();
+      return { loginId: null, authUrl: null };
+    }
+    const controller = new AbortController();
+    const code = await this.github.deviceCode(controller.signal);
+    const loginId = randomUUID();
+    const done = this.github
+      .pollToken(code, controller.signal)
+      .then(async (token) =>
+        savePiMcpAccessToken(location, id, token, await this.require(id)),
+      );
+    done.catch(() => undefined);
+    this.deviceLogins.set(loginId, { connectionId: id, controller, done });
+    return {
+      loginId,
+      authUrl: code.verificationUri,
+      userCode: code.userCode,
+    };
+  }
+
+  private async githubTokenInUse(token: string, exceptId: string) {
+    const location = await this.mcp.location();
+    const servers = await this.mcp.config.readServers();
+    return Object.entries(servers).some(
+      ([id, config]) =>
+        id !== exceptId &&
+        readApplicationMetadata(config)?.applicationId === "github" &&
+        readPiMcpAccessToken(location, id) === token,
+    );
   }
 
   async tools(id: string, principal?: ApplicationPrincipal) {
@@ -274,6 +317,8 @@ export class ApplicationService {
   }
 
   async dispose() {
+    for (const device of this.deviceLogins.values()) device.controller.abort();
+    this.deviceLogins.clear();
     await Promise.all(
       [...this.clients.keys()].map((id) => this.closeClients(id)),
     );
@@ -343,15 +388,8 @@ export class ApplicationService {
     const config = (await this.mcp.config.readServers())[id];
     if (!config) throw new Error("Application connection not found");
     this.metadata(config);
-    if (
-      principal &&
-      !applicationAllowsPersona(
-        config,
-        principal.personaId,
-        principal.delegated,
-      )
-    )
-      throw new Error("This assistant is not allowed to use this application");
+    if (principal && !applicationAllows(config, principal))
+      throw new Error("This session is not allowed to use this application");
     if (principal && config.enabled === false)
       throw new Error("Application is disabled");
     return config;
@@ -363,19 +401,18 @@ export class ApplicationService {
         throw new Error(`Assistant not found: ${id}`);
   }
 
-  private oauth(config: McpServerConfig): Record<string, unknown> {
-    const value = config.oauth;
-    return typeof value === "object" && value !== null && !Array.isArray(value)
-      ? { ...value }
-      : {};
-  }
-
   private requireLogin(id: string, loginId: string) {
-    if (this.logins.get(loginId) !== id)
-      throw new Error("Unknown application login attempt");
+    const owner =
+      this.deviceLogins.get(loginId)?.connectionId ?? this.logins.get(loginId);
+    if (owner !== id) throw new Error("Unknown application login attempt");
   }
 
   private async cancelFor(id: string) {
+    for (const [loginId, device] of this.deviceLogins)
+      if (device.connectionId === id) {
+        device.controller.abort();
+        this.deviceLogins.delete(loginId);
+      }
     await this.mcp.logins.cancelServer(id);
     for (const [loginId, connectionId] of this.logins)
       if (connectionId === id) {

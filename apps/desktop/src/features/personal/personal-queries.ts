@@ -6,17 +6,10 @@ import { personalApi } from "./personal-api";
 const PERSONAL_AGENTS_KEY = "personalAgent.list";
 const NO_AGENTS: PersonalAgentRecord[] = [];
 
-async function loadPersonalAgents(defaultName: string) {
-  const agents = await personalApi.list();
-  if (agents.some((agent) => agent.isDefault)) return agents;
-  await personalApi.ensureDefault(defaultName);
-  return personalApi.list();
-}
-
-export function usePersonalAgents(defaultName: string) {
+export function usePersonalAgents() {
   const { data, error, mutate } = useSWR(
     PERSONAL_AGENTS_KEY,
-    () => loadPersonalAgents(defaultName),
+    () => personalApi.list(),
     { dedupingInterval: 0 },
   );
 
@@ -38,13 +31,17 @@ export function revalidatePersonalAgents() {
   return mutateGlobal(PERSONAL_AGENTS_KEY);
 }
 
-export function usePersonaRole(roleId: string | null, defaultName: string) {
+export function usePersonaOfRole(roleId: string | null) {
   const { data } = useSWR(
     roleId ? PERSONAL_AGENTS_KEY : null,
-    () => loadPersonalAgents(defaultName),
+    () => personalApi.list(),
     { dedupingInterval: 0 },
   );
-  return data?.find((agent) => agent.role.id === roleId)?.role ?? null;
+  return data?.find((agent) => agent.role.id === roleId) ?? null;
+}
+
+export function usePersonaRole(roleId: string | null) {
+  return usePersonaOfRole(roleId)?.role ?? null;
 }
 
 export function useLatestReply(sessionId: string, stamp: string | null) {

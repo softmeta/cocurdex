@@ -1,61 +1,78 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { requestDaemon, useMountEffect } from "@/lib";
+import { desktopApi, requestDaemon, useMountEffect } from "@/lib";
+
+export interface ApplicationLoginWaiting {
+  id: string;
+  loginId: string;
+  authUrl: string;
+  userCode: string | null;
+}
+
+export interface ApplicationLogin {
+  waiting: ApplicationLoginWaiting | null;
+  busyId: string | null;
+  start(id: string): Promise<void>;
+  cancel(): void;
+  submitReturn(url: string): Promise<void>;
+}
+
+function cancelAttempt(id: string, loginId: string) {
+  void requestDaemon("application.login.cancel", { id, loginId }).catch(
+    (cause) => toast.error(String(cause)),
+  );
+}
 
 export function useApplicationLogin(
-  id: string,
   onChanged: () => Promise<unknown>,
-) {
-  const [waiting, setWaiting] = useState<{
-    loginId: string;
-    authUrl: string;
-  } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const active = useRef<string | null>(null);
+): ApplicationLogin {
+  const [waiting, setWaiting] = useState<ApplicationLoginWaiting | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const active = useRef<{ id: string; loginId: string } | null>(null);
   const attempt = useRef(0);
 
-  function cancel() {
+  function abandon() {
     attempt.current += 1;
-    const loginId = active.current;
+    const current = active.current;
     active.current = null;
-    if (loginId)
-      void requestDaemon("application.login.cancel", { id, loginId }).catch(
-        (cause) => toast.error(String(cause)),
-      );
-    setWaiting(null);
-    setBusy(false);
+    if (current) cancelAttempt(current.id, current.loginId);
   }
 
-  useMountEffect(() => () => {
-    attempt.current += 1;
-    const loginId = active.current;
-    active.current = null;
-    if (loginId)
-      void requestDaemon("application.login.cancel", { id, loginId }).catch(
-        (cause) => toast.error(String(cause)),
-      );
-  });
+  useMountEffect(() => abandon);
 
-  async function start() {
-    const current = ++attempt.current;
-    setBusy(true);
+  function cancel() {
+    abandon();
+    setWaiting(null);
+    setBusyId(null);
+  }
+
+  async function start(id: string) {
+    abandon();
+    const current = attempt.current;
+    setBusyId(id);
     try {
       const started = await requestDaemon("application.login.start", { id });
       if (current !== attempt.current) {
-        if (started.loginId)
-          await requestDaemon("application.login.cancel", {
-            id,
-            loginId: started.loginId,
-          });
+        if (started.loginId) cancelAttempt(id, started.loginId);
         return;
       }
       if (started.loginId && started.authUrl) {
-        const loginId = started.loginId;
-        active.current = loginId;
-        setWaiting({ loginId, authUrl: started.authUrl });
+        const next = {
+          id,
+          loginId: started.loginId,
+          authUrl: started.authUrl,
+          userCode: started.userCode ?? null,
+        };
+        active.current = { id, loginId: started.loginId };
+        setWaiting(next);
+        if (started.userCode)
+          await navigator.clipboard
+            .writeText(started.userCode)
+            .catch(() => undefined);
+        void desktopApi.openExternal(started.authUrl);
         const outcome = await requestDaemon("application.login.wait", {
           id,
-          loginId,
+          loginId: started.loginId,
         });
         if (current !== attempt.current) return;
         active.current = null;
@@ -72,10 +89,23 @@ export function useApplicationLogin(
       if (current === attempt.current) {
         active.current = null;
         setWaiting(null);
-        setBusy(false);
+        setBusyId(null);
       }
     }
   }
 
-  return { waiting, busy, start, cancel };
+  async function submitReturn(url: string) {
+    if (!waiting) return;
+    try {
+      await requestDaemon("application.login.return", {
+        id: waiting.id,
+        loginId: waiting.loginId,
+        url,
+      });
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
+
+  return { waiting, busyId, start, cancel, submitReturn };
 }
