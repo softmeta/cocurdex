@@ -73,7 +73,6 @@ appId: dev.cocurdex.mobile
 - tapOn: ${SESSION_CONFIG_CLOSE}
 - extendedWaitUntil:
     visible:
-      id: "session-config-chip"
       text: "(?s).*${NEW_SESSION_MODEL}.*"
     timeout: 10000
 - runFlow:
