@@ -1,4 +1,4 @@
-import { getCompactRelativeTime } from "@cocurdex/shared";
+import { formatListTime, getCompactRelativeTime } from "@cocurdex/shared";
 import { useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -39,4 +39,10 @@ export function useAgeLabel(timestamp: string) {
     y: t("age.years", { count }),
   };
   return labels[unit];
+}
+
+export function useListTimeLabel(timestamp: string) {
+  const { t, i18n } = useTranslation();
+  const current = useSyncExternalStore(subscribe, () => now);
+  return formatListTime(timestamp, current, i18n.language, t("age.yesterday"));
 }

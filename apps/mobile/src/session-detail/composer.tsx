@@ -1,7 +1,7 @@
 import type { ImageAttachment } from "@cocurdex/shared";
 import { randomUUID } from "expo-crypto";
 import { SymbolView } from "expo-symbols";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { layout, space, useThemeColors } from "@/theme";
@@ -12,6 +12,10 @@ import {
   ImageUploadError,
   type ImageUploadFailure,
 } from "./image-upload-response";
+import {
+  type TextInputHandle,
+  useBlurOnKeyboardHide,
+} from "./use-blur-on-keyboard-hide";
 
 interface Draft extends DraftImage {
   attachment: ImageAttachment | null;
@@ -74,6 +78,10 @@ export function Composer({
   const submitDisabled =
     !canSend || sending || uploading || (!stopping && !hasContent);
   const roomForImages = MAX_IMAGES_PER_MESSAGE - drafts.length;
+  const [focused, setFocused] = useState(autoFocus);
+  const input = useRef<TextInputHandle>(null);
+  useBlurOnKeyboardHide(input);
+  const compact = !accessory || !focused;
 
   const upload = async (draft: Draft, image: PickedImage) => {
     try {
@@ -138,7 +146,7 @@ export function Composer({
           {failureMessages[failure]}
         </Text>
       ) : null}
-      <View style={[styles.bar, floatingSurface]}>
+      <View style={[styles.bar, compact && styles.compactBar, floatingSurface]}>
         <AttachmentStrip
           drafts={drafts}
           onRemove={(key) =>
@@ -146,17 +154,27 @@ export function Composer({
           }
         />
         <TextInput
+          ref={input}
           testID={inputTestID}
           value={text}
           onChangeText={setText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           editable={canEdit}
           multiline
           autoFocus={autoFocus}
           placeholder={placeholder ?? t("composer.placeholder")}
           placeholderTextColor={colors.mutedForeground}
-          style={[styles.input, { color: colors.foreground }]}
+          style={[
+            styles.input,
+            compact && styles.compactInput,
+            { color: colors.foreground },
+          ]}
         />
-        <View style={styles.actions}>
+        <View
+          pointerEvents="box-none"
+          style={[styles.actions, compact && styles.compactActions]}
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t("composer.attach")}
@@ -174,7 +192,9 @@ export function Composer({
               tintColor={colors.mutedForeground}
             />
           </Pressable>
-          <View style={styles.spacer}>{accessory}</View>
+          <View pointerEvents="box-none" style={styles.spacer}>
+            {compact ? null : accessory}
+          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
@@ -207,6 +227,7 @@ export function Composer({
 
 const COMPOSER_RADIUS = 26;
 const ROUND_SIZE = 36;
+const COMPACT_INPUT_INSET = 7;
 
 const styles = StyleSheet.create({
   wrap: { marginHorizontal: space.md, marginBottom: space.xs, gap: space.xs },
@@ -226,6 +247,19 @@ const styles = StyleSheet.create({
     fontSize: 17,
   },
   actions: { flexDirection: "row", alignItems: "center", gap: space.xs },
+  compactBar: { paddingLeft: space.sm, paddingTop: space.sm },
+  compactInput: {
+    minHeight: ROUND_SIZE,
+    marginHorizontal: ROUND_SIZE + space.xs,
+    paddingTop: COMPACT_INPUT_INSET,
+    paddingBottom: COMPACT_INPUT_INSET,
+  },
+  compactActions: {
+    position: "absolute",
+    left: space.sm,
+    right: space.sm,
+    bottom: space.sm,
+  },
   spacer: { flex: 1, minWidth: 0 },
   round: {
     width: ROUND_SIZE,

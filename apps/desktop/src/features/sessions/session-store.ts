@@ -17,6 +17,8 @@ import {
   isAcpRegistryAgentId,
   isAgentId,
   isAgentPermissionModeSupportedForModel,
+  isChatSession,
+  isPersonalSession,
   isPlanModeId,
   mergeProjectedSubagentSession,
   PLAN_MODE_ID,
@@ -391,11 +393,22 @@ function getNextActiveSessionId(
     }
   }
 
+  const sameFamily = removed
+    ? remaining.filter(
+        (session) => sessionFamilyOf(session) === sessionFamilyOf(removed),
+      )
+    : remaining;
   return (
-    remaining.find((session) => !session.parentSessionId)?.id ??
-    remaining[0]?.id ??
+    sameFamily.find((session) => !session.parentSessionId)?.id ??
+    sameFamily[0]?.id ??
     null
   );
+}
+
+function sessionFamilyOf(session: Pick<SessionRecord, "sessionKind">) {
+  if (isChatSession(session)) return "chat";
+  if (isPersonalSession(session)) return "personal";
+  return "work";
 }
 
 // Built-in default is cocurdex (agent id `pi`). Unknown or missing storage
@@ -1084,10 +1097,7 @@ function removeSessionSubtree(get: Getter, set: Setter, sessionId: string) {
   });
 
   if (activeSessionId && removedIds.has(activeSessionId)) {
-    const nextId = getNextActiveSessionId(nextSessions, removed);
-    if (nextId) {
-      set(selectSessionAtom, nextId);
-    }
+    set(selectSessionAtom, getNextActiveSessionId(nextSessions, removed));
   }
 }
 

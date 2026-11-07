@@ -74,8 +74,10 @@ export default function PairScreen() {
     selectHost(result.host.hostId);
     enablePushNotifications();
     await keyboardHidden();
-    if (router.canGoBack()) router.back();
-    else router.replace("/");
+    router.replace({
+      pathname: "/approve/[hostId]",
+      params: { hostId: result.host.hostId },
+    });
   };
 
   const scanInstead = async () => {

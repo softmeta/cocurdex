@@ -1,5 +1,5 @@
+import { formatListTime } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
-import { formatListTime } from "@/lib/relative-time";
 
 const local = (...parts: [number, number, number, number?, number?]) => {
   const [year, month, day, hour = 0, minute = 0] = parts;

@@ -3,7 +3,6 @@ import {
   INBOX_NEEDS_YOU_KINDS,
   type InboxForm,
   type InboxItem,
-  isChatSession,
   isPersonalSession,
   type RoutineRecord,
   type RoutineRunRecord,
@@ -20,6 +19,7 @@ export interface InboxPendingEntry {
 
 export interface InboxSources {
   sessions: readonly SessionRecord[];
+  delegatedSessionIds: ReadonlySet<string>;
   attention: readonly SessionAttentionSnapshot[];
   pending: {
     permissions: readonly InboxPendingEntry[];
@@ -31,9 +31,7 @@ export interface InboxSources {
 }
 
 function formOf(session: SessionRecord): InboxForm {
-  if (isPersonalSession(session)) return "personal";
-  if (isChatSession(session)) return "chat";
-  return "work";
+  return isPersonalSession(session) ? "personal" : "work";
 }
 
 function rank(item: InboxItem) {
@@ -77,7 +75,13 @@ export function buildInbox(sources: InboxSources): InboxItem[] {
   const items: InboxItem[] = [];
 
   for (const session of sources.sessions) {
-    if (session.archivedAt || session.sessionKind === "subagent") continue;
+    if (session.archivedAt) continue;
+    if (
+      !isPersonalSession(session) &&
+      !sources.delegatedSessionIds.has(session.id)
+    ) {
+      continue;
+    }
     const base = {
       id: `session:${session.id}`,
       form: formOf(session),

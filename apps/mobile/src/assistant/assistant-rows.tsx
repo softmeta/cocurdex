@@ -3,12 +3,19 @@ import type {
   InboxItem,
   PersonalAgentRecord,
 } from "@cocurdex/shared";
+import { SymbolView } from "expo-symbols";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { RoleAvatar } from "@/agents";
+import { type SessionRowStatus, SessionStatusMark } from "@/sessions";
 import { layout, space, useThemeColors } from "@/theme";
-import { useAgeLabel } from "@/ui";
+import {
+  type MenuAnchor,
+  menuAnchor,
+  useAgeLabel,
+  useListTimeLabel,
+} from "@/ui";
 import { inboxKindColor, inboxKindLabel } from "./inbox-kind";
 
 function RowPressable({
@@ -143,41 +150,78 @@ export function InboxRow({
 
 export function AgentRow({
   agent,
+  activityAt,
+  status,
   subtitle,
   onOpen,
+  onLongPress,
 }: {
   agent: PersonalAgentRecord;
+  activityAt: string | null;
+  status: SessionRowStatus;
   subtitle: string;
   onOpen(agent: PersonalAgentRecord): void;
+  onLongPress(agent: PersonalAgentRecord, anchor: MenuAnchor): void;
 }) {
+  const { t } = useTranslation("assistant");
   const colors = useThemeColors();
+  const muted = agent.mutedAt !== null;
   return (
-    <RowPressable
-      label={agent.role.name}
+    <Pressable
+      accessibilityLabel={agent.role.name}
+      accessibilityRole="button"
+      accessibilityValue={{ text: subtitle }}
       onPress={() => onOpen(agent)}
+      onLongPress={(event) => onLongPress(agent, menuAnchor(event))}
+      style={({ pressed }) => [
+        styles.row,
+        styles.agentLine,
+        pressed && { backgroundColor: colors.muted },
+      ]}
       testID={`assistant-${agent.id}`}
-      value={subtitle}
     >
-      <View style={styles.agentLine}>
-        <RoleAvatar role={agent.role} size={layout.avatarTile} />
-        <View style={styles.agentText}>
+      <RoleAvatar role={agent.role} size={layout.avatarTile} />
+      <View style={styles.agentText}>
+        <View style={styles.line}>
           <Text
             numberOfLines={1}
-            style={[styles.title, { color: colors.foreground }]}
+            style={[styles.agentName, { color: colors.foreground }]}
           >
             {agent.role.name}
           </Text>
-          {subtitle ? (
-            <Text
-              numberOfLines={1}
-              style={[styles.agentDetail, { color: colors.mutedForeground }]}
-            >
-              {subtitle}
-            </Text>
+          {muted ? (
+            <SymbolView
+              accessibilityLabel={t("agents.muted")}
+              name={{ ios: "bell.slash", android: "notifications_off" }}
+              size={14}
+              tintColor={colors.mutedForeground}
+            />
           ) : null}
+          <View style={styles.fill} />
+          {activityAt ? <ListTime timestamp={activityAt} /> : null}
+        </View>
+        <View style={styles.line}>
+          <Text
+            numberOfLines={1}
+            style={[styles.agentDetail, { color: colors.mutedForeground }]}
+          >
+            {subtitle}
+          </Text>
+          <SessionStatusMark
+            status={muted && status === "unread" ? "none" : status}
+          />
         </View>
       </View>
-    </RowPressable>
+    </Pressable>
+  );
+}
+
+function ListTime({ timestamp }: { timestamp: string }) {
+  const colors = useThemeColors();
+  const label = useListTimeLabel(timestamp);
+  if (!label) return null;
+  return (
+    <Text style={[styles.age, { color: colors.mutedForeground }]}>{label}</Text>
   );
 }
 
@@ -192,10 +236,12 @@ const styles = StyleSheet.create({
   line: { flexDirection: "row", alignItems: "center", gap: space.sm },
   agentLine: { flexDirection: "row", alignItems: "center", gap: space.md },
   agentText: { flex: 1, gap: 2 },
+  agentName: { flexShrink: 1, fontSize: 16, lineHeight: 22 },
+  fill: { flex: 1 },
   title: { flex: 1, fontSize: 16, lineHeight: 22 },
   age: { fontSize: 13, fontVariant: ["tabular-nums"] },
   detail: { fontSize: 14, lineHeight: 19, paddingLeft: 16 + space.sm },
-  agentDetail: { fontSize: 14, lineHeight: 19 },
+  agentDetail: { flex: 1, fontSize: 14, lineHeight: 19 },
   dotSlot: {
     width: 16,
     height: 16,

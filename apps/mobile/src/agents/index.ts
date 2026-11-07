@@ -8,5 +8,6 @@ export {
   type PermissionModeLabel,
   usePermissionModeLabels,
 } from "./permission-mode-labels";
+export { type BubbleColors, usePersonaBubble } from "./persona-bubble";
 export { RoleAvatar, type RoleAvatarSource } from "./role-avatar";
 export { SaveRoleForm } from "./save-role-form";

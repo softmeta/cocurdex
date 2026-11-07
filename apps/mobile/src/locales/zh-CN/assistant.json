@@ -1,6 +1,21 @@
 {
+  "actions": {
+    "cancel": "取消",
+    "copyName": "{{name}} 副本",
+    "delete": "删除",
+    "deleteMessage": "将删除这个助理和它的对话。记忆仍保留在记忆库中。",
+    "deleteTitle": "删除「{{name}}」？",
+    "duplicate": "复制",
+    "edit": "编辑",
+    "failed": "操作失败，请重试。",
+    "mute": "免打扰",
+    "pin": "置顶",
+    "unmute": "取消免打扰",
+    "unpin": "取消置顶"
+  },
   "agents": {
-    "title": "助理"
+    "muted": "免打扰",
+    "working": "工作中"
   },
   "brief": {
     "title": "今天"
@@ -8,6 +23,20 @@
   "empty": {
     "description": "在 {{host}} 上创建助理后会出现在这里。",
     "title": "还没有助理"
+  },
+  "form": {
+    "create": "创建",
+    "description": "简介",
+    "descriptionPlaceholder": "一句话介绍这个助理",
+    "editTitle": "编辑助理",
+    "failed": "保存失败，请重试。",
+    "instructions": "指令",
+    "instructionsPlaceholder": "这个助理负责什么、应该怎么做事",
+    "name": "名称",
+    "newTitle": "新建助理",
+    "save": "保存",
+    "soul": "人设",
+    "soulPlaceholder": "语气、性格，以及和你说话的方式"
   },
   "inbox": {
     "kind": {
@@ -22,6 +51,43 @@
       "routineResult": "有新结果"
     },
     "title": "收件箱"
+  },
+  "overview": {
+    "description": "协调工作、记住上下文、跟进到底。",
+    "host": "例行任务在已连接的电脑上运行，需要它的后台服务在线。",
+    "issues": "事项",
+    "needsYou": "需要你处理",
+    "nextRun": "下次运行：{{time}}",
+    "notes": "笔记",
+    "noWork": "这个助理委派的工作会显示在这里。",
+    "paused": "已暂停",
+    "pausedFailures": "多次失败后已暂停",
+    "resources": "上下文与资料",
+    "results": "最近结果",
+    "routines": "例行任务",
+    "routinesFailed": "例行任务加载失败。",
+    "state": {
+      "archived": "已归档",
+      "cancelled": "已取消",
+      "completed": "本轮已完成",
+      "failed": "失败",
+      "idle": "空闲",
+      "interrupted": "已中断",
+      "running": "运行中"
+    },
+    "title": "概览",
+    "unscheduled": "没有安排下次运行",
+    "work": "委派的工作",
+    "workFailed": "工作列表加载失败，下拉刷新后重试。"
+  },
+  "thread": {
+    "placeholder": "给 {{name}} 发消息",
+    "suggestions": {
+      "attention": "今天有什么需要我关注的？",
+      "brief": "每天早上 8 点给我一份简报",
+      "label": "建议",
+      "memory": "你记得关于我的哪些事？"
+    }
   },
   "unavailable": {
     "retry": "重试",

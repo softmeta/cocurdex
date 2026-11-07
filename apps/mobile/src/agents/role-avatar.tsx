@@ -5,33 +5,21 @@ import {
   AGENT_ROLE_AVATAR_VIEWBOX,
   type AgentId,
   type AgentRoleAvatar,
-  type AgentRoleAvatarColor,
   agentRoleInitial,
   resolveAgentRoleAvatar,
 } from "@cocurdex/shared";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, G, Path } from "react-native-svg";
-import { type ThemeColors, useThemeColors } from "@/theme";
+import { useThemeColors } from "@/theme";
 import { AgentIcon } from "./agent-icon";
 import { avatarEyeColor } from "./avatar-eye-color";
+import { AVATAR_COLOR } from "./avatar-hue";
 
 export interface RoleAvatarSource {
   id: string;
   name: string;
   avatar: AgentRoleAvatar | null;
 }
-
-const AVATAR_COLOR: Record<AgentRoleAvatarColor, keyof ThemeColors> = {
-  gray: "roleAvatarGray",
-  red: "roleAvatarRed",
-  orange: "roleAvatarOrange",
-  amber: "roleAvatarAmber",
-  green: "roleAvatarGreen",
-  teal: "roleAvatarTeal",
-  blue: "roleAvatarBlue",
-  violet: "roleAvatarViolet",
-  pink: "roleAvatarPink",
-};
 
 const TINT_ALPHA = "26";
 

@@ -42,6 +42,7 @@ export * from "./git-worktree";
 export * from "./host-access";
 export * from "./inbox";
 export * from "./issues";
+export * from "./list-time-label";
 export * from "./local-session-title";
 export * from "./locales";
 export * from "./logging";

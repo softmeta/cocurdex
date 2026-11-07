@@ -11,7 +11,8 @@
     "minutes_other": "{{count}}分钟",
     "months_other": "{{count}}个月",
     "now": "刚刚",
-    "years_other": "{{count}}年"
+    "years_other": "{{count}}年",
+    "yesterday": "昨天"
   },
   "links": {
     "relation": {
@@ -41,6 +42,7 @@
     "placeholder": "搜索"
   },
   "screens": {
+    "approve": "在电脑上批准",
     "archived": "已归档会话",
     "assistant": "助理",
     "computers": "电脑",

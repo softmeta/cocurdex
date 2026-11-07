@@ -4,17 +4,20 @@ import type { TFunction } from "i18next";
 import { memo, type Ref, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import type { BubbleColors } from "@/agents";
 import { MarkdownText } from "@/markdown";
 import { scaledSize, useTextScale } from "@/preferences";
 import { layout, space, type ThemeColors, useThemeColors } from "@/theme";
-import type { PostedSource, TranscriptItem } from "./transcript";
+import type { TranscriptItem } from "./transcript";
 import type { ActivityChild, CondensedItem } from "./transcript-activity";
 import { type TranscriptHandle, TranscriptList } from "./transcript-list";
 
 export type { TranscriptHandle } from "./transcript-list";
 
 import { RemoteImage } from "@/connection";
+import { ConversationRow } from "./conversation-rows";
 import { imageAttachmentRequest } from "./image-attachments";
+import { PostedSourceLine } from "./posted-source-line";
 import { TurnActions } from "./turn-actions";
 import { useActivityLabel } from "./use-activity-label";
 import { useElapsedLabel } from "./use-elapsed-label";
@@ -271,21 +274,6 @@ function ActivityChildRow({
   );
 }
 
-function PostedSourceLine({
-  source,
-  color,
-}: {
-  source: PostedSource;
-  color: string;
-}) {
-  const { t } = useTranslation("sessions");
-  const label =
-    source.kind === "brief"
-      ? t("detail.postedBrief")
-      : t("detail.postedRoutine", { name: source.name });
-  return <Text style={[styles.postedSource, { color }]}>{label}</Text>;
-}
-
 function UserText({ text, color }: { text: string; color: string }) {
   const scale = useTextScale();
   return (
@@ -311,20 +299,26 @@ const TranscriptRow = memo(function TranscriptRow({
   actions,
   expanded,
   onToggle,
+  userBubble,
 }: {
   item: CondensedItem;
   colors: ThemeColors;
   actions: TranscriptActions;
   expanded: boolean;
   onToggle(id: string): void;
+  userBubble?: BubbleColors;
 }) {
   if (item.kind === "user") {
+    const bubble = userBubble ?? {
+      background: colors.muted,
+      foreground: colors.foreground,
+    };
     return (
       <View style={styles.userTurn} testID={`transcript-user-${item.id}`}>
         <UserImages images={item.images} actions={actions} colors={colors} />
         {item.text ? (
-          <View style={[styles.bubble, { backgroundColor: colors.muted }]}>
-            <UserText text={item.text} color={colors.foreground} />
+          <View style={[styles.bubble, { backgroundColor: bubble.background }]}>
+            <UserText text={item.text} color={bubble.foreground} />
           </View>
         ) : null}
       </View>
@@ -394,16 +388,24 @@ function useStableActions(actions: TranscriptActions): TranscriptActions {
   );
 }
 
+export type TranscriptPresentation = "work" | "assistant";
+
 export function TranscriptView({
   items,
   footer,
   actions,
+  presentation = "work",
+  userBubble,
   sentMessageId,
+  bottomInset,
   ref,
 }: {
+  bottomInset?: number;
   items: readonly CondensedItem[];
   footer?: React.ReactElement;
   actions: TranscriptActions;
+  presentation?: TranscriptPresentation;
+  userBubble?: BubbleColors;
   sentMessageId?: string;
   ref?: Ref<TranscriptHandle>;
 }) {
@@ -419,17 +421,28 @@ export function TranscriptView({
     });
   }, []);
   const renderRow = useCallback(
-    (item: CondensedItem) => (
-      <TranscriptRow
-        key={`${item.kind}:${item.id}`}
-        item={item}
-        colors={colors}
-        actions={rowActions}
-        expanded={expanded.has(item.id)}
-        onToggle={toggle}
-      />
-    ),
-    [colors, rowActions, expanded, toggle],
+    (item: CondensedItem) =>
+      presentation === "assistant" &&
+      (item.kind === "assistant" || item.kind === "activity") ? (
+        <ConversationRow
+          key={`${item.kind}:${item.id}`}
+          item={item}
+          colors={colors}
+          hostId={rowActions.hostId}
+          fileRoot={rowActions.fileRoot}
+        />
+      ) : (
+        <TranscriptRow
+          key={`${item.kind}:${item.id}`}
+          item={item}
+          colors={colors}
+          actions={rowActions}
+          expanded={expanded.has(item.id)}
+          onToggle={toggle}
+          userBubble={userBubble}
+        />
+      ),
+    [presentation, userBubble, colors, rowActions, expanded, toggle],
   );
   return (
     <TranscriptList
@@ -437,6 +450,7 @@ export function TranscriptView({
       items={items}
       footer={footer}
       sentMessageId={sentMessageId}
+      bottomInset={bottomInset}
       renderRow={renderRow}
     />
   );
@@ -462,7 +476,6 @@ const styles = StyleSheet.create({
   toolText: { flex: 1, fontSize: 14 },
   activity: { gap: space.xs },
   activityText: { flex: 1, fontSize: 14 },
-  postedSource: { fontSize: 13, marginBottom: space.xs },
   elapsed: { fontSize: 14, fontVariant: ["tabular-nums"] },
   activityItems: { gap: space.sm, paddingLeft: space.md },
   toolDetail: {

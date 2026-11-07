@@ -1,6 +1,21 @@
 {
+  "actions": {
+    "cancel": "Cancel",
+    "copyName": "{{name}} copy",
+    "delete": "Delete",
+    "deleteMessage": "This deletes the assistant and its conversation. Its memories stay in the memory store.",
+    "deleteTitle": "Delete \"{{name}}\"?",
+    "duplicate": "Duplicate",
+    "edit": "Edit",
+    "failed": "Something went wrong. Try again.",
+    "mute": "Mute",
+    "pin": "Pin",
+    "unmute": "Unmute",
+    "unpin": "Unpin"
+  },
   "agents": {
-    "title": "Assistants"
+    "muted": "Muted",
+    "working": "Working"
   },
   "brief": {
     "title": "Today"
@@ -8,6 +23,20 @@
   "empty": {
     "description": "Create an assistant on {{host}} to see it here.",
     "title": "No assistants yet"
+  },
+  "form": {
+    "create": "Create",
+    "description": "Description",
+    "descriptionPlaceholder": "One line about this assistant",
+    "editTitle": "Edit assistant",
+    "failed": "Couldn't save. Try again.",
+    "instructions": "Instructions",
+    "instructionsPlaceholder": "What this assistant is for and how it should work",
+    "name": "Name",
+    "newTitle": "New assistant",
+    "save": "Save",
+    "soul": "Persona",
+    "soulPlaceholder": "Tone, personality, and how it talks to you"
   },
   "inbox": {
     "kind": {
@@ -22,6 +51,43 @@
       "routineResult": "New result"
     },
     "title": "Inbox"
+  },
+  "overview": {
+    "description": "Coordinate work, keep context, and follow through.",
+    "host": "Routines run on the connected computer while its background service is online.",
+    "issues": "Issues",
+    "needsYou": "Needs you",
+    "nextRun": "Next run: {{time}}",
+    "notes": "Notes",
+    "noWork": "Work delegated by this assistant will appear here.",
+    "paused": "Paused",
+    "pausedFailures": "Paused after failures",
+    "resources": "Context and resources",
+    "results": "Recent results",
+    "routines": "Routines",
+    "routinesFailed": "Routines couldn't load.",
+    "state": {
+      "archived": "Archived",
+      "cancelled": "Cancelled",
+      "completed": "Turn completed",
+      "failed": "Failed",
+      "idle": "Idle",
+      "interrupted": "Interrupted",
+      "running": "Running"
+    },
+    "title": "Overview",
+    "unscheduled": "No next run scheduled",
+    "work": "Delegated work",
+    "workFailed": "Work couldn't load."
+  },
+  "thread": {
+    "placeholder": "Message {{name}}",
+    "suggestions": {
+      "attention": "What needs my attention today?",
+      "brief": "Send me a brief every morning at 8",
+      "label": "Suggestions",
+      "memory": "What do you remember about me?"
+    }
   },
   "unavailable": {
     "retry": "Try Again",
