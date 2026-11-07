@@ -154,16 +154,22 @@ appId: dev.cocurdex.mobile
       id: new-chat-prompt
       text: ${CHAT_PROMPT}
     timeout: 10000
-- runFlow:
-    when:
-      platform: iOS
+- waitForAnimationToEnd
+- retry:
+    maxRetries: 2
     commands:
-      - hideKeyboard
-- tapOn: ${SEND_ACTION}
-- extendedWaitUntil:
-    visible:
-      id: composer-input
-    timeout: 15000
+      - runFlow:
+          when:
+            visible:
+              id: new-chat-prompt
+          commands:
+            - tapOn:
+                text: ${SEND_ACTION}
+                enabled: true
+      - extendedWaitUntil:
+          visible:
+            id: composer-input
+          timeout: 15000
 - assertVisible: ${CHAT_PROMPT}
 - stopApp
 - launchApp
