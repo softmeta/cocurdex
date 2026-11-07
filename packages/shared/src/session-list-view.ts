@@ -76,7 +76,7 @@ export const DEFAULT_SESSION_LIST_VIEW: SessionListView = {
   direction: "desc",
   rootLimit: "8",
   compact: false,
-  properties: ["timestamp"],
+  properties: [],
   statuses: [],
   agents: [],
   environments: [],
@@ -162,12 +162,17 @@ export function normalizeSessionListView(value: unknown): SessionListView {
   };
 }
 
-const COMPACT_SESSION_PROPERTIES: readonly SessionProperty[] = ["timestamp"];
+const COMPACT_SESSION_PROPERTIES: ReadonlySet<SessionProperty> = new Set([
+  "timestamp",
+]);
 
 export function visibleSessionProperties(
   view: Pick<SessionListView, "compact" | "properties">,
 ): readonly SessionProperty[] {
-  return view.compact ? COMPACT_SESSION_PROPERTIES : view.properties;
+  if (!view.compact) return view.properties;
+  return view.properties.filter((property) =>
+    COMPACT_SESSION_PROPERTIES.has(property),
+  );
 }
 
 export function countActiveSessionFilters(view: SessionListView) {

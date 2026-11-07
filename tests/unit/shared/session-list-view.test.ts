@@ -62,8 +62,8 @@ describe("normalizeSessionListView", () => {
     });
   });
 
-  it("shows only timestamps until properties are chosen", () => {
-    expect(normalizeSessionListView(null).properties).toEqual(["timestamp"]);
+  it("shows no properties until they are chosen", () => {
+    expect(normalizeSessionListView(null).properties).toEqual([]);
   });
 
   it("keeps an explicitly empty property selection", () => {
@@ -239,7 +239,7 @@ describe("splitPinnedSessions", () => {
 describe("visibleSessionProperties", () => {
   const properties = ["timestamp", "agent", "model"] as const;
 
-  it("shows only the timestamp in compact mode", () => {
+  it("keeps only a chosen timestamp in compact mode", () => {
     expect(
       visibleSessionProperties({
         ...DEFAULT_SESSION_LIST_VIEW,
@@ -247,6 +247,13 @@ describe("visibleSessionProperties", () => {
         properties: [...properties],
       }),
     ).toEqual(["timestamp"]);
+    expect(
+      visibleSessionProperties({
+        ...DEFAULT_SESSION_LIST_VIEW,
+        compact: true,
+        properties: ["agent", "model"],
+      }),
+    ).toEqual([]);
   });
 
   it("restores the chosen properties when compact mode is off", () => {

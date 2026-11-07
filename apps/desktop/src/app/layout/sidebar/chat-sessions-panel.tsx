@@ -15,7 +15,7 @@ import { SidebarScrollArea } from "./sidebar-scroll-area";
 import { SidebarSectionHeading } from "./sidebar-section-heading";
 import { useSidebarSectionCollapse } from "./use-sidebar-section-collapse";
 
-const CHAT_SESSION_PROPERTIES: readonly SessionProperty[] = ["timestamp"];
+const CHAT_SESSION_PROPERTIES: readonly SessionProperty[] = [];
 
 interface ChatSessionsPanelProps {
   activeSessionId: string | null;
@@ -81,7 +81,7 @@ export function ChatSessionsPanel({
           className: "overflow-x-hidden [&>div]:!block [&>div]:min-w-0",
         }}
       >
-        <SidebarMenu className="pe-1">
+        <SidebarMenu className="pe-3">
           {pinnedSessions.length > 0 ? (
             <SidebarMenuItem className="flex flex-col gap-0.5 pb-3">
               <SidebarSectionHeading section="chatPinned">
