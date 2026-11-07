@@ -690,6 +690,7 @@ runScenario("chat-streaming", {
           });
 
           const requests = stub.requests.length;
+          const finishWork = Promise.withResolvers();
           stub.plan = {
             kind: "script",
             turns: [
@@ -701,6 +702,7 @@ runScenario("chat-streaming", {
               {
                 toolCalls: [{ name: "read", arguments: { path: "README.md" } }],
               },
+              { text: [finishWork.promise] },
             ],
           };
           await daemonRequest(session, "session.send", {
@@ -709,10 +711,9 @@ runScenario("chat-streaming", {
             content: "Read two files, then keep thinking.",
             attachments: [],
           });
-          while (stub.requests.length < requests + 2) {
+          while (stub.requests.length < requests + 3) {
             await stub.nextRequest();
           }
-          stub.plan = { kind: "hang" };
           const workingLabels = [planningLabel, thinkingLabel];
           await session.waitUntil(
             (labels) =>
@@ -771,6 +772,8 @@ runScenario("chat-streaming", {
           };
           await clickByRole(session, stop);
           await waitForNoRole(session, stop);
+          finishWork.resolve();
+          stub.plan = { kind: "hang" };
           await clickByRole(session, moreActions);
           const queuedRequests = stub.requests.length;
           await clickByRole(session, sendNow);
