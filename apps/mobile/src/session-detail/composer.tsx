@@ -74,6 +74,9 @@ export function Composer({
   const submitDisabled =
     !canSend || sending || uploading || (!stopping && !hasContent);
   const roomForImages = MAX_IMAGES_PER_MESSAGE - drafts.length;
+  const [focused, setFocused] = useState(autoFocus);
+  const drafting = focused || text !== "" || drafts.length > 0;
+  const compact = !accessory || !drafting;
 
   const upload = async (draft: Draft, image: PickedImage) => {
     try {
@@ -138,135 +141,79 @@ export function Composer({
           {failureMessages[failure]}
         </Text>
       ) : null}
-      <View
-        style={[styles.bar, !accessory && styles.compactBar, floatingSurface]}
-      >
+      <View style={[styles.bar, compact && styles.compactBar, floatingSurface]}>
         <AttachmentStrip
           drafts={drafts}
           onRemove={(key) =>
             setDrafts((current) => current.filter((entry) => entry.key !== key))
           }
         />
-        {accessory ? (
-          <>
-            <TextInput
-              testID={inputTestID}
-              value={text}
-              onChangeText={setText}
-              editable={canEdit}
-              multiline
-              autoFocus={autoFocus}
-              placeholder={placeholder ?? t("composer.placeholder")}
-              placeholderTextColor={colors.mutedForeground}
-              style={[styles.input, { color: colors.foreground }]}
+        <TextInput
+          testID={inputTestID}
+          value={text}
+          onChangeText={setText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          editable={canEdit}
+          multiline
+          autoFocus={autoFocus}
+          placeholder={placeholder ?? t("composer.placeholder")}
+          placeholderTextColor={colors.mutedForeground}
+          style={[
+            styles.input,
+            compact && styles.compactInput,
+            { color: colors.foreground },
+          ]}
+        />
+        <View
+          pointerEvents="box-none"
+          style={[styles.actions, compact && styles.compactActions]}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("composer.attach")}
+            accessibilityState={{ disabled: !canSend || roomForImages <= 0 }}
+            disabled={!canSend || roomForImages <= 0}
+            onPress={() => void attach()}
+            style={({ pressed }) => [
+              styles.round,
+              (pressed || !canSend || roomForImages <= 0) && styles.dimmed,
+            ]}
+          >
+            <SymbolView
+              name={{ ios: "paperclip", android: "attach_file" }}
+              size={20}
+              tintColor={colors.mutedForeground}
             />
-            <View style={styles.actions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("composer.attach")}
-                accessibilityState={{
-                  disabled: !canSend || roomForImages <= 0,
-                }}
-                disabled={!canSend || roomForImages <= 0}
-                onPress={() => void attach()}
-                style={({ pressed }) => [
-                  styles.round,
-                  (pressed || !canSend || roomForImages <= 0) && styles.dimmed,
-                ]}
-              >
-                <SymbolView
-                  name={{ ios: "paperclip", android: "attach_file" }}
-                  size={20}
-                  tintColor={colors.mutedForeground}
-                />
-              </Pressable>
-              <View style={styles.spacer}>{accessory}</View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  stopping ? t("composer.stop") : t("composer.send")
-                }
-                accessibilityState={{ disabled: submitDisabled }}
-                disabled={submitDisabled}
-                onPress={() => void submit()}
-                style={({ pressed }) => [
-                  styles.round,
-                  { backgroundColor: colors.foreground },
-                  (pressed || submitDisabled) && styles.dimmed,
-                ]}
-              >
-                <SymbolView
-                  name={
-                    stopping
-                      ? { ios: "stop.fill", android: "stop" }
-                      : { ios: "arrow.up", android: "arrow_upward" }
-                  }
-                  size={18}
-                  tintColor={colors.background}
-                />
-              </Pressable>
-            </View>
-          </>
-        ) : (
-          <View style={styles.compact}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("composer.attach")}
-              accessibilityState={{ disabled: !canSend || roomForImages <= 0 }}
-              disabled={!canSend || roomForImages <= 0}
-              onPress={() => void attach()}
-              style={({ pressed }) => [
-                styles.round,
-                (pressed || !canSend || roomForImages <= 0) && styles.dimmed,
-              ]}
-            >
-              <SymbolView
-                name={{ ios: "paperclip", android: "attach_file" }}
-                size={20}
-                tintColor={colors.mutedForeground}
-              />
-            </Pressable>
-            <TextInput
-              testID={inputTestID}
-              value={text}
-              onChangeText={setText}
-              editable={canEdit}
-              multiline
-              autoFocus={autoFocus}
-              placeholder={placeholder ?? t("composer.placeholder")}
-              placeholderTextColor={colors.mutedForeground}
-              style={[
-                styles.input,
-                styles.compactInput,
-                { color: colors.foreground },
-              ]}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                stopping ? t("composer.stop") : t("composer.send")
-              }
-              accessibilityState={{ disabled: submitDisabled }}
-              disabled={submitDisabled}
-              onPress={() => void submit()}
-              style={({ pressed }) => [
-                styles.round,
-                { backgroundColor: colors.foreground },
-                (pressed || submitDisabled) && styles.dimmed,
-              ]}
-            >
-              <SymbolView
-                name={
-                  stopping
-                    ? { ios: "stop.fill", android: "stop" }
-                    : { ios: "arrow.up", android: "arrow_upward" }
-                }
-                size={18}
-                tintColor={colors.background}
-              />
-            </Pressable>
+          </Pressable>
+          <View pointerEvents="box-none" style={styles.spacer}>
+            {compact ? null : accessory}
           </View>
-        )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              stopping ? t("composer.stop") : t("composer.send")
+            }
+            accessibilityState={{ disabled: submitDisabled }}
+            disabled={submitDisabled}
+            onPress={() => void submit()}
+            style={({ pressed }) => [
+              styles.round,
+              { backgroundColor: colors.foreground },
+              (pressed || submitDisabled) && styles.dimmed,
+            ]}
+          >
+            <SymbolView
+              name={
+                stopping
+                  ? { ios: "stop.fill", android: "stop" }
+                  : { ios: "arrow.up", android: "arrow_upward" }
+              }
+              size={18}
+              tintColor={colors.background}
+            />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -274,6 +221,7 @@ export function Composer({
 
 const COMPOSER_RADIUS = 26;
 const ROUND_SIZE = 36;
+const COMPACT_INPUT_INSET = 7;
 
 const styles = StyleSheet.create({
   wrap: { marginHorizontal: space.md, marginBottom: space.xs, gap: space.xs },
@@ -294,8 +242,18 @@ const styles = StyleSheet.create({
   },
   actions: { flexDirection: "row", alignItems: "center", gap: space.xs },
   compactBar: { paddingLeft: space.sm, paddingTop: space.sm },
-  compact: { flexDirection: "row", alignItems: "flex-end", gap: space.xs },
-  compactInput: { flex: 1, alignSelf: "center", paddingVertical: space.xs },
+  compactInput: {
+    minHeight: ROUND_SIZE,
+    marginHorizontal: ROUND_SIZE + space.xs,
+    paddingTop: COMPACT_INPUT_INSET,
+    paddingBottom: COMPACT_INPUT_INSET,
+  },
+  compactActions: {
+    position: "absolute",
+    left: space.sm,
+    right: space.sm,
+    bottom: space.sm,
+  },
   spacer: { flex: 1, minWidth: 0 },
   round: {
     width: ROUND_SIZE,
