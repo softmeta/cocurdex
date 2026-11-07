@@ -16,7 +16,8 @@
     "months_other": "{{count}}mo",
     "now": "now",
     "years_one": "{{count}}y",
-    "years_other": "{{count}}y"
+    "years_other": "{{count}}y",
+    "yesterday": "Yesterday"
   },
   "links": {
     "relation": {

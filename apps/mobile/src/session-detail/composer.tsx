@@ -138,68 +138,135 @@ export function Composer({
           {failureMessages[failure]}
         </Text>
       ) : null}
-      <View style={[styles.bar, floatingSurface]}>
+      <View
+        style={[styles.bar, !accessory && styles.compactBar, floatingSurface]}
+      >
         <AttachmentStrip
           drafts={drafts}
           onRemove={(key) =>
             setDrafts((current) => current.filter((entry) => entry.key !== key))
           }
         />
-        <TextInput
-          testID={inputTestID}
-          value={text}
-          onChangeText={setText}
-          editable={canEdit}
-          multiline
-          autoFocus={autoFocus}
-          placeholder={placeholder ?? t("composer.placeholder")}
-          placeholderTextColor={colors.mutedForeground}
-          style={[styles.input, { color: colors.foreground }]}
-        />
-        <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("composer.attach")}
-            accessibilityState={{ disabled: !canSend || roomForImages <= 0 }}
-            disabled={!canSend || roomForImages <= 0}
-            onPress={() => void attach()}
-            style={({ pressed }) => [
-              styles.round,
-              (pressed || !canSend || roomForImages <= 0) && styles.dimmed,
-            ]}
-          >
-            <SymbolView
-              name={{ ios: "paperclip", android: "attach_file" }}
-              size={20}
-              tintColor={colors.mutedForeground}
+        {accessory ? (
+          <>
+            <TextInput
+              testID={inputTestID}
+              value={text}
+              onChangeText={setText}
+              editable={canEdit}
+              multiline
+              autoFocus={autoFocus}
+              placeholder={placeholder ?? t("composer.placeholder")}
+              placeholderTextColor={colors.mutedForeground}
+              style={[styles.input, { color: colors.foreground }]}
             />
-          </Pressable>
-          <View style={styles.spacer}>{accessory}</View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              stopping ? t("composer.stop") : t("composer.send")
-            }
-            accessibilityState={{ disabled: submitDisabled }}
-            disabled={submitDisabled}
-            onPress={() => void submit()}
-            style={({ pressed }) => [
-              styles.round,
-              { backgroundColor: colors.foreground },
-              (pressed || submitDisabled) && styles.dimmed,
-            ]}
-          >
-            <SymbolView
-              name={
-                stopping
-                  ? { ios: "stop.fill", android: "stop" }
-                  : { ios: "arrow.up", android: "arrow_upward" }
+            <View style={styles.actions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("composer.attach")}
+                accessibilityState={{
+                  disabled: !canSend || roomForImages <= 0,
+                }}
+                disabled={!canSend || roomForImages <= 0}
+                onPress={() => void attach()}
+                style={({ pressed }) => [
+                  styles.round,
+                  (pressed || !canSend || roomForImages <= 0) && styles.dimmed,
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: "paperclip", android: "attach_file" }}
+                  size={20}
+                  tintColor={colors.mutedForeground}
+                />
+              </Pressable>
+              <View style={styles.spacer}>{accessory}</View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  stopping ? t("composer.stop") : t("composer.send")
+                }
+                accessibilityState={{ disabled: submitDisabled }}
+                disabled={submitDisabled}
+                onPress={() => void submit()}
+                style={({ pressed }) => [
+                  styles.round,
+                  { backgroundColor: colors.foreground },
+                  (pressed || submitDisabled) && styles.dimmed,
+                ]}
+              >
+                <SymbolView
+                  name={
+                    stopping
+                      ? { ios: "stop.fill", android: "stop" }
+                      : { ios: "arrow.up", android: "arrow_upward" }
+                  }
+                  size={18}
+                  tintColor={colors.background}
+                />
+              </Pressable>
+            </View>
+          </>
+        ) : (
+          <View style={styles.compact}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("composer.attach")}
+              accessibilityState={{ disabled: !canSend || roomForImages <= 0 }}
+              disabled={!canSend || roomForImages <= 0}
+              onPress={() => void attach()}
+              style={({ pressed }) => [
+                styles.round,
+                (pressed || !canSend || roomForImages <= 0) && styles.dimmed,
+              ]}
+            >
+              <SymbolView
+                name={{ ios: "paperclip", android: "attach_file" }}
+                size={20}
+                tintColor={colors.mutedForeground}
+              />
+            </Pressable>
+            <TextInput
+              testID={inputTestID}
+              value={text}
+              onChangeText={setText}
+              editable={canEdit}
+              multiline
+              autoFocus={autoFocus}
+              placeholder={placeholder ?? t("composer.placeholder")}
+              placeholderTextColor={colors.mutedForeground}
+              style={[
+                styles.input,
+                styles.compactInput,
+                { color: colors.foreground },
+              ]}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                stopping ? t("composer.stop") : t("composer.send")
               }
-              size={18}
-              tintColor={colors.background}
-            />
-          </Pressable>
-        </View>
+              accessibilityState={{ disabled: submitDisabled }}
+              disabled={submitDisabled}
+              onPress={() => void submit()}
+              style={({ pressed }) => [
+                styles.round,
+                { backgroundColor: colors.foreground },
+                (pressed || submitDisabled) && styles.dimmed,
+              ]}
+            >
+              <SymbolView
+                name={
+                  stopping
+                    ? { ios: "stop.fill", android: "stop" }
+                    : { ios: "arrow.up", android: "arrow_upward" }
+                }
+                size={18}
+                tintColor={colors.background}
+              />
+            </Pressable>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -226,6 +293,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
   },
   actions: { flexDirection: "row", alignItems: "center", gap: space.xs },
+  compactBar: { paddingLeft: space.sm, paddingTop: space.sm },
+  compact: { flexDirection: "row", alignItems: "flex-end", gap: space.xs },
+  compactInput: { flex: 1, alignSelf: "center", paddingVertical: space.xs },
   spacer: { flex: 1, minWidth: 0 },
   round: {
     width: ROUND_SIZE,

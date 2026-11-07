@@ -13,4 +13,9 @@ export {
   updateSessionListView,
   useSessionListUi,
 } from "./session-list-view-store";
+export {
+  type SessionRowStatus,
+  sessionRowStatus,
+} from "./session-sections";
+export { SessionStatusMark } from "./session-status-mark";
 export { sessionsStore, useHostSessions, useViewedSession } from "./sessions";

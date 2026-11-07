@@ -29,6 +29,15 @@ export function assistantSections({
 }): AssistantSection[] {
   const sections: AssistantSection[] = [
     {
+      kind: "agents",
+      key: "agents",
+      data: agents.map((agent) => ({
+        kind: "agent",
+        key: `agent-${agent.id}`,
+        agent,
+      })),
+    },
+    {
       kind: "brief",
       key: "brief",
       data: (brief?.results ?? []).map((result) => ({
@@ -44,15 +53,6 @@ export function assistantSections({
         kind: "inbox",
         key: `inbox-${item.id}`,
         item,
-      })),
-    },
-    {
-      kind: "agents",
-      key: "agents",
-      data: agents.map((agent) => ({
-        kind: "agent",
-        key: `agent-${agent.id}`,
-        agent,
       })),
     },
   ];

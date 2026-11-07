@@ -75,6 +75,15 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="assistant-overview/[hostId]/[agentId]"
+            options={{
+              title: "",
+              animation: PUSH_ANIMATION,
+              headerStyle: { backgroundColor: grouped.page },
+              contentStyle: { backgroundColor: grouped.page },
+            }}
+          />
+          <Stack.Screen
             name="note/[hostId]/[noteId]"
             options={{
               title: "",
@@ -239,6 +248,15 @@ export default function RootLayout() {
             name="rename-session/[hostId]/[sessionId]"
             options={{
               title: t("screens.renameSession"),
+              presentation: "modal",
+              headerStyle: { backgroundColor: grouped.page },
+              contentStyle: { backgroundColor: grouped.page },
+            }}
+          />
+          <Stack.Screen
+            name="assistant-form/[hostId]"
+            options={{
+              title: "",
               presentation: "modal",
               headerStyle: { backgroundColor: grouped.page },
               contentStyle: { backgroundColor: grouped.page },

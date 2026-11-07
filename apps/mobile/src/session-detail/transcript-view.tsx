@@ -7,14 +7,16 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { MarkdownText } from "@/markdown";
 import { scaledSize, useTextScale } from "@/preferences";
 import { layout, space, type ThemeColors, useThemeColors } from "@/theme";
-import type { PostedSource, TranscriptItem } from "./transcript";
+import type { TranscriptItem } from "./transcript";
 import type { ActivityChild, CondensedItem } from "./transcript-activity";
 import { type TranscriptHandle, TranscriptList } from "./transcript-list";
 
 export type { TranscriptHandle } from "./transcript-list";
 
 import { RemoteImage } from "@/connection";
+import { ConversationRow } from "./conversation-rows";
 import { imageAttachmentRequest } from "./image-attachments";
+import { PostedSourceLine } from "./posted-source-line";
 import { TurnActions } from "./turn-actions";
 import { useActivityLabel } from "./use-activity-label";
 import { useElapsedLabel } from "./use-elapsed-label";
@@ -271,21 +273,6 @@ function ActivityChildRow({
   );
 }
 
-function PostedSourceLine({
-  source,
-  color,
-}: {
-  source: PostedSource;
-  color: string;
-}) {
-  const { t } = useTranslation("sessions");
-  const label =
-    source.kind === "brief"
-      ? t("detail.postedBrief")
-      : t("detail.postedRoutine", { name: source.name });
-  return <Text style={[styles.postedSource, { color }]}>{label}</Text>;
-}
-
 function UserText({ text, color }: { text: string; color: string }) {
   const scale = useTextScale();
   return (
@@ -394,16 +381,20 @@ function useStableActions(actions: TranscriptActions): TranscriptActions {
   );
 }
 
+export type TranscriptPresentation = "work" | "assistant";
+
 export function TranscriptView({
   items,
   footer,
   actions,
+  presentation = "work",
   sentMessageId,
   ref,
 }: {
   items: readonly CondensedItem[];
   footer?: React.ReactElement;
   actions: TranscriptActions;
+  presentation?: TranscriptPresentation;
   sentMessageId?: string;
   ref?: Ref<TranscriptHandle>;
 }) {
@@ -419,17 +410,27 @@ export function TranscriptView({
     });
   }, []);
   const renderRow = useCallback(
-    (item: CondensedItem) => (
-      <TranscriptRow
-        key={`${item.kind}:${item.id}`}
-        item={item}
-        colors={colors}
-        actions={rowActions}
-        expanded={expanded.has(item.id)}
-        onToggle={toggle}
-      />
-    ),
-    [colors, rowActions, expanded, toggle],
+    (item: CondensedItem) =>
+      presentation === "assistant" &&
+      (item.kind === "assistant" || item.kind === "activity") ? (
+        <ConversationRow
+          key={`${item.kind}:${item.id}`}
+          item={item}
+          colors={colors}
+          hostId={rowActions.hostId}
+          fileRoot={rowActions.fileRoot}
+        />
+      ) : (
+        <TranscriptRow
+          key={`${item.kind}:${item.id}`}
+          item={item}
+          colors={colors}
+          actions={rowActions}
+          expanded={expanded.has(item.id)}
+          onToggle={toggle}
+        />
+      ),
+    [presentation, colors, rowActions, expanded, toggle],
   );
   return (
     <TranscriptList
@@ -462,7 +463,6 @@ const styles = StyleSheet.create({
   toolText: { flex: 1, fontSize: 14 },
   activity: { gap: space.xs },
   activityText: { flex: 1, fontSize: 14 },
-  postedSource: { fontSize: 13, marginBottom: space.xs },
   elapsed: { fontSize: 14, fontVariant: ["tabular-nums"] },
   activityItems: { gap: space.sm, paddingLeft: space.md },
   toolDetail: {

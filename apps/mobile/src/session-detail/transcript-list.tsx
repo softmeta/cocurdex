@@ -52,6 +52,7 @@ export function TranscriptList({
   const indicator = useScrollIndicatorWhileScrolling();
   const list = useRef<FlatList<TranscriptTurn>>(null);
   const metrics = useRef<ScrollMetrics | null>(null);
+  const listHeight = useRef(0);
   const latestView = useRef<ComponentRef<typeof View>>(null);
   const indexFailed = useRef(false);
   const latestContent = useRef<{ id: string; height: number } | null>(null);
@@ -260,6 +261,7 @@ export function TranscriptList({
           setViewportHeight((previous) =>
             resized ? height : Math.max(previous, height),
           );
+          listHeight.current = height;
           if (metrics.current) metrics.current.viewportHeight = height;
           refreshJump();
         }}
@@ -268,7 +270,7 @@ export function TranscriptList({
           const next = {
             offset: previous?.offset ?? 0,
             contentHeight: height,
-            viewportHeight: previous?.viewportHeight ?? viewportHeight,
+            viewportHeight: previous?.viewportHeight ?? listHeight.current,
           };
           metrics.current = next;
           setJump((current) =>

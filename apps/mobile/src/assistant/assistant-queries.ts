@@ -10,6 +10,9 @@ const ASSISTANT_METHODS = new Set([
   "personalAgent.list",
   "inbox.list",
   "inbox.brief",
+  "personalAgent.work.list",
+  "routine.list",
+  "session.lastMessage",
 ]);
 
 export function usePersonalAgents(hostId: string) {
@@ -57,4 +60,35 @@ export function greetPersonalAgent(host: SavedHost, id: string) {
       locale: isSupportedLocale(i18n.language) ? i18n.language : null,
     })
     .catch(() => undefined);
+}
+
+export function useLatestReply(
+  hostId: string,
+  sessionId: string,
+  stamp: string | null,
+) {
+  return useSWR(
+    stamp ? (["session.lastMessage", hostId, sessionId, stamp] as const) : null,
+    ([method, id, session]) =>
+      hostConnection(id).request(method, { sessionId: session }),
+    DAEMON_READ,
+  );
+}
+
+export function usePersonalWork(hostId: string, personaId: string) {
+  return useSWR(
+    ["personalAgent.work.list", hostId, personaId] as const,
+    ([method, id, persona]) =>
+      hostConnection(id).request(method, { personaId: persona }),
+    DAEMON_READ,
+  );
+}
+
+export function useRoutines(hostId: string, agentId: string) {
+  return useSWR(
+    ["routine.list", hostId, agentId] as const,
+    ([method, id, agent]) =>
+      hostConnection(id).request(method, { agentId: agent }),
+    DAEMON_READ,
+  );
 }

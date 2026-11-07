@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { HeaderButtons, useOptionSheet } from "@/ui";
+import { type HeaderButtonItem, HeaderButtons, useOptionSheet } from "@/ui";
 import type { CondensedItem } from "./transcript-activity";
 import { promptOutline } from "./transcript-jump";
 
@@ -7,9 +7,11 @@ const MIN_PROMPTS = 2;
 
 export function PromptOutline({
   items,
+  actions = [],
   onJump,
 }: {
   items: readonly CondensedItem[];
+  actions?: readonly HeaderButtonItem[];
   onJump(id: string): void;
 }) {
   const { t } = useTranslation("sessions");
@@ -36,6 +38,7 @@ export function PromptOutline({
           hidden: prompts.length < MIN_PROMPTS,
           onPress: open,
         },
+        ...actions,
       ]}
     />
   );
