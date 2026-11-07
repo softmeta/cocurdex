@@ -51,7 +51,7 @@ export interface AddApplicationPayload {
   displayName: string;
   allPersonas?: boolean;
   personaIds: string[];
-  allowDelegatedWork: boolean;
+  allowDelegatedWork?: boolean;
   allowWorkSessions?: boolean;
 }
 

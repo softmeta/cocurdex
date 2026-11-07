@@ -7,7 +7,7 @@ import { readStdin } from "./read-stdin";
 export function applicationUsageLines() {
   return [
     "  cocurdex apps catalog|list [--json]",
-    "  cocurdex apps add <notion|linear|github> --name <name> [--assistants <id,id>|--all-assistants true|false] [--delegated] [--work-sessions true|false] [--json]",
+    "  cocurdex apps add <notion|linear|github> --name <name> [--assistants <id,id>|--all-assistants true|false] [--delegated true|false] [--work-sessions true|false] [--json]",
     "  cocurdex apps update --stdin [--json]",
     "  cocurdex apps check|tools|logout|remove <connection-id> [--json]",
     "  cocurdex apps login <connection-id> [--json]",
@@ -72,7 +72,10 @@ export async function handleApplicationCommand(raw: string[]) {
               ) ?? (typeof ids === "string" ? false : undefined),
             personaIds:
               typeof ids === "string" ? ids.split(",").filter(Boolean) : [],
-            allowDelegatedWork: parsed.flags.get("delegated") === true,
+            allowDelegatedWork: readBooleanFlag(
+              "delegated",
+              parsed.flags.get("delegated"),
+            ),
             allowWorkSessions: readBooleanFlag(
               "work-sessions",
               parsed.flags.get("work-sessions"),

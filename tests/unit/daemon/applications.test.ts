@@ -180,21 +180,24 @@ describe("application connections", () => {
     expect(client.close).toHaveBeenCalledTimes(2);
   });
 
-  it("opens a new connection to every assistant, including ones created later, until narrowed", async () => {
+  it("opens a new connection to every assistant and their delegated work, including assistants created later, until narrowed", async () => {
     const { mcp, apps } = await setup();
     const open = await apps.add({
       applicationId: "linear",
       displayName: "Issues",
       personaIds: [],
-      allowDelegatedWork: false,
     });
     expect(open.allPersonas).toBe(true);
+    expect(open.allowDelegatedWork).toBe(true);
     const later = {
       personaId: "created-later",
       delegated: false,
       workSession: false,
     };
     expect((await apps.list(later)).map((item) => item.id)).toEqual([open.id]);
+    expect(
+      (await apps.list({ ...later, delegated: true })).map((item) => item.id),
+    ).toEqual([open.id]);
     const narrowed = await apps.update({
       ...edit(open),
       allPersonas: false,

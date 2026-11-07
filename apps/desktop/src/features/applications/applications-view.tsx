@@ -57,7 +57,6 @@ export function ApplicationsView() {
           applicationId,
           displayName: app.name,
           personaIds: persona ? [persona.id] : [],
-          allowDelegatedWork: false,
         }));
       await mutate();
       setAdding(null);

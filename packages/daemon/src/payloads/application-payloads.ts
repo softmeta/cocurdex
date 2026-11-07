@@ -14,6 +14,7 @@ export const applicationPayloadSchemas = {
   "application.add": exact<Payload<"application.add">>()(
     z.object({
       ...grant,
+      allowDelegatedWork: z.boolean().optional(),
       applicationId: z.enum(["notion", "linear", "github"]),
     }),
   ),

@@ -103,7 +103,7 @@ export class ApplicationService {
           displayName: payload.displayName.trim() || app.name,
           allPersonas: payload.allPersonas ?? true,
           personaIds: [...new Set(payload.personaIds)],
-          allowDelegatedWork: payload.allowDelegatedWork,
+          allowDelegatedWork: payload.allowDelegatedWork ?? true,
           allowWorkSessions: payload.allowWorkSessions ?? true,
           revision: randomUUID(),
           createdAt: now,

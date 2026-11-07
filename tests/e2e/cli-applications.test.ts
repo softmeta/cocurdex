@@ -25,7 +25,7 @@ it("manages application connections through the CLI", async () => {
       status: null,
       allPersonas: true,
       personaIds: [],
-      allowDelegatedWork: false,
+      allowDelegatedWork: true,
       allowWorkSessions: true,
     });
     const update = {
