@@ -58,7 +58,7 @@
     "cancel": "取消",
     "confirm": "删除",
     "description": "将删除这个助理和它的对话。记忆仍保留在记忆库中。",
-    "title": "删除 {{name}}？"
+    "title": "删除「{{name}}」？"
   },
   "edit": {
     "descriptionPlaceholder": "一句话介绍这个助理",
