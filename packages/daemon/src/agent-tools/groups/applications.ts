@@ -1,7 +1,5 @@
-import type {
-  ApplicationPrincipal,
-  ApplicationService,
-} from "../../application-service";
+import type { ApplicationPrincipal } from "@cocurdex/shared";
+import type { ApplicationService } from "../../application-service";
 import type { AgentToolRegistry } from "../tool-registry";
 
 export function registerApplicationTools(
@@ -14,7 +12,7 @@ export function registerApplicationTools(
       group: "applications",
       name: "list",
       description:
-        "List application connections this assistant may use. Connections belong to the host and are granted per assistant. If authorization is missing, ask the user to open Applications; never request their credentials in chat.",
+        "List application connections (Notion, Linear, GitHub, ...) this session may use. Connections belong to the host and are granted per assistant and to work sessions. If authorization is missing, ask the user to open Applications; never request their credentials in chat.",
       inputSchema: {
         type: "object",
         properties: {},

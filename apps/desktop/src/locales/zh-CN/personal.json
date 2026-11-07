@@ -13,7 +13,7 @@
     "connected": "已连接",
     "connection": "连接",
     "delegated": "允许委派工作使用",
-    "delegatedDescription": "这些助理委派的工作会话和队友也可以使用此账号，其他工作会话无法使用。",
+    "delegatedDescription": "这些助理委派的工作会话和队友也可以使用此账号。",
     "description": "在当前主机连接账号，再选择哪些助理可以使用。高级设置中仍可配置自定义 MCP。",
     "deviceCode": "授权码",
     "deviceCodeHint": "在浏览器打开的 GitHub 页面输入下面的代码，完成后这里会自动更新。",
@@ -43,7 +43,10 @@
     "title": "应用",
     "tools": "可用工具",
     "waitingFor": "正在授权 {{name}}",
-    "waitingHint": "请在浏览器中完成授权，返回后这里会自动更新。"
+    "waitingHint": "请在浏览器中完成授权，返回后这里会自动更新。",
+    "workMode": "工作模式",
+    "workSessions": "工作模式可用",
+    "workSessionsDescription": "工作模式里的 Pi 会话也可以使用这个账号，写操作遵循会话的权限模式。"
   },
   "brief": {
     "open": "今日简报"

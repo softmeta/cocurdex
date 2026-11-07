@@ -23,7 +23,14 @@ function githubLogin(cliToken: string | null) {
       intervalSeconds: 5,
       expiresInSeconds: 900,
     })),
-    pollToken: vi.fn(async () => ({ accessToken: "synthetic-device-token" })),
+    pollToken: vi.fn(
+      async (
+        _code: unknown,
+        _signal: AbortSignal,
+      ): Promise<{ accessToken: string }> => ({
+        accessToken: "synthetic-device-token",
+      }),
+    ),
   };
 }
 
@@ -85,14 +92,22 @@ describe("application connections", () => {
     });
     expect(second.id).not.toBe(added.id);
     expect(
-      (await apps.list({ personaId: "a", delegated: false })).map(
-        (item) => item.id,
-      ),
+      (
+        await apps.list({
+          personaId: "a",
+          delegated: false,
+          workSession: false,
+        })
+      ).map((item) => item.id),
     ).toEqual([added.id]);
     expect(
-      (await apps.list({ personaId: "b", delegated: false })).map(
-        (item) => item.id,
-      ),
+      (
+        await apps.list({
+          personaId: "b",
+          delegated: false,
+          workSession: false,
+        })
+      ).map((item) => item.id),
     ).toEqual([second.id]);
     expect(added.status).toBeNull();
     await expect(
@@ -116,10 +131,19 @@ describe("application connections", () => {
   it("checks grants before every discovery and call, including revocation after tool discovery", async () => {
     const { apps, added, client, factory } = await setup();
     await expect(
-      apps.tools(added.id, { personaId: "b", delegated: false }),
+      apps.tools(added.id, {
+        personaId: "b",
+        delegated: false,
+        workSession: false,
+      }),
     ).rejects.toThrow("not allowed");
     await expect(
-      apps.call(added.id, "search", {}, { personaId: "a", delegated: true }),
+      apps.call(
+        added.id,
+        "search",
+        {},
+        { personaId: "a", delegated: true, workSession: false },
+      ),
     ).rejects.toThrow("not allowed");
     expect(factory).not.toHaveBeenCalled();
     expect(
@@ -127,7 +151,7 @@ describe("application connections", () => {
         added.id,
         "search",
         {},
-        { personaId: "a", delegated: false },
+        { personaId: "a", delegated: false, workSession: false },
       ),
     ).toMatchObject({ content: [{ text: "Found" }] });
     expect(client.close).toHaveBeenCalledTimes(1);
@@ -143,16 +167,49 @@ describe("application connections", () => {
       ];
     });
     await expect(
-      apps.call(added.id, "search", {}, { personaId: "a", delegated: false }),
+      apps.call(
+        added.id,
+        "search",
+        {},
+        { personaId: "a", delegated: false, workSession: false },
+      ),
     ).rejects.toThrow("not allowed");
     expect(client.call).toHaveBeenCalledTimes(1);
     expect(client.close).toHaveBeenCalledTimes(2);
   });
 
+  it("lets work sessions use a connection only while it is open to them", async () => {
+    const { apps, added } = await setup();
+    const work = { personaId: null, delegated: false, workSession: true };
+    expect(added.allowWorkSessions).toBe(true);
+    expect((await apps.list(work)).map((item) => item.id)).toEqual([added.id]);
+    expect(await apps.call(added.id, "search", {}, work)).toMatchObject({
+      content: [{ text: "Found" }],
+    });
+    const closed = await apps.update({
+      ...edit(added),
+      allowWorkSessions: false,
+    });
+    expect(await apps.list(work)).toEqual([]);
+    await expect(apps.read(added.id, "search", {}, work)).rejects.toThrow(
+      "not allowed",
+    );
+    const reopened = await apps.update({ ...edit(closed), enabled: true });
+    expect(reopened.allowWorkSessions).toBe(false);
+    await expect(
+      apps.list({ personaId: null, delegated: false, workSession: false }),
+    ).resolves.toEqual([]);
+  });
+
   it("allows read-only tool calls but refuses tools without an explicit read-only declaration", async () => {
     const { apps, added, client } = await setup();
     await expect(
-      apps.read(added.id, "search", {}, { personaId: "a", delegated: false }),
+      apps.read(
+        added.id,
+        "search",
+        {},
+        { personaId: "a", delegated: false, workSession: false },
+      ),
     ).resolves.toMatchObject({ content: [{ text: "Found" }] });
     client.tools.mockResolvedValueOnce([
       {
@@ -163,7 +220,12 @@ describe("application connections", () => {
       },
     ]);
     await expect(
-      apps.read(added.id, "search", {}, { personaId: "a", delegated: false }),
+      apps.read(
+        added.id,
+        "search",
+        {},
+        { personaId: "a", delegated: false, workSession: false },
+      ),
     ).rejects.toThrow("read-only");
     expect(client.call).toHaveBeenCalledTimes(1);
   });
@@ -218,7 +280,9 @@ describe("application connections", () => {
       allowDelegatedWork: true,
     });
     await apps.update({ ...edit(updated), enabled: false });
-    expect(await apps.list({ personaId: "a", delegated: true })).toEqual([]);
+    expect(
+      await apps.list({ personaId: "a", delegated: true, workSession: false }),
+    ).toEqual([]);
   });
 
   it("keeps a checked status across grant edits and drops it when the connection itself changes", async () => {
@@ -288,8 +352,8 @@ describe("application connections", () => {
   it("cancels a pending GitHub device authorization", async () => {
     const github = githubLogin(null);
     github.pollToken.mockImplementation(
-      (_code, signal: AbortSignal) =>
-        new Promise((_resolve, reject) =>
+      (_code, signal) =>
+        new Promise<{ accessToken: string }>((_resolve, reject) =>
           signal.addEventListener("abort", () =>
             reject(new Error("GitHub authorization was cancelled")),
           ),

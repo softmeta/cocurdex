@@ -7,6 +7,7 @@ const grant = {
   displayName: boundedTextSchema(160).min(1),
   personaIds: z.array(idSchema).max(256),
   allowDelegatedWork: z.boolean(),
+  allowWorkSessions: z.boolean().optional(),
 };
 export const applicationPayloadSchemas = {
   "application.add": exact<Payload<"application.add">>()(

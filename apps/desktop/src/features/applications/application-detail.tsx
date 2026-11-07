@@ -64,6 +64,7 @@ export function ApplicationDetail({
         displayName: connection.displayName,
         personaIds: connection.personaIds,
         allowDelegatedWork: connection.allowDelegatedWork,
+        allowWorkSessions: connection.allowWorkSessions,
         enabled: connection.enabled,
         ...changes,
       }),
@@ -162,7 +163,7 @@ export function ApplicationDetail({
           title={t("apps.delegated", { defaultValue: "Allow delegated work" })}
           description={t("apps.delegatedDescription", {
             defaultValue:
-              "Work sessions and teammates delegated by these assistants can also use this account. Other work sessions receive no access.",
+              "Work sessions and teammates these assistants delegate can also use this account.",
           })}
         >
           <Switch
@@ -174,6 +175,21 @@ export function ApplicationDetail({
             aria-label={t("apps.delegated", {
               defaultValue: "Allow delegated work",
             })}
+          />
+        </SettingRow>
+      </SettingsGroup>
+      <SettingsGroup title={t("apps.workMode")}>
+        <SettingRow
+          title={t("apps.workSessions")}
+          description={t("apps.workSessionsDescription")}
+        >
+          <Switch
+            aria-label={t("apps.workSessions")}
+            checked={connection.allowWorkSessions}
+            disabled={disabled}
+            onCheckedChange={(allowWorkSessions) =>
+              void update({ allowWorkSessions })
+            }
           />
         </SettingRow>
       </SettingsGroup>

@@ -27,7 +27,7 @@ describe("GitHub device authorization", () => {
       { error: "slow_down", interval: 10 },
       { access_token: "synthetic-token", scope: "repo" },
     );
-    const sleep = vi.fn(async () => {});
+    const sleep = vi.fn(async (_ms: number) => {});
     const token = await pollGitHubDeviceToken(
       code,
       fetchImpl,

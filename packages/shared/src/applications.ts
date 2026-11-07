@@ -33,6 +33,7 @@ export interface ApplicationMetadata {
   displayName: string;
   personaIds: string[];
   allowDelegatedWork: boolean;
+  allowWorkSessions: boolean;
   revision: string;
   createdAt: string;
   updatedAt: string;
@@ -49,6 +50,7 @@ export interface AddApplicationPayload {
   displayName: string;
   personaIds: string[];
   allowDelegatedWork: boolean;
+  allowWorkSessions?: boolean;
 }
 
 export interface UpdateApplicationPayload {
@@ -57,7 +59,14 @@ export interface UpdateApplicationPayload {
   displayName: string;
   personaIds: string[];
   allowDelegatedWork: boolean;
+  allowWorkSessions?: boolean;
   enabled: boolean;
+}
+
+export interface ApplicationPrincipal {
+  personaId: string | null;
+  delegated: boolean;
+  workSession: boolean;
 }
 
 export interface ApplicationTool {
@@ -94,6 +103,7 @@ export function readApplicationMetadata(
     !Array.isArray(value.personaIds) ||
     !value.personaIds.every((id) => typeof id === "string" && id.length > 0) ||
     typeof value.allowDelegatedWork !== "boolean" ||
+    !["boolean", "undefined"].includes(typeof value.allowWorkSessions) ||
     typeof value.revision !== "string" ||
     !value.revision ||
     typeof value.createdAt !== "string" ||
@@ -106,6 +116,7 @@ export function readApplicationMetadata(
     displayName: value.displayName,
     personaIds: value.personaIds,
     allowDelegatedWork: value.allowDelegatedWork,
+    allowWorkSessions: value.allowWorkSessions === true,
     revision: value.revision,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
@@ -120,17 +131,16 @@ export function withApplicationMetadata(
   return { ...config, cocurdex: { ...extension, application: metadata } };
 }
 
-export function applicationAllowsPersona(
+export function applicationAllows(
   config: McpServerConfig,
-  personaId: string | null,
-  delegated: boolean,
+  principal: ApplicationPrincipal,
 ) {
   const metadata = readApplicationMetadata(config);
-  return (
-    config.enabled !== false &&
-    metadata !== null &&
-    personaId !== null &&
-    metadata.personaIds.includes(personaId) &&
-    (!delegated || metadata.allowDelegatedWork)
-  );
+  if (config.enabled === false || metadata === null) return false;
+  if (principal.personaId !== null)
+    return (
+      metadata.personaIds.includes(principal.personaId) &&
+      (!principal.delegated || metadata.allowDelegatedWork)
+    );
+  return principal.workSession && metadata.allowWorkSessions;
 }

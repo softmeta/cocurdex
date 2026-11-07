@@ -1,5 +1,5 @@
 import {
-  applicationAllowsPersona,
+  applicationAllows,
   isManagedApplicationServer,
   readApplicationMetadata,
   withApplicationMetadata,
@@ -12,6 +12,7 @@ const metadata = {
   displayName: "Work notes",
   personaIds: ["assistant-a"],
   allowDelegatedWork: false,
+  allowWorkSessions: false,
   revision: "revision-1",
   createdAt: "2026-11-07T00:00:00.000Z",
   updatedAt: "2026-11-07T00:00:00.000Z",
@@ -22,23 +23,55 @@ const server = withApplicationMetadata(
 );
 
 describe("managed application grants", () => {
+  const persona = (personaId: string | null, delegated = false) => ({
+    personaId,
+    delegated,
+    workSession: false,
+  });
+  const workSession = { personaId: null, delegated: false, workSession: true };
+
   it("grants only the selected assistant and requires separate permission for delegated work", () => {
-    expect(applicationAllowsPersona(server, "assistant-a", false)).toBe(true);
-    expect(applicationAllowsPersona(server, "assistant-b", false)).toBe(false);
-    expect(applicationAllowsPersona(server, null, false)).toBe(false);
-    expect(applicationAllowsPersona(server, "assistant-a", true)).toBe(false);
+    expect(applicationAllows(server, persona("assistant-a"))).toBe(true);
+    expect(applicationAllows(server, persona("assistant-b"))).toBe(false);
+    expect(applicationAllows(server, persona(null))).toBe(false);
+    expect(applicationAllows(server, persona("assistant-a", true))).toBe(false);
     const delegated = withApplicationMetadata(server, {
       ...metadata,
       allowDelegatedWork: true,
     });
-    expect(applicationAllowsPersona(delegated, "assistant-a", true)).toBe(true);
+    expect(applicationAllows(delegated, persona("assistant-a", true))).toBe(
+      true,
+    );
     expect(
-      applicationAllowsPersona(
+      applicationAllows(
         { ...delegated, enabled: false },
-        "assistant-a",
-        true,
+        persona("assistant-a", true),
       ),
     ).toBe(false);
+  });
+
+  it("opens a connection to work sessions only when it allows them", () => {
+    expect(applicationAllows(server, workSession)).toBe(false);
+    const open = withApplicationMetadata(server, {
+      ...metadata,
+      allowWorkSessions: true,
+    });
+    expect(applicationAllows(open, workSession)).toBe(true);
+    expect(applicationAllows({ ...open, enabled: false }, workSession)).toBe(
+      false,
+    );
+    expect(applicationAllows(open, persona(null, true))).toBe(false);
+  });
+
+  it("reads a connection saved before work sessions existed as closed to them", () => {
+    const { allowWorkSessions: _omitted, ...legacy } = metadata;
+    const saved = {
+      url: "https://mcp.notion.com/mcp",
+      cocurdex: { application: legacy },
+    };
+    expect(readApplicationMetadata(saved)).toEqual(metadata);
+    expect(applicationAllows(saved, persona("assistant-a"))).toBe(true);
+    expect(applicationAllows(saved, workSession)).toBe(false);
   });
 
   it.each([
@@ -47,6 +80,7 @@ describe("managed application grants", () => {
     { ...metadata, version: 2 },
     { ...metadata, personaIds: "assistant-a" },
     { ...metadata, allowDelegatedWork: "true" },
+    { ...metadata, allowWorkSessions: "true" },
   ])(
     "keeps malformed managed entries out of native injection and denies their grants",
     (application) => {
@@ -56,9 +90,8 @@ describe("managed application grants", () => {
       };
       expect(isManagedApplicationServer(invalid)).toBe(true);
       expect(readApplicationMetadata(invalid)).toBeNull();
-      expect(applicationAllowsPersona(invalid, "assistant-a", false)).toBe(
-        false,
-      );
+      expect(applicationAllows(invalid, persona("assistant-a"))).toBe(false);
+      expect(applicationAllows(invalid, workSession)).toBe(false);
     },
   );
 

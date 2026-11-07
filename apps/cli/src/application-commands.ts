@@ -7,7 +7,7 @@ import { readStdin } from "./read-stdin";
 export function applicationUsageLines() {
   return [
     "  cocurdex apps catalog|list [--json]",
-    "  cocurdex apps add <notion|linear|github> --name <name> [--assistants <id,id>] [--delegated] [--json]",
+    "  cocurdex apps add <notion|linear|github> --name <name> [--assistants <id,id>] [--delegated] [--work-sessions true|false] [--json]",
     "  cocurdex apps update --stdin [--json]",
     "  cocurdex apps check|tools|logout|remove <connection-id> [--json]",
     "  cocurdex apps login <connection-id> [--json]",
@@ -17,12 +17,27 @@ export function applicationUsageLines() {
   ];
 }
 
+function readWorkSessions(value: string | boolean | undefined) {
+  if (value === undefined) return undefined;
+  if (value === "true" || value === true) return true;
+  if (value === "false") return false;
+  throw new Error("--work-sessions takes true or false");
+}
+
 export async function handleApplicationCommand(raw: string[]) {
   const [action, ...rest] = raw;
   const parsed = parseArgs(rest);
   assertKnownFlags(
     parsed,
-    ["name", "assistants", "delegated", "stdin", "login", "tool"],
+    [
+      "name",
+      "assistants",
+      "delegated",
+      "work-sessions",
+      "stdin",
+      "login",
+      "tool",
+    ],
     "apps",
   );
   const id = parsed.args[0];
@@ -52,6 +67,9 @@ export async function handleApplicationCommand(raw: string[]) {
             personaIds:
               typeof ids === "string" ? ids.split(",").filter(Boolean) : [],
             allowDelegatedWork: parsed.flags.get("delegated") === true,
+            allowWorkSessions: readWorkSessions(
+              parsed.flags.get("work-sessions"),
+            ),
           }),
         ),
       );

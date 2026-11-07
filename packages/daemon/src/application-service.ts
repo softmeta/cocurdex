@@ -8,7 +8,8 @@ import {
   type AddApplicationPayload,
   APPLICATION_CATALOG,
   type ApplicationConnection,
-  applicationAllowsPersona,
+  type ApplicationPrincipal,
+  applicationAllows,
   type McpLoginOutcome,
   type McpLoginStartResult,
   type McpServerConfig,
@@ -24,11 +25,6 @@ import {
 import type { DaemonMcpService } from "./mcp-service";
 
 type ApplicationClient = ReturnType<typeof createPiApplicationClient>;
-
-export interface ApplicationPrincipal {
-  personaId: string | null;
-  delegated: boolean;
-}
 
 function connectionRevision(config: McpServerConfig) {
   const { cocurdex: _metadata, enabled, ...connection } = config;
@@ -68,15 +64,7 @@ export class ApplicationService {
     const servers = await this.mcp.config.readServers();
     return Object.entries(servers).flatMap(([id, config]) => {
       const metadata = readApplicationMetadata(config);
-      if (
-        !metadata ||
-        (principal &&
-          !applicationAllowsPersona(
-            config,
-            principal.personaId,
-            principal.delegated,
-          ))
-      )
+      if (!metadata || (principal && !applicationAllows(config, principal)))
         return [];
       const checked = this.statuses.get(id);
       return [
@@ -115,6 +103,7 @@ export class ApplicationService {
           displayName: payload.displayName.trim() || app.name,
           personaIds: [...new Set(payload.personaIds)],
           allowDelegatedWork: payload.allowDelegatedWork,
+          allowWorkSessions: payload.allowWorkSessions ?? true,
           revision: randomUUID(),
           createdAt: now,
           updatedAt: now,
@@ -140,6 +129,8 @@ export class ApplicationService {
           displayName: payload.displayName.trim() || metadata.displayName,
           personaIds: [...new Set(payload.personaIds)],
           allowDelegatedWork: payload.allowDelegatedWork,
+          allowWorkSessions:
+            payload.allowWorkSessions ?? metadata.allowWorkSessions,
           revision: randomUUID(),
           updatedAt: new Date().toISOString(),
         },
@@ -397,15 +388,8 @@ export class ApplicationService {
     const config = (await this.mcp.config.readServers())[id];
     if (!config) throw new Error("Application connection not found");
     this.metadata(config);
-    if (
-      principal &&
-      !applicationAllowsPersona(
-        config,
-        principal.personaId,
-        principal.delegated,
-      )
-    )
-      throw new Error("This assistant is not allowed to use this application");
+    if (principal && !applicationAllows(config, principal))
+      throw new Error("This session is not allowed to use this application");
     if (principal && config.enabled === false)
       throw new Error("Application is disabled");
     return config;

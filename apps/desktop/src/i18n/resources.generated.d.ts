@@ -1579,6 +1579,9 @@ export default interface Resources {
       tools: "Available tools";
       waitingFor: "Authorizing {{name}}";
       waitingHint: "Finish authorization in your browser. This page updates when you return.";
+      workMode: "Work mode";
+      workSessions: "Available in work mode";
+      workSessionsDescription: "Pi sessions in work mode can also use this account; changes follow the session's permission mode.";
     };
     brief: {
       open: "Today's brief";

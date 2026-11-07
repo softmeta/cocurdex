@@ -25,6 +25,7 @@ it("manages application connections through the CLI", async () => {
       status: null,
       personaIds: [],
       allowDelegatedWork: false,
+      allowWorkSessions: true,
     });
     const update = {
       id: connection.id,
@@ -32,6 +33,7 @@ it("manages application connections through the CLI", async () => {
       displayName: "Synthetic repositories",
       personaIds: [],
       allowDelegatedWork: false,
+      allowWorkSessions: false,
       enabled: true,
     };
     const saved = await cli(
@@ -39,7 +41,21 @@ it("manages application connections through the CLI", async () => {
       JSON.stringify(update),
     );
     expect(saved.code).toBe(0);
-    expect(JSON.parse(saved.stdout).displayName).toBe("Synthetic repositories");
+    expect(JSON.parse(saved.stdout)).toMatchObject({
+      displayName: "Synthetic repositories",
+      allowWorkSessions: false,
+    });
+    const closed = await cli([
+      "add",
+      "notion",
+      "--name",
+      "Synthetic notes",
+      "--work-sessions",
+      "false",
+      "--json",
+    ]);
+    expect(JSON.parse(closed.stdout).allowWorkSessions).toBe(false);
+    expect((await cli(["remove", JSON.parse(closed.stdout).id])).code).toBe(0);
     const stale = await cli(["update", "--stdin"], JSON.stringify(update));
     expect(stale.code).toBe(1);
     expect(stale.stderr).toContain("Reload");
