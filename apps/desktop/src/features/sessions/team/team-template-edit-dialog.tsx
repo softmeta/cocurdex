@@ -278,7 +278,7 @@ function TeamTemplateForm({
                   </ul>
                 </Field>
               </FieldGroup>
-              <DialogFooter className="py-3">
+              <DialogFooter>
                 <DialogClose
                   render={
                     <Button type="button" variant="outline">

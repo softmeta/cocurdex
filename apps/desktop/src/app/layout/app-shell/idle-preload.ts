@@ -1,4 +1,3 @@
-import { ApplicationsView } from "@/features/applications";
 import { FileTree, GitChanges } from "@/features/editor";
 import { SettingsScreen } from "@/features/settings";
 import { TerminalPanel } from "@/features/terminal";
@@ -9,7 +8,6 @@ const idlePreloads = [
   SessionListViewMenuContent,
   SettingsScreen,
   RightEditorPanel,
-  ApplicationsView,
   FileTree,
   GitChanges,
   TerminalPanel,

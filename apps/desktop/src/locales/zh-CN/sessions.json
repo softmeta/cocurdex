@@ -379,7 +379,8 @@
       }
     },
     "workspacesGroup": "工作",
-    "workspacesHint": "在项目里写代码、修问题、交付"
+    "workspacesHint": "在项目里写代码、修问题、交付",
+    "yesterday": "昨天"
   },
   "split": {
     "actions": "Actions",

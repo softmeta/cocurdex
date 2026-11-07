@@ -10,6 +10,8 @@ export default interface Resources {
       replyCount_one: "{{count}} interim reply";
       replyCount_other: "{{count}} interim replies";
       responding: "Replying";
+      slowResponse: "Taking longer than usual, hang tight";
+      stillThinking: "Still thinking";
       stopped: "Stopped";
       summary: {
         command_one: "Ran {{count}} command";
@@ -1535,13 +1537,27 @@ export default interface Resources {
   };
   personal: {
     apps: {
+      accounts: "Accounts";
       added: "Added connections";
-      advanced: "Custom MCP";
-      assistants: "assistants";
+      addedCount_one: "{{count}} added";
+      addedCount_other: "{{count}} added";
+      addedState: "Added";
+      advanced: "Advanced settings";
+      allAssistants: "All assistants";
+      allAssistantsDescription: "Includes assistants you create later.";
+      assistantCount_one: "{{count}} assistant";
+      assistantCount_other: "{{count}} assistants";
       back: "Back to applications";
       browserOAuth: "Authorize in your browser";
       cancel: "Cancel";
       catalog: "Available applications";
+      categories: {
+        all: "All";
+        connected: "Added";
+        development: "Development";
+        knowledge: "Knowledge";
+      };
+      categoryLabel: "Category";
       check: "Check connection";
       connect: "Connect";
       connectAnother: "Connect another account";
@@ -1549,7 +1565,7 @@ export default interface Resources {
       connection: "Connection";
       delegated: "Allow delegated work";
       delegatedDescription: "Work sessions and teammates these assistants delegate can also use this account.";
-      description: "Connect your accounts on this host, then choose which assistants may use them. Custom MCP connections remain available in advanced settings.";
+      description: "Connect accounts on this host and choose which assistants can use them.";
       deviceCode: "Authorization code";
       deviceCodeHint: "Enter this code on the GitHub page in your browser. This page updates when you finish.";
       disabled: "Disabled";
@@ -1560,10 +1576,10 @@ export default interface Resources {
       inspectTools: "Inspect tools";
       name: "Connection name";
       needsAuth: "Authorization required";
+      noAssistants: "No assistants";
       noConnections: "No matching connections";
       notChecked: "Not checked";
       openAuthorization: "Open authorization page";
-      permissionDescription: "Only selected assistants can use this connection.";
       permissions: "Assistant access";
       providerDocs: "Provider instructions";
       reauthorize: "Reauthorize";
@@ -2239,6 +2255,7 @@ export default interface Resources {
       };
       workspacesGroup: "Work";
       workspacesHint: "Build, fix, and ship in your projects";
+      yesterday: "Yesterday";
     };
     split: {
       actions: "Actions";
@@ -3439,8 +3456,10 @@ export default interface Resources {
       adapters: "Agent CLIs";
       agentRoles: "Roles";
       appearance: "Appearance";
+      apps: "Apps";
       archived: "Archived sessions";
       computer: "Computer use";
+      connections: "Connections";
       devices: "Devices";
       diagnostics: "Diagnostics";
       editor: "Editor";

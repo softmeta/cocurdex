@@ -2,7 +2,7 @@ import { check } from "./app-session.mjs";
 import { clearColorScheme, emulateColorScheme } from "./appearance.mjs";
 import { daemonRequest } from "./daemon-rpc.mjs";
 import { clickByRole, waitForRole } from "./locate.mjs";
-import { showPanelView, translate } from "./navigate.mjs";
+import { openSettingsSection, translate } from "./navigate.mjs";
 
 async function findConnection(session, id) {
   const connections = await daemonRequest(session, "application.list");
@@ -43,14 +43,29 @@ export function assistantApplicationsStep(state) {
           personaIds: [state.personaId],
           allowDelegatedWork: false,
         });
-        await showPanelView(session, "applications");
+        await openSettingsSection(session, "apps");
         created.push(connection.id);
         check(
           connection.status === null && connection.allowDelegatedWork === false,
           "a new connection is not falsely marked connected and delegated access defaults off",
         );
-        await clickByRole(session, { role: "button", name: /^Notion\s/ });
-        await waitForRole(session, { role: "textbox", name: await t("name") });
+        const openApplication = async () => {
+          await clickByRole(session, {
+            role: "button",
+            name: "Notion",
+            within: { role: "region", name: await t("categories.knowledge") },
+          });
+          await clickByRole(session, {
+            role: "button",
+            name: await t("advanced"),
+            within: { role: "region", name: "Notion" },
+          });
+          await waitForRole(session, {
+            role: "textbox",
+            name: await t("name"),
+          });
+        };
+        await openApplication();
         await clickByRole(session, {
           role: "switch",
           name: await t("delegated"),
@@ -61,8 +76,12 @@ export function assistantApplicationsStep(state) {
           (item) => item?.allowDelegatedWork === true,
           "the delegated switch saves without a separate save step",
         );
-        await clickByRole(session, { role: "button", name: await t("back") });
-        await clickByRole(session, { role: "button", name: /^Notion\s/ });
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "settings:sections.apps"),
+          within: { role: "region", name: "Notion" },
+        });
+        await openApplication();
         const reopened = await findConnection(session, connection.id);
         check(
           reopened.allowDelegatedWork === true &&
@@ -75,8 +94,17 @@ export function assistantApplicationsStep(state) {
           role: "button",
           name: `${await t("connect")} Notion`,
         });
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "settings:sections.apps"),
+          within: { role: "region", name: "Notion" },
+        });
       }
       await clearColorScheme(session);
+      await clickByRole(session, {
+        role: "button",
+        name: await translate(session, "settings:sidebar.backToApp"),
+      });
       return { themes: ["light", "dark"], connections: created };
     },
   ];

@@ -98,7 +98,7 @@ export function PersonalAgentRow({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <SidebarListRow
-          className="h-auto gap-2.5 py-1.5 ps-1"
+          className="h-auto gap-2.5 py-1.5 ps-1.5"
           data-avatar-hover=""
           onPointerLeave={gaze.onPointerLeave}
           onPointerMove={gaze.onPointerMove}
@@ -124,6 +124,7 @@ export function PersonalAgentRow({
                 isUnread={isUnread && !isActive && !isMuted}
                 needsAttention={needsAttention}
                 showTimestamp={homeSession?.lastMessageAt != null}
+                timeFormat="clock"
                 timestamp={activityAt}
               />
             </span>

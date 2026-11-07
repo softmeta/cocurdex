@@ -89,7 +89,7 @@ export function SidebarSessionTree({
       className={cn("ms-0", !indented && "ps-0", indented && "ps-5")}
     >
       {sessions.length === 0 ? (
-        <div className="ps-1 pe-2 py-1 text-meta text-sidebar-fg-subtle">
+        <div className="ps-2 pe-2 py-1 text-meta text-sidebar-fg-subtle">
           {emptyLabel}
         </div>
       ) : (
@@ -112,7 +112,7 @@ export function SidebarSessionTree({
       )}
       {limitedTree.hiddenRootCount > 0 || canShowLess ? (
         <SidebarMenuSubItem>
-          <SidebarListRow className="gap-3 ps-1 text-meta text-sidebar-fg-subtle">
+          <SidebarListRow className="gap-3 ps-2 text-meta text-sidebar-fg-subtle">
             {limitedTree.hiddenRootCount > 0 ? (
               <button
                 type="button"

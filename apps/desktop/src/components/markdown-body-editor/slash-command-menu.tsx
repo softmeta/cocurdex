@@ -56,7 +56,7 @@ export const SlashCommandMenu = forwardRef<
 
   if (items.length === 0) {
     return (
-      <div className="min-w-48 rounded-control bg-popover p-1 text-popover-foreground shadow-lg ring-1 shadow-black/20 ring-foreground/10">
+      <div className="min-w-48 rounded-card bg-popover p-1.5 text-popover-foreground shadow-menu ring-1 ring-menu-ring">
         <Text tone="muted" className="block px-1.5 py-1">
           {t("slash.empty")}
         </Text>
@@ -68,7 +68,7 @@ export const SlashCommandMenu = forwardRef<
     <div
       role="listbox"
       aria-label={t("slash.label")}
-      className="flex max-h-[min(20rem,var(--slash-menu-available-height,20rem))] min-w-48 flex-col overflow-y-auto rounded-control bg-popover p-1 text-popover-foreground shadow-lg ring-1 shadow-black/20 ring-foreground/10"
+      className="flex max-h-[min(20rem,var(--slash-menu-available-height,20rem))] min-w-48 flex-col overflow-y-auto rounded-card bg-popover p-1.5 text-popover-foreground shadow-menu ring-1 ring-menu-ring"
     >
       {items.map((item, index) => {
         const Icon = item.icon;

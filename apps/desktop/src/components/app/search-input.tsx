@@ -1,8 +1,8 @@
 import { Search } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui";
 
-export function SettingsSearchInput({
+export function AppSearchInput({
   trailing,
   ...props
 }: Omit<ComponentProps<typeof InputGroupInput>, "className"> & {

@@ -81,7 +81,7 @@ export function ChatSessionsPanel({
           className: "overflow-x-hidden [&>div]:!block [&>div]:min-w-0",
         }}
       >
-        <SidebarMenu className="pe-3">
+        <SidebarMenu className="pe-1">
           {pinnedSessions.length > 0 ? (
             <SidebarMenuItem className="flex flex-col gap-0.5 pb-3">
               <SidebarSectionHeading section="chatPinned">

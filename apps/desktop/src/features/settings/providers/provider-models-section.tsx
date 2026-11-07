@@ -2,9 +2,10 @@ import type {
   ProviderConfigRecord,
   ProviderModelRecord,
 } from "@cocurdex/shared";
-import { Plus, RefreshCw, Search } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AppSearchInput } from "@/components";
 import {
   Button,
   Dialog,
@@ -148,13 +149,9 @@ export function ProviderModelsSection({
   return (
     <div className="flex min-w-0 flex-col gap-4 py-4">
       <div className="flex items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/60" />
-          <Input
-            className={cn(
-              fieldClass,
-              "ps-8 placeholder:text-muted-foreground/70",
-            )}
+        <div className="min-w-0 flex-1">
+          <AppSearchInput
+            aria-label={t("providers.models.searchPlaceholder")}
             placeholder={t("providers.models.searchPlaceholder")}
             value={modelQuery}
             onChange={(event) => setModelQuery(event.target.value)}

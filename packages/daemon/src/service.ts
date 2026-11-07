@@ -3267,7 +3267,9 @@ export class CocurdexDaemonService {
       }
 
       if (this.runs.hasActiveRun(sessionId)) {
-        await this.stopSessionTurn(sessionId);
+        throw new Error(
+          "Cannot send a queued message while the current turn is running.",
+        );
       }
 
       const [item] = queued.splice(index, 1);

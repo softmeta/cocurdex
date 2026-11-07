@@ -352,12 +352,10 @@ export function AppShellFrame({
                   isRightPanelOpen={isRightPanelOpen}
                   onToggleRightPanel={onToggleRightPanel}
                 />
-                {isAssistantSidebar ? null : (
-                  <div className="ms-auto flex items-center gap-1">
-                    <NavigationButtons />
-                    <SearchPaletteButton />
-                  </div>
-                )}
+                <div className="ms-auto flex items-center gap-1">
+                  {isAssistantSidebar ? null : <NavigationButtons />}
+                  <SearchPaletteButton />
+                </div>
               </div>
             </div>
 

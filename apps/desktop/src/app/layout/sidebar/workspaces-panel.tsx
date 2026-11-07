@@ -127,12 +127,12 @@ export function WorkspacesPanel({
             className: "overflow-x-hidden [&>div]:!block [&>div]:min-w-0",
           }}
         >
-          <SidebarMenu className="pe-3">
+          <SidebarMenu className="pe-1">
             {leading}
             {filtered &&
             !sessionsSection.collapsed &&
             workspaces.length === 0 ? (
-              <SessionFilterEmpty className="px-1 py-1 text-meta text-sidebar-fg-subtle" />
+              <SessionFilterEmpty className="ps-2 pe-1 py-1 text-meta text-sidebar-fg-subtle" />
             ) : null}
             <SortableContext
               items={workspaceIds}

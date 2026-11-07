@@ -23,7 +23,7 @@ function InboxRow({
 
   return (
     <SidebarListRow
-      className="h-auto gap-2 py-1 ps-1"
+      className="h-auto gap-2 py-1 ps-2"
       data-inbox-item-id={item.id}
       isActive={isActive}
       onClick={() => onOpen(item)}
@@ -71,7 +71,7 @@ export function InboxSection({
   if (items.length === 0) return null;
 
   return (
-    <section aria-label={t("inbox.heading")} className="pe-3 pb-3">
+    <section aria-label={t("inbox.heading")} className="pe-1 pb-3">
       <SidebarSectionHeading section="inbox">
         {t("inbox.headingCount", { total: items.length })}
       </SidebarSectionHeading>

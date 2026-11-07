@@ -1,4 +1,5 @@
 export { AcpRegistryDialog } from "./adapters/acp-registry-dialog-lazy";
+export { AppsEntryButton } from "./apps";
 export { AssistantSuggestionBar } from "./assistant";
 export { DeviceApprovalPrompt } from "./devices/device-approval-prompt";
 export { NetworkProxyStatusButton } from "./network-proxy-status-button";

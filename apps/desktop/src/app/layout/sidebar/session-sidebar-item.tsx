@@ -315,8 +315,8 @@ export function SessionSidebarItem({
               isActive={isActive}
               data-session-id={session.id}
               className={cn(
-                isChild && "ps-6 text-sidebar-fg-muted",
-                !isChild && "ps-1",
+                isChild && "ps-7 text-sidebar-fg-muted",
+                !isChild && "ps-2",
                 metaItems.length > 0 && "h-auto py-1",
               )}
               onClick={hasChildren ? undefined : onSelect}

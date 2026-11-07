@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";
 import { Text } from "@/components/ui";
-import { useCompactAgeLabel } from "@/lib/relative-time";
+import { useCompactAgeLabel, useListTimeLabel } from "@/lib/relative-time";
+
+export type SessionTimeFormat = "age" | "clock";
 
 function SessionStatusIndicator({
   needsAttention,
@@ -33,8 +35,7 @@ function SessionStatusIndicator({
   );
 }
 
-function SessionAgeLabel({ timestamp }: { timestamp: string }) {
-  const label = useCompactAgeLabel(timestamp);
+function SessionAgeText({ label }: { label: string | null }) {
   return (
     <Text
       size="meta"
@@ -42,6 +43,28 @@ function SessionAgeLabel({ timestamp }: { timestamp: string }) {
     >
       {label}
     </Text>
+  );
+}
+
+function SessionCompactAge({ timestamp }: { timestamp: string }) {
+  return <SessionAgeText label={useCompactAgeLabel(timestamp)} />;
+}
+
+function SessionClockTime({ timestamp }: { timestamp: string }) {
+  return <SessionAgeText label={useListTimeLabel(timestamp)} />;
+}
+
+function SessionAgeLabel({
+  format,
+  timestamp,
+}: {
+  format: SessionTimeFormat;
+  timestamp: string;
+}) {
+  return format === "clock" ? (
+    <SessionClockTime timestamp={timestamp} />
+  ) : (
+    <SessionCompactAge timestamp={timestamp} />
   );
 }
 
@@ -62,12 +85,14 @@ export function SessionTrailing({
   isUnread,
   needsAttention,
   showTimestamp,
+  timeFormat = "age",
   timestamp,
 }: {
   isRunning: boolean;
   isUnread: boolean;
   needsAttention: boolean;
   showTimestamp: boolean;
+  timeFormat?: SessionTimeFormat;
   timestamp: string;
 }) {
   if (needsAttention || isRunning) {
@@ -82,9 +107,13 @@ export function SessionTrailing({
     return (
       <span className="flex shrink-0 items-center gap-1.5">
         <SessionUnreadDot />
-        {showTimestamp ? <SessionAgeLabel timestamp={timestamp} /> : null}
+        {showTimestamp ? (
+          <SessionAgeLabel format={timeFormat} timestamp={timestamp} />
+        ) : null}
       </span>
     );
   }
-  return showTimestamp ? <SessionAgeLabel timestamp={timestamp} /> : null;
+  return showTimestamp ? (
+    <SessionAgeLabel format={timeFormat} timestamp={timestamp} />
+  ) : null;
 }

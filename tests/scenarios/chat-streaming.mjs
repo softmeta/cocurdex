@@ -5,7 +5,12 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clearColorScheme, emulateColorScheme } from "./lib/appearance.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
-import { clickByRole } from "./lib/locate.mjs";
+import {
+  clickByRole,
+  queryAllByRole,
+  waitForNoRole,
+  waitForRole,
+} from "./lib/locate.mjs";
 import { translate } from "./lib/navigate.mjs";
 
 const require = createRequire(
@@ -616,7 +621,7 @@ runScenario("chat-streaming", {
       },
     ],
     [
-      "live status sits in the activity group header, never below the stream",
+      "the live activity header shows status only and queued sends require an idle turn",
       async ({ session, workspaceId, providerSnapshot }) => {
         const reports = [];
         const [planningLabel, thinkingLabel] = await Promise.all([
@@ -631,6 +636,7 @@ runScenario("chat-streaming", {
             (node) => [labels].flat().includes(node.textContent),
           );
           return nodes.map((node) => ({
+            headerText: node.closest("button[aria-expanded]")?.textContent,
             inGroupHeader: node.closest("button[aria-expanded]") !== null,
           }));
         };
@@ -684,6 +690,7 @@ runScenario("chat-streaming", {
           });
 
           const requests = stub.requests.length;
+          const finishWork = Promise.withResolvers();
           stub.plan = {
             kind: "script",
             turns: [
@@ -695,6 +702,7 @@ runScenario("chat-streaming", {
               {
                 toolCalls: [{ name: "read", arguments: { path: "README.md" } }],
               },
+              { text: [finishWork.promise] },
             ],
           };
           await daemonRequest(session, "session.send", {
@@ -703,10 +711,9 @@ runScenario("chat-streaming", {
             content: "Read two files, then keep thinking.",
             attachments: [],
           });
-          while (stub.requests.length < requests + 2) {
+          while (stub.requests.length < requests + 3) {
             await stub.nextRequest();
           }
-          stub.plan = { kind: "hang" };
           const workingLabels = [planningLabel, thinkingLabel];
           await session.waitUntil(
             (labels) =>
@@ -724,6 +731,55 @@ runScenario("chat-streaming", {
             "live status must replace the latest group header, not trail it",
             duringWork,
           );
+          const headerText = duringWork[0].headerText;
+          check(
+            workingLabels.some((label) => headerText.endsWith(label)),
+            "live status must end with a state label without tool details",
+            duringWork,
+          );
+          await daemonRequest(session, "session.send", {
+            sessionId: configured.id,
+            messageId: crypto.randomUUID(),
+            content: "Queued without interrupting.",
+            attachments: [],
+            delivery: "queue-after-run",
+          });
+          const moreActions = {
+            role: "button",
+            name: await translate(session, "agent:queue.moreActions"),
+          };
+          const sendNow = {
+            role: "menuitem",
+            name: await translate(session, "agent:queue.sendNow"),
+          };
+          await clickByRole(session, moreActions);
+          await waitForRole(session, {
+            role: "menuitem",
+            name: await translate(session, "agent:queue.edit"),
+          });
+          check(
+            (await queryAllByRole(session, sendNow)).length === 0,
+            "an active turn must not offer an interrupting send",
+          );
+          await session.send("Input.dispatchKeyEvent", {
+            type: "keyDown",
+            key: "Escape",
+            code: "Escape",
+          });
+          const stop = {
+            role: "button",
+            name: await translate(session, "common:actions.stop"),
+          };
+          await clickByRole(session, stop);
+          await waitForNoRole(session, stop);
+          finishWork.resolve();
+          stub.plan = { kind: "hang" };
+          await clickByRole(session, moreActions);
+          const queuedRequests = stub.requests.length;
+          await clickByRole(session, sendNow);
+          while (stub.requests.length <= queuedRequests) {
+            await stub.nextRequest();
+          }
           await daemonRequest(session, "session.stop", {
             sessionId: configured.id,
           });

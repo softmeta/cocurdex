@@ -20,7 +20,7 @@ export function SidebarSectionHeading({
     <button
       type="button"
       aria-expanded={!collapsed}
-      className="group/section sticky top-0 z-10 flex w-full items-center gap-1 bg-sidebar px-1 py-1 text-sidebar-fg-subtle hover:text-sidebar-fg"
+      className="group/section sticky top-0 z-10 flex w-full items-center gap-1 bg-sidebar py-1 pe-1 text-sidebar-fg-subtle hover:text-sidebar-fg"
       onClick={toggle}
     >
       <Text size="meta">{children}</Text>
@@ -35,7 +35,7 @@ export function SidebarSectionHeading({
   return (
     <div className="sticky top-0 z-10 flex w-full min-w-0 items-center bg-sidebar">
       <div className="min-w-0 flex-1">{heading}</div>
-      <div className="flex shrink-0 items-center pe-0.5">{actions}</div>
+      <div className="flex shrink-0 items-center pe-0.75">{actions}</div>
     </div>
   );
 }

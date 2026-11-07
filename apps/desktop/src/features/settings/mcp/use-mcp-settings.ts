@@ -1,9 +1,10 @@
-import type {
-  McpConfigFile,
-  McpImportCandidate,
-  McpServerConfig,
-  McpServerScope,
-  McpServerStatus,
+import {
+  isManagedApplicationServer,
+  type McpConfigFile,
+  type McpImportCandidate,
+  type McpServerConfig,
+  type McpServerScope,
+  type McpServerStatus,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { useRef, useState } from "react";
@@ -36,6 +37,12 @@ function safeParseServers(content: string) {
   } catch {
     return {};
   }
+}
+
+function hasCustomServers(content: string) {
+  return Object.values(safeParseServers(content)).some(
+    (config) => !isManagedApplicationServer(config),
+  );
 }
 
 function indexStatuses(servers: McpServerStatus[]) {
@@ -132,10 +139,7 @@ export function useMcpSettings() {
 
   function applyConfigFile(file: McpConfigFile) {
     setConfigFile(file);
-    if (
-      importCandidates === null &&
-      Object.keys(safeParseServers(file.content)).length === 0
-    ) {
+    if (importCandidates === null && !hasCustomServers(file.content)) {
       void scanImportCandidates();
     }
   }
@@ -154,7 +158,7 @@ export function useMcpSettings() {
       .then((file) => {
         setConfigFile(file);
         void refreshStatus();
-        if (Object.keys(safeParseServers(file.content)).length === 0) {
+        if (!hasCustomServers(file.content)) {
           void scanImportCandidates();
         }
       })

@@ -7,17 +7,8 @@ import {
   SidebarToggleButton,
   TitlebarIconButton,
 } from "@/app/layout/titlebar-icon-button";
+import { AppConfirmDialog } from "@/components/app";
 import { Input } from "@/components/ui";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -360,30 +351,16 @@ function DiffActionsStrip({
           ) : null}
         </div>
       </div>
-      <Dialog onOpenChange={setDiscardOpen} open={discardOpen}>
-        <DialogContent size="compact">
-          <DialogHeader>
-            <DialogTitle>{t("git.discardAll")}</DialogTitle>
-            <DialogDescription>
-              {t("git.discardAllConfirm", { count: fileCount })}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose
-              render={<Button variant="ghost">{t("git.cancel")}</Button>}
-            />
-            <Button
-              onClick={() => {
-                onDiscardAll();
-                setDiscardOpen(false);
-              }}
-              variant="destructive"
-            >
-              {t("git.discard")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AppConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title={t("git.discardAll")}
+        description={t("git.discardAllConfirm", { count: fileCount })}
+        cancelLabel={t("git.cancel")}
+        confirmLabel={t("git.discard")}
+        variant="destructive"
+        onConfirm={onDiscardAll}
+      />
     </div>
   );
 }

@@ -266,7 +266,7 @@ export function ChatDock({
               "absolute inset-x-0 bottom-0"
             : // Floating card is a self-contained surface (matches CenterPanel
               // canvas; bg-app is a different token in light mode).
-              "absolute rounded-panel border border-border shadow-2xl",
+              "absolute rounded-panel shadow-overlay ring-1 ring-menu-ring",
         )}
         style={
           pinned

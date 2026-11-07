@@ -1,12 +1,24 @@
 {
   "apps": {
+    "accounts": "账号",
     "added": "已添加的连接",
-    "advanced": "自定义 MCP",
-    "assistants": "位助理",
+    "addedCount_other": "{{count}} 个已添加",
+    "addedState": "已添加",
+    "advanced": "高级设置",
+    "allAssistants": "所有助理",
+    "allAssistantsDescription": "包括以后新建的助理。",
+    "assistantCount_other": "{{count}} 位助理",
     "back": "返回应用列表",
     "browserOAuth": "在浏览器中授权",
     "cancel": "取消",
     "catalog": "可连接的应用",
+    "categories": {
+      "all": "全部",
+      "connected": "已添加",
+      "development": "开发",
+      "knowledge": "知识与文档"
+    },
+    "categoryLabel": "分类",
     "check": "检查连接",
     "connect": "连接",
     "connectAnother": "连接其他账号",
@@ -14,7 +26,7 @@
     "connection": "连接",
     "delegated": "允许委派工作使用",
     "delegatedDescription": "这些助理委派的工作会话和队友也可以使用此账号。",
-    "description": "在当前主机连接账号，再选择哪些助理可以使用。高级设置中仍可配置自定义 MCP。",
+    "description": "在本机连接账号，并选择哪些助理可以使用。",
     "deviceCode": "授权码",
     "deviceCodeHint": "在浏览器打开的 GitHub 页面输入下面的代码，完成后这里会自动更新。",
     "disabled": "已停用",
@@ -25,10 +37,10 @@
     "inspectTools": "查看工具",
     "name": "连接名称",
     "needsAuth": "需要授权",
+    "noAssistants": "未授权助理",
     "noConnections": "没有匹配的连接",
     "notChecked": "尚未检查",
     "openAuthorization": "打开授权页面",
-    "permissionDescription": "仅选中的助理可以使用此连接。",
     "permissions": "助理使用权限",
     "providerDocs": "查看应用说明",
     "reauthorize": "重新授权",
@@ -56,7 +68,7 @@
     "cancel": "取消",
     "confirm": "删除",
     "description": "将删除这个助理和它的对话。记忆仍保留在记忆库中。",
-    "title": "删除 {{name}}？"
+    "title": "删除「{{name}}」？"
   },
   "edit": {
     "descriptionPlaceholder": "一句话介绍这个助理",

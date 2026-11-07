@@ -26,7 +26,7 @@ export function MenuRowSidecar({ children, reference }: MenuRowSidecarProps) {
           sideOffset={FLYOUT_GAP}
         >
           <Popover.Popup
-            className="max-h-[min(18rem,var(--available-height))] max-w-[min(18rem,var(--available-width))] overflow-y-auto rounded-control bg-popover p-1 text-popover-foreground shadow-lg ring-1 shadow-black/20 ring-foreground/10 outline-none"
+            className="max-h-[min(18rem,var(--available-height))] max-w-[min(18rem,var(--available-width))] overflow-y-auto rounded-card bg-popover p-1.5 text-popover-foreground shadow-menu ring-1 ring-menu-ring outline-none"
             data-menu-row-sidecar=""
             finalFocus={false}
             initialFocus={false}

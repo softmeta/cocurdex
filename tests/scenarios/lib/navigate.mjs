@@ -10,7 +10,6 @@ import {
 const NAVIGATION_TIMEOUT_MS = 30_000;
 
 const PANEL_VIEW_KEYS = {
-  applications: "editor:actions.showApplications",
   overview: "editor:actions.showAssistantOverview",
   files: "editor:actions.showEditor",
   git: "editor:actions.showGitChanges",
@@ -144,7 +143,21 @@ export async function openNewIssueDialog(session) {
   );
 }
 
+const CONNECTION_SECTIONS = new Set(["apps", "mcp", "skills"]);
+
 export async function openSettingsSection(session, section) {
+  if (CONNECTION_SECTIONS.has(section)) {
+    await openSettingsSection(session, "connections");
+    await clickByRole(
+      session,
+      {
+        role: "tab",
+        name: await translate(session, `settings:sections.${section}`),
+      },
+      NAVIGATION_TIMEOUT_MS,
+    );
+    return;
+  }
   const sectionName = await translate(session, `settings:sections.${section}`);
   const sectionButton = {
     role: "button",

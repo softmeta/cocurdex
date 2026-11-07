@@ -38,7 +38,7 @@ export const TITLEBAR_CONTROL_SIZE = TITLEBAR_ICON_BUTTON_SIZE;
 // No trailing padding: gap-1 between pills already spaces the cluster; the
 // sidebar separator sits at the box edge.
 export const TITLEBAR_RIGHT_PADDING = 0;
-export const TITLEBAR_SIDEBAR_END_INSET = 14;
+export const TITLEBAR_SIDEBAR_END_INSET = 7;
 
 /** Intrinsic width the titlebar toolbar needs to render without overflow. */
 export const TITLEBAR_TOOLBAR_MIN_WIDTH =

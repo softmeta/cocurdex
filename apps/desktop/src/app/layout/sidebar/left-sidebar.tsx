@@ -16,8 +16,6 @@ import {
 import {
   activeWorkspaceIdAtom,
   collapsedWorkspaceIdsAtom,
-  openWorkspaceByPathAtom,
-  pickHostDirectoryAtom,
   removeWorkspaceAtom,
   reorderWorkspacesAtom,
   selectWorkspaceAtom,
@@ -30,7 +28,6 @@ import {
   markSessionSwitch,
   startSessionSwitchLongTaskObserver,
 } from "@/lib";
-import { useCreatePersonalAgent } from "../use-create-personal-agent";
 import { ArchiveGroupDialog } from "./archive-group-dialog";
 import { BriefControl } from "./brief-control";
 import { ChatSessionsPanel } from "./chat-sessions-panel";
@@ -40,11 +37,8 @@ import { SessionListSections } from "./session-list-sections";
 import { SessionListViewMenu } from "./session-list-view-menu";
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarFormSwitcher } from "./sidebar-form-switcher";
-import {
-  type SidebarTab,
-  sidebarTabAtom,
-  switchSidebarTabAtom,
-} from "./sidebar-tab-store";
+import { sidebarTabAtom, switchSidebarTabAtom } from "./sidebar-tab-store";
+import { useSidebarCreateActions } from "./use-sidebar-create-actions";
 import { useSidebarSessionView } from "./use-sidebar-session-view";
 import { WorkspacesPanel } from "./workspaces-panel";
 
@@ -92,8 +86,6 @@ export function LeftSidebar({
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
   const activeSessionId = useAtomValue(activeSessionIdAtom);
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
-  const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
-  const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
   const removeWorkspace = useSetAtom(removeWorkspaceAtom);
   const reorderWorkspaces = useSetAtom(reorderWorkspacesAtom);
   const removeSessionsByWorkspace = useSetAtom(removeSessionsByWorkspaceAtom);
@@ -112,38 +104,10 @@ export function LeftSidebar({
 
   const sessionView = useSidebarSessionView(workspaces, sessions);
 
-  const handleOpenWorkspace = async () => {
-    const rootPath = await pickHostDirectory();
-    if (!rootPath) return;
-    const { workspace, didSwitchWorkspace, reusedUnderDifferentName } =
-      openWorkspaceByPath(rootPath);
-    if (reusedUnderDifferentName) {
-      toast(t("sessions:workspace.openedExisting", { name: workspace.name }));
-    }
-    if (didSwitchWorkspace) {
-      selectSession(null);
-    }
-  };
-
-  const handleCreateAgent = (workspaceId?: string) => {
-    const targetWorkspaceId = workspaceId ?? activeWorkspaceId;
-    if (!targetWorkspaceId) {
-      void handleOpenWorkspace();
-      return;
-    }
-
-    startTransition(() => {
-      setOptimisticActiveSessionId(null);
-      selectWorkspace(targetWorkspaceId);
-      selectSession(null);
-    });
-    onAfterNavigate?.();
-  };
-
-  const handleCreateChat = () => {
-    selectSession(null);
-    onAfterNavigate?.();
-  };
+  const { create, createSession, openWorkspace } = useSidebarCreateActions({
+    beforeSelect: () => setOptimisticActiveSessionId(null),
+    onAfterNavigate,
+  });
 
   const selectFormSession = (sessionId: string) => {
     startTransition(() => {
@@ -152,8 +116,6 @@ export function LeftSidebar({
     });
     onAfterNavigate?.();
   };
-
-  const handleCreatePersonalAgent = useCreatePersonalAgent();
 
   const toggleWorkspace = (workspaceId: string) => {
     setCollapsedWorkspaceIds((current) =>
@@ -213,19 +175,6 @@ export function LeftSidebar({
   };
 
   const isWorkspacesTab = activeTab === "workspaces";
-  const createActions: Record<SidebarTab, { label: string; run(): void }> = {
-    workspaces: {
-      label: t("sessions:sidebar.newSession"),
-      run: () => handleCreateAgent(),
-    },
-    chat: { label: t("chat:list.new"), run: handleCreateChat },
-    personal: {
-      label: t("personal:roster.new"),
-      run: () => void handleCreatePersonalAgent(),
-    },
-  };
-  const createActionLabel = createActions[activeTab].label;
-  const onCreateAction = createActions[activeTab].run;
   const addWorkspaceLabel = t("sessions:sidebar.addWorkspace", {
     defaultValue: "Add workspace",
   });
@@ -264,7 +213,7 @@ export function LeftSidebar({
         )}
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-          <div className="flex shrink-0 items-center gap-0.5 pe-3">
+          <div className="flex shrink-0 items-center gap-0.5 pe-1.25">
             <SidebarFormSwitcher
               onValueChange={switchSidebarTab}
               value={activeTab}
@@ -277,15 +226,15 @@ export function LeftSidebar({
               <AppSidebarIconButton
                 aria-label={addWorkspaceLabel}
                 onClick={() => {
-                  void handleOpenWorkspace();
+                  void openWorkspace();
                 }}
               >
                 <FolderPlus className="size-3.5" />
               </AppSidebarIconButton>
             ) : null}
             <AppSidebarIconButton
-              aria-label={createActionLabel}
-              onClick={onCreateAction}
+              aria-label={create.label}
+              onClick={create.run}
             >
               <SquarePen className="size-3.5" />
             </AppSidebarIconButton>
@@ -299,7 +248,7 @@ export function LeftSidebar({
                   activeWorkspaceId={activeWorkspaceId}
                   collapsedWorkspaceIds={collapsedWorkspaceIds}
                   filtered={sessionView.filtered}
-                  onCreateAgent={handleCreateAgent}
+                  onCreateAgent={createSession}
                   onRemoveWorkspace={(id) => {
                     void handleRemoveWorkspace(id);
                   }}
@@ -350,7 +299,7 @@ export function LeftSidebar({
         </div>
       </div>
       {showFooter ? (
-        <SidebarFooter showMemory={activeTab === "personal"} />
+        <SidebarFooter isAssistant={activeTab === "personal"} />
       ) : null}
       <ArchiveGroupDialog />
     </SidebarShell>

@@ -80,7 +80,7 @@ export function MentionMenuList({
   return (
     <Command
       autoHighlight={false}
-      className="h-auto max-h-(--available-height) rounded-control bg-popover p-1 text-popover-foreground shadow-lg ring-1 shadow-black/20 ring-foreground/10"
+      className="h-auto max-h-(--available-height) rounded-card bg-popover p-1.5 text-popover-foreground shadow-menu ring-1 ring-menu-ring"
       ref={commandRef}
       shouldFilter={false}
     >

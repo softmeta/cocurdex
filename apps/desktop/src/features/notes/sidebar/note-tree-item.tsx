@@ -249,7 +249,7 @@ export function NoteTreeDragPreview({ note }: { note: NoteSummary }) {
   const { t } = useTranslation("notes");
   const Icon = note.kind === "folder" ? Folder : FileText;
   return (
-    <div className="flex h-7 max-w-56 items-center gap-1.5 rounded-control border border-border bg-popover px-2 shadow-md">
+    <div className="flex h-7 max-w-56 items-center gap-1.5 rounded-control bg-popover px-2 shadow-menu ring-1 ring-menu-ring">
       <Icon className="size-3.5 shrink-0 text-sidebar-fg-muted" />
       <SidebarListRowLabel className="text-sidebar-fg">
         {note.title || t("sidebar.untitled")}

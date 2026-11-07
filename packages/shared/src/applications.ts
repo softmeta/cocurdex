@@ -31,6 +31,7 @@ export interface ApplicationMetadata {
   version: 1;
   applicationId: ApplicationId;
   displayName: string;
+  allPersonas: boolean;
   personaIds: string[];
   allowDelegatedWork: boolean;
   allowWorkSessions: boolean;
@@ -48,8 +49,9 @@ export interface ApplicationConnection extends ApplicationMetadata {
 export interface AddApplicationPayload {
   applicationId: ApplicationId;
   displayName: string;
+  allPersonas?: boolean;
   personaIds: string[];
-  allowDelegatedWork: boolean;
+  allowDelegatedWork?: boolean;
   allowWorkSessions?: boolean;
 }
 
@@ -57,6 +59,7 @@ export interface UpdateApplicationPayload {
   id: string;
   revision: string;
   displayName: string;
+  allPersonas?: boolean;
   personaIds: string[];
   allowDelegatedWork: boolean;
   allowWorkSessions?: boolean;
@@ -100,6 +103,7 @@ export function readApplicationMetadata(
     value.version !== 1 ||
     typeof value.displayName !== "string" ||
     !value.displayName.trim() ||
+    !["boolean", "undefined"].includes(typeof value.allPersonas) ||
     !Array.isArray(value.personaIds) ||
     !value.personaIds.every((id) => typeof id === "string" && id.length > 0) ||
     typeof value.allowDelegatedWork !== "boolean" ||
@@ -114,6 +118,7 @@ export function readApplicationMetadata(
     version: 1,
     applicationId: app.id,
     displayName: value.displayName,
+    allPersonas: value.allPersonas === true,
     personaIds: value.personaIds,
     allowDelegatedWork: value.allowDelegatedWork,
     allowWorkSessions: value.allowWorkSessions === true,
@@ -139,7 +144,8 @@ export function applicationAllows(
   if (config.enabled === false || metadata === null) return false;
   if (principal.personaId !== null)
     return (
-      metadata.personaIds.includes(principal.personaId) &&
+      (metadata.allPersonas ||
+        metadata.personaIds.includes(principal.personaId)) &&
       (!principal.delegated || metadata.allowDelegatedWork)
     );
   return principal.workSession && metadata.allowWorkSessions;

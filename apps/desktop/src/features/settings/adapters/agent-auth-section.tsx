@@ -159,15 +159,7 @@ export function AgentAuthSection({
       tone: "muted",
     };
   } else if (phase.kind === "failed") {
-    note = {
-      text: activeMethodId
-        ? t("adapters.auth.failedKeeping", {
-            message: phase.message,
-            method: methodName(auth, activeMethodId),
-          })
-        : phase.message,
-      tone: "destructive",
-    };
+    note = { text: phase.message, tone: "destructive" };
   }
 
   return (

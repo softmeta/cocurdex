@@ -1,4 +1,3 @@
-import { TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +16,6 @@ export interface AppConfirmDialogProps {
   description: ReactNode;
   cancelLabel: string;
   confirmLabel: string;
-  /** Destructive confirms show a warning glyph and a destructive action. */
   variant?: "default" | "destructive";
   onConfirm: () => void;
 }
@@ -36,25 +34,21 @@ export function AppConfirmDialog({
 
   return (
     <Dialog disablePointerDismissal open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} size="compact">
+      <DialogContent showCloseButton={false} size="alert">
         <DialogHeader>
-          <div className="flex items-start gap-3">
-            {destructive ? (
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-control bg-destructive/10 text-destructive [&_svg]:size-4">
-                <TriangleAlert />
-              </span>
-            ) : null}
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <DialogTitle>{title}</DialogTitle>
-              <DialogDescription>{description}</DialogDescription>
-            </div>
-          </div>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter actions="fill">
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             {cancelLabel}
           </Button>
           <Button
+            size="lg"
             variant={destructive ? "destructive" : "default"}
             onClick={() => {
               onConfirm();

@@ -1174,7 +1174,9 @@ export function CenterPanel({
             thinkingLevelOptions={thinkingLevelOptions}
             isRunning={activeDisplayStatus === "running"}
             canSendWhileRunning
-            supportsSteering={activeAgentSupportsSteering}
+            canSteerQueuedInput={
+              activeAgentSupportsSteering && followUpBehavior === "steer"
+            }
             messages={activeMessages}
             queuedInputs={activeQueuedInputs}
             // Pass stable Jotai/IPC functions directly. Wrapping them in

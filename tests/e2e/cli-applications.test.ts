@@ -23,8 +23,9 @@ it("manages application connections through the CLI", async () => {
     const connection = JSON.parse(added.stdout);
     expect(connection).toMatchObject({
       status: null,
+      allPersonas: true,
       personaIds: [],
-      allowDelegatedWork: false,
+      allowDelegatedWork: true,
       allowWorkSessions: true,
     });
     const update = {

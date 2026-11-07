@@ -15,9 +15,10 @@ import {
   collapsedSettingsClusterIdsAtom,
   toggleSettingsClusterCollapsedAtom,
 } from "./settings-cluster-store";
-import type {
-  SettingsClusterGroup,
-  SettingsSectionItem,
+import {
+  isConnectionSection,
+  type SettingsClusterGroup,
+  type SettingsSectionItem,
 } from "./settings-sections";
 
 function SettingsSidebarSection({
@@ -35,7 +36,9 @@ function SettingsSidebarSection({
     <SidebarMenu>
       {items.map((section) => {
         const Icon = section.icon;
-        const isActive = section.id === activeSection;
+        const isActive =
+          section.id === activeSection ||
+          (section.id === "apps" && isConnectionSection(activeSection));
 
         return (
           <SidebarMenuItem key={section.id}>

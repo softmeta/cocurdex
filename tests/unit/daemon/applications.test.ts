@@ -63,6 +63,7 @@ async function setup(github = githubLogin(null)) {
   const added = await apps.add({
     applicationId: "notion",
     displayName: "Notes",
+    allPersonas: false,
     personaIds: ["a"],
     allowDelegatedWork: false,
   });
@@ -87,6 +88,7 @@ describe("application connections", () => {
     const second = await apps.add({
       applicationId: "notion",
       displayName: "Private notes",
+      allPersonas: false,
       personaIds: ["b"],
       allowDelegatedWork: false,
     });
@@ -176,6 +178,74 @@ describe("application connections", () => {
     ).rejects.toThrow("not allowed");
     expect(client.call).toHaveBeenCalledTimes(1);
     expect(client.close).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens a new connection to every assistant and their delegated work, including assistants created later, until narrowed", async () => {
+    const { mcp, apps } = await setup();
+    const open = await apps.add({
+      applicationId: "linear",
+      displayName: "Issues",
+      personaIds: [],
+    });
+    expect(open.allPersonas).toBe(true);
+    expect(open.allowDelegatedWork).toBe(true);
+    const later = {
+      personaId: "created-later",
+      delegated: false,
+      workSession: false,
+    };
+    expect((await apps.list(later)).map((item) => item.id)).toEqual([open.id]);
+    expect(
+      (await apps.list({ ...later, delegated: true })).map((item) => item.id),
+    ).toEqual([open.id]);
+    const narrowed = await apps.update({
+      ...edit(open),
+      allPersonas: false,
+      personaIds: ["a"],
+    });
+    expect(await apps.list(later)).toEqual([]);
+    const kept = await apps.update({
+      ...edit(narrowed),
+      displayName: "Tracker",
+    });
+    expect(kept.allPersonas).toBe(false);
+    await mcp.config.updateServer(open.id, (config) => {
+      const extension = config.cocurdex as {
+        application: Record<string, unknown>;
+      };
+      const { allPersonas: _dropped, ...legacy } = extension.application;
+      return { ...config, cocurdex: { ...extension, application: legacy } };
+    });
+    const [legacy] = (await apps.list()).filter((item) => item.id === open.id);
+    expect(legacy).toMatchObject({ allPersonas: false, personaIds: ["a"] });
+  });
+
+  it("accepts an application id when exactly one granted connection matches it", async () => {
+    const { apps, added, factory } = await setup();
+    const a = { personaId: "a", delegated: false, workSession: false };
+    const b = { personaId: "b", delegated: false, workSession: false };
+    expect(await apps.read("notion", "search", {}, a)).toMatchObject({
+      content: [{ text: "Found" }],
+    });
+    expect(factory).toHaveBeenLastCalledWith(
+      expect.anything(),
+      added.id,
+      expect.anything(),
+    );
+    await expect(apps.tools("notion", b)).rejects.toThrow(
+      "Application connection not found",
+    );
+    const second = await apps.add({
+      applicationId: "notion",
+      displayName: "Team notes",
+      allPersonas: false,
+      personaIds: ["a"],
+      allowDelegatedWork: false,
+    });
+    const ambiguous = apps.tools("notion", a);
+    await expect(ambiguous).rejects.toThrow(added.id);
+    await expect(apps.tools("notion", a)).rejects.toThrow(second.id);
+    expect(factory).toHaveBeenCalledTimes(1);
   });
 
   it("lets work sessions use a connection only while it is open to them", async () => {
@@ -283,6 +353,36 @@ describe("application connections", () => {
     expect(
       await apps.list({ personaId: "a", delegated: true, workSession: false }),
     ).toEqual([]);
+  });
+
+  it("drops a deleted assistant from the grant instead of refusing later edits", async () => {
+    const { mcp } = await setup();
+    const personas = new Set(["a", "b"]);
+    const apps = new ApplicationService(mcp, async (id) => personas.has(id));
+    const added = await apps.add({
+      applicationId: "github",
+      displayName: "GitHub",
+      allPersonas: false,
+      personaIds: ["a", "b"],
+      allowDelegatedWork: false,
+    });
+    personas.delete("b");
+
+    const listed = (await apps.list()).find((item) => item.id === added.id);
+    expect(listed?.personaIds).toEqual(["a"]);
+
+    const updated = await apps.update({
+      ...edit(added),
+      enabled: true,
+      allowWorkSessions: false,
+    });
+    expect(updated).toMatchObject({
+      personaIds: ["a"],
+      allowWorkSessions: false,
+    });
+    await expect(
+      apps.update({ ...edit(updated), enabled: true, personaIds: ["a", "c"] }),
+    ).rejects.toThrow("Assistant not found: c");
   });
 
   it("keeps a checked status across grant edits and drops it when the connection itself changes", async () => {

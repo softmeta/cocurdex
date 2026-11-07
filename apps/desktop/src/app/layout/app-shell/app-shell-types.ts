@@ -10,6 +10,7 @@ export type SettingsSectionId =
   | "agentRoles"
   | "teams"
   | "personalization"
+  | "apps"
   | "mcp"
   | "memory"
   | "skills"

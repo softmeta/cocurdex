@@ -33,6 +33,7 @@ import {
   sessionsAtom,
   upsertSessionAtom,
 } from "@/features/sessions";
+import { openSettings } from "@/features/settings";
 import { requestDaemon } from "@/lib";
 import { OverviewRow, OverviewSection } from "./assistant-overview-sections";
 import {
@@ -307,7 +308,7 @@ function AssistantOverviewContent({
                   "Connect accounts, choose assistant access, and inspect available tools.",
               })}
               icon={<Plug className="size-3.5" />}
-              onClick={() => selectView("applications")}
+              onClick={() => openSettings("apps")}
             />
           </OverviewSection>
         </div>

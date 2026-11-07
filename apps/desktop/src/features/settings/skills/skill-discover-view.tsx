@@ -5,9 +5,9 @@ import type {
 } from "@cocurdex/shared";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AppSearchInput } from "@/components";
 import { Spinner, Text } from "@/components/ui";
 import { SettingsListItem } from "../settings-list-item";
-import { SettingsSearchInput } from "../settings-search-input";
 import { SkillCatalogDetail } from "./skill-catalog-detail";
 import {
   queryErrorMessage,
@@ -58,7 +58,7 @@ export function SkillDiscoverView({
     <div className="flex min-h-0 min-w-0 flex-1 gap-6">
       <div className="flex min-h-0 w-72 shrink-0 flex-col gap-3">
         <form className="shrink-0" onSubmit={submit}>
-          <SettingsSearchInput
+          <AppSearchInput
             aria-busy={isSearching}
             aria-label={t("skills.discover.search")}
             placeholder={t("skills.discover.search")}

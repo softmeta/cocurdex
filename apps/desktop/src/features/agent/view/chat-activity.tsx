@@ -1,20 +1,12 @@
-import type { AgentToolCallRecord } from "@cocurdex/shared";
 import { formatElapsed } from "@cocurdex/shared";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";
 import { AgentRoleAvatar } from "@/features/sessions";
-import { cn, useMountEffect } from "@/lib";
+import { useMountEffect } from "@/lib";
 import { useChatAssistantRole, useChatPresentation } from "../chat-display";
-import { useToolCallTriggerParts } from "../tool-call/use-tool-call-trigger-parts";
-import type {
-  ActivityKind,
-  ActivityState,
-  ActivityStep,
-} from "./chat-activity-state";
+import type { ActivityState } from "./chat-activity-state";
 import { useActivityMotion } from "./use-activity-motion";
-import { useSteadyStep } from "./use-steady-step";
-import { useSteadyToolCall } from "./use-steady-tool-call";
 
 function ActivityGlyph({ activity }: { activity: ActivityState }) {
   const { completeWorkingCycle, motion } = useActivityMotion(activity);
@@ -26,76 +18,6 @@ function ActivityGlyph({ activity }: { activity: ActivityState }) {
         onWorkingCycleComplete={completeWorkingCycle}
       />
     </span>
-  );
-}
-
-function ToolCallLabel({
-  otherCount,
-  toolCall,
-}: {
-  otherCount: number;
-  toolCall: AgentToolCallRecord;
-}) {
-  const { title, secondary } = useToolCallTriggerParts(toolCall);
-
-  return (
-    <>
-      <span className="min-w-0 max-w-xs truncate">
-        <span className="activity-shimmer">{title}</span>
-        {secondary ? (
-          <span
-            className={cn(
-              "font-normal text-chat-fg-muted/80",
-              title && "ms-1.5",
-            )}
-          >
-            {secondary}
-          </span>
-        ) : null}
-      </span>
-      {otherCount > 0 ? (
-        <span className="shrink-0 tabular-nums">+{otherCount}</span>
-      ) : null}
-    </>
-  );
-}
-
-function getIdleActivityKind(activity: ActivityState): ActivityKind {
-  return activity.kind === "usingTools" ? "thinking" : activity.kind;
-}
-
-function LatestStepLabel({ step }: { step: ActivityStep }) {
-  if (step.kind === "reasoning") {
-    return (
-      <span className="min-w-0 max-w-xs truncate font-normal text-chat-fg-muted/70">
-        {step.headline}
-      </span>
-    );
-  }
-
-  return <ToolStepLabel toolCall={step.toolCall} />;
-}
-
-function ToolStepLabel({ toolCall }: { toolCall: AgentToolCallRecord }) {
-  const { title, secondary } = useToolCallTriggerParts(toolCall, "past");
-  return (
-    <span className="min-w-0 max-w-xs truncate font-normal text-chat-fg-muted/70">
-      {[title, secondary].filter(Boolean).join(" ")}
-    </span>
-  );
-}
-
-function IdleActivityLabel({ activity }: { activity: ActivityState }) {
-  const { t } = useTranslation("agent");
-  const step = useSteadyStep(activity.latestStep);
-
-  return (
-    <>
-      <span className="activity-shimmer shrink-0">
-        {t(`activity.${getIdleActivityKind(activity)}`)}
-      </span>
-      {step ? <LatestStepLabel step={step} /> : null}
-    </>
   );
 }
 
@@ -111,20 +33,49 @@ function useElapsedLabel(runStartedAt?: number) {
   return formatElapsed(now - (runStartedAt ?? mountedAt));
 }
 
+const ASSISTANT_THINKING_STAGES = [
+  { afterMs: 0, key: "activity.thinking" },
+  { afterMs: 15_000, key: "activity.stillThinking" },
+  { afterMs: 40_000, key: "activity.slowResponse" },
+] as const;
+
+function useAssistantThinkingStage() {
+  const [stage, setStage] = useState(0);
+
+  useMountEffect(() => {
+    const timers = ASSISTANT_THINKING_STAGES.slice(1).map((item, index) =>
+      window.setTimeout(() => setStage(index + 1), item.afterMs),
+    );
+    return () => {
+      for (const timer of timers) window.clearTimeout(timer);
+    };
+  });
+
+  return ASSISTANT_THINKING_STAGES[stage] ?? ASSISTANT_THINKING_STAGES[0];
+}
+
+function AssistantThinkingLabel() {
+  const { t } = useTranslation("agent");
+  const { key } = useAssistantThinkingStage();
+  return <span className="activity-shimmer truncate">{t(key)}</span>;
+}
+
 function AssistantActivityLabel({ activity }: { activity: ActivityState }) {
   const { t } = useTranslation("agent");
   const role = useChatAssistantRole();
-  const isUsingTools =
-    activity.kind === "usingTools" ||
-    (activity.activeToolCalls?.length ?? 0) > 0;
-  const label = isUsingTools ? t("activity.handling") : t("activity.thinking");
 
   return (
     <span className="flex min-w-0 items-center gap-2 text-chat-fg-muted">
       {role ? (
         <AgentRoleAvatar role={role} showAgent={false} size="sm" />
       ) : null}
-      <span className="activity-shimmer truncate">{label}</span>
+      {activity.kind === "usingTools" ? (
+        <span className="activity-shimmer truncate">
+          {t("activity.handling")}
+        </span>
+      ) : (
+        <AssistantThinkingLabel />
+      )}
     </span>
   );
 }
@@ -149,12 +100,8 @@ function WorkActivityLabel({
   activity: ActivityState;
   runStartedAt?: number;
 }) {
+  const { t } = useTranslation("agent");
   const elapsedLabel = useElapsedLabel(runStartedAt);
-  const activeToolCalls = activity.activeToolCalls ?? [];
-  const steadyToolCall = useSteadyToolCall(activeToolCalls.at(-1));
-  const otherToolCallCount = activeToolCalls.filter(
-    (toolCall) => toolCall.id !== steadyToolCall?.id,
-  ).length;
 
   return (
     <span className="flex min-w-0 items-center gap-2 text-chat-fg-muted">
@@ -162,14 +109,9 @@ function WorkActivityLabel({
       <span className="shrink-0 tabular-nums text-chat-fg-muted/70">
         {elapsedLabel}
       </span>
-      {steadyToolCall ? (
-        <ToolCallLabel
-          otherCount={otherToolCallCount}
-          toolCall={steadyToolCall}
-        />
-      ) : (
-        <IdleActivityLabel activity={activity} />
-      )}
+      <span className="activity-shimmer shrink-0">
+        {t(`activity.${activity.kind}`)}
+      </span>
     </span>
   );
 }
