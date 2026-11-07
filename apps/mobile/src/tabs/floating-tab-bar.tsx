@@ -50,14 +50,12 @@ export function FloatingTab({
   icon,
   label,
   isFocused,
-  modeSwitch = false,
   style,
   ref,
   ...props
 }: Omit<TabTriggerSlotProps, "ref"> & {
   icon: { ios: SFSymbol; android: AndroidSymbol };
   label: string;
-  modeSwitch?: boolean;
   ref?: Ref<HostInstance>;
 }) {
   const colors = useThemeColors();
@@ -65,7 +63,7 @@ export function FloatingTab({
     <Pressable
       {...props}
       ref={ref}
-      accessibilityRole={modeSwitch ? "button" : "tab"}
+      accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected: isFocused }}
       android_ripple={{ color: colors.muted, borderless: true }}
@@ -76,14 +74,6 @@ export function FloatingTab({
         size={24}
         tintColor={isFocused ? colors.foreground : colors.mutedForeground}
       />
-      {modeSwitch ? (
-        <SymbolView
-          name={{ ios: "chevron.up.chevron.down", android: "unfold_more" }}
-          size={10}
-          tintColor={colors.mutedForeground}
-          style={styles.modeIndicator}
-        />
-      ) : null}
     </Pressable>
   );
 }
@@ -105,5 +95,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  modeIndicator: { position: "absolute", right: 3 },
 });

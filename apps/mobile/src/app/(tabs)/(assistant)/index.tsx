@@ -8,7 +8,7 @@ import {
   useScopeGate,
 } from "@/hosts";
 import { LaunchReady } from "@/launch";
-import { ListScreenHeader } from "@/ui";
+import { SessionModeHeader } from "@/tabs";
 
 export default function AssistantScreen() {
   const { t } = useTranslation(["common", "assistant"]);
@@ -19,7 +19,7 @@ export default function AssistantScreen() {
   if (!host) {
     return (
       <>
-        <ListScreenHeader title={t("common:screens.assistant")} />
+        <SessionModeHeader title={t("common:screens.assistant")} />
         <EmptyHosts onScan={() => void openScan()} onPaste={openPaste} />
         <LaunchReady />
       </>
@@ -27,7 +27,7 @@ export default function AssistantScreen() {
   }
   return (
     <>
-      <ListScreenHeader
+      <SessionModeHeader
         title={t("common:screens.assistant")}
         actions={[
           {

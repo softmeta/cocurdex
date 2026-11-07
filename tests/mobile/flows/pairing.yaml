@@ -141,6 +141,7 @@ appId: dev.cocurdex.mobile
       id: new-chat-prompt
       text: ${CHAT_PROMPT}
     timeout: 10000
+- hideKeyboard
 - tapOn: ${SEND_ACTION}
 - extendedWaitUntil:
     visible:
@@ -175,6 +176,14 @@ appId: dev.cocurdex.mobile
           visible: ${WORKSPACE_NAME}
           timeout: 30000
 - takeScreenshot: sessions
+- tapOn: ${TAB_SETTINGS}
+- assertNotVisible:
+    id: session-mode-switch
+- tapOn:
+    id: sessions-tab
+- extendedWaitUntil:
+    visible: ${WORKSPACE_NAME}
+    timeout: 10000
 - retry:
     maxRetries: 2
     commands:

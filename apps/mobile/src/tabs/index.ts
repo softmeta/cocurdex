@@ -3,4 +3,4 @@ export {
   FloatingTabBar,
   useFloatingTabBarInset,
 } from "./floating-tab-bar";
-export { ModeTab, SESSION_MODES } from "./mode-tab";
+export { SESSION_MODES, SessionModeHeader, SessionsTab } from "./mode-tab";

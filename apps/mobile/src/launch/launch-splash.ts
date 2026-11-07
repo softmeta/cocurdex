@@ -5,6 +5,7 @@ const LAUNCH_TIMEOUT_MS = 3000;
 type LaunchPhase = "waiting" | "ready" | "finished";
 
 let phase: LaunchPhase = "waiting";
+let nativeHidden = false;
 const listeners = new Set<() => void>();
 
 SplashScreen.setOptions({ duration: 0, fade: false });
@@ -33,12 +34,14 @@ export function markLaunchReady() {
 }
 
 export function hideNativeSplash() {
-  clearTimeout(fallback);
+  if (nativeHidden) return;
+  nativeHidden = true;
   SplashScreen.hide();
 }
 
 export function finishLaunch() {
   if (phase === "finished") return;
+  clearTimeout(fallback);
   hideNativeSplash();
   setLaunchPhase("finished");
 }

@@ -1,9 +1,18 @@
 import { Stack } from "expo-router";
-import { useState } from "react";
+import { SymbolView } from "expo-symbols";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  type HostInstance,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { layout, space, useThemeColors } from "@/theme";
+import { measureAnchor } from "./anchored-menu";
 import { CircleButton } from "./circle-button";
 import { useFloatingSurface } from "./floating-surface";
 import type { ListScreenHeaderProps } from "./header-action";
@@ -13,6 +22,7 @@ const FIELD_HEIGHT = 44;
 
 export function ListScreenHeader({
   title,
+  titleAction,
   search,
   actions = [],
   background,
@@ -23,6 +33,9 @@ export function ListScreenHeader({
   const top = useSafeAreaInsets().top;
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
+  const titleButton = useRef<HostInstance>(null);
+  const screenOptions = useMemo(() => ({ headerShown: false, title }), [title]);
+  const titleStyle = [styles.title, { color: colors.foreground }];
 
   const changeQuery = (next: string) => {
     setQuery(next);
@@ -35,7 +48,7 @@ export function ListScreenHeader({
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: false, title }} />
+      <Stack.Screen options={screenOptions} />
       <View
         style={[
           styles.header,
@@ -73,13 +86,43 @@ export function ListScreenHeader({
           </View>
         ) : (
           <View style={styles.row}>
-            <Text
-              accessibilityRole="header"
-              numberOfLines={1}
-              style={[styles.title, { color: colors.foreground }]}
-            >
-              {title}
-            </Text>
+            <View style={styles.titleArea}>
+              {titleAction ? (
+                <Pressable
+                  ref={titleButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={titleAction.label}
+                  testID={titleAction.testID}
+                  onPress={() =>
+                    measureAnchor(titleButton.current, titleAction.onPress)
+                  }
+                  style={({ pressed }) => [
+                    styles.titleButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text numberOfLines={1} style={titleStyle}>
+                    {title}
+                  </Text>
+                  <SymbolView
+                    name={{
+                      ios: "chevron.down",
+                      android: "keyboard_arrow_down",
+                    }}
+                    size={16}
+                    tintColor={colors.mutedForeground}
+                  />
+                </Pressable>
+              ) : (
+                <Text
+                  accessibilityRole="header"
+                  numberOfLines={1}
+                  style={titleStyle}
+                >
+                  {title}
+                </Text>
+              )}
+            </View>
             {search || actions.length > 0 ? (
               <View style={[styles.capsule, surface]}>
                 {search ? (
@@ -119,7 +162,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: space.md,
   },
-  title: { flex: 1, fontSize: 30, lineHeight: 38, fontWeight: "700" },
+  titleArea: { flex: 1, minWidth: 0 },
+  title: { flexShrink: 1, fontSize: 30, lineHeight: 38, fontWeight: "700" },
+  titleButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.xs,
+    minHeight: 48,
+    minWidth: 48,
+    maxWidth: "100%",
+  },
+  pressed: { opacity: 0.65 },
   capsule: {
     flexDirection: "row",
     padding: CAPSULE_PADDING,

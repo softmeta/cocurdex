@@ -4,8 +4,8 @@ import { StyleSheet } from "react-native";
 import {
   FloatingTab,
   FloatingTabBar,
-  ModeTab,
   SESSION_MODES,
+  SessionsTab,
   useFloatingTabBarInset,
 } from "@/tabs";
 import { TabBarInsetContext, useKeyboardVisible } from "@/ui";
@@ -51,7 +51,7 @@ export default function TabsLayout() {
               accessible={false}
             />
           ))}
-          <ModeTab />
+          <SessionsTab />
           {TABS.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
               <FloatingTab icon={tab.icon} label={t(tab.label)} />

@@ -9,7 +9,7 @@ import {
   useScopeGate,
 } from "@/hosts";
 import { SessionList, sessionsStore } from "@/sessions";
-import { ListScreenHeader } from "@/ui";
+import { SessionModeHeader } from "@/tabs";
 
 const AGENT_LABELS = new Map<AgentId, string>();
 
@@ -24,14 +24,14 @@ export default function ChatsScreen() {
   if (!host) {
     return (
       <>
-        <ListScreenHeader title={title} />
+        <SessionModeHeader title={title} />
         <EmptyHosts onScan={() => void openScan()} onPaste={openPaste} />
       </>
     );
   }
   return (
     <>
-      <ListScreenHeader
+      <SessionModeHeader
         title={title}
         search={{ placeholder: t("sessions:chat.search"), onQuery: setQuery }}
         actions={[

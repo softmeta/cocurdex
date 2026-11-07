@@ -1,8 +1,11 @@
 import { useTabTrigger } from "expo-router/ui";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { HostInstance } from "react-native";
-import { measureAnchor, useAnchoredMenu } from "@/ui";
+import {
+  ListScreenHeader,
+  type ListScreenHeaderProps,
+  useAnchoredMenu,
+} from "@/ui";
 import { FloatingTab } from "./floating-tab-bar";
 
 export const SESSION_MODES = [
@@ -29,11 +32,40 @@ export const SESSION_MODES = [
   },
 ] as const;
 
-export function ModeTab() {
+export function SessionModeHeader(
+  props: Omit<ListScreenHeaderProps, "titleAction">,
+) {
   const { t } = useTranslation();
   const { getTrigger, switchTab } = useTabTrigger({ name: "(assistant)" });
   const menu = useAnchoredMenu("session-mode-menu");
-  const button = useRef<HostInstance>(null);
+  return (
+    <>
+      <ListScreenHeader
+        {...props}
+        titleAction={{
+          label: t("tabs.switchMode", { mode: props.title }),
+          testID: "session-mode-switch",
+          onPress: (anchor) =>
+            menu.open(anchor, {
+              items: SESSION_MODES.map((option) => ({
+                key: option.key,
+                label: t(option.label),
+                icon: option.icon,
+                selected: getTrigger(option.name)?.isFocused,
+                testID: `session-mode-${option.key}`,
+                onPress: () => switchTab(option.name, {}),
+              })),
+            }),
+        }}
+      />
+      {menu.menu}
+    </>
+  );
+}
+
+export function SessionsTab() {
+  const { t } = useTranslation();
+  const { getTrigger, switchTab } = useTabTrigger({ name: "(assistant)" });
   const focused = SESSION_MODES.find(
     (mode) => getTrigger(mode.name)?.isFocused,
   );
@@ -41,32 +73,13 @@ export function ModeTab() {
     SESSION_MODES[0],
   );
   if (focused && focused !== lastMode) setLastMode(focused);
-  const mode = focused ?? lastMode;
   return (
-    <>
-      <FloatingTab
-        ref={button}
-        icon={mode.icon}
-        label={t("tabs.switchMode", { mode: t(mode.label) })}
-        isFocused={Boolean(focused)}
-        modeSwitch
-        testID="session-mode-switch"
-        onPress={() =>
-          measureAnchor(button.current, (anchor) =>
-            menu.open(anchor, {
-              items: SESSION_MODES.map((option) => ({
-                key: option.key,
-                label: t(option.label),
-                icon: option.icon,
-                selected: option === mode,
-                testID: `session-mode-${option.key}`,
-                onPress: () => switchTab(option.name, {}),
-              })),
-            }),
-          )
-        }
-      />
-      {menu.menu}
-    </>
+    <FloatingTab
+      icon={{ ios: "bubble.left.and.bubble.right", android: "forum" }}
+      label={t("screens.sessions")}
+      testID="sessions-tab"
+      isFocused={Boolean(focused)}
+      onPress={() => switchTab(lastMode.name, {})}
+    />
   );
 }
