@@ -186,10 +186,11 @@ runScenario("menu-flyouts", {
     [
       "a context submenu matches its parent",
       async ({ session }) => {
-        await clickByRole(session, {
-          role: "button",
-          name: /^Draft release notes /,
-        });
+        await clickByRole(
+          session,
+          { role: "button", name: /^Draft release notes\s+(?![(（])/ },
+          UI_TIMEOUT_MS,
+        );
         await showPanelView(session, "notes");
         const row = await centerByRole(session, {
           role: "button",

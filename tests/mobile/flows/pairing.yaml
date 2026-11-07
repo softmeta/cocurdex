@@ -94,7 +94,13 @@ appId: dev.cocurdex.mobile
 - tapOn: ${EDIT_ASSISTANT}
 - tapOn:
     id: assistant-form-model
-- tapOn: ".*${NEW_SESSION_MODEL}.*"
+- assertNotVisible: ".*${LAST_ASSISTANT_MODEL}.*"
+- scrollUntilVisible:
+    element:
+      text: ".*${LAST_ASSISTANT_MODEL}.*"
+    direction: DOWN
+    timeout: 12000
+- tapOn: ".*${LAST_ASSISTANT_MODEL}.*"
 - tapOn: ${SAVE_ASSISTANT}
 - extendedWaitUntil:
     visible: ${MODEL_TEST_ASSISTANT}
@@ -106,7 +112,7 @@ appId: dev.cocurdex.mobile
           id: assistant-${MODEL_TEST_ASSISTANT_ID}
       - assertVisible: ${EDIT_ASSISTANT}
 - tapOn: ${EDIT_ASSISTANT}
-- assertVisible: ".*${NEW_SESSION_MODEL}.*"
+- assertVisible: ".*${LAST_ASSISTANT_MODEL}.*"
 - tapOn: ${CLOSE_ACTION}
 - extendedWaitUntil:
     visible: ${MODEL_TEST_ASSISTANT}

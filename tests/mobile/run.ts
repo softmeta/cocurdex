@@ -434,6 +434,7 @@ async function main() {
               AGENT_MODEL_ID: daemon.agentModelId,
               MODEL_TEST_ASSISTANT: modelTestAssistant?.role.name ?? "",
               MODEL_TEST_ASSISTANT_ID: modelTestAssistant?.id ?? "",
+              LAST_ASSISTANT_MODEL: daemon.lastAssistantModel,
               PAIRING_LINK: await daemon.createPairingLink(),
               HOST_ADDRESS: daemon.hostAddress,
               LINK_NOTE_TITLE,
