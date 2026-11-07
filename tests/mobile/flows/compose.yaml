@@ -252,9 +252,30 @@ appId: dev.cocurdex.mobile
           visible:
             id: "UIKeyboardLayoutStar.*"
           timeout: 10000
-- inputText: ${NEW_SESSION_PROMPT}
+- setClipboard: ${NEW_SESSION_PROMPT}
+- pasteText
+- extendedWaitUntil:
+    visible:
+      id: "new-session-prompt"
+      text: ${NEW_SESSION_PROMPT}
+    timeout: 10000
+- waitForAnimationToEnd
 - takeScreenshot: new-session-filled
-- tapOn: ${SEND_ACTION}
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "new-session-prompt"
+          commands:
+            - tapOn:
+                text: ${SEND_ACTION}
+                enabled: true
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 15000
 - extendedWaitUntil:
     visible: ${SEND_REPLY}
     timeout: 20000
