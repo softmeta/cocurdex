@@ -137,6 +137,13 @@ export function ApplicationsView() {
             login={login}
             agents={agents}
             onChanged={() => mutate()}
+            onSaved={(next) =>
+              mutate(
+                (current) =>
+                  current?.map((item) => (item.id === next.id ? next : item)),
+                { revalidate: false },
+              )
+            }
             onRemoved={() => {
               setSelectedId(null);
               void mutate();

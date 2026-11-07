@@ -2,7 +2,6 @@ import {
   APPLICATION_CATALOG,
   type ApplicationConnection,
   type PersonalAgentRecord,
-  type UpdateApplicationPayload,
 } from "@cocurdex/shared";
 import { ArrowUpRight, LogOut, Plug, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -17,22 +16,21 @@ import {
 } from "./application-state";
 import { ApplicationTools } from "./application-tools";
 import type { ApplicationLogin } from "./use-application-login";
-
-type ApplicationChanges = Partial<
-  Omit<UpdateApplicationPayload, "id" | "revision">
->;
+import { useApplicationSave } from "./use-application-save";
 
 export function ApplicationDetail({
   connection,
   agents,
   login,
   onChanged,
+  onSaved,
   onRemoved,
 }: {
   connection: ApplicationConnection;
   agents: PersonalAgentRecord[];
   login: ApplicationLogin;
   onChanged(): Promise<unknown>;
+  onSaved(next: ApplicationConnection): Promise<unknown>;
   onRemoved(): void;
 }) {
   const { t } = useTranslation("personal");
@@ -56,28 +54,15 @@ export function ApplicationDetail({
     }
   }
 
-  function update(changes: ApplicationChanges) {
-    return run(() =>
-      requestDaemon("application.update", {
-        id: connection.id,
-        revision: connection.revision,
-        displayName: connection.displayName,
-        personaIds: connection.personaIds,
-        allowDelegatedWork: connection.allowDelegatedWork,
-        allowWorkSessions: connection.allowWorkSessions,
-        enabled: connection.enabled,
-        ...changes,
-      }),
-    );
-  }
+  const { view, save } = useApplicationSave(connection, onSaved, onChanged);
 
   function commitName() {
     const next = name.trim();
     if (!next) {
-      setName(connection.displayName);
+      setName(view.displayName);
       return;
     }
-    if (next !== connection.displayName) void update({ displayName: next });
+    if (next !== view.displayName) save({ displayName: next });
   }
 
   const disabled = busy || login.busyId !== null;
@@ -114,8 +99,8 @@ export function ApplicationDetail({
         </div>
         <SettingRow title={t("apps.enabled", { defaultValue: "Enabled" })}>
           <Switch
-            checked={connection.enabled}
-            onCheckedChange={(enabled) => void update({ enabled })}
+            checked={view.enabled}
+            onCheckedChange={(enabled) => save({ enabled })}
             disabled={disabled}
             aria-label={t("apps.enabled", { defaultValue: "Enabled" })}
           />
@@ -147,13 +132,13 @@ export function ApplicationDetail({
           <SettingRow key={agent.id} title={agent.role.name}>
             <Switch
               aria-label={agent.role.name}
-              checked={connection.personaIds.includes(agent.id)}
+              checked={view.personaIds.includes(agent.id)}
               disabled={disabled}
               onCheckedChange={(value) =>
-                void update({
+                save({
                   personaIds: value
-                    ? [...connection.personaIds, agent.id]
-                    : connection.personaIds.filter((id) => id !== agent.id),
+                    ? [...view.personaIds, agent.id]
+                    : view.personaIds.filter((id) => id !== agent.id),
                 })
               }
             />
@@ -167,9 +152,9 @@ export function ApplicationDetail({
           })}
         >
           <Switch
-            checked={connection.allowDelegatedWork}
+            checked={view.allowDelegatedWork}
             onCheckedChange={(allowDelegatedWork) =>
-              void update({ allowDelegatedWork })
+              save({ allowDelegatedWork })
             }
             disabled={disabled}
             aria-label={t("apps.delegated", {
@@ -185,18 +170,16 @@ export function ApplicationDetail({
         >
           <Switch
             aria-label={t("apps.workSessions")}
-            checked={connection.allowWorkSessions}
+            checked={view.allowWorkSessions}
             disabled={disabled}
-            onCheckedChange={(allowWorkSessions) =>
-              void update({ allowWorkSessions })
-            }
+            onCheckedChange={(allowWorkSessions) => save({ allowWorkSessions })}
           />
         </SettingRow>
       </SettingsGroup>
       <div className="flex flex-wrap gap-2">
         <Button
           variant="ghost"
-          disabled={disabled || !connection.enabled}
+          disabled={disabled || !view.enabled}
           onClick={() => void login.start(connection.id)}
         >
           <Plug className="size-3.5" />
