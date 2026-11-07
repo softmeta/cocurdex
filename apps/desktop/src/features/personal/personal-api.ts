@@ -13,10 +13,10 @@ function uiLocale() {
 
 export const personalApi = {
   list: () => requestDaemon("personalAgent.list"),
-  ensureDefault: (name: string) =>
-    requestDaemon("personalAgent.ensureDefault", { name, locale: uiLocale() }),
   create: (payload: CreatePersonalAgentPayload) =>
-    requestDaemon("personalAgent.create", { ...payload, locale: uiLocale() }),
+    requestDaemon("personalAgent.create", payload),
+  greet: (id: string) =>
+    requestDaemon("personalAgent.greet", { id, locale: uiLocale() }),
   update: (payload: UpdatePersonalAgentPayload) =>
     requestDaemon("personalAgent.update", payload),
   duplicate: (payload: DuplicatePersonalAgentPayload) =>

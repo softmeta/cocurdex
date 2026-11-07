@@ -51,7 +51,7 @@ export function MemoryLibraryView() {
   const { data: status } = useMemoryStatus();
   const { data: revision = null } = useMemoryRevision();
   const { data: capabilities } = useMemoryCapabilities();
-  const { agents } = usePersonalAgents(t("personal:defaultName"));
+  const { agents } = usePersonalAgents();
   const [scope, setScope] = useState<MemoryScope>("all");
   const [mode, setMode] = useState<MemoryLibraryMode>("diary");
   const [query, setQuery] = useState("");

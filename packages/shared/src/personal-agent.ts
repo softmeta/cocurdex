@@ -25,12 +25,10 @@ export type PersonalAgentRolePayload = Omit<SaveAgentRolePayload, "id">;
 export interface CreatePersonalAgentPayload {
   role: PersonalAgentRolePayload;
   soul?: string | null;
-  locale?: SupportedLocale | null;
 }
 
-export interface EnsureDefaultPersonalAgentPayload {
-  name: string;
-  description?: string | null;
+export interface GreetPersonalAgentPayload {
+  id: string;
   locale?: SupportedLocale | null;
 }
 

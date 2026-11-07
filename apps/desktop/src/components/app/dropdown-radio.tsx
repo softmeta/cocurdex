@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Fragment } from "react";
+import { Fragment, useId } from "react";
 import {
   DropdownMenuGroup,
   DropdownMenuLabel,
@@ -37,12 +37,17 @@ function AppDropdownRadioItem({
   closeOnClick?: boolean;
 }) {
   const multiLine = option.multiLine ?? Boolean(option.description);
+  const id = useId();
+  const labelId = `${id}-label`;
+  const descriptionId = `${id}-description`;
 
   return (
     <DropdownMenuRadioItem
       value={option.value}
       disabled={option.disabled || inspectOnly}
       closeOnClick={closeOnClick}
+      aria-labelledby={option.description ? labelId : undefined}
+      aria-describedby={option.description ? descriptionId : undefined}
       className={cn(
         multiLine && "items-start py-1.5",
         inspectOnly &&
@@ -56,6 +61,7 @@ function AppDropdownRadioItem({
       ) : null}
       <span className="min-w-0 flex-1">
         <span
+          id={labelId}
           className={cn(
             "block truncate",
             option.description ? "font-medium" : undefined,
@@ -64,7 +70,10 @@ function AppDropdownRadioItem({
           {option.label}
         </span>
         {option.description ? (
-          <span className="block text-meta leading-4 text-muted-foreground">
+          <span
+            id={descriptionId}
+            className="block text-meta leading-4 text-muted-foreground"
+          >
             {option.description}
           </span>
         ) : null}

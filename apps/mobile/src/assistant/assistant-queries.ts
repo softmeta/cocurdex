@@ -12,20 +12,10 @@ const ASSISTANT_METHODS = new Set([
   "inbox.brief",
 ]);
 
-export function usePersonalAgents(host: SavedHost, defaultName: string) {
-  const canCreate = host.scopes.includes("interact");
+export function usePersonalAgents(hostId: string) {
   return useSWR(
-    ["personalAgent.list", host.hostId, canCreate, defaultName] as const,
-    async ([method, hostId, create, name]) => {
-      const connection = hostConnection(hostId);
-      const agents = await connection.request(method);
-      if (agents.length > 0 || !create) return agents;
-      await connection.request("personalAgent.ensureDefault", {
-        name,
-        locale: isSupportedLocale(i18n.language) ? i18n.language : null,
-      });
-      return connection.request(method);
-    },
+    ["personalAgent.list", hostId] as const,
+    ([method, id]) => hostConnection(id).request(method),
     DAEMON_READ,
   );
 }
@@ -57,4 +47,14 @@ export function revalidateAssistant(hostId: string) {
 export async function readInboxItem(hostId: string, id: string) {
   await hostConnection(hostId).request("inbox.read", { id });
   await revalidateAssistant(hostId);
+}
+
+export function greetPersonalAgent(host: SavedHost, id: string) {
+  if (!host.scopes.includes("interact")) return;
+  void hostConnection(host.hostId)
+    .request("personalAgent.greet", {
+      id,
+      locale: isSupportedLocale(i18n.language) ? i18n.language : null,
+    })
+    .catch(() => undefined);
 }

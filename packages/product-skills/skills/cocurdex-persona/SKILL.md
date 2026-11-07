@@ -5,7 +5,7 @@ description: Create, configure, and talk to Cocurdex personal agents (personas i
 
 # /cocurdex-persona — Personal agents
 
-The assistant form holds the user's personal agents. Each persona is an agent role (name, model, instructions, avatar) on the Pi engine plus a soul (standing personality and preferences) and one home thread, a long-lived session in the personal workspace. One persona is the default, listed first. Deleting the default hands that role to the next persona in the list; when none is left, the apps create a fresh default the next time the assistant form opens. A home thread cannot be deleted or archived on its own, only with its persona.
+The assistant form holds the user's personal agents. Each persona is an agent role (name, model, instructions, avatar) on the Pi engine plus a soul (standing personality and preferences) and one home thread, a long-lived session in the personal workspace. One persona is the default, listed first; the first persona created becomes the default. Deleting the default hands that role to the next persona in the list; when none is left, there is no persona until the user or an agent creates one. A home thread cannot be deleted or archived on its own, only with its persona.
 
 Manage personas through the `cocurdex` CLI. A `<persona>` argument accepts the persona id, a unique id prefix, or its name (case-insensitive).
 

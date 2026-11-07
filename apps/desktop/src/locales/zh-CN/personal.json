@@ -49,7 +49,6 @@
     "open": "今日简报"
   },
   "copyName": "{{name}} 副本",
-  "defaultName": "助理",
   "delete": {
     "cancel": "取消",
     "confirm": "删除",
@@ -57,7 +56,7 @@
     "title": "删除 {{name}}？"
   },
   "edit": {
-    "descriptionPlaceholder": "一句话介绍这个助理，显示在空对话的开头",
+    "descriptionPlaceholder": "一句话介绍这个助理",
     "instructions": "指令",
     "instructionsPlaceholder": "这个助理负责什么、应该怎么做事",
     "soul": "人设",
@@ -65,8 +64,8 @@
     "title": "编辑助理"
   },
   "empty": {
-    "description": "在左侧选择一个助理，继续你们的对话。",
-    "title": "你的助理"
+    "description": "助理会记住你在意的事，每天早上给你简报，按时提醒你，也能把项目里的活儿交给编程助手。",
+    "title": "新建你的第一个助理"
   },
   "inbox": {
     "heading": "收件箱",
@@ -214,6 +213,7 @@
       "brief": "每天早上 8 点给我一份简报",
       "label": "建议",
       "memory": "你记得关于我的哪些事？"
-    }
+    },
+    "typing": "{{name}} 正在输入…"
   }
 }

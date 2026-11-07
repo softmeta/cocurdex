@@ -72,7 +72,6 @@ import type {
   DuplicatePersonalAgentPayload,
   EditDeckPayload,
   EditorViewRecord,
-  EnsureDefaultPersonalAgentPayload,
   EntityLink,
   EntityLinkCandidate,
   EntityLinkPayload,
@@ -91,6 +90,7 @@ import type {
   GitCommitResult,
   GitPushResult,
   GitWorktreeInfo,
+  GreetPersonalAgentPayload,
   HostAccessAuditEntry,
   HostAccessScope,
   HostAccessSession,
@@ -795,8 +795,8 @@ export type DaemonRequestPayloadByMethod = {
   "agentRole.save": SaveAgentRolePayload;
   "agentRole.delete": { id: string };
   "personalAgent.list": undefined;
-  "personalAgent.ensureDefault": EnsureDefaultPersonalAgentPayload;
   "personalAgent.create": CreatePersonalAgentPayload;
+  "personalAgent.greet": GreetPersonalAgentPayload;
   "personalAgent.update": UpdatePersonalAgentPayload;
   "personalAgent.duplicate": DuplicatePersonalAgentPayload;
   "personalAgent.delete": { id: string };
@@ -1160,8 +1160,8 @@ export type DaemonResultByMethod = {
   "agentRole.save": AgentRoleRecord;
   "agentRole.delete": null;
   "personalAgent.list": PersonalAgentRecord[];
-  "personalAgent.ensureDefault": PersonalAgentRecord;
   "personalAgent.create": PersonalAgentRecord;
+  "personalAgent.greet": boolean;
   "personalAgent.update": PersonalAgentRecord;
   "personalAgent.duplicate": PersonalAgentRecord;
   "personalAgent.delete": null;

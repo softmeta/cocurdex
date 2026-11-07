@@ -22,7 +22,7 @@ import { useApplicationLogin } from "./use-application-login";
 export function ApplicationsView() {
   const { t } = useTranslation("personal");
   const { data, error, mutate } = useApplications();
-  const { agents } = usePersonalAgents(t("defaultName"));
+  const { agents } = usePersonalAgents();
   const sessionId = useAtomValue(activeSessionIdAtom);
   const session = useAtomValue(sessionsAtom).find(
     (item) => item.id === sessionId,

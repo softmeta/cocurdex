@@ -1,3 +1,4 @@
+import type { PersonaGreetingInput } from "@cocurdex/daemon/internal/personal/persona-greeting";
 import { PersonalAgentService } from "@cocurdex/daemon/internal/personal/personal-agent-service";
 import { type CocurdexDatabase, createCocurdexDatabase } from "@cocurdex/db";
 import {
@@ -33,6 +34,9 @@ interface Harness {
   failNextHomeSession: () => void;
   announcements: () => number;
   greetings: { sessionId: string; content: string }[];
+  writeGreeting: (
+    write: (input: PersonaGreetingInput) => Promise<string | null>,
+  ) => void;
 }
 
 async function createHarness(): Promise<Harness> {
@@ -50,6 +54,8 @@ async function createHarness(): Promise<Harness> {
   let announced = 0;
   let nextId = 0;
   const greetings: Harness["greetings"] = [];
+  let write: (input: PersonaGreetingInput) => Promise<string | null> =
+    async () => null;
   const service = new PersonalAgentService({
     repository: database.personalAgents,
     getRole: (id) => database.agentRoles.getById(id),
@@ -91,6 +97,9 @@ async function createHarness(): Promise<Harness> {
       return session;
     },
     removeSession: (id) => database.sessions.delete(id),
+    hasMessages: async (sessionId) =>
+      greetings.some((greeting) => greeting.sessionId === sessionId),
+    writeGreeting: (_sessionId, input) => write(input),
     greet: async (sessionId, content) => {
       greetings.push({ sessionId, content });
     },
@@ -109,6 +118,9 @@ async function createHarness(): Promise<Harness> {
     },
     announcements: () => announced,
     greetings,
+    writeGreeting: (next) => {
+      write = next;
+    },
   };
 }
 
@@ -123,29 +135,61 @@ describe("PersonalAgentService", () => {
     harness.database.close();
   });
 
-  it("creates exactly one default agent even when asked concurrently", async () => {
-    const [first, second] = await Promise.all([
-      harness.service.ensureDefault({ name: "助理" }),
-      harness.service.ensureDefault({ name: "助理" }),
-    ]);
-    const again = await harness.service.ensureDefault({ name: "Assistant" });
+  it("starts empty and makes exactly the first assistant the default", async () => {
+    expect(await harness.service.list()).toEqual([]);
 
-    expect(second.id).toBe(first.id);
-    expect(again.id).toBe(first.id);
-    expect(first).toMatchObject({ isDefault: true, role: { name: "助理" } });
-    expect(await harness.service.list()).toHaveLength(1);
-    expect(harness.greetings).toHaveLength(1);
+    const [first, second] = await Promise.all([
+      harness.service.create({ role: coachRole }),
+      harness.service.create({ role: { ...coachRole, name: "Writer" } }),
+    ]);
+
+    expect([first.isDefault, second.isDefault]).toEqual([true, false]);
+    expect(harness.greetings).toHaveLength(0);
   });
 
-  it("greets in the new home thread in the requested language", async () => {
-    const agent = await harness.service.create({
-      role: coachRole,
-      locale: "zh-CN",
+  it("greets once with the assistant's own words, however often it is asked", async () => {
+    const agent = await harness.service.create({ role: coachRole });
+    const written: PersonaGreetingInput[] = [];
+    harness.writeGreeting(async (input) => {
+      written.push(input);
+      return "Hi, I'm Coach. Want a plan for this week?";
+    });
+
+    const results = await Promise.all([
+      harness.service.greet({ id: agent.id, locale: "en-US" }),
+      harness.service.greet({ id: agent.id, locale: "en-US" }),
+    ]);
+    const again = await harness.service.greet({ id: agent.id });
+
+    expect(results).toEqual([true, true]);
+    expect(again).toBe(false);
+    expect(written).toHaveLength(1);
+    expect(written[0]).toMatchObject({
+      role: { name: "Coach", instructions: "Plan workouts" },
+      locale: "en-US",
     });
     expect(harness.greetings).toEqual([
       {
         sessionId: agent.homeSessionId,
-        content: expect.stringMatching(/[\u4e00-\u9fff]/),
+        content: "Hi, I'm Coach. Want a plan for this week?",
+      },
+    ]);
+  });
+
+  it("introduces itself by name in the requested language when the model cannot write", async () => {
+    const agent = await harness.service.create({
+      role: { ...coachRole, name: "小鹿" },
+    });
+    harness.writeGreeting(async () => {
+      throw new Error("no model");
+    });
+
+    await harness.service.greet({ id: agent.id, locale: "zh-CN" });
+
+    expect(harness.greetings).toEqual([
+      {
+        sessionId: agent.homeSessionId,
+        content: expect.stringContaining("我是小鹿"),
       },
     ]);
   });
@@ -155,11 +199,13 @@ describe("PersonalAgentService", () => {
     const writer = await harness.service.create({
       role: { ...coachRole, name: "Writer" },
     });
-    await harness.service.update({ id: writer.id, pinned: true });
-    const assistant = await harness.service.ensureDefault({ name: "助理" });
+    const reader = await harness.service.create({
+      role: { ...coachRole, name: "Reader" },
+    });
+    await harness.service.update({ id: reader.id, pinned: true });
 
     const names = (await harness.service.list()).map((agent) => agent.id);
-    expect(names).toEqual([assistant.id, writer.id, coach.id]);
+    expect(names).toEqual([coach.id, reader.id, writer.id]);
   });
 
   it("rolls back the role when the home thread cannot be created", async () => {
@@ -238,7 +284,7 @@ describe("PersonalAgentService", () => {
   });
 
   it("deletes an agent with its role and home thread", async () => {
-    await harness.service.ensureDefault({ name: "助理" });
+    await harness.service.create({ role: { ...coachRole, name: "助理" } });
     const coach = await harness.service.create({ role: coachRole });
 
     await harness.service.delete(coach.id);
@@ -251,7 +297,9 @@ describe("PersonalAgentService", () => {
   });
 
   it("hands the default to the next agent when the default is deleted", async () => {
-    const assistant = await harness.service.ensureDefault({ name: "助理" });
+    const assistant = await harness.service.create({
+      role: { ...coachRole, name: "助理" },
+    });
     const coach = await harness.service.create({ role: coachRole });
     const writer = await harness.service.create({
       role: { ...coachRole, name: "Writer" },
@@ -271,13 +319,12 @@ describe("PersonalAgentService", () => {
   });
 
   it("leaves no default when the last agent is deleted", async () => {
-    const assistant = await harness.service.ensureDefault({ name: "助理" });
+    const assistant = await harness.service.create({ role: coachRole });
 
     await harness.service.delete(assistant.id);
 
     expect(await harness.service.list()).toEqual([]);
-    const fresh = await harness.service.ensureDefault({ name: "助理" });
-    expect(fresh.id).not.toBe(assistant.id);
+    const fresh = await harness.service.create({ role: coachRole });
     expect(fresh.isDefault).toBe(true);
   });
 });

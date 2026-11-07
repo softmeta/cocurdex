@@ -1584,7 +1584,6 @@ export default interface Resources {
       open: "Today's brief";
     };
     copyName: "{{name}} copy";
-    defaultName: "Assistant";
     delete: {
       cancel: "Cancel";
       confirm: "Delete";
@@ -1592,7 +1591,7 @@ export default interface Resources {
       title: "Delete {{name}}?";
     };
     edit: {
-      descriptionPlaceholder: "One line about this assistant, shown at the top of an empty thread";
+      descriptionPlaceholder: "One line about this assistant";
       instructions: "Instructions";
       instructionsPlaceholder: "What this assistant is for and how it should work";
       soul: "Persona";
@@ -1600,8 +1599,8 @@ export default interface Resources {
       title: "Edit assistant";
     };
     empty: {
-      description: "Pick an assistant on the left to continue your conversation.";
-      title: "Your assistants";
+      description: "An assistant remembers what matters to you, briefs you each morning, reminds you on time, and hands project work to coding agents.";
+      title: "Create your first assistant";
     };
     inbox: {
       heading: "Inbox";
@@ -1750,6 +1749,7 @@ export default interface Resources {
         label: "Suggestions";
         memory: "What do you remember about me?";
       };
+      typing: "{{name}} is typing…";
     };
   };
   search: {

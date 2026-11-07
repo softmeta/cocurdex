@@ -36,6 +36,7 @@ export interface ChatViewProps {
   composerRole?: AgentRoleRecord | null;
   composerPlaceholder?: string;
   emptyState?: ReactNode;
+  emptyStateAlign?: "center" | "start";
   messages: MessageRecord[];
   permissionRequests?: AgentPermissionRequestRecord[];
   questions?: AgentQuestionRequestRecord[];

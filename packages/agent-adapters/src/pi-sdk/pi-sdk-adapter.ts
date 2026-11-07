@@ -78,7 +78,7 @@ import {
   appendPostedMessages,
   type PiCustomMessageSink,
 } from "./pi-posted-messages";
-import { listPiBuiltInProviderIds } from "./pi-provider-catalog";
+import { piRequestApiKey } from "./pi-provider-catalog";
 import { createPiRunPolicy } from "./pi-run-policy";
 import { forkPiProviderSession, readPiSessionFile } from "./pi-session-fork";
 import {
@@ -245,14 +245,6 @@ async function listPiSlashCommands(
   return skills;
 }
 
-const KEYLESS_PROVIDER_API_KEY = "cocurdex-keyless";
-
-function keylessProviderApiKey(providerId: string) {
-  return listPiBuiltInProviderIds().includes(providerId)
-    ? null
-    : KEYLESS_PROVIDER_API_KEY;
-}
-
 async function registerRuntimeProvider(
   modelRuntime: ModelRuntime,
   providerConfig: RuntimeProviderConfig,
@@ -262,8 +254,10 @@ async function registerRuntimeProvider(
     return null;
   }
 
-  const apiKey =
-    providerConfig.apiKey || keylessProviderApiKey(providerConfig.providerId);
+  const apiKey = piRequestApiKey(
+    providerConfig.providerId,
+    providerConfig.apiKey,
+  );
   if (apiKey) {
     await modelRuntime.setRuntimeApiKey(providerConfig.providerId, apiKey);
   } else {

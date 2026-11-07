@@ -53,6 +53,7 @@ import {
 } from "../search-palette";
 import { SessionSplitLayout } from "../session-split";
 import { SidebarToggleButton } from "../sidebar";
+import { PersonaEditDialogHost } from "../sidebar/persona-edit-dialog-host";
 import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
 import { appBootstrappedAtom } from "./app-bootstrap-store";
 import { AppShellContent } from "./app-shell-content";
@@ -403,6 +404,7 @@ export function AppShellFrame({
           open={isSearchOpen}
         />
         <DeviceApprovalPrompt />
+        <PersonaEditDialogHost />
       </div>
 
       {activeScreen === "settings" ? (

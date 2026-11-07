@@ -41,6 +41,10 @@ const { startStubLlmServer } = await tsImport(
 
 const UI_TIMEOUT_MS = 30_000;
 const REPLY = "Ten push-ups, then stretch.";
+const COACH_GREETING =
+  "Hi, I'm Coach! I can plan your workouts and check in on your week. What are you training for?";
+const FIRST_GREETING =
+  "Hey, I'm your new assistant. I can keep your day in view and nudge you on time. What's on your plate?";
 const args = readScenarioArgs();
 let stub;
 const state = {};
@@ -57,10 +61,21 @@ async function composerQuery(session) {
   return {
     role: "textbox",
     name: await translate(session, "personal:thread.placeholder", {
-      name: await translate(session, "personal:defaultName"),
+      name: state.assistantName,
     }),
     exact: false,
   };
+}
+
+async function waitForMessages(session, sessionId, predicate) {
+  const deadline = Date.now() + UI_TIMEOUT_MS;
+  for (;;) {
+    const snapshot = await daemonRequest(session, "session.snapshot", {
+      sessionId,
+    });
+    if (predicate(snapshot.messages) || Date.now() > deadline) return snapshot;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 }
 
 async function typeInto(session, field, text) {
@@ -108,43 +123,42 @@ runScenario("personal-agents", {
   },
   steps: [
     [
-      "the assistants tab creates and opens the default assistant",
+      "an empty assistants tab invites the user to create the first assistant",
       async ({ session }) => {
         await openAssistantsTab(session);
-        const defaultName = await translate(session, "personal:defaultName");
-        await waitForRole(
-          session,
-          { role: "button", name: rowName(defaultName) },
-          UI_TIMEOUT_MS,
+        check(
+          (await personas(session)).length === 0,
+          "no assistant exists until the user creates one",
         );
-        await waitForRole(session, await composerQuery(session), UI_TIMEOUT_MS);
+        const invite = {
+          role: "region",
+          name: await translate(session, "personal:empty.title"),
+        };
+        await waitForRole(session, invite, UI_TIMEOUT_MS);
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "personal:roster.new"),
+          within: invite,
+        });
+        const dialog = {
+          role: "dialog",
+          name: await translate(session, "personal:edit.title"),
+        };
+        await waitForRole(session, dialog, UI_TIMEOUT_MS);
         const [assistant] = await personas(session);
         check(
-          assistant?.isDefault && assistant.role.name === defaultName,
-          "daemon holds one localized default assistant",
+          assistant?.isDefault,
+          "the first assistant becomes the default",
           assistant,
         );
-        const {
-          id: _id,
-          createdAt: _c,
-          updatedAt: _u,
-          ...role
-        } = assistant.role;
-        await daemonRequest(session, "personalAgent.update", {
-          id: assistant.id,
-          role: {
-            ...role,
-            providerId: "personal-scenario",
-            modelId: "personal-model",
-            modelName: "Personal model",
-          },
+        stub.plan = { kind: "stream", chunks: [FIRST_GREETING] };
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "settings:agentRoles.save"),
+          within: dialog,
         });
-        await clickByRole(
-          session,
-          { role: "button", name: rowName(defaultName) },
-          UI_TIMEOUT_MS,
-        );
-        await waitForRole(session, await composerQuery(session), UI_TIMEOUT_MS);
+        await waitForNoRole(session, dialog, UI_TIMEOUT_MS);
+        await waitForNoRole(session, invite, UI_TIMEOUT_MS);
         const selected = await session.run(
           (id) =>
             document
@@ -152,16 +166,18 @@ runScenario("personal-agents", {
               ?.hasAttribute("data-active") ?? false,
           assistant.id,
         );
-        check(selected, "the default assistant row is selected");
-        const opening = await daemonRequest(session, "session.snapshot", {
-          sessionId: assistant.homeSessionId,
-        });
+        check(selected, "the new assistant row is selected");
+        const opening = await waitForMessages(
+          session,
+          assistant.homeSessionId,
+          (messages) => messages.length > 0,
+        );
         const [greeting] = opening.messages;
         check(
           opening.messages.length === 1 &&
-            greeting.role === "assistant" &&
-            greeting.origin?.kind === "greeting",
-          "a new assistant opens its thread with a greeting",
+            greeting.origin?.kind === "greeting" &&
+            greeting.content === FIRST_GREETING,
+          "the new assistant greets in its own words once saved",
           opening.messages,
         );
         await session.waitUntil(
@@ -169,9 +185,10 @@ runScenario("personal-agents", {
             [...document.querySelectorAll("article")].some((node) =>
               node.textContent.includes(text),
             ),
-          greeting.content,
+          FIRST_GREETING,
           UI_TIMEOUT_MS,
         );
+        state.assistantName = assistant.role.name;
         state.homeSessionId = assistant.homeSessionId;
         state.personaId = assistant.id;
         return { homeSessionId: assistant.homeSessionId };
@@ -330,12 +347,11 @@ runScenario("personal-agents", {
     [
       "the next turn tells the assistant what was posted to its thread",
       async ({ session }) => {
-        const defaultName = await translate(session, "personal:defaultName");
         await clickByRole(
           session,
           {
             role: "button",
-            name: rowName(defaultName),
+            name: rowName(state.assistantName),
             within: {
               role: "region",
               name: await translate(session, "personal:roster.label"),
@@ -425,6 +441,18 @@ runScenario("personal-agents", {
           );
           await session.send("Input.insertText", { text });
         }
+        const unsaved = (await personas(session)).find(
+          (agent) => !agent.isDefault && agent.role.name !== "Coach",
+        );
+        const before = await daemonRequest(session, "session.snapshot", {
+          sessionId: unsaved.homeSessionId,
+        });
+        check(
+          before.messages.length === 0,
+          "a new assistant does not greet while its edit dialog is open",
+          before.messages,
+        );
+        stub.plan = { kind: "stream", chunks: [COACH_GREETING] };
         await clickByRole(session, {
           role: "button",
           name: await translate(session, "settings:agentRoles.save"),
@@ -446,10 +474,34 @@ runScenario("personal-agents", {
           },
           UI_TIMEOUT_MS,
         );
+        const greeted = await waitForMessages(
+          session,
+          unsaved.homeSessionId,
+          (messages) => messages.length > 0,
+        );
+        check(
+          greeted.messages[0]?.content === COACH_GREETING,
+          "the saved assistant greets once its edit dialog closes",
+          {
+            messages: greeted.messages,
+            requests: stub.requests.length,
+            last: JSON.stringify(stub.requests.at(-1) ?? null).slice(0, 300),
+          },
+        );
         await session.waitUntil(
-          () => document.querySelectorAll("article").length === 1,
-          null,
+          (greeting) =>
+            [...document.querySelectorAll("article")].some((node) =>
+              node.textContent.includes(greeting),
+            ),
+          COACH_GREETING,
           UI_TIMEOUT_MS,
+        );
+        const greetingRequest = JSON.stringify(stub.requests.at(-1) ?? null);
+        check(
+          greetingRequest.includes("Coach") &&
+            greetingRequest.includes("Plan workouts"),
+          "the assistant writes its greeting with its own model, name, and instructions",
+          greetingRequest.slice(0, 400),
         );
         const [composer] = await waitForRole(session, {
           role: "textbox",

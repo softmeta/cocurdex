@@ -13,6 +13,7 @@ import {
   useTabBarInset,
 } from "@/ui";
 import {
+  greetPersonalAgent,
   readInboxItem,
   revalidateAssistant,
   useBrief,
@@ -42,7 +43,7 @@ export function AssistantHome({ host }: { host: SavedHost }) {
   const scrollIndicator = useScrollIndicatorWhileScrolling();
   const tabBarInset = useTabBarInset();
   const titles = useSectionTitles();
-  const agents = usePersonalAgents(host, t("defaultName"));
+  const agents = usePersonalAgents(host.hostId);
   const inbox = useInbox(host.hostId);
   const brief = useBrief(host.hostId);
   const descriptors = useAgents(host.hostId).data;
@@ -97,7 +98,10 @@ export function AssistantHome({ host }: { host: SavedHost }) {
       <AgentRow
         agent={item.agent}
         subtitle={subtitle}
-        onOpen={(agent) => openSession(agent.homeSessionId)}
+        onOpen={(agent) => {
+          greetPersonalAgent(host, agent.id);
+          openSession(agent.homeSessionId);
+        }}
       />
     );
   };

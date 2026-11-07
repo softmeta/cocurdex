@@ -218,11 +218,6 @@ describe("routines", () => {
           },
         ],
       });
-      const assistant = await requestDaemon(
-        "personalAgent.ensureDefault",
-        { name: "Assistant" },
-        daemon.options,
-      );
       const posted = await cli<MessageRecord | null>([
         "inbox",
         "brief",
@@ -237,7 +232,7 @@ describe("routines", () => {
         "- **Morning check** · Three meetings today",
       );
       expect(posted).toMatchObject({
-        sessionId: assistant.homeSessionId,
+        sessionId: coach.homeSessionId,
         origin: { kind: "brief", day: brief.day },
       });
       expect(await cli(["inbox", "brief", "post", "--tz", "UTC"])).toBeNull();

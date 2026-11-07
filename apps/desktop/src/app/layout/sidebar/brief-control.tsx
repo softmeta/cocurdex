@@ -11,7 +11,7 @@ export function BriefControl({
 }) {
   const { t } = useTranslation("personal");
   const { brief, post } = useBrief();
-  const { agents } = usePersonalAgents(t("defaultName"));
+  const { agents } = usePersonalAgents();
   const homeSessionId =
     agents.find((agent) => agent.isDefault)?.homeSessionId ?? null;
   if (!brief || !homeSessionId) return null;

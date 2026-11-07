@@ -1165,6 +1165,7 @@ export function CenterPanel({
             composerRole={personalView?.composerRole}
             composerPlaceholder={personalView?.composerPlaceholder}
             emptyState={personalView?.emptyState}
+            emptyStateAlign={personalView?.emptyStateAlign}
             floatingHeader={floatingHeader && personalView !== null}
             presentation={personalView ? "assistant" : "work"}
             permissionMode={activePermissionMode}

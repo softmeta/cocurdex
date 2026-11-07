@@ -29,7 +29,7 @@ export function RoutinesView({
   onOpenSession(sessionId: string): void;
 }) {
   const { t } = useTranslation("personal");
-  const { agents } = usePersonalAgents(t("defaultName"));
+  const { agents } = usePersonalAgents();
   const { routines, loaded } = useRoutines();
   const [scope, setScope] = useAtom(routineScopeAtom);
   const [selectedId, setSelectedId] = useAtom(routineSelectionAtom);

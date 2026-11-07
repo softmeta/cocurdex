@@ -10,6 +10,7 @@ import {
   parseHeaders,
   parseJsonObject,
 } from "./pi-model-utils";
+import { piRequestApiKey } from "./pi-provider-catalog";
 
 const COMMIT_MESSAGE_PROMPT = `You write a complete git commit message.
 
@@ -133,7 +134,7 @@ export async function generatePiCommitMessage(params: {
   };
 
   const result = await completeSimple(model, context, {
-    apiKey: params.apiKey ?? undefined,
+    apiKey: piRequestApiKey(params.provider.id, params.apiKey) ?? undefined,
     signal: params.signal,
     maxTokens: COMMIT_MESSAGE_MAX_TOKENS,
   });

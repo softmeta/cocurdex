@@ -322,9 +322,7 @@ export function AssistantOverview() {
   const sessionId = useAtomValue(activeSessionIdAtom);
   const sessions = useAtomValue(sessionsAtom);
   const session = sessions.find((item) => item.id === sessionId);
-  const { agents, loaded, error, revalidate } = usePersonalAgents(
-    t("defaultName"),
-  );
+  const { agents, loaded, error, revalidate } = usePersonalAgents();
   if (error)
     return (
       <Button variant="ghost" onClick={() => void revalidate()}>

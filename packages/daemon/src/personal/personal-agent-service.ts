@@ -6,18 +6,20 @@ import {
   type CreatePersonalAgentPayload,
   comparePersonalAgents,
   type DuplicatePersonalAgentPayload,
-  type EnsureDefaultPersonalAgentPayload,
+  type GreetPersonalAgentPayload,
   normalizePersonalAgentSoul,
   type PersonalAgentRecord,
   type PersonalAgentRolePayload,
-  personalAgentRoleDraft,
   type SaveAgentRolePayload,
   type SessionRecord,
   type SupportedLocale,
   type UpdatePersonalAgentPayload,
 } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
-import { personaGreeting } from "./persona-greeting";
+import {
+  fallbackPersonaGreeting,
+  type PersonaGreetingInput,
+} from "./persona-greeting";
 
 export interface PersonalAgentServiceDeps {
   repository: PersonalAgentRepository;
@@ -26,6 +28,11 @@ export interface PersonalAgentServiceDeps {
   deleteRole(id: string): Promise<void>;
   createHomeSession(role: AgentRoleRecord): Promise<SessionRecord>;
   removeSession(sessionId: string): Promise<void>;
+  hasMessages(sessionId: string): Promise<boolean>;
+  writeGreeting(
+    sessionId: string,
+    input: PersonaGreetingInput,
+  ): Promise<string | null>;
   greet(sessionId: string, content: string): Promise<void>;
   removeDependents(agentId: string): Promise<void>;
   applyRole(
@@ -47,7 +54,7 @@ function roleCopy(
 
 export class PersonalAgentService {
   private readonly now: () => string;
-  private ensuringDefault: Promise<PersonalAgentRecord> | null = null;
+  private readonly greetings = new Map<string, Promise<boolean>>();
 
   constructor(private readonly deps: PersonalAgentServiceDeps) {
     this.now = deps.now ?? (() => new Date().toISOString());
@@ -109,20 +116,44 @@ export class PersonalAgentService {
     return row ? { id: row.id, roleId: row.roleId, soul: row.soul } : null;
   }
 
-  ensureDefault(payload: EnsureDefaultPersonalAgentPayload) {
-    this.ensuringDefault ??= this.createDefault(payload).finally(() => {
-      this.ensuringDefault = null;
-    });
-    return this.ensuringDefault;
+  create(payload: CreatePersonalAgentPayload) {
+    return this.insert(payload.role, payload.soul ?? null);
   }
 
-  create(payload: CreatePersonalAgentPayload) {
-    return this.insert(
-      payload.role,
-      payload.soul ?? null,
-      false,
-      payload.locale,
+  greet(payload: GreetPersonalAgentPayload) {
+    const row = this.require(payload.id);
+    const pending = this.greetings.get(row.id);
+    if (pending) return pending;
+    const greeting = this.postGreeting(row, payload.locale ?? null).finally(
+      () => this.greetings.delete(row.id),
     );
+    this.greetings.set(row.id, greeting);
+    return greeting;
+  }
+
+  private async postGreeting(
+    row: PersonalAgentRow,
+    locale: SupportedLocale | null,
+  ) {
+    if (await this.deps.hasMessages(row.homeSessionId)) return false;
+    const role = await this.deps.getRole(row.roleId);
+    if (!role) return false;
+    const input = { role, soul: row.soul, locale };
+    const written = await this.deps
+      .writeGreeting(row.homeSessionId, input)
+      .catch((error: unknown) => {
+        logDaemonDiagnostic("warn", "personal.greetingFailed", {
+          agentId: row.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return null;
+      });
+    if (await this.deps.hasMessages(row.homeSessionId)) return false;
+    await this.deps.greet(
+      row.homeSessionId,
+      written?.trim() || fallbackPersonaGreeting(role.name, locale),
+    );
+    return true;
   }
 
   async update(payload: UpdatePersonalAgentPayload) {
@@ -153,7 +184,7 @@ export class PersonalAgentService {
     const row = this.require(payload.id);
     const role = await this.deps.getRole(row.roleId);
     if (!role) throw new Error(`Agent role ${row.roleId} was not found.`);
-    return this.insert(roleCopy(role, payload.name), row.soul, false, null);
+    return this.insert(roleCopy(role, payload.name), row.soul);
   }
 
   async delete(id: string) {
@@ -178,26 +209,9 @@ export class PersonalAgentService {
     });
   }
 
-  private async createDefault(payload: EnsureDefaultPersonalAgentPayload) {
-    const existing = this.deps.repository.getDefault();
-    const record = existing ? await this.toRecord(existing) : null;
-    if (record) return record;
-    return this.insert(
-      {
-        ...personalAgentRoleDraft(payload.name),
-        description: payload.description ?? null,
-      },
-      null,
-      true,
-      payload.locale,
-    );
-  }
-
   private async insert(
     rolePayload: PersonalAgentRolePayload,
     soul: string | null,
-    isDefault: boolean,
-    locale: SupportedLocale | null | undefined,
   ) {
     assertPersonalAgentRuntime(rolePayload.agentId);
     const role = await this.deps.saveRole({ ...rolePayload, id: undefined });
@@ -210,14 +224,13 @@ export class PersonalAgentService {
         roleId: role.id,
         homeSessionId: session.id,
         soul: normalizePersonalAgentSoul(soul),
-        isDefault,
+        isDefault: this.deps.repository.getDefault() === null,
         pinnedAt: null,
         mutedAt: null,
         sortOrder: this.nextSortOrder(),
         createdAt: now,
         updatedAt: now,
       };
-      await this.deps.greet(session.id, personaGreeting(locale));
       this.deps.repository.upsert(row);
       this.deps.announceChanged();
       return this.requireRecord(row.id);

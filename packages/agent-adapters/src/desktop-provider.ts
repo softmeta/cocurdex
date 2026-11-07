@@ -19,4 +19,7 @@ export {
   listPiProviderModels,
   listPiProviderTemplates,
 } from "./pi-sdk/pi-provider-catalog";
-export { generatePiConversationTitle } from "./pi-sdk/pi-title";
+export {
+  generatePiConversationTitle,
+  generatePiText,
+} from "./pi-sdk/pi-title";

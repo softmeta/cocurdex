@@ -1,6 +1,23 @@
+import type { AgentRoleRecord } from "@cocurdex/shared";
 import { Bell, Brain, CalendarClock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui";
+import { AgentRoleAvatar } from "@/features/sessions";
+
+export function PersonaGreetingActivity({ role }: { role: AgentRoleRecord }) {
+  const { t } = useTranslation("personal");
+  return (
+    <div
+      aria-live="polite"
+      className="flex min-w-0 items-center gap-2 text-body text-chat-fg-muted"
+    >
+      <AgentRoleAvatar role={role} showAgent={false} size="sm" />
+      <span className="activity-shimmer truncate">
+        {t("thread.typing", { name: role.name })}
+      </span>
+    </div>
+  );
+}
 
 export function PersonaIntro({
   onPickSuggestion,

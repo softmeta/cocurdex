@@ -13,6 +13,7 @@ import { synchronizeAgentState } from "../app-shell/agent-event-bridge";
 import { syncInitialPreferences } from "../app-shell/app-shell-preferences";
 import { SessionSplitLayout } from "../session-split";
 import { LeftSidebar } from "../sidebar";
+import { PersonaEditDialogHost } from "../sidebar/persona-edit-dialog-host";
 import { SidebarToggleButton } from "../titlebar-icon-button";
 import {
   useChatBrowserContext,
@@ -109,6 +110,7 @@ function DetachedChatContent({ transfer }: { transfer: ChatWindowTransfer }) {
           </div>
         ) : null}
       </div>
+      <PersonaEditDialogHost />
     </div>
   );
 }

@@ -911,10 +911,10 @@ export async function handleDaemonRequest(
       return service.saveAgentRole(request.params);
     case "personalAgent.list":
       return service.personalAgents.list();
-    case "personalAgent.ensureDefault":
-      return service.personalAgents.ensureDefault(request.params);
     case "personalAgent.create":
       return service.personalAgents.create(request.params);
+    case "personalAgent.greet":
+      return service.personalAgents.greet(request.params);
     case "personalAgent.update":
       return service.personalAgents.update(request.params);
     case "personalAgent.duplicate":
