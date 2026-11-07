@@ -277,11 +277,9 @@ function verifyPromptContext(
 ): number | null {
   const total = readNonNegativeInt(usage?.totalTokens);
   const cached = readNonNegativeInt(usage?.cachedReadTokens) ?? 0;
-  if (total == null || samples.count === 0 || samples.sum !== total + cached) {
-    return null;
-  }
-  if (samples.count === 1) return total;
-  return cached === 0 ? samples.last : null;
+  if (total == null || samples.count === 0) return null;
+  if (samples.sum === total) return samples.last;
+  return samples.count === 1 && samples.sum === total + cached ? total : null;
 }
 
 export class AcpEventMapper {

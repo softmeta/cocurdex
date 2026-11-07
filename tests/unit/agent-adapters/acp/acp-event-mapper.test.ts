@@ -730,7 +730,12 @@ describe("AcpEventMapper", () => {
     }
     mapper.complete("end_turn", 42, {
       stopReason: "end_turn",
-      usage: { totalTokens: 51_000, inputTokens: 50_990, outputTokens: 10 },
+      usage: {
+        totalTokens: 51_000,
+        inputTokens: 50_990,
+        outputTokens: 10,
+        cachedReadTokens: 20_000,
+      },
     });
     expect(
       events.filter((event) => event.type === "usage.updated").at(-1),
