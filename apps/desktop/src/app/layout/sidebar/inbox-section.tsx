@@ -23,7 +23,7 @@ function InboxRow({
 
   return (
     <SidebarListRow
-      className="h-auto gap-2 py-1 ps-1"
+      className="h-auto gap-2 py-1 ps-2"
       data-inbox-item-id={item.id}
       isActive={isActive}
       onClick={() => onOpen(item)}

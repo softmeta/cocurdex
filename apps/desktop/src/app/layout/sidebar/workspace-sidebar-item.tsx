@@ -89,7 +89,7 @@ export function WorkspaceSidebarItem({
             <SidebarListRow
               isActive={activeWorkspaceId === workspace.id}
               variant={hidesActiveSession ? "default" : "subtle"}
-              className="px-1"
+              className="ps-2 pe-1"
               {...attributes}
               {...listeners}
             >

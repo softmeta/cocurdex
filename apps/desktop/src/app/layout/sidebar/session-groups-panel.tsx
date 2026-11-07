@@ -91,11 +91,11 @@ function SessionGroupsEmpty({ filtered }: { filtered: boolean }) {
   const { t } = useTranslation("sessions");
   if (filtered) {
     return (
-      <SessionFilterEmpty className="px-1 py-1 text-meta text-sidebar-fg-subtle" />
+      <SessionFilterEmpty className="ps-2 pe-1 py-1 text-meta text-sidebar-fg-subtle" />
     );
   }
   return (
-    <div className="px-1 py-1 text-meta text-sidebar-fg-subtle">
+    <div className="ps-2 pe-1 py-1 text-meta text-sidebar-fg-subtle">
       {t("sidebar.noAgentsYet")}
     </div>
   );
@@ -118,7 +118,7 @@ function SessionGroupSection({
         <ContextMenuTrigger asChild>
           <SidebarListRow
             variant="subtle"
-            className="px-1"
+            className="ps-2 pe-1"
             render={
               <button
                 type="button"

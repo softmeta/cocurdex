@@ -132,7 +132,7 @@ export function WorkspacesPanel({
             {filtered &&
             !sessionsSection.collapsed &&
             workspaces.length === 0 ? (
-              <SessionFilterEmpty className="px-1 py-1 text-meta text-sidebar-fg-subtle" />
+              <SessionFilterEmpty className="ps-2 pe-1 py-1 text-meta text-sidebar-fg-subtle" />
             ) : null}
             <SortableContext
               items={workspaceIds}

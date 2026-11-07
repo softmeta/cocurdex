@@ -20,7 +20,7 @@ function AppsEntry() {
 
   return (
     <Button
-      className="h-6 gap-1.5 px-0.75 text-sidebar-fg-secondary hover:bg-sidebar-surface-hover hover:text-sidebar-fg"
+      className="-ms-1 h-6 gap-1.5 px-0.75 text-sidebar-fg-secondary hover:bg-sidebar-surface-hover hover:text-sidebar-fg"
       onClick={() => openSettings("apps")}
       size="sm"
       variant="ghost"

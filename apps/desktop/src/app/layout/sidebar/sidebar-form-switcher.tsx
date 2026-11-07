@@ -44,7 +44,7 @@ export function SidebarFormSwitcher({
         aria-label={t("sessions:sidebar.switchForm", {
           name: current?.label ?? "",
         })}
-        className="flex h-7 min-w-0 items-center gap-1 rounded-control px-1 text-body font-medium text-sidebar-fg transition-colors hover:bg-sidebar-surface-hover data-popup-open:bg-sidebar-surface-hover"
+        className="flex h-7 min-w-0 -ms-1 items-center gap-1 rounded-control px-1 text-body font-medium text-sidebar-fg transition-colors hover:bg-sidebar-surface-hover data-popup-open:bg-sidebar-surface-hover"
       >
         <span className="truncate">{current?.label}</span>
         <ChevronDown className="size-3.5 shrink-0 text-sidebar-fg-muted" />
