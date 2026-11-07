@@ -140,6 +140,7 @@ function ChatDraft({
       title: t("newSession.model"),
       items: (models.data ?? []).map(({ provider, model }) => ({
         key: `${provider.id}/${model.modelId}`,
+        testID: `new-chat-model-${provider.id}/${model.modelId}`,
         label: model.name,
         supporting: provider.name,
         selected:

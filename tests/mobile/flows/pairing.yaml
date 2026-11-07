@@ -143,7 +143,25 @@ appId: dev.cocurdex.mobile
     timeout: 10000
 - tapOn:
     id: new-chat-model
-- tapOn: ".*${NEW_SESSION_MODEL}.*"
+- extendedWaitUntil:
+    visible:
+      id: "new-chat-model-.*/${AGENT_MODEL_ID}"
+    timeout: 10000
+- waitForAnimationToEnd
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "new-chat-model-.*/${AGENT_MODEL_ID}"
+          commands:
+            - tapOn:
+                id: "new-chat-model-.*/${AGENT_MODEL_ID}"
+      - extendedWaitUntil:
+          visible:
+            id: new-chat-prompt
+          timeout: 10000
 - tapOn:
     id: new-chat-prompt
 - waitForAnimationToEnd
