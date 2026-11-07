@@ -207,7 +207,6 @@
     "title": "助理"
   },
   "thread": {
-    "introFallback": "你的私人助理，记得你，替你盯着每天的事。",
     "placeholder": "给 {{name}} 发消息",
     "suggestions": {
       "attention": "今天有什么需要我关注的？",

@@ -13,9 +13,11 @@ import {
   personalAgentRoleDraft,
   type SaveAgentRolePayload,
   type SessionRecord,
+  type SupportedLocale,
   type UpdatePersonalAgentPayload,
 } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
+import { personaGreeting } from "./persona-greeting";
 
 export interface PersonalAgentServiceDeps {
   repository: PersonalAgentRepository;
@@ -24,6 +26,7 @@ export interface PersonalAgentServiceDeps {
   deleteRole(id: string): Promise<void>;
   createHomeSession(role: AgentRoleRecord): Promise<SessionRecord>;
   removeSession(sessionId: string): Promise<void>;
+  greet(sessionId: string, content: string): Promise<void>;
   removeDependents(agentId: string): Promise<void>;
   applyRole(
     agentId: string,
@@ -114,7 +117,12 @@ export class PersonalAgentService {
   }
 
   create(payload: CreatePersonalAgentPayload) {
-    return this.insert(payload.role, payload.soul ?? null, false);
+    return this.insert(
+      payload.role,
+      payload.soul ?? null,
+      false,
+      payload.locale,
+    );
   }
 
   async update(payload: UpdatePersonalAgentPayload) {
@@ -145,7 +153,7 @@ export class PersonalAgentService {
     const row = this.require(payload.id);
     const role = await this.deps.getRole(row.roleId);
     if (!role) throw new Error(`Agent role ${row.roleId} was not found.`);
-    return this.insert(roleCopy(role, payload.name), row.soul, false);
+    return this.insert(roleCopy(role, payload.name), row.soul, false, null);
   }
 
   async delete(id: string) {
@@ -181,6 +189,7 @@ export class PersonalAgentService {
       },
       null,
       true,
+      payload.locale,
     );
   }
 
@@ -188,6 +197,7 @@ export class PersonalAgentService {
     rolePayload: PersonalAgentRolePayload,
     soul: string | null,
     isDefault: boolean,
+    locale: SupportedLocale | null | undefined,
   ) {
     assertPersonalAgentRuntime(rolePayload.agentId);
     const role = await this.deps.saveRole({ ...rolePayload, id: undefined });
@@ -207,6 +217,7 @@ export class PersonalAgentService {
         createdAt: now,
         updatedAt: now,
       };
+      await this.deps.greet(session.id, personaGreeting(locale));
       this.deps.repository.upsert(row);
       this.deps.announceChanged();
       return this.requireRecord(row.id);

@@ -1741,7 +1741,6 @@ export default interface Resources {
       title: "Assistants";
     };
     thread: {
-      introFallback: "Your personal assistant. It remembers you and keeps an eye on your day.";
       placeholder: "Message {{name}}";
       suggestions: {
         attention: "What needs my attention today?";

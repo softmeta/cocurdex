@@ -22,6 +22,7 @@ const ORIGIN_ICONS = {
   scriptRun: Workflow,
   routine: AlarmClock,
   brief: Newspaper,
+  greeting: Bot,
 } satisfies Record<MessageOrigin["kind"], unknown>;
 
 function PeerOriginAvatar({ origin }: { origin: MessageOrigin }) {
@@ -58,7 +59,7 @@ function PeerOriginHeader({
 
   return (
     <button
-      aria-label={messageOriginLabel(t, origin)}
+      aria-label={messageOriginLabel(t, origin) ?? undefined}
       title={origin.sessionTitle}
       className="group/peer flex max-w-full flex-row-reverse items-center gap-2 rounded-dense text-meta text-chat-fg-muted hover:text-chat-fg"
       onClick={() => selectSession(origin.sessionId)}

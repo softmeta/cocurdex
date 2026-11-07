@@ -44,7 +44,6 @@ export function usePersonalSessionView(
     },
     emptyState: (
       <PersonaIntro
-        role={role}
         onPickSuggestion={(text) => composer.current?.sendText(text)}
       />
     ),

@@ -1,6 +1,7 @@
 import type { AgentRoleRecord, SaveAgentRolePayload } from "./agent-role";
 import { isChatWorkspaceId } from "./chat-session";
 import type { AgentId, SessionRecord } from "./contracts";
+import type { SupportedLocale } from "./locales";
 
 export const PERSONAL_WORKSPACE_ID = "personal";
 export const PERSONAL_AGENT_SOUL_MAX_LENGTH = 20_000;
@@ -24,11 +25,13 @@ export type PersonalAgentRolePayload = Omit<SaveAgentRolePayload, "id">;
 export interface CreatePersonalAgentPayload {
   role: PersonalAgentRolePayload;
   soul?: string | null;
+  locale?: SupportedLocale | null;
 }
 
 export interface EnsureDefaultPersonalAgentPayload {
   name: string;
   description?: string | null;
+  locale?: SupportedLocale | null;
 }
 
 export interface UpdatePersonalAgentPayload {

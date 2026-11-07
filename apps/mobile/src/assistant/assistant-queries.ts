@@ -1,4 +1,6 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
+import { isSupportedLocale } from "@cocurdex/shared";
+import i18n from "i18next";
 import useSWR, { mutate } from "swr";
 import { hostConnection } from "@/connection";
 
@@ -18,7 +20,10 @@ export function usePersonalAgents(host: SavedHost, defaultName: string) {
       const connection = hostConnection(hostId);
       const agents = await connection.request(method);
       if (agents.length > 0 || !create) return agents;
-      await connection.request("personalAgent.ensureDefault", { name });
+      await connection.request("personalAgent.ensureDefault", {
+        name,
+        locale: isSupportedLocale(i18n.language) ? i18n.language : null,
+      });
       return connection.request(method);
     },
     DAEMON_READ,

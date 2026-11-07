@@ -153,6 +153,25 @@ runScenario("personal-agents", {
           assistant.id,
         );
         check(selected, "the default assistant row is selected");
+        const opening = await daemonRequest(session, "session.snapshot", {
+          sessionId: assistant.homeSessionId,
+        });
+        const [greeting] = opening.messages;
+        check(
+          opening.messages.length === 1 &&
+            greeting.role === "assistant" &&
+            greeting.origin?.kind === "greeting",
+          "a new assistant opens its thread with a greeting",
+          opening.messages,
+        );
+        await session.waitUntil(
+          (text) =>
+            [...document.querySelectorAll("article")].some((node) =>
+              node.textContent.includes(text),
+            ),
+          greeting.content,
+          UI_TIMEOUT_MS,
+        );
         state.homeSessionId = assistant.homeSessionId;
         state.personaId = assistant.id;
         return { homeSessionId: assistant.homeSessionId };
@@ -171,15 +190,16 @@ runScenario("personal-agents", {
             ` then stretch.\n\n[Assistant result](${state.outputPath})`,
           ],
         };
-        const suggestion = await translate(
+        const [composer] = await waitForRole(
           session,
-          "personal:thread.suggestions.attention",
-        );
-        await clickByRole(
-          session,
-          { role: "button", name: suggestion },
+          await composerQuery(session),
           UI_TIMEOUT_MS,
         );
+        await typeInto(session, composer, "What needs my attention today?");
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "common:actions.send"),
+        });
         const shown = await session
           .waitUntil(
             (reply) =>
@@ -213,7 +233,7 @@ runScenario("personal-agents", {
           })),
         });
         check(
-          contents.includes(suggestion) &&
+          contents.includes("What needs my attention today?") &&
             contents.some((content) => content.startsWith(REPLY)),
           "the exchange is stored in the assistant's home thread",
           contents,
@@ -426,9 +446,9 @@ runScenario("personal-agents", {
           },
           UI_TIMEOUT_MS,
         );
-        await waitForRole(
-          session,
-          { role: "region", name: "Coach" },
+        await session.waitUntil(
+          () => document.querySelectorAll("article").length === 1,
+          null,
           UI_TIMEOUT_MS,
         );
         const [composer] = await waitForRole(session, {
@@ -441,7 +461,7 @@ runScenario("personal-agents", {
         const viewport = await session.run(() => window.innerHeight);
         check(
           composerTop > viewport * 0.7,
-          "an empty thread shows the intro with the composer docked below",
+          "a new thread shows the greeting with the composer docked below",
           { composerTop, viewport },
         );
         const coach = (await personas(session)).find(

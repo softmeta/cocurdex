@@ -432,6 +432,18 @@ export class CocurdexDaemonService {
           title: role.name,
         }),
       removeSession: (sessionId) => this.removeSession(sessionId),
+      greet: async (sessionId, content) => {
+        await this.state.appendMessage({
+          id: crypto.randomUUID(),
+          sessionId,
+          role: "assistant",
+          kind: "response",
+          content,
+          attachments: [],
+          origin: { kind: "greeting" },
+          createdAt: new Date().toISOString(),
+        });
+      },
       removeDependents: async (agentId) => {
         this.delegations.forgetPersona(agentId);
         await this.removeRoutinesOf(agentId);

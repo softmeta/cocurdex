@@ -32,6 +32,7 @@ interface Harness {
   service: PersonalAgentService;
   failNextHomeSession: () => void;
   announcements: () => number;
+  greetings: { sessionId: string; content: string }[];
 }
 
 async function createHarness(): Promise<Harness> {
@@ -48,6 +49,7 @@ async function createHarness(): Promise<Harness> {
   let failHome = false;
   let announced = 0;
   let nextId = 0;
+  const greetings: Harness["greetings"] = [];
   const service = new PersonalAgentService({
     repository: database.personalAgents,
     getRole: (id) => database.agentRoles.getById(id),
@@ -89,6 +91,9 @@ async function createHarness(): Promise<Harness> {
       return session;
     },
     removeSession: (id) => database.sessions.delete(id),
+    greet: async (sessionId, content) => {
+      greetings.push({ sessionId, content });
+    },
     removeDependents: async () => {},
     applyRole: async () => {},
     announceChanged: () => {
@@ -103,6 +108,7 @@ async function createHarness(): Promise<Harness> {
       failHome = true;
     },
     announcements: () => announced,
+    greetings,
   };
 }
 
@@ -128,6 +134,20 @@ describe("PersonalAgentService", () => {
     expect(again.id).toBe(first.id);
     expect(first).toMatchObject({ isDefault: true, role: { name: "助理" } });
     expect(await harness.service.list()).toHaveLength(1);
+    expect(harness.greetings).toHaveLength(1);
+  });
+
+  it("greets in the new home thread in the requested language", async () => {
+    const agent = await harness.service.create({
+      role: coachRole,
+      locale: "zh-CN",
+    });
+    expect(harness.greetings).toEqual([
+      {
+        sessionId: agent.homeSessionId,
+        content: expect.stringMatching(/[\u4e00-\u9fff]/),
+      },
+    ]);
   });
 
   it("lists the default first, then pinned agents, then creation order", async () => {

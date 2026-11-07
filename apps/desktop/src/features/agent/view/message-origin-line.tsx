@@ -16,6 +16,7 @@ export function MessageOriginLine({ origin }: { origin: MessageOrigin }) {
   const label = messageOriginLabel(t, origin);
   const sessionId = originSessionId(origin);
 
+  if (!label) return null;
   if (!sessionId) {
     return (
       <div className="mb-1.5 text-meta font-medium text-chat-fg-secondary">
