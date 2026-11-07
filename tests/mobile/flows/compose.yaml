@@ -33,6 +33,8 @@ appId: dev.cocurdex.mobile
 - waitForAnimationToEnd
 - takeScreenshot: session-reply
 - tapOn:
+    id: "composer-input"
+- tapOn:
     id: "session-config-chip"
 - extendedWaitUntil:
     visible:
