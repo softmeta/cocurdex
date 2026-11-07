@@ -11,6 +11,7 @@ import { type ReactNode, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { usePersonaBubble } from "@/agents";
 import { PersonaIntro, usePersonaOfSession } from "@/assistant";
 import { hostConnection } from "@/connection";
 import { SessionConfigChips, useNeedsExecuteToDrive } from "@/session-config";
@@ -81,6 +82,7 @@ export function SessionDetailScreen({
   const workspaces = viewed.workspaces;
   const listed = viewed.sessions.find((entry) => entry.id === sessionId);
   const persona = usePersonaOfSession(host.hostId, sessionId);
+  const personaBubble = usePersonaBubble(persona?.role ?? null);
   const workspace = sessionWorkspace(observation, workspaces);
   const workspacePath = sessionWorkspacePath(observation, workspace);
   const running =
@@ -259,6 +261,7 @@ export function SessionDetailScreen({
         sentMessageId={sends.at(-1)?.id}
         items={items}
         presentation={persona ? "assistant" : "work"}
+        userBubble={personaBubble ?? undefined}
         actions={{
           hostId: host.hostId,
           fileRoot: canReadFiles ? workspacePath : undefined,

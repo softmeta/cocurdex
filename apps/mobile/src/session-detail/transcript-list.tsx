@@ -77,6 +77,7 @@ export function TranscriptList({
   const peek = sentPromptPeek(visibleHeight);
   const viewportWidth = useRef(0);
   const [jump, setJump] = useState(INITIAL_JUMP_STATE);
+  const [placed, setPlaced] = useState(false);
   const turns = useMemo(() => transcriptTurns(items), [items]);
   const history = useMemo(() => turns.slice(0, -1), [turns]);
   const latest = turns.at(-1);
@@ -122,6 +123,10 @@ export function TranscriptList({
       )
     : jump;
 
+  const scrollInstantly = (offset: number) => {
+    list.current?.scrollToOffset({ offset, animated: false });
+    if (metrics.current) metrics.current = { ...metrics.current, offset };
+  };
   const align = () => {
     const state = navigation.current;
     if (state.target) {
@@ -141,10 +146,8 @@ export function TranscriptList({
           content,
           (_x, y) => {
             if (navigation.current.target !== target) return;
-            list.current?.scrollToOffset({
-              offset: Math.max(0, y - space.md - headerOverlap - inset),
-              animated: false,
-            });
+            scrollInstantly(Math.max(0, y - space.md - headerOverlap - inset));
+            setPlaced(true);
           },
           () => {},
         );
@@ -156,7 +159,12 @@ export function TranscriptList({
           viewOffset: space.md + headerOverlap,
           animated: false,
         });
-        if (!indexFailed.current) state.target = undefined;
+        if (!indexFailed.current) {
+          state.target = undefined;
+          setPlaced(true);
+        }
+      } else {
+        setPlaced(true);
       }
     } else if (
       state.initialPosition &&
@@ -165,13 +173,13 @@ export function TranscriptList({
       latestLayout.current?.id === latest.id
     ) {
       state.initialPosition = false;
-      list.current?.scrollToOffset({
-        offset: Math.max(
+      scrollInstantly(
+        Math.max(
           0,
           metrics.current.contentHeight - metrics.current.viewportHeight,
         ),
-        animated: false,
-      });
+      );
+      setPlaced(true);
     }
   };
   const scrollToLatest = (animated: boolean) => {
@@ -234,6 +242,7 @@ export function TranscriptList({
       <FlatList
         {...indicator}
         ref={list}
+        style={!placed && latest ? styles.placing : undefined}
         data={history}
         keyExtractor={(turn) => turn.id}
         extraData={[viewportHeight, renderRow, footer]}
@@ -251,6 +260,7 @@ export function TranscriptList({
           latestJump.current = null;
           navigation.current.target = undefined;
           navigation.current.initialPosition = false;
+          setPlaced(true);
           indicator.onScrollBeginDrag();
           setJump((current) => ({ ...current, userScrolled: true }));
         }}
@@ -287,7 +297,10 @@ export function TranscriptList({
         }}
         onScrollToIndexFailed={({ index, averageItemLength }) => {
           indexFailed.current = true;
-          if (navigation.current.retries >= 12) return;
+          if (navigation.current.retries >= 12) {
+            setPlaced(true);
+            return;
+          }
           navigation.current.retries += 1;
           list.current?.scrollToOffset({
             offset: averageItemLength * index,
@@ -340,7 +353,7 @@ export function TranscriptList({
           )
         }
       />
-      {currentJump.kind ? (
+      {placed && currentJump.kind ? (
         <JumpButton
           target={currentJump.kind}
           streaming={streaming}
@@ -356,6 +369,7 @@ export function TranscriptList({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  placing: { opacity: 0 },
   content: {
     paddingHorizontal: layout.sideMargin,
     paddingVertical: space.md,

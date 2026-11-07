@@ -4,6 +4,7 @@ import type { TFunction } from "i18next";
 import { memo, type Ref, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import type { BubbleColors } from "@/agents";
 import { MarkdownText } from "@/markdown";
 import { scaledSize, useTextScale } from "@/preferences";
 import { layout, space, type ThemeColors, useThemeColors } from "@/theme";
@@ -298,20 +299,26 @@ const TranscriptRow = memo(function TranscriptRow({
   actions,
   expanded,
   onToggle,
+  userBubble,
 }: {
   item: CondensedItem;
   colors: ThemeColors;
   actions: TranscriptActions;
   expanded: boolean;
   onToggle(id: string): void;
+  userBubble?: BubbleColors;
 }) {
   if (item.kind === "user") {
+    const bubble = userBubble ?? {
+      background: colors.muted,
+      foreground: colors.foreground,
+    };
     return (
       <View style={styles.userTurn} testID={`transcript-user-${item.id}`}>
         <UserImages images={item.images} actions={actions} colors={colors} />
         {item.text ? (
-          <View style={[styles.bubble, { backgroundColor: colors.muted }]}>
-            <UserText text={item.text} color={colors.foreground} />
+          <View style={[styles.bubble, { backgroundColor: bubble.background }]}>
+            <UserText text={item.text} color={bubble.foreground} />
           </View>
         ) : null}
       </View>
@@ -388,6 +395,7 @@ export function TranscriptView({
   footer,
   actions,
   presentation = "work",
+  userBubble,
   sentMessageId,
   ref,
 }: {
@@ -395,6 +403,7 @@ export function TranscriptView({
   footer?: React.ReactElement;
   actions: TranscriptActions;
   presentation?: TranscriptPresentation;
+  userBubble?: BubbleColors;
   sentMessageId?: string;
   ref?: Ref<TranscriptHandle>;
 }) {
@@ -428,9 +437,10 @@ export function TranscriptView({
           actions={rowActions}
           expanded={expanded.has(item.id)}
           onToggle={toggle}
+          userBubble={userBubble}
         />
       ),
-    [presentation, colors, rowActions, expanded, toggle],
+    [presentation, userBubble, colors, rowActions, expanded, toggle],
   );
   return (
     <TranscriptList
