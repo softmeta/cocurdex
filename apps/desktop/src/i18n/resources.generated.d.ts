@@ -1548,7 +1548,7 @@ export default interface Resources {
       connected: "Connected";
       connection: "Connection";
       delegated: "Allow delegated work";
-      delegatedDescription: "Work sessions and teammates delegated by these assistants can also use this account. Other work sessions receive no access.";
+      delegatedDescription: "Work sessions and teammates these assistants delegate can also use this account.";
       description: "Connect your accounts on this host, then choose which assistants may use them. Custom MCP connections remain available in advanced settings.";
       deviceCode: "Authorization code";
       deviceCodeHint: "Enter this code on the GitHub page in your browser. This page updates when you finish.";

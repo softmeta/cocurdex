@@ -1,12 +1,13 @@
 import { parseFilePathCandidate } from "@cocurdex/shared";
 import type { MouseEvent, ReactNode } from "react";
-import { cn, desktopApi } from "@/lib";
+import { cn, desktopApi, openEntity } from "@/lib";
 import {
   extractNodeText,
   resolveAnchorTarget,
   scrollToAnchor,
   slugifyHeading,
 } from "./markdown-anchor";
+import { parseEntityLinkHref } from "./markdown-entity-link";
 import {
   extractInlineCodeText,
   type MarkdownFilePathHandlers,
@@ -338,7 +339,13 @@ export function createMarkdownComponents(
         event.preventDefault();
         scrollToAnchor(anchorTarget as string);
       };
+      const entity = parseEntityLinkHref(href);
       const handleExternalClick = (event: MouseEvent<HTMLAnchorElement>) => {
+        if (entity) {
+          event.preventDefault();
+          openEntity(entity);
+          return;
+        }
         if (!canOpenInSystemBrowser(href)) return;
 
         event.preventDefault();
@@ -354,8 +361,8 @@ export function createMarkdownComponents(
           )}
           href={href}
           onClick={isAnchorLink ? handleAnchorClick : handleExternalClick}
-          rel={isAnchorLink ? undefined : "noreferrer"}
-          target={isAnchorLink ? undefined : "_blank"}
+          rel={isAnchorLink || entity ? undefined : "noreferrer"}
+          target={isAnchorLink || entity ? undefined : "_blank"}
         >
           {children}
         </a>

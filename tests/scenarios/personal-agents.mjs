@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
+import { clearColorScheme, emulateColorScheme } from "./lib/appearance.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import {
   centerOf,
@@ -204,11 +205,16 @@ runScenario("personal-agents", {
       "the assistant answers in its home thread",
       async ({ session }) => {
         const { homeSessionId } = state;
+        const noteBody = "Rest for one minute between sets.";
+        const note = await daemonRequest(session, "note.create", {
+          title: "Workout plan",
+          bodyMarkdown: noteBody,
+        });
         stub.plan = {
           kind: "stream",
           chunks: [
             "Ten push-ups,",
-            ` then stretch.\n\n[Assistant result](${state.outputPath})`,
+            ` then stretch.\n\n[Assistant result](${state.outputPath})\n\n[Workout details](<cocurdex://note/${note.id}>)`,
           ],
         };
         const [composer] = await waitForRole(
@@ -259,7 +265,33 @@ runScenario("personal-agents", {
           "the exchange is stored in the assistant's home thread",
           contents,
         );
-        return {};
+        const bubbleColors = {};
+        for (const theme of ["light", "dark"]) {
+          await emulateColorScheme(session, theme);
+          bubbleColors[theme] = await session.run((reply) => {
+            const article = [...document.querySelectorAll("article")].find(
+              (node) => node.textContent.includes(reply),
+            );
+            return getComputedStyle(article).backgroundColor;
+          }, REPLY);
+          check(
+            bubbleColors[theme] !== "rgba(0, 0, 0, 0)",
+            "the assistant reply has a bubble background",
+            { theme, color: bubbleColors[theme] },
+          );
+        }
+        await clearColorScheme(session);
+        await clickByRole(
+          session,
+          { role: "link", name: "Workout details" },
+          UI_TIMEOUT_MS,
+        );
+        await session.waitUntil(
+          (body) => document.body.textContent.includes(body),
+          noteBody,
+          UI_TIMEOUT_MS,
+        );
+        return { bubbleColors };
       },
     ],
     assistantFilesStep(),
