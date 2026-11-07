@@ -78,6 +78,7 @@ export default interface Resources {
       placeholder: "Search";
     };
     screens: {
+      approve: "Approve on Computer";
       archived: "Archived Sessions";
       assistant: "Assistant";
       computers: "Computers";
@@ -118,6 +119,10 @@ export default interface Resources {
       remove: "Remove This Computer";
       rename: "Rename";
       switch: "Switch to This Computer";
+    };
+    approval: {
+      codeLabel: "Safety Code";
+      description: "{{host}} shows an approval request for this phone. Enter this six-digit code there and choose Allow; the phone connects on its own. The request expires after 10 minutes.";
     };
     detail: {
       address: "Address";

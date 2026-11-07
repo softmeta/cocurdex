@@ -41,6 +41,7 @@
     "placeholder": "搜索"
   },
   "screens": {
+    "approve": "在电脑上批准",
     "archived": "已归档会话",
     "assistant": "助理",
     "computers": "电脑",

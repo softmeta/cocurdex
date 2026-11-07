@@ -46,6 +46,7 @@
     "placeholder": "Search"
   },
   "screens": {
+    "approve": "Approve on Computer",
     "archived": "Archived Sessions",
     "assistant": "Assistant",
     "computers": "Computers",

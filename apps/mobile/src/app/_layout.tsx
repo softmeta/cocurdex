@@ -156,6 +156,16 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="approve/[hostId]"
+            options={{
+              title: t("screens.approve"),
+              presentation: PAIR_PRESENTATION,
+              sheetAllowedDetents: [0.6, 1],
+              sheetGrabberVisible: true,
+              sheetCornerRadius: SHEET_CORNER_RADIUS,
+            }}
+          />
+          <Stack.Screen
             name="pair"
             options={{
               title: t("screens.pair"),

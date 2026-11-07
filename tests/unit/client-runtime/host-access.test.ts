@@ -291,6 +291,32 @@ describe("connectReachableOrigin", () => {
     });
   });
 
+  it("reports that the computer is waiting to approve this device", async () => {
+    installNetwork({
+      [tailnet]: {
+        keys: hostKeys,
+        answer: () => ({ ok: false, reason: "pending" }),
+      },
+    });
+
+    await expect(connectReachableOrigin({ host })).rejects.toMatchObject({
+      reason: "pending",
+    });
+  });
+
+  it("reports a revoked device instead of an unreachable computer", async () => {
+    installNetwork({
+      [tailnet]: {
+        keys: hostKeys,
+        answer: () => ({ ok: false, reason: "rejected" }),
+      },
+    });
+
+    await expect(connectReachableOrigin({ host })).rejects.toMatchObject({
+      reason: "invalid",
+    });
+  });
+
   it("ignores a different computer that now answers on a known address", async () => {
     installNetwork({ "http://10.0.0.5:47820": answering("host-2") });
 
