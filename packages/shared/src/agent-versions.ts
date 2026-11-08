@@ -39,11 +39,21 @@ export type AgentVersionStatus = "ok" | "outdated" | "unknown";
 
 export function parseAgentVersion(output: string | null | undefined) {
   if (!output) return null;
-  const version = /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/y;
+  let start = 0;
+  let end = 0;
+  let parts = 0;
   for (const digits of output.matchAll(/\d+/g)) {
-    version.lastIndex = digits.index;
-    const match = version.exec(output);
-    if (match) return match[0];
+    if (parts > 0 && digits.index === end + 1 && output[end] === ".") {
+      parts += 1;
+    } else {
+      start = digits.index;
+      parts = 1;
+    }
+    end = digits.index + digits[0].length;
+    if (parts === 3) {
+      const prerelease = /^-[0-9A-Za-z.-]+/.exec(output.slice(end));
+      return output.slice(start, end + (prerelease?.[0].length ?? 0));
+    }
   }
   return null;
 }
