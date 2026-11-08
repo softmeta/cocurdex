@@ -60,6 +60,7 @@
         }
       ],
       "expo-secure-store",
+      "./plugins/ios-launch-screen",
       [
         "expo-splash-screen",
         {
