@@ -543,6 +543,10 @@ export class DaemonState {
     return this.database.queuedAgentInputs.listBySessionId(sessionId);
   }
 
+  listQueuedMessages(sessionId: string) {
+    return this.database.queuedAgentInputs.listMessagesBySessionId(sessionId);
+  }
+
   enqueueQueuedAgentInput(input: QueuedAgentInputRecord) {
     return this.database.queuedAgentInputs.enqueue(input);
   }

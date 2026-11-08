@@ -2304,7 +2304,7 @@ export class CocurdexDaemonService {
     const { workspaceId } = input;
     return {
       role,
-      agents: await this.listAgents(),
+      agents: await this.listAgents(input.agentType ?? role?.agentId),
       workspaceSessions: sessions
         .filter((session) => session.workspaceId === workspaceId)
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),

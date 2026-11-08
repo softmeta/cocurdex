@@ -3,6 +3,7 @@ import type {
   AgentThinkingLevel,
   QueuedAgentInputRecord,
 } from "@cocurdex/shared";
+import { mapMessage } from "../mappers";
 import type { SqliteRow } from "../sqlite-types";
 import type { QueuedAgentInputRepository } from "./queued-agent-input-repository";
 
@@ -53,6 +54,27 @@ export function createSqliteQueuedAgentInputRepository(
         )
         .all(sessionId) as SqliteRow[];
       return rows.map(mapQueuedAgentInput);
+    },
+    async listMessagesBySessionId(sessionId) {
+      const rows = database
+        .prepare(
+          `SELECT messages.*,
+                  queued.workspace_root_path AS queued_workspace_root_path,
+                  queued.thinking_level AS queued_thinking_level
+           FROM queued_agent_inputs AS queued
+           JOIN messages ON messages.id = queued.message_id
+                        AND messages.session_id = queued.session_id
+           WHERE queued.session_id = ?
+           ORDER BY queued.sequence ASC`,
+        )
+        .all(sessionId) as SqliteRow[];
+      return rows.map((row) => ({
+        message: mapMessage(row),
+        workspaceRootPath: String(row.queued_workspace_root_path),
+        thinkingLevel: isThinkingLevel(row.queued_thinking_level)
+          ? row.queued_thinking_level
+          : undefined,
+      }));
     },
     async enqueue(input) {
       database

@@ -4,8 +4,7 @@ import type { SessionRuntimeMessage } from "./execution-types";
 type FollowUpStore = Pick<
   DaemonState,
   | "getSession"
-  | "listQueuedAgentInputs"
-  | "listMessagesBySessionId"
+  | "listQueuedMessages"
   | "getMessageById"
   | "updateQueuedUserMessage"
   | "deleteQueuedUserMessage"
@@ -109,36 +108,26 @@ export class SessionFollowUpQueue {
     const loaded = this.inputs.get(sessionId);
     if (loaded) return loaded;
 
-    const [session, inputs, messages] = await Promise.all([
+    const [session, inputs] = await Promise.all([
       this.state.getSession(sessionId),
-      this.state.listQueuedAgentInputs(sessionId),
-      this.state.listMessagesBySessionId(sessionId),
+      this.state.listQueuedMessages(sessionId),
     ]);
     if (!session || session.archivedAt || inputs.length === 0) return;
 
-    const messageById = new Map(
-      messages.map((message) => [message.id, message]),
-    );
-    const queued = inputs.flatMap((input): QueuedFollowUp[] => {
-      const message = messageById.get(input.messageId);
-      if (!message) return [];
-      return [
-        {
-          payload: {
-            session,
-            workspaceRootPath: input.workspaceRootPath,
-            messageId: message.id,
-            createdAt: message.createdAt,
-            content: message.content,
-            attachments: message.attachments,
-            thinkingLevel: input.thinkingLevel,
-            delivery: "start-new-run",
-          },
+    const queued = inputs.map(
+      ({ message, workspaceRootPath, thinkingLevel }): QueuedFollowUp => ({
+        payload: {
+          session,
+          workspaceRootPath,
+          messageId: message.id,
+          createdAt: message.createdAt,
+          content: message.content,
+          attachments: message.attachments,
+          thinkingLevel,
+          delivery: "start-new-run",
         },
-      ];
-    });
-    if (queued.length === 0) return;
-
+      }),
+    );
     this.inputs.set(sessionId, queued);
     return queued;
   }
