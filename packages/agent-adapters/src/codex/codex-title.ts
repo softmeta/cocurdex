@@ -64,9 +64,7 @@ function parseTitleOutput(raw: string): string | null {
     ) {
       return normalizeTitle(parsed.title);
     }
-  } catch {
-    // Older Codex versions may ignore the output schema and return plain text.
-  }
+  } catch {}
 
   return normalizeTitle(raw);
 }

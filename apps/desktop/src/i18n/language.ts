@@ -19,13 +19,9 @@ export type LanguageMode = (typeof languageModes)[number];
 
 export interface LocaleDescriptor {
   locale: SupportedLocale;
-  // Endonym: each language is labelled in its own script so the picker stays
-  // legible regardless of the active UI locale. Intentionally not translated.
   nativeName: string;
 }
 
-// Single source of truth for picker labels. Add new locales here (and to
-// supportedLocales) — the language picker renders straight from this table.
 export const localeDescriptors: Record<SupportedLocale, LocaleDescriptor> = {
   "en-US": { locale: "en-US", nativeName: "English" },
   "zh-CN": { locale: "zh-CN", nativeName: "简体中文" },

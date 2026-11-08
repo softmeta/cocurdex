@@ -152,9 +152,6 @@ export const updateSessionPermissionModeAtom = atom(
   },
 );
 
-// Runtime axes live in the provider snapshot so the composer, logs, and
-// adapter payload describe the same active session configuration. Only the
-// provided fields change.
 export const updateSessionProviderRuntimeAtom = atom(
   null,
   (
@@ -224,8 +221,6 @@ export const updateSessionProviderRuntimeAtom = atom(
       }),
     );
 
-    // TS narrows `updatedSession` to null because the assignment happens in a
-    // callback; the annotation is what callers actually get back.
     return updatedSession as SessionRecord | null;
   },
 );

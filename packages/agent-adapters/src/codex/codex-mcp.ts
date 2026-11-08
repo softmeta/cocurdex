@@ -4,8 +4,6 @@ import { isRecord } from "./codex-app-server-events";
 export const CODEX_MCP_STARTUP_STATUS_METHOD =
   "mcpServer/startupStatus/updated";
 
-// mcpServer/startupStatus/updated params:
-// { threadId, name, status: "starting" | "ready" | ..., error, failureReason }
 export function parseCodexMcpServerStatus(
   params: unknown,
 ): AgentMcpServerRuntime | null {
@@ -22,8 +20,6 @@ export function parseCodexMcpServerStatus(
   return { name, status };
 }
 
-// Codex only pushes per-server transitions, so the session keeps the merged
-// list and replaces the row whose name changed.
 export function mergeCodexMcpServers(
   current: readonly AgentMcpServerRuntime[],
   next: AgentMcpServerRuntime,

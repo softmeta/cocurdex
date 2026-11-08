@@ -73,13 +73,9 @@ export function NoteEditor() {
   if (!activeNoteId) {
     return null;
   }
-  // Folders have no body editor — only notes (files) open in the canvas.
   if (activeNote && activeNote.kind === "folder") {
     return <FolderPlaceholder key={activeNote.id} note={activeNote} />;
   }
-  // While the newly selected note is loading, the previous note's record is
-  // still in the atom. Rendering it would let the user type into the old
-  // document while autosave targets the new note id — render blank instead.
   if (
     !activeNote ||
     activeNote.id !== activeNoteId ||
@@ -141,15 +137,11 @@ function NoteEditorBody({
       }),
       Collaboration.configure({ document: doc, field: NOTE_DOC_FIELD }),
     ],
-    // Required: avoids "can't access DOM" errors under jsdom / non-DOM render.
     immediatelyRender: false,
     onCreate: ({ editor: created }) => {
       const insertMarkdown = (markdown: string) =>
         appendMarkdownToEditor(created, markdown);
-      // Jotai treats bare function values as updaters — wrap so the handler
-      // itself is stored as the atom value.
       setInsertHandler(() => insertMarkdown);
-      // PDF (and others) may have stashed markdown while the body was unmounted.
       flushPendingNoteBodyInsert(
         insertMarkdown,
         () => store.get(pendingNoteBodyInsertAtom),
@@ -163,8 +155,6 @@ function NoteEditorBody({
       attributes: {
         class: "md-body-prose focus:outline-none min-h-full",
       },
-      // Intercept PDF citation links so they open the in-app reader instead of
-      // navigating the Electron shell / browser (or spawning target=_blank).
       handleClick: (_view, _pos, event) => {
         const target = event.target;
         if (!(target instanceof Element)) {
@@ -174,7 +164,6 @@ function NoteEditorBody({
         if (!(anchor instanceof HTMLAnchorElement)) {
           return false;
         }
-        // Prefer the raw attribute; `.href` can resolve oddly for custom schemes.
         const attrHref = anchor.getAttribute("href") ?? "";
         const linkedNoteId = readNoteLinkTarget(attrHref);
         if (linkedNoteId) {
@@ -189,7 +178,6 @@ function NoteEditorBody({
         if (!isPdfCitation) {
           return false;
         }
-        // Always stop default navigation for our private scheme first.
         event.preventDefault();
         const citation = parsePdfNoteCitationHref(
           attrHref.startsWith("cocurdex-pdf:") ? attrHref : resolvedHref,
@@ -205,8 +193,6 @@ function NoteEditorBody({
     },
   });
 
-  // DragHandle freezes its floating coords until the hovered node changes;
-  // hide on editor-chrome resize so it re-anchors after sidebar/panel drags.
   const editorChromeRef = useHideDragHandleOnLayoutShift(editor);
   const [dragHandlePosition] = useState(createDragHandlePosition);
 
@@ -239,12 +225,6 @@ function NoteEditorBody({
               dragHandlePosition.hovered.isTable = node?.type.name === "table";
             }}
           >
-            {/*
-              Match .md-body-prose first-line height (line-height 1.7 × body
-              size) so left-start + items-center optically centers the grip on
-              the first line. pe-* widens the hit target toward the text so the
-              cursor can cross from the block onto the handle without a gap.
-            */}
             <div className="flex h-[calc(1.7*var(--text-body))] cursor-grab items-center pe-2 text-muted-foreground hover:text-foreground active:cursor-grabbing">
               <GripVertical className="size-4" />
             </div>
@@ -266,8 +246,6 @@ interface NoteTitleInputProps {
   editor: Editor | null;
 }
 
-// Title lives outside the Tiptap document as a controlled input, debounced into
-// the note's save queue.
 function NoteTitleInput({ noteId, initialTitle, editor }: NoteTitleInputProps) {
   const { t } = useTranslation("notes");
   const [value, setValue] = useState(initialTitle);
@@ -306,7 +284,6 @@ function FolderPlaceholder({ note }: { note: NoteRecord }) {
   const { t } = useTranslation("notes");
   const [value, setValue] = useState(note.title);
   const commitRename = useCommitFolderRename(note.id);
-  // Escape resets the field and skips the blur commit that would re-apply dirty text.
   const skipCommitRef = useRef(false);
 
   const commit = async () => {

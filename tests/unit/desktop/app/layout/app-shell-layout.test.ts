@@ -15,7 +15,6 @@ describe("app shell layout metrics", () => {
 
   it("caps the session sidebar so a wide window cannot drag it past MAX_LEFT", () => {
     expect(MAX_LEFT).toBeGreaterThan(MIN_LEFT);
-    // Plenty of free space would allow ~thousands of px without the absolute cap.
     expect(clampLeftWidth(800, 2000)).toBe(MAX_LEFT);
     expect(clampLeftWidth(200, 2000)).toBe(200);
   });

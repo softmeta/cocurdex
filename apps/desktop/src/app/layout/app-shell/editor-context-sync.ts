@@ -32,9 +32,6 @@ const editorTabsAtom = atom((get) => ({
   activeFile: get(activeFileAtom),
 }));
 
-// Editor tabs follow the active session, and draft tabs (no session) are
-// scoped per workspace. Coordination lives in app-shell so the sessions,
-// editor, and workspaces features do not import each other.
 export function startEditorContextSync(store: Store) {
   let draftOwnerWorkspaceId: string | null = null;
 

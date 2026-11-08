@@ -12,9 +12,6 @@ describe("shouldOpenDockWhenApplyingLayout", () => {
   });
 
   it("preserves FAB when maximize restores last dock layout", () => {
-    // Regression: exit fullscreen with chat collapsed to FAB, re-enter →
-    // must not force-open a float/pinned rail (pinned lastDock felt like a
-    // surprise pin).
     expect(shouldOpenDockWhenApplyingLayout("float", "maximize")).toBe(false);
     expect(shouldOpenDockWhenApplyingLayout("pinned", "maximize")).toBe(false);
   });

@@ -72,8 +72,6 @@ function ResolvedImageCard({
   );
 }
 
-// Standalone photo cards for a sent user message. Kept outside the text
-// bubble so an image + caption reads as two bubbles, like a typical IM.
 export function ImageAttachmentCards({
   align = "end",
   attachments,

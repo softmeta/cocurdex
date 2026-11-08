@@ -1,15 +1,3 @@
-/**
- * Resolves the renderer's surface color to a plain `#rrggbb` hex string so it
- * can be pushed to the native Electron BrowserWindow (`window:setSurfaceColor`).
- *
- * The window paints exposed regions with its `backgroundColor` during resize,
- * before the renderer repaints. If that color drifts from `--app-bg`, dark
- * mode flashes the light fallback. The catch is that `--app-bg` is authored in
- * `oklch()`, and Chromium serializes a computed `oklch()` background-color back
- * as `oklch(...)` — not `rgb()`. Electron's `setBackgroundColor` only accepts
- * `#rrggbb`, so every CSS Color 4 form the browser may emit must be converted.
- */
-
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
@@ -28,13 +16,11 @@ function rgbBytesToHex(r: number, g: number, b: number): string {
   return `#${byte(r)}${byte(g)}${byte(b)}`;
 }
 
-/** Linear-light sRGB component -> gamma-encoded sRGB in [0, 1]. */
 function linearToSrgb(value: number): number {
   const v = clamp01(value);
   return v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055;
 }
 
-/** OKLab -> gamma-encoded sRGB hex (CSS Color 4 reference matrices). */
 function oklabToHex(L: number, a: number, b: number): string {
   const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
   const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
@@ -53,7 +39,6 @@ function oklabToHex(L: number, a: number, b: number): string {
   )}${channelToHex(linearToSrgb(blue))}`;
 }
 
-/** Parses an `<alpha-value>`-free number, accepting an optional `%` suffix. */
 function parseComponent(token: string, percentBase: number): number {
   const trimmed = token.trim();
   if (trimmed.endsWith("%")) {
@@ -62,9 +47,7 @@ function parseComponent(token: string, percentBase: number): number {
   return Number.parseFloat(trimmed);
 }
 
-/** Splits the body of a `fn(...)` color into its components, ignoring alpha. */
 function colorComponents(body: string): string[] {
-  // Both comma (`rgb(1, 2, 3)`) and modern space (`rgb(1 2 3 / 1)`) syntaxes.
   return body
     .replace(/\/.*$/, "")
     .split(/[,\s]+/)
@@ -82,11 +65,6 @@ function expandHex(value: string): string {
   return value;
 }
 
-/**
- * Normalizes any CSS Color 4 string Chromium may report for a computed
- * background-color into `#rrggbb`. Returns `null` when the input cannot be
- * parsed, signalling the caller to leave the native surface color untouched.
- */
 export function normalizeCssColorToHex(color: string): string | null {
   const input = color.trim();
   if (!input) {
@@ -148,11 +126,6 @@ export function normalizeCssColorToHex(color: string): string | null {
   return null;
 }
 
-/**
- * Reads a CSS custom property off a hidden probe element and returns its
- * resolved color as `#rrggbb`. Relies on the browser to expand `var()` chains
- * and any color-space conversion the property fallback performs.
- */
 export function resolveCssVariableColorToHex(name: string): string | null {
   const probe = document.createElement("div");
   probe.style.position = "fixed";

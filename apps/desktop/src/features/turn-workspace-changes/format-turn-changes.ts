@@ -26,7 +26,6 @@ export function fileOperationLabelKey(
   }
 }
 
-/** Git 风格单字母，和 Git tab 的增删改配色一致。 */
 export function fileOperationMarker(operation: TurnFileChange["operation"]) {
   if (operation === "add") {
     return { className: "text-editor-git-added", letter: "A" };

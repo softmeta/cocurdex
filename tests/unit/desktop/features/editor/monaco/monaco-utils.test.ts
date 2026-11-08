@@ -62,9 +62,6 @@ describe("revealPreviewRange", () => {
   });
 
   it("reports an unlaid-out viewport as unrevealed", () => {
-    // Opening the panel mounts Monaco before its container has a height;
-    // Monaco floors that measurement, so the range is parked at the top edge
-    // and the caller has to replay the reveal once the layout lands.
     const { editor, revealLinesInCenter } = createEditorStub(5000, 5);
     expect(revealPreviewRange(editor, 1544, 1572)).toBeNull();
     expect(revealLinesInCenter).toHaveBeenCalledWith(1544, 1572);

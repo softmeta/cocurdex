@@ -115,10 +115,7 @@ interface ChatComposerProps {
     availableModes: AgentSessionMode[];
     currentModeId: string;
   } | null;
-  // Left-cluster slot before agent/runtime controls (e.g. workspace name).
   footerLeading?: ReactNode;
-  // Right-aligned footer slot for chat mode's context meter, mirroring agent
-  // mode's built-in ContextWindowIndicator on the same edge.
   footerTrailing?: ReactNode;
   canSubmit?: boolean;
   runtimeControls?: boolean;
@@ -222,9 +219,6 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       attachment && hasExternalAttachment
         ? [attachment, ...mentions, ...managedAttachments]
         : [...mentions, ...managedAttachments];
-    // Context selections added to chat render inline as mentions inside the
-    // editor, so only the external attachment (e.g. a file-tree add) needs a
-    // chip. Rendering mentions as chips too would duplicate them.
     const contextAttachments: MessageAttachment[] =
       attachment && hasExternalAttachment ? [attachment] : [];
 
@@ -504,8 +498,6 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
         />
       ) : null;
 
-    // Collaboration and thinking are runtime axes, so they live beside model
-    // and permission instead of inside the add-attachment menu.
     const runtimeMenuExtras = isAgentMode ? (
       <>
         {inSessionAgentSubmenu}

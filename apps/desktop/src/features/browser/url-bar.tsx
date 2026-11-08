@@ -19,7 +19,6 @@ import {
   isBrowserStreamingAtom,
 } from "./browser-store";
 
-// Local dev servers rarely serve TLS; everything else on today's web does.
 function withDefaultScheme(url: string): string {
   if (
     url.startsWith("http://") ||

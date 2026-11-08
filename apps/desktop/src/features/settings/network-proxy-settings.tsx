@@ -30,8 +30,6 @@ function SettingRow({
 }: {
   children?: ReactNode;
   description?: string;
-  // Full-width slot under the row, for output the control produces (e.g. a
-  // connectivity result) that would not fit beside the title.
   footer?: ReactNode;
   title: string;
   vertical?: boolean;
@@ -103,7 +101,6 @@ function ProxyConnectivityRow({
               </Text>
             </div>
             {formatProxyEgressDetail(result) ? (
-              // Indent past the icon so the detail line hangs under the text.
               <Text className="ps-5" size="meta" tone="muted">
                 {formatProxyEgressDetail(result)}
               </Text>
@@ -160,9 +157,6 @@ export function NetworkProxySettingsPanel() {
     value: mode,
   }));
 
-  // Never write the server response back into local state: a save started on
-  // blur resolves after the user has already typed into the next field, and
-  // echoing the stale snapshot back would wipe that input.
   const persist = async (next: NetworkProxySettings) => {
     setSettings(next);
     const revision = ++saveRevisionRef.current;

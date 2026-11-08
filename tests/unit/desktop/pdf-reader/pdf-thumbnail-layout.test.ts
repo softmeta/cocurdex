@@ -18,7 +18,6 @@ describe("pdfThumbnailImageHeight", () => {
     const narrow = pdfThumbnailImageHeight(100);
     const wide = pdfThumbnailImageHeight(200);
     expect(wide).toBeGreaterThan(narrow);
-    // Frame width is content minus button padding; ratio follows that.
     expect(wide).toBe(pdfThumbnailImageHeight(200));
     expect(wide - narrow).toBeGreaterThan(50);
   });
@@ -32,7 +31,6 @@ describe("pdfThumbnailRenderEdge", () => {
   });
 
   it("uses the longer frame edge (portrait height)", () => {
-    // content 232, frame w=224, h≈302 → edge 302 * dpr1 → bucket 312
     const edge = pdfThumbnailRenderEdge(256, 1);
     expect(edge).toBeGreaterThanOrEqual(288);
   });
@@ -43,7 +41,6 @@ describe("estimatePdfThumbnailRowHeight", () => {
     const narrow = estimatePdfThumbnailRowHeight(200);
     const wide = estimatePdfThumbnailRowHeight(400);
     expect(wide).toBeGreaterThan(narrow);
-    // Image frame alone should account for most of the growth.
     const narrowImg = pdfThumbnailImageHeight(pdfThumbnailContentWidth(200));
     const wideImg = pdfThumbnailImageHeight(pdfThumbnailContentWidth(400));
     expect(wide - narrow).toBeGreaterThanOrEqual(wideImg - narrowImg - 1);

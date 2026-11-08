@@ -12,12 +12,6 @@ import {
   setFileTreeExpandedPaths,
 } from "./file-tree-expansion";
 
-// Pierre's tree model is an external, imperative store (not React state):
-// `useFileTree` reads `paths` only at init, and selection/expansion are driven
-// by method calls. Pushing React data into it is therefore a genuine
-// external-system sync — the one sanctioned `useEffect` seam — so it lives in
-// these custom hooks instead of the component body.
-
 type FileTreeModel = UseFileTreeResult["model"];
 
 function getAncestorDirectoryPaths(filePath: string): string[] {
@@ -27,18 +21,12 @@ function getAncestorDirectoryPaths(filePath: string): string[] {
   );
 }
 
-// Mirror the active workspace's file paths into the tree model. Clears to empty
-// when there is no workspace, and waits out the loading state so a stale listing
-// is never flashed. `resetPaths` rebuilds the store and drops expansion unless
-// we re-supply it — restore live (path refresh) or session-cached (remount).
 export function useSyncTreePaths(
   model: FileTreeModel,
   rootPath: string | null,
   filePaths: string[],
   isLoading: boolean,
 ) {
-  // Paths present on the model before this effect's last reset, so a refresh
-  // can snapshot expansion from the live tree instead of only the session cache.
   const knownPathsRef = useRef<readonly string[]>([]);
 
   useEffect(() => {
@@ -70,8 +58,6 @@ export function useSyncTreePaths(
   }, [model, rootPath, filePaths, isLoading]);
 }
 
-// Keep the session expansion cache in lockstep with user expand/collapse (and
-// flush once more on unmount so a tab switch still remembers the last shape).
 export function usePersistTreeExpansion(
   model: FileTreeModel,
   rootPath: string | null,
@@ -99,8 +85,6 @@ export function usePersistTreeExpansion(
   }, [model, rootPath, filePaths, isLoading]);
 }
 
-// Drive Pierre's hide-non-matches filter from an external search field. Re-applies
-// after path rebuilds: `resetPaths` does not keep a prior `setSearch` filter.
 export function useSyncTreeSearch(
   model: FileTreeModel,
   rootPath: string | null,
@@ -118,16 +102,6 @@ export function useSyncTreeSearch(
   }, [model, rootPath, filePaths, isLoading, searchQuery]);
 }
 
-// Mirror the externally-driven active file into the tree's selection so exactly
-// its row is highlighted (even when opened via a tab or code navigation), and
-// cleared once every tab is closed.
-//
-// Depends on `filePaths` so it re-applies after `useSyncTreePaths` rebuilds the
-// model's items — replacing the old revision-counter relay between the two
-// effects. The live selection is read through a ref so the effect does NOT
-// depend on it: collapsing a directory is a Pierre selection change, and
-// re-running on it would forcibly re-expand the active file's ancestors, making
-// folders impossible to collapse.
 export function useSyncTreeSelection(
   model: FileTreeModel,
   rootPath: string | null,
@@ -141,23 +115,18 @@ export function useSyncTreeSelection(
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `filePaths` is an intentional re-run trigger — selection must re-apply after useSyncTreePaths rebuilds the model's items
   useEffect(() => {
-    // Wait until the paths sync has run at least once. With a root that means
-    // waiting out loading; with no root the model was already reset to empty.
     if (rootPath && isLoading) {
       return;
     }
 
     const currentSelection = selectedPathsRef.current;
 
-    // Relative tree key for the active file, or null when nothing is open or
-    // the active file lives outside this workspace root.
     const prefix = rootPath ? `${rootPath}/` : null;
     const targetPath =
       activeFile && prefix && activeFile.startsWith(prefix)
         ? activeFile.slice(prefix.length)
         : null;
 
-    // Already in the desired single/empty selection state — nothing to do.
     const alreadySynced =
       targetPath === null
         ? currentSelection.length === 0
@@ -166,8 +135,6 @@ export function useSyncTreeSelection(
       return;
     }
 
-    // `item.select()` is additive, so stale rows linger unless deselected.
-    // This also clears the highlight when targetPath is null (all tabs closed).
     for (const path of currentSelection) {
       if (path === targetPath) {
         continue;
@@ -197,10 +164,6 @@ export function useSyncTreeSelection(
   }, [model, rootPath, activeFile, filePaths, isLoading]);
 }
 
-// Push working-tree git badges into Pierre's built-in status lane. Status is
-// independent of the path listing (folders with changed descendants light up
-// even when a deleted path is not in the tree). Reloads on files-changed and
-// git-state-changed so external edits stay in sync without a loading flash.
 export function useSyncTreeGitStatus(
   model: FileTreeModel,
   rootPath: string | null,
@@ -215,7 +178,6 @@ export function useSyncTreeGitStatus(
     let requestSeq = 0;
 
     const applyEntries = (entries: WorkspaceGitStatusEntry[]) => {
-      // Paths are already workspace-relative and match file-tree identity.
       model.setGitStatus(entries);
     };
 

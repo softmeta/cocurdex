@@ -61,11 +61,6 @@ function resolveCurrentPrefersDark() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-/**
- * Re-apply the stored color preset for the given resolved light/dark surface.
- * Must run after `data-theme` is updated so chrome tokens and
- * window surface colors match the active mode.
- */
 function syncThemePresetForResolvedTheme(
   themePreset: AppearanceSettings["themePreset"],
   resolvedTheme: "light" | "dark",
@@ -83,7 +78,6 @@ function applyResolvedTheme(resolvedTheme: "light" | "dark") {
   document.documentElement.dataset.theme = resolvedTheme;
   document.documentElement.style.colorScheme = resolvedTheme;
 
-  // Light/dark flip must re-bind the active preset's matching token map.
   const { themePreset } = getStoredAppearanceSettings();
   syncThemePresetForResolvedTheme(themePreset, resolvedTheme);
 }
@@ -129,7 +123,6 @@ export function syncAppearanceSettings(appearanceSettings: AppearanceSettings) {
   root.style.setProperty("--font-mono", codeFont);
   root.style.setProperty("--app-ui-font-size", `${uiFontSize}px`);
   root.style.setProperty("--app-code-font-size", `${codeFontSize}px`);
-  // Drop legacy reduce-transparency flag if present from older builds.
   delete root.dataset.reduceTransparency;
 
   window.localStorage.setItem(
@@ -137,7 +130,6 @@ export function syncAppearanceSettings(appearanceSettings: AppearanceSettings) {
     JSON.stringify(normalized),
   );
 
-  // Preset may change while mode stays put (or vice versa after cold start).
   const themeMode = getStoredThemeMode();
   const resolvedTheme = resolveThemeMode(
     themeMode,
@@ -156,8 +148,6 @@ export function syncInitialPreferences() {
 
   syncLanguageMode(getStoredLanguageMode(), getSystemLocale());
   persistNotificationSettings(getStoredNotificationSettings());
-  // Mode first (sets data-theme), then appearance (fonts +
-  // rebinds the preset token map for the resolved light/dark surface).
   syncThemeMode(themeMode, prefersDark);
   syncAppearanceSettings(getStoredAppearanceSettings());
   if (import.meta.env.DEV) installThemeDebugHook();

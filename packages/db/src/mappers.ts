@@ -134,9 +134,6 @@ export function mapToolCall(row: SqliteRow): AgentToolCallRecord {
   };
 }
 
-// Summary variant that leaves rawOutput as `undefined` so callers can detect
-// the field hasn't been loaded yet and fetch it lazily. Distinct from `null`,
-// which means "loaded and the column was empty".
 export function mapToolCallSummary(row: SqliteRow): AgentToolCallRecord {
   return {
     id: String(row.id),

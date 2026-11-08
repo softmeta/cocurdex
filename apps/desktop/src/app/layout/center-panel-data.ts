@@ -21,9 +21,6 @@ import {
   measureSessionSwitch,
 } from "@/lib";
 
-// Records a perf mark + measurement whenever the active session (or its loaded
-// transcript counts) changes. Pure telemetry against the performance API — no
-// render-derivable value, so it lives in an effect-bearing custom hook.
 export function useSessionSwitchMetrics(
   activeSession: SessionRecord | undefined,
   activeSessionDataLoaded: boolean,
@@ -49,9 +46,6 @@ export function useSessionSwitchMetrics(
   }, [activeSession, activeSessionDataLoaded, messageCount, toolCallCount]);
 }
 
-// Loads the active session's messages and tool calls from the main process the
-// first time the session is selected, hydrating the chat stores. Data fetch
-// with cancellation — no fetching library here, so an effect is the seam.
 export function useActiveSessionTranscript(
   activeSession: SessionRecord | undefined,
   messageCount: number,

@@ -9,7 +9,6 @@ function scrollIntoViewIfNeeded(node: HTMLButtonElement | null) {
 }
 
 export interface SlashCommandMenuHandle {
-  // Returns true if the key was handled (so Suggestion swallows it).
   onKeyDown: (event: KeyboardEvent) => boolean;
 }
 
@@ -18,16 +17,12 @@ interface SlashCommandMenuProps {
   onSelect: (item: SlashCommandItem) => void;
 }
 
-// Floating list rendered by the Suggestion plugin. Owns arrow-key navigation
-// and Enter selection; positioning is handled by the caller via Floating UI.
 export const SlashCommandMenu = forwardRef<
   SlashCommandMenuHandle,
   SlashCommandMenuProps
 >(({ items, onSelect }, ref) => {
   const { t } = useTranslation("notes");
   const [selected, setSelected] = useState(0);
-  // Clamp so a shrinking filtered set (as the user keeps typing) never leaves
-  // the highlight out of range — avoids a reset effect that depends on `items`.
   const activeIndex = items.length > 0 ? selected % items.length : 0;
 
   useImperativeHandle(ref, () => ({

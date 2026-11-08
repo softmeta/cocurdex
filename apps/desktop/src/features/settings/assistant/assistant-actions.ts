@@ -4,8 +4,6 @@ import { requestChatDockVisibility } from "@/app/layout/chat-dock-geometry";
 import { selectSessionAtom, upsertSessionAtom } from "@/features/sessions";
 import { desktopApi } from "@/lib";
 
-// Binds the workspace's assistant session to the focused chat pane and reveals
-// the shared chat dock, so callers can follow up with a kickoff message.
 function assistantSessionAtom(
   load: (workspaceId: string) => Promise<SessionRecord>,
 ) {

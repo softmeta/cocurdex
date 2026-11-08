@@ -80,9 +80,6 @@ export function parseWorkspaceActionsJson(
   }
 }
 
-// Proposed scripts run unattended in a login shell on every worktree create /
-// recycle, so the review UI flags commands that warrant a closer look. This is
-// a review aid, not a sandbox — matched labels are shown to the user verbatim.
 const RISKY_SCRIPT_PATTERNS: ReadonlyArray<{
   pattern: RegExp;
   label: string;

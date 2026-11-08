@@ -43,11 +43,6 @@ const buttonVariants = cva(
 
 type ButtonProps = React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
-    /**
-     * When provided, replaces the rendered <button> element. Accepts a React
-     * element to compose with, or a render function. Base UI `useRender`
-     * equivalent of Radix's `asChild`.
-     */
     render?: useRender.RenderProp;
   };
 
@@ -56,11 +51,6 @@ function Button({
   variant = "default",
   size = "default",
   render,
-  // Base UI's useRender lets the render element's own props win over the passed
-  // props, so hardcoding type="button" on the default element silently dropped
-  // any caller-supplied type — a `type="submit"` Button never submitted its
-  // form. Apply the default on the element itself instead, and only when the
-  // caller did not provide a render element (type is meaningless on <a>).
   type = "button",
   ...props
 }: ButtonProps) {

@@ -67,8 +67,6 @@ describe("estimateEntryHeight", () => {
   it("reserves pierre's collapsed layout instead of the whole file", () => {
     const entry = entryFor(numbered(100), withChanges(100, [50]));
 
-    // One hunk of 10 rendered lines, a 46-line leading gap and 45 trailing
-    // lines, both collapsed into a single separator row.
     expect(estimated(entry)).toBe(
       CARD_CHROME + BODY_PADDING + SEPARATOR + 10 * LINE + SEPARATOR,
     );
@@ -97,8 +95,6 @@ describe("estimateEntryHeight", () => {
   it("keeps a one-line gap as a rendered line instead of a separator", () => {
     const entry = entryFor(numbered(10), withChanges(10, [5]));
 
-    // Neither file ends with a newline, so pierre closes the hunk with a
-    // marker row after its trailing context.
     expect(estimated(entry)).toBe(
       CARD_CHROME + BODY_PADDING + LINE + 10 * LINE + LINE,
     );

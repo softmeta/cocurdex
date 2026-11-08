@@ -15,7 +15,6 @@ export interface CodexClientLease {
   client: CodexAppServerClient;
   subscribeThread(threadId: string, subscriber: CodexThreadSubscriber): void;
   unsubscribeThread(threadId: string): void;
-  // Global (thread-less) notifications such as account/login/completed.
   onGlobalNotification(
     listener: (notification: CodexAppServerNotification) => void,
   ): () => void;
@@ -29,9 +28,6 @@ interface PooledClient {
   globalListeners: Set<(notification: CodexAppServerNotification) => void>;
 }
 
-// All sessions, model listing, and account calls share the native Codex
-// app-server process; events multiplex over one stdio pipe and are routed back
-// by params.threadId.
 let pooledClient: PooledClient | null = null;
 
 function getThreadId(params: unknown) {
@@ -77,8 +73,6 @@ function createPooledClient() {
       return subscriber.onServerRequest(request);
     },
     onError(error) {
-      // Process-level failure (spawn error, crash): the shared client is
-      // gone, so drop the pool entry and fan the error out to every session.
       if (pooledClient === entry) {
         pooledClient = null;
       }

@@ -2,9 +2,6 @@ import type { Monaco } from "@monaco-editor/react";
 import { clampRgb, formatHex8, parse } from "culori";
 import type { HighlighterGeneric } from "shiki";
 
-// Shiki theme ids that supply the token color palette. Editor chrome (background,
-// gutter, selection, line numbers) is overridden from the app CSS variables in
-// `applyEditorTheme`, so these only need to provide pleasant token colors.
 export const EDITOR_SHIKI_THEMES = {
   dark: "github-dark-default",
   light: "github-light-default",
@@ -64,8 +61,6 @@ function getEditorThemeColor(name: string, fallback: string) {
   return color ? formatHex8(clampRgb(color)) : fallback;
 }
 
-// Editor chrome colors sourced from the app appearance CSS variables so the
-// editor surface matches the surrounding UI regardless of the Shiki token theme.
 function buildEditorChromeColors(isDark: boolean): Record<string, string> {
   const fallback = isDark
     ? fallbackEditorColors.dark
@@ -119,8 +114,6 @@ function buildEditorChromeColors(isDark: boolean): Record<string, string> {
   };
 }
 
-// Injected by `monaco-loader` after its dynamic `import("@shikijs/monaco")` so
-// this module never statically pulls that package into the main chunk.
 type TextmateThemeToMonacoTheme =
   typeof import("@shikijs/monaco").textmateThemeToMonacoTheme;
 
@@ -130,9 +123,6 @@ export function setTextmateThemeToMonacoTheme(fn: TextmateThemeToMonacoTheme) {
   textmateThemeToMonacoTheme = fn;
 }
 
-// Re-defines a Shiki-registered Monaco theme, keeping its token rules but
-// overlaying app-matched chrome colors. Must be called after `shikiToMonaco`
-// has registered the theme so `highlighter.getTheme` resolves it.
 export function applyEditorTheme(
   monaco: Monaco,
   // biome-ignore lint/suspicious/noExplicitAny: Shiki's generic highlighter type
@@ -146,10 +136,6 @@ export function applyEditorTheme(
   }
 
   const isDark = themeId === EDITOR_SHIKI_THEMES.dark;
-  // `@shikijs/monaco`'s `MonacoTheme` extends `monaco-editor-core`'s
-  // `IStandaloneThemeData`, which we don't install — its `colors` field is
-  // unresolved here. Re-type against the installed monaco-editor so the spread
-  // and `colors` overlay typecheck.
   const baseTheme = textmateThemeToMonacoTheme(
     highlighter.getTheme(themeId),
   ) as Parameters<Monaco["editor"]["defineTheme"]>[1];

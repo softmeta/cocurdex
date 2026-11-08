@@ -16,9 +16,6 @@ interface KnownRoots {
   realRoots: string[];
 }
 
-// Roots a client may scan (browse, search): registered workspace roots plus
-// session and git worktrees. The list is cached briefly; callers that mutate
-// workspaces or worktrees should invalidate it.
 export function createWorkspaceScanPolicy(state: DaemonState) {
   let cacheGeneration = 0;
   let knownRootsCache: { expiresAt: number; roots: KnownRoots } | null = null;
@@ -97,9 +94,6 @@ export function createWorkspaceScanPolicy(state: DaemonState) {
       const { roots } = await knownRoots();
       return isKnownWorkspaceScanRoot(rootPath, roots, homedir());
     },
-    // File-level access (readText/exists): the candidate may be any path
-    // inside an allowed root, not a root itself. Both sides are canonicalized
-    // so a symlink inside a workspace cannot escape the allowlist.
     async canAccessFile(filePath: string) {
       const { realRoots } = await knownRoots();
       const resolved = await realpath(filePath).catch(() =>

@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Cocurdex CLI launcher. Packaged under Contents/Resources/cli/ and typically
-# symlinked into ~/.local/bin. Runs the bundled cli.mjs via Electron as Node.
 set -euo pipefail
 
 SOURCE="${BASH_SOURCE[0]}"
@@ -27,7 +25,6 @@ resolve_electron() {
     return 0
   fi
 
-  # Packaged macOS: Contents/Resources/cli -> Contents/MacOS/Cocurdex
   local candidate
   for candidate in \
     "$CLI_DIR/../../MacOS/Cocurdex" \
@@ -43,7 +40,6 @@ resolve_electron() {
     fi
   done
 
-  # Dev: electron package under apps/desktop (or monorepo root hoisting)
   for candidate in \
     "$CLI_DIR/../../node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" \
     "$CLI_DIR/../../node_modules/electron/dist/electron" \

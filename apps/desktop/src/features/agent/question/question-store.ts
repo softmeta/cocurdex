@@ -22,9 +22,6 @@ function upsertQuestion(
   );
 }
 
-// Same reconciliation as hydratePendingPermissionsAtom: upsert the daemon's
-// pending questions, drop locally-pending entries it no longer holds, and
-// preserve answered records for transcript history.
 export const hydratePendingQuestionsAtom = atom(
   null,
   (get, set, pending: AgentQuestionRequestRecord[]) => {

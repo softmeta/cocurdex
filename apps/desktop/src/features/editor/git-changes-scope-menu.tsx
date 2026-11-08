@@ -94,8 +94,6 @@ export function GitChangesScopeMenu({
           value={modeValue}
           onValueChange={(mode) => {
             if (mode === "branch") {
-              // Parent resolves source/target from refs; placeholder
-              // values are replaced immediately on selection.
               onScopeChange({
                 mode: "branch",
                 source: "",
@@ -115,7 +113,6 @@ export function GitChangesScopeMenu({
             label: t(`git.scope.${mode}`),
           }))}
         />
-        {/* Sub sits outside the radio list so Base UI treats it as a sibling. */}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <span className="truncate">{t("git.scope.commit")}</span>

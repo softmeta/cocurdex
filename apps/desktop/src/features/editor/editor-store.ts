@@ -29,22 +29,12 @@ export interface EditorPreviewLocation {
 
 export const openFilesAtom = atom<string[]>([]);
 export const activeFileAtom = atom<string | null>(null);
-// The single transient "preview" tab (Cursor-style): a single-click in the
-// file tree opens a file here and reuses this one slot, so browsing files does
-// not pile up tabs. A double-click (or any permanent open) promotes it.
 export const previewFileAtom = atom<string | null>(null);
 export const previewLocationsByFileAtom = atom<
   Record<string, EditorPreviewLocation | null>
 >({});
 export const markdownPreviewModeAtom = atom(false);
-// Monotonic counter bumped whenever a file is explicitly opened (preview or
-// permanent). Layout components observe it to reveal the editor: open the right
-// panel and switch it to the editor view. Session restore writes openFilesAtom
-// directly and intentionally does NOT bump this, so switching sessions never
-// pops the panel open on its own.
 export const editorRevealNonceAtom = atom(0);
-// Right panel open/closed preference. Survives app restarts (localStorage) and
-// matches the shell width keys under cocurdex.shell.*.
 export const EDITOR_PANEL_OPEN_STORAGE_KEY = "cocurdex.shell.rightPanelOpen";
 export const editorPanelOpenAtom = atomWithStorage(
   EDITOR_PANEL_OPEN_STORAGE_KEY,
@@ -52,19 +42,10 @@ export const editorPanelOpenAtom = atomWithStorage(
   undefined,
   { getOnInit: true },
 );
-// Whether the editor panel's file tree (explorer) is shown. Defaults open so
-// landing on the explorer tab always has a place to pick files. Shared so
-// opening a file from a chat path link can collapse it in the click handler —
-// the link already pointed at the file, so the explorer would only steal space.
-// Persists across the panel's collapse/remount, like the view-selection atoms.
 export const fileTreeVisibleAtom = atom(true);
 export const editorViewsBySessionAtom = atom<Record<string, EditorViewRecord>>(
   {},
 );
-// In-memory draft editor tabs keyed by workspace. Used while sessionId is null
-// (new-session surface). Same-workspace drafts inherit tabs; cross-workspace
-// switches restore the target workspace's draft (or empty) instead of leaking
-// the previous workspace's open files. Not persisted — session views still are.
 export interface EditorDraftView {
   openFiles: string[];
   activeFile: string | null;
@@ -74,10 +55,6 @@ export interface EditorDraftView {
 export const editorDraftViewsByWorkspaceAtom = atom<
   Record<string, EditorDraftView>
 >({});
-// True while the user is actively dragging the right editor panel's outer
-// divider (owned by the app shell). The git tab reads this so it only
-// auto-switches between list and tree on a deliberate resize, not when the
-// panel widens from maximize, fullscreen, or a window resize.
 export const rightPanelResizingAtom = atom(false);
 
 function collectSelectionsFromPreviewLocations(
@@ -128,7 +105,6 @@ export const openFileAtom = atom(null, (get, set, filePath: string) => {
     set(openFilesAtom, [...current, filePath]);
   }
 
-  // A permanent open promotes the file out of the transient preview slot.
   if (get(previewFileAtom) === filePath) {
     set(previewFileAtom, null);
   }
@@ -144,13 +120,10 @@ export const openFileAtom = atom(null, (get, set, filePath: string) => {
   set(bumpRightPanelRevealAtom, "editor");
 });
 
-// Single-click in the file tree: open the file in the transient preview slot,
-// reusing (replacing) whatever file currently occupies it.
 export const openPreviewFileAtom = atom(null, (get, set, filePath: string) => {
   const current = get(openFilesAtom);
   const prevPreview = get(previewFileAtom);
 
-  // Already open as a permanent tab — just focus it, leave preview untouched.
   if (current.includes(filePath) && filePath !== prevPreview) {
     set(markdownPreviewModeAtom, false);
     set(activeFileAtom, filePath);
@@ -221,15 +194,10 @@ export const bootstrapEditorViewsAtom = atom(
 export const restoreEditorViewForSessionAtom = atom(
   null,
   (get, set, sessionId: string | null) => {
-    // Draft (null session) restore is workspace-scoped and lives in
-    // restoreEditorDraftForWorkspaceAtom — coordinated by app-shell so
-    // same-workspace new chats still inherit tabs while cross-workspace
-    // switches do not leak the previous workspace's open files.
     if (!sessionId) {
       return;
     }
 
-    // Restored views always materialize as permanent tabs; drop any preview.
     set(previewFileAtom, null);
 
     const view = get(editorViewsBySessionAtom)[sessionId];
@@ -250,7 +218,6 @@ export const restoreEditorViewForSessionAtom = atom(
   },
 );
 
-/** Snapshot the current open tabs into the draft bucket for a workspace. */
 export const saveEditorDraftForWorkspaceAtom = atom(
   null,
   (get, set, workspaceId: string) => {
@@ -267,10 +234,6 @@ export const saveEditorDraftForWorkspaceAtom = atom(
   },
 );
 
-/**
- * Restore draft tabs for a workspace (or clear when workspaceId is null /
- * the workspace has no draft). Used when sessionId is null.
- */
 export const restoreEditorDraftForWorkspaceAtom = atom(
   null,
   (get, set, workspaceId: string | null) => {

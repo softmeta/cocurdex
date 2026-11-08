@@ -1,8 +1,3 @@
-// Pure helper for the breadcrumb directory popover. The workspace exposes a
-// flat list of file/directory entries; clicking a breadcrumb segment opens a
-// @pierre/trees file tree rooted at that directory, which expects a flat list
-// of paths *relative to that directory*.
-
 export interface SubtreeEntry {
   kind?: "directory" | "file";
   relativePath: string;
@@ -41,16 +36,6 @@ export function resolveBreadcrumbSelectedFilePath(
   return `${rootPath}/${dirPrefix}${selectedPath}`;
 }
 
-/**
- * Crop a flat entry list down to the file paths that live under `dirPath`,
- * rebased so they are relative to `dirPath`.
- *
- * `dirPath` is a workspace-relative directory ("" = workspace root, "src/db" =
- * a nested directory). Directory records are dropped because @pierre/trees
- * infers directory nodes from the file paths themselves — passing explicit
- * directory entries would duplicate them (mirrors file-tree.tsx's
- * `entriesToPaths`).
- */
 export function getSubtreePaths(
   entries: SubtreeEntry[],
   dirPath: string,

@@ -5,8 +5,6 @@ import {
 } from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
 
-// Mode ids come from the agent, so the key cannot be a literal. Known ids get
-// curated copy; anything else falls back to the name the agent reported.
 export function useSessionModeLabels() {
   const { t } = useTranslation("sessions");
 

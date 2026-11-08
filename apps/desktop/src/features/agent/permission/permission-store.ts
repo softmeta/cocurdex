@@ -25,10 +25,6 @@ function upsertPermission(
 
 export const permissionsBySessionAtom = atom<PermissionsBySession>({});
 
-// Reconciles with the daemon's authoritative pending list after an event
-// replay gap: pending records are upserted, locally-pending records the
-// daemon no longer holds were resolved during the gap and are dropped, and
-// resolved records are preserved for transcript history.
 export const hydratePendingPermissionsAtom = atom(
   null,
   (get, set, pending: AgentPermissionRequestRecord[]) => {

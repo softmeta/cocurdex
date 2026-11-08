@@ -7,9 +7,6 @@ async function unavailable(): Promise<never> {
   throw new Error("Independent chat windows require the desktop app");
 }
 
-// In environments without the Electron bridge the whole app shares one window,
-// so every surface resolves locally: dispatched intents queue in-memory and are
-// consumed by this window's own intent listeners.
 const intents = new Map<string, ChatWindowIntentRequest>();
 const intentListeners = new Set<() => void>();
 

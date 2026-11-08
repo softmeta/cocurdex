@@ -7,9 +7,6 @@ import type { TerminalDaemonEvent } from "./terminal";
 import type { WorkspaceSearchDaemonEvent } from "./workspace-search";
 import type { WorkspaceWatchDaemonEvent } from "./workspace-watch";
 
-// `agent` marks agent/session runtime state (sessions, pending interactions,
-// transcripts) as unsynchronized; emitted synthetically on event-replay gaps
-// so clients resync from authoritative snapshots.
 export const cocurdexDataAreas = [
   "notes",
   "decks",
@@ -31,9 +28,6 @@ export interface CocurdexDataChangedEvent {
   areas: CocurdexDataArea[];
 }
 
-// Journal position of a delivered daemon event. Clients compare it against a
-// snapshot's eventSeq boundary to decide whether a buffered event is already
-// covered by a refetched snapshot or must be applied on top of it.
 export interface DaemonEventMeta {
   seq: number | null;
   epoch: string | null;

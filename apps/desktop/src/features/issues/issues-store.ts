@@ -147,9 +147,7 @@ export const refreshIssuesAtom = atom(null, async (get, set) => {
   try {
     await refreshViewList(set);
     await loadActiveView(set, get(activeViewIdAtom));
-  } catch {
-    // External refresh is best-effort; preserve the current board.
-  }
+  } catch {}
 });
 
 export const updateViewAtom = atom(

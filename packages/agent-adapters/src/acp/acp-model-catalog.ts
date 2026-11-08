@@ -35,15 +35,11 @@ const inFlightProbes = new Map<
   string,
   Promise<CompatibleProviderModel[] | null>
 >();
-// Keyed `providerId::modelId`; one axes probe session per model per process —
-// each probe costs a real (empty) agent session, so resolved results stick.
 const modelAxesProbes = new Map<
   string,
   Promise<AgentProviderModelAxes | null>
 >();
 
-// ACP agents spell "no thinking" as `none`; the picker's vocabulary calls it
-// `off` (and the adapter maps it back on the way out).
 function toThinkingLevel(
   value: string,
 ): ReasoningEffortOption["reasoningEffort"] | null {
@@ -70,8 +66,6 @@ function toSupportedReasoningEfforts(
   });
 }
 
-// The baseline rung (Devin's "standard") is the picker's built-in default
-// row; only the named tiers become options.
 function toServiceTiers(model: AcpSessionModel): CodexServiceTierOption[] {
   return model.speedOptions
     .filter((option) => !isBaselineAcpSpeedValue(option.value))
@@ -180,10 +174,6 @@ async function withProbeTimeout<T>(
   }
 }
 
-// Devin attaches effort/speed to the session's *current* model: switching the
-// probe session to a model reveals which config options that model supports.
-// When the session already runs the requested model its new-session response
-// carries the axes directly and no switch is needed.
 async function readModelAxesFromSession(
   connection: AcpConnection,
   session: { sessionId?: string },
@@ -291,9 +281,6 @@ export async function probeAcpProviderModelAxes(
   }
   const axes = await probe;
   if (!axes) {
-    // Failed probes are retried on the next selection; a probe that resolves
-    // to "no axes" (model legitimately has none) stays cached via the same
-    // entry only when the agent answered — a null here means it did not.
     modelAxesProbes.delete(key);
     return null;
   }

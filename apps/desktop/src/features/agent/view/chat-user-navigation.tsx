@@ -59,11 +59,6 @@ export function UserMessageNavigation({
 }) {
   const { t } = useTranslation("agent");
   const [isExpanded, setIsExpanded] = useState(false);
-  // Held as state (not a ref) so the tooltips re-render once the list mounts
-  // and can use it as their collision boundary. This is the scroll viewport,
-  // not the whole rail: a trigger scrolled past the viewport edge still has a
-  // rect inside the rail, so bounding to the rail let a preview fly far off the
-  // visible rows while flicking through them.
   const [listElement, setListElement] = useState<HTMLDivElement | null>(null);
   const {
     offsetY,
@@ -95,8 +90,6 @@ export function UserMessageNavigation({
       }}
       onMouseDown={(event) => startDrag(event.clientY)}
     >
-      {/* The collapsed tab hugs the rail edge; the expanded pill keeps an
-          inset so it floats clear of it. */}
       <div className={cn("transition-all", isExpanded && "ms-2")}>
         {isExpanded ? (
           <div className="pointer-events-auto w-9 rounded-full border border-chat-border-soft bg-chat-surface-raised/90 p-1 shadow-chat-soft backdrop-blur">
@@ -157,10 +150,6 @@ export function UserMessageNavigation({
                       </TooltipTrigger>
                       <TooltipContent
                         className="max-w-56 rounded-panel border border-chat-border-soft bg-chat-surface-raised/95 px-3 py-1.5 text-xs leading-5 text-chat-fg shadow-chat-soft backdrop-blur"
-                        // Confine the preview to the visible rows: the align
-                        // axis (vertical for side="right") shifts to stay
-                        // inside, while the side axis is left alone so the
-                        // narrow rail never flips the popup onto the trigger.
                         collisionAvoidance={{
                           align: "shift",
                           fallbackAxisSide: "none",

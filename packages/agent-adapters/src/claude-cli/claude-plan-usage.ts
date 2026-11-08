@@ -3,9 +3,6 @@ import type {
   AgentRateLimitWindow,
 } from "@cocurdex/shared";
 
-// Name of the SDK method behind Claude Code's `/usage` panel. Spelled out by
-// the SDK as unstable: it may be renamed or removed in any release, so it is
-// looked up dynamically and every failure degrades to "no plan usage".
 export const CLAUDE_USAGE_METHOD =
   "usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET";
 
@@ -64,7 +61,6 @@ function readCredits(
     return null;
   }
 
-  // The SDK reports extra usage in minor units (cents): 5000 means $50.00.
   return {
     usedAmount: used / 100,
     limitAmount: limit / 100,
@@ -72,13 +68,6 @@ function readCredits(
   };
 }
 
-/**
- * Map the SDK's plan-usage response into the transport record.
- *
- * Returns `null` when plan limits do not apply (API key, Bedrock, Vertex) or
- * when nothing usable came back — those sessions must not render an empty
- * quota section.
- */
 export function mapClaudePlanUsage(
   response: ClaudePlanUsageResponse | null | undefined,
   updatedAt: string,

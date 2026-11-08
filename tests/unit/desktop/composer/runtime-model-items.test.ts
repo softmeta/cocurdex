@@ -225,8 +225,6 @@ describe("getRuntimeModelItems", () => {
       null,
     );
 
-    // Cache sanitize drops non-built-in Codex rows; active session must not
-    // reintroduce them via the global provider table either.
     expect(items.map((item) => item.model.modelId)).toEqual(["gpt-5.3-codex"]);
   });
 

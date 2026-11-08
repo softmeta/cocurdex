@@ -1,6 +1,3 @@
-// Minimal note Markdown + YAML frontmatter helpers (title/icon only).
-// Kept dependency-free so pure unit tests can run in any package.
-
 export interface NoteFrontmatter {
   title?: string;
   icon?: string | null;
@@ -13,10 +10,6 @@ export interface ParsedNoteMarkdown {
 
 const FRONTMATTER_OPEN = /^---\r?\n/;
 
-/**
- * Parse optional YAML frontmatter at the start of a note file.
- * Only `title` and `icon` keys are read; unknown keys are ignored.
- */
 export function parseNoteMarkdown(raw: string): ParsedNoteMarkdown {
   if (!FRONTMATTER_OPEN.test(raw)) {
     return { frontmatter: {}, body: raw };
@@ -29,7 +22,6 @@ export function parseNoteMarkdown(raw: string): ParsedNoteMarkdown {
   }
 
   const fmBlock = afterOpen.slice(0, closeMatch.index);
-  // Drop a single leading blank line after the closing `---` (common style).
   const body = afterOpen
     .slice(closeMatch.index + closeMatch[0].length)
     .replace(/^\r?\n/, "");
@@ -39,11 +31,6 @@ export function parseNoteMarkdown(raw: string): ParsedNoteMarkdown {
   };
 }
 
-/**
- * Serialize frontmatter + body. Omits empty frontmatter entirely.
- * Always ends with a trailing newline when body is non-empty or frontmatter
- * is present.
- */
 export function serializeNoteMarkdown(
   frontmatter: NoteFrontmatter,
   body: string,
@@ -69,36 +56,27 @@ export function serializeNoteMarkdown(
   return `${fm}\n${normalizedBody}\n`;
 }
 
-/**
- * Derive a filesystem-safe `.md` filename from a display title.
- * Keeps letters from any script (including CJK) and digits; other runs
- * become a single hyphen. Latin accents are stripped via NFKD.
- */
 export function noteFilenameFromTitle(title: string): string {
   const slug = title
     .trim()
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
-    // Letters (any script) + numbers; drop path / Windows-forbidden chars etc.
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/gu, "")
     .slice(0, 80);
   return `${slug || "untitled"}.md`;
 }
 
-/** Derive a filesystem-safe directory name from a display title. */
 export function noteFolderNameFromTitle(title: string): string {
   return noteFilenameFromTitle(title).replace(/\.md$/u, "");
 }
 
-/** Title fallback when frontmatter has no title: basename without `.md`. */
 export function titleFromNoteId(id: string): string {
   const base = id.includes("/") ? id.slice(id.lastIndexOf("/") + 1) : id;
   return base.replace(/\.md$/iu, "") || "untitled";
 }
 
-/** Parent directory id for a note/folder rel path, or null at notes root. */
 export function parentIdFromNoteId(id: string): string | null {
   const idx = id.lastIndexOf("/");
   return idx === -1 ? null : id.slice(0, idx);
@@ -131,7 +109,6 @@ function formatYamlScalar(value: string): string {
   if (value === "") {
     return '""';
   }
-  // Quote when the value would be ambiguous or needs escaping.
   if (/[:#{}[\],&*!|>'"%@`]/u.test(value) || /^\s|\s$/u.test(value)) {
     return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
   }

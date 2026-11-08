@@ -12,15 +12,6 @@ import {
   sidebarListRowVariants,
 } from "./sidebar-list-row";
 
-// Project-local subset of shadcn's sidebar primitives. The full shadcn module
-// ships a SidebarProvider/Sidebar/Rail/Mobile/Cookie/Tooltip/Skeleton bundle
-// that does not match this app — we own our own layout, resize, and theme
-// tokens. Only the menu primitives (group, item, action, sub) are retained
-// here and rewired to the project's sidebar-* palette.
-//
-// Leaf row surfaces live in `sidebar-list-row.tsx` so notes / issues / chat
-// share one hover + selected contract.
-
 function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div

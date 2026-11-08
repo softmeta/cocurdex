@@ -44,7 +44,6 @@ interface IssueCardProps {
     id: string,
     fields: { status?: string; priority?: string },
   ) => void;
-  // Rendered inside the DragOverlay — lifts the tile with a stronger shadow.
   overlay?: boolean;
 }
 
@@ -79,8 +78,6 @@ export function IssueCard({
     (option) => option.id === card.priority,
   )?.title;
 
-  // The whole tile is the drag handle; a non-moving press falls through to the
-  // onClick (PointerSensor has a 5px activation distance), opening the editor.
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -111,10 +108,6 @@ export function IssueCard({
           "rotate-1 cursor-grabbing shadow-lg ring-1 ring-editor-border/50",
       )}
     >
-      {/*
-        Div (not <button>): hosts nested text and drag listeners; drag uses a
-        5px activation distance so a plain press still opens the editor.
-      */}
       {/* biome-ignore lint/a11y/useSemanticElements: tile hosts nested chrome; button forbids interactive children */}
       <div
         role="button"

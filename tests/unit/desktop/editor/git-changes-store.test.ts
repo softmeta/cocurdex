@@ -38,7 +38,6 @@ describe("git changes store", () => {
 
     store.set(consumeGitRevealAtom, 2);
     expect(store.get(gitRevealAtom)).toBeNull();
-    // A panel that mounts afterwards must not replay the consumed request.
     expect(store.get(gitRevealAtom)).toBeNull();
   });
 

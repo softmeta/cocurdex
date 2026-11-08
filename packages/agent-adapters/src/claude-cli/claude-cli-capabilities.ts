@@ -32,7 +32,6 @@ const ESTABLISHED_PERMISSION_MODES = [
   },
 ] as const satisfies readonly ClaudePermissionModeCandidate[];
 
-// 不探测 dontAsk：那是官方给 CI / 脚本用的「未预批则拒绝」，不是交互式少询问。
 const PERMISSION_MODE_CANDIDATES = [
   ESTABLISHED_PERMISSION_MODES[0],
   ESTABLISHED_PERMISSION_MODES[1],

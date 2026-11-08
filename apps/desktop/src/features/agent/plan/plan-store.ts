@@ -12,18 +12,10 @@ type PlanFlagsBySession = Record<string, true>;
 
 export const plansBySessionAtom = atom<PlansBySession>({});
 
-// Collapsed: header row stays docked, list is folded away. Sticky on purpose —
-// `todo_write` fires often and re-expanding on every update would fight the
-// user, who can reopen the list from the header at any time.
 export const collapsedPlansBySessionAtom = atom<PlanFlagsBySession>({});
 
-// Auto-collapsed: the turn ended with unfinished steps, so the list folds to
-// its status strip while the agent is paused. Unlike a manual collapse this is
-// cleared by the next plan update — a resumed checklist re-expands on its own.
 export const autoCollapsedPlansBySessionAtom = atom<PlanFlagsBySession>({});
 
-// Dismissed: panel is gone entirely. Cleared by the next plan update so a new
-// `todo_write` brings the task list back.
 export const dismissedPlansBySessionAtom = atom<PlanFlagsBySession>({});
 
 function withoutSession<T>(
@@ -68,9 +60,6 @@ export function resolvePlanStepStatus(
   return status === "in_progress" && !isRunning ? "pending" : status;
 }
 
-// The task list outlives a single turn: an agent can carry the same checklist
-// across several prompts, so it is only dropped once every step is done or
-// when the session is rewound.
 export function isPlanFinished(plan: SessionPlan): boolean {
   return (
     plan.steps.length > 0 &&

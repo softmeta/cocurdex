@@ -1,7 +1,5 @@
 import type { WorkspaceFileEntry } from "@/lib";
 
-// 匹配档位，数字越大越靠前。目录加分和深度只在同一档内排序，
-// 避免文件名子串压过路径前缀命中。
 const MATCH_WEIGHT = {
   "exact-path": 7,
   "exact-name": 6,
@@ -37,10 +35,6 @@ export function rankWorkspaceEntries(
   return scored.map(({ file }) => file);
 }
 
-// 越高越靠前。0 表示未命中，调用方丢弃该条目。
-//
-// `@apps` 按路径前缀理解：先是该名字的节点，再是其下子树。
-// 文件名偶然命中（如 `apps-desktop-src-….md`）排在子树之后。
 export function scoreWorkspaceEntry(
   file: WorkspaceFileEntry,
   query: string,
@@ -66,7 +60,6 @@ export function getEntryName(file: WorkspaceFileEntry): string {
   return file.name ?? file.relativePath.split("/").pop() ?? file.relativePath;
 }
 
-// 文本中查询串的第一处大小写不敏感命中区间；未命中返回 null。
 export function findMatchRange(
   text: string,
   query: string,
@@ -126,6 +119,5 @@ function isPathPrefixMatch(path: string, query: string): boolean {
   if (path.startsWith(`${query}/`)) {
     return true;
   }
-  // 正在输入带斜杠的路径时，最后一段可以是前缀（`apps/de` → `apps/desktop`）。
   return query.includes("/") && path.startsWith(query);
 }

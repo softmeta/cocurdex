@@ -21,13 +21,9 @@ import {
   RuntimeAxisSubmenu,
 } from "./runtime-axis-menu";
 
-// Group the flat option list the model picker already builds into submenu
-// sections so models from different providers stay visually separated.
 function toModelSections(
   options: AppSearchableSelectOption[],
 ): AppDropdownRadioSection[] {
-  // Options with no group label (single-provider lists, the empty option) all
-  // share one unlabeled leading section instead of getting a header each.
   const sections = new Map<string, RuntimeAxisOption[]>();
 
   for (const option of options) {
@@ -41,7 +37,6 @@ function toModelSections(
 
   const grouped = [...sections];
 
-  // A lone group header names what the whole submenu already is.
   if (grouped.length === 1) {
     return [{ label: "", options: grouped[0]?.[1] ?? [] }];
   }
@@ -49,10 +44,6 @@ function toModelSections(
   return grouped.map(([label, entries]) => ({ label, options: entries }));
 }
 
-/**
- * Compound picker: one trigger opening model and runtime-axis rows that each
- * drill into a submenu, plus a save-as-role action.
- */
 export function ProviderModelCompoundMenu({
   align = "start",
   appearance,
@@ -106,7 +97,6 @@ export function ProviderModelCompoundMenu({
   triggerClassName?: string;
   triggerLabel: string;
   triggerLeading?: ReactNode;
-  /** Additional selected runtime values owned by the menu footer. */
   triggerValues?: readonly string[];
   onModelChange(value: string): void;
   onFastModeChange?(value: string): void;
@@ -118,8 +108,6 @@ export function ProviderModelCompoundMenu({
 }) {
   const { t } = useTranslation("sessions");
   const hasReasoningEffort = reasoningEffortOptions.length > 1;
-  // The effort axis has no "inherit" row: the model default is preselected, so
-  // reset means "go back to that default" rather than "clear the value".
   const hasServiceTier = serviceTierOptions.length > 1;
   const hasFastMode = fastModeOptions.length > 1;
   const hasOpenCodeAgent = openCodeAgentOptions.length > 1;

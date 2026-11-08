@@ -69,8 +69,6 @@ export function AddModelDialog({
         </Button>
       </DialogTrigger>
       <DialogContent size="default">
-        {/* Form state lives inside the content, which Radix unmounts on
-            close, so a cancelled draft never leaks into the next open. */}
         <AddModelForm
           providerId={providerId}
           onSaveModel={async (model) => {

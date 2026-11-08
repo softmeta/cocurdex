@@ -84,9 +84,6 @@ export interface ProviderModelRecord {
   api: ProviderApi;
   enabled: boolean;
   source: ProviderModelSource;
-  // Per-model endpoint. Pi gateways (e.g. opencode-go) serve different apis at
-  // different paths, so anthropic-messages and openai-completions models under
-  // one provider carry distinct baseUrls. Null falls back to provider.baseUrl.
   baseUrl?: string | null;
   contextLimit?: number | null;
   outputLimit?: number | null;
@@ -119,28 +116,18 @@ export interface CompatibleProviderModel {
   model: ProviderModelRecord;
 }
 
-// Dedicated model for one-shot built-in Pi title generation. Other
-// agent adapters own their session-title strategy (Claude uses Haiku via
-// the CLI; Codex uses `codex exec`).
 export interface TitleModelSelection {
   providerId: string;
   modelId: string;
 }
 
-// Result of a one-shot connectivity probe against the dedicated title model.
 export interface TitleModelProbeResult {
   ok: boolean;
-  /** Wall-clock time from request start to success/failure. */
   latencyMs: number;
-  /** Sample title produced by the probe, when the model returned usable text. */
   title?: string | null;
   error?: string | null;
 }
 
-// Dedicated agent + model for one-shot git commit message generation. The
-// selected agent resolves its own model catalog and runs in a temporary,
-// non-persisted session. When unset, blank commit messages fail until the user
-// types one or configures a model.
 export interface CommitMessageModelSelection {
   agentId: AgentId;
   providerId: string;

@@ -77,7 +77,6 @@ describe("workspace file markdown links", () => {
         "crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md",
       ).replace(/%2F/g, "%2F"),
     );
-    // URLSearchParams encodes `/` as `%2F` — just assert the path is recoverable.
     const hrefMatch = out.match(
       /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
     );
@@ -99,7 +98,6 @@ describe("workspace file markdown links", () => {
   });
 
   it("rewrites GitHub-style file links with backtick labels", () => {
-    // Common agent transcript form: [`path`](path)
     const input =
       "CLI 参数：[`crates/codegen/xai-grok-pager/src/app/cli.rs`](crates/codegen/xai-grok-pager/src/app/cli.rs)\n" +
       "后者见 [`docs/user-guide/15-agent-mode.md`](crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md)。";
@@ -115,7 +113,6 @@ describe("workspace file markdown links", () => {
     expect(parseWorkspaceFileHref(hrefs[1])).toEqual({
       path: "crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md",
     });
-    // Label backticks preserved for chip rendering.
     expect(out).toContain(
       "[`crates/codegen/xai-grok-pager/src/app/cli.rs`](https://cocurdex.workspace/",
     );

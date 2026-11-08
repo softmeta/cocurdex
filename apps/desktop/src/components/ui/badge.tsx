@@ -29,9 +29,7 @@ const badgeVariants = cva(
 
 type BadgeProps = React.ComponentProps<"span"> &
   VariantProps<typeof badgeVariants> & {
-    /** Replace the rendered <span> element. Base UI equivalent of asChild. */
     render?: useRender.RenderProp;
-    /** @deprecated use `render` instead. */
     asChild?: boolean;
   };
 

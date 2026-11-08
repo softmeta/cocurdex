@@ -1,13 +1,5 @@
 import Fastify from "fastify";
 
-/**
- * Cloud API HTTP shell (ADR 0003).
- *
- * Transport only: routes, hooks, and serialization. Team auth, org membership,
- * and sync domain logic belong in packages / plain modules — not Fastify
- * plugins that bake in a cloud vendor. Clients (desktop + console) depend on
- * stable HTTP + JSON contracts, not on this framework.
- */
 export async function createApp() {
   const app = Fastify({
     logger: false,

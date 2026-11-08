@@ -780,7 +780,6 @@ export const offlineApi: DesktopApi = {
   onWorkspaceSearchResult: () => () => {},
   onWorkspaceSearchDone: () => () => {},
   onWorkspaceSearchError: () => () => {},
-  // Data fallbacks used in unit tests and SSR without the preload bridge.
   ...issueFallbackApi,
   searchDocuments: async () => [],
   onDataChanged: () => () => {},

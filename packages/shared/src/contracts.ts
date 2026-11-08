@@ -51,9 +51,6 @@ export type AgentPermissionMode =
   | "codex-read-only"
   | "codex-auto"
   | "codex-full-access"
-  // Grok Build's three permission states, switched over ACP with the
-  // `x.ai/yolo_mode_changed` ext notification. "auto" defers to Grok's own
-  // risk classifier, which costs an extra model call per tool use.
   | "grok-ask"
   | "grok-auto"
   | "grok-always-approve"
@@ -79,8 +76,6 @@ export type ProviderApi = (typeof providerApis)[number];
 
 export type ProviderModelSource = "api" | "manual";
 export type ProviderModelCapability = "agent" | "chat" | "vision" | "reasoning";
-// Codex reports its own ladder up to max / ultra; adapters keep their vendor
-// vocabulary instead of being normalized down to a shared subset.
 export type CodexReasoningEffort =
   | "minimal"
   | "low"
@@ -123,11 +118,8 @@ export function isReasoningEffort(value: string): value is ReasoningEffort {
 }
 
 export interface ReasoningEffortOption {
-  // Thinking-level vocabulary: agents that offer an explicit "no thinking"
-  // rung (Devin's `none`) surface it here as `off`.
   reasoningEffort: Exclude<AgentThinkingLevel, "default">;
   description: string;
-  /** The agent's own name for this level, when it publishes one. */
   label?: string | null;
 }
 
@@ -137,19 +129,12 @@ export interface CodexServiceTierOption {
   description: string;
 }
 
-// Runtime axes a provider model advertises, resolved on demand by agents that
-// only reveal them inside a session (Devin's per-model `thought_level` /
-// `speed`). Probed lazily per selected model and merged into the catalog.
 export interface AgentProviderModelAxes {
   defaultReasoningEffort: Exclude<AgentThinkingLevel, "default"> | null;
   supportedReasoningEfforts: ReasoningEffortOption[];
   serviceTiers: CodexServiceTierOption[];
 }
 
-// Runtime controls are exposed only when the adapter can apply them without
-// recreating the provider session. Missing axes are intentionally unsupported;
-// there is no restart-based fallback because it can break native cache and
-// conversation continuity.
 export type AgentRuntimeAxis =
   | "model"
   | "thinking"
@@ -162,8 +147,6 @@ export type AgentRuntimeAxisCapabilities = Partial<
   Record<AgentRuntimeAxis, AgentRuntimeChangePolicy>
 >;
 
-// Codex account state as reported by `codex app-server` (account/read).
-// Tokens live in ~/.codex and are managed entirely by Codex itself.
 export interface CodexAccountState {
   method: "apikey" | "chatgpt" | "other" | null;
   email: string | null;
@@ -188,8 +171,6 @@ export interface AgentProviderSnapshot {
   modelName: string;
   api: ProviderApi;
   baseUrl: string;
-  // Per-model endpoint override; falls back to baseUrl when absent. See
-  // ProviderModelRecord.baseUrl.
   modelBaseUrl?: string | null;
   headersJson?: string | null;
   providerCompatJson?: string | null;
@@ -200,20 +181,12 @@ export interface AgentProviderSnapshot {
   modelContextWindow?: number | null;
   modelMaxTokens?: number | null;
   reasoningEffort?: ReasoningEffort | null;
-  // Explicit per-session thinking choice for adapters whose reasoning axis is
-  // sent with each prompt. Null means the adapter/model default remains active.
   thinkingLevel?: AgentThinkingLevel | null;
-  // Thinking levels the selected model accepts, as reported by the agent's own
-  // catalog (e.g. Grok Build's reasoning efforts). Drives the composer picker
-  // for agents that don't ship a pi-style thinkingLevelMap.
   supportedReasoningEfforts?: ReasoningEffortOption[];
-  // Effort the model runs at when the session sets none. Null when the agent
-  // publishes no default, in which case the picker shows no selection.
   modelDefaultReasoningEffort?: Exclude<AgentThinkingLevel, "default"> | null;
   supportsReasoning?: boolean;
   serviceTier?: string | null;
   fastMode?: boolean | null;
-  // OpenCode-specific runtime axes. Null keeps the native OpenCode default.
   openCodeAgent?: string | null;
   openCodeVariant?: string | null;
 }
@@ -254,18 +227,13 @@ export interface AgentDescriptor {
   installation?: AgentInstallation | null;
 }
 
-/** A command offered by the composer's slash-triggered skill picker. */
 export interface AgentSlashCommand {
-  /** Stable skill name without an invocation prefix. */
   name: string;
   description?: string;
-  /** Adapter-native text inserted when the user selects the skill. */
   invocation?: string;
   source: "agent" | "extension" | "prompt" | "skill";
 }
 
-// A directory on the daemon host, for clients browsing for a workspace root.
-// Paths are daemon-host absolute paths, not client-local paths.
 export interface HostDirectoryEntry {
   name: string;
   path: string;
@@ -715,10 +683,6 @@ export interface EditorViewRecord {
   selections: Array<{ filePath: string; startLine: number; endLine: number }>;
 }
 
-// Agents are intentionally absent: detecting installed agent CLIs spawns one
-// child process per agent, which is orders of magnitude slower than the SQLite
-// reads below. The renderer loads them through `listAgents` in parallel so the
-// sidebar does not wait on process spawns.
 export interface AppBootstrapData {
   workspaces: WorkspaceRecord[];
   sessions: SessionRecord[];

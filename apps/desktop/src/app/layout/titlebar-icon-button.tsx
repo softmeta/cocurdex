@@ -13,16 +13,6 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib";
 
-/**
- * Shared visual shell for every chrome icon control (titlebar + panel toolbars):
- * - left: sidebar toggle, back, forward
- * - center-right: view switcher tabs
- * - far-right: proxy status, maximize, panel, settings
- * - right-panel toolbars: editor / git / browser / pdf / terminal / issues
- *
- * size-6 square pill inset in the 32px titlebar row (4px breath each side).
- * Panel toolbars reuse the same footprint so icons stay consistent across chrome.
- */
 export function titlebarIconButtonClassName(options?: {
   active?: boolean;
   className?: string;
@@ -45,7 +35,6 @@ export type TitlebarIconButtonProps = Omit<
   "aria-label": string;
   children: ReactNode;
   cursor?: "pointer" | "default";
-  /** Selected / pressed chrome (e.g. maximized, active toggle). */
   active?: boolean;
   tooltip?: ReactNode | false;
   tooltipSide?: ComponentProps<typeof TooltipContent>["side"];
@@ -69,8 +58,6 @@ export const TitlebarIconButton = forwardRef<
   },
   ref,
 ) {
-  // macOS titlebar toolbar items use the default arrow cursor rather than the
-  // pointer hand; callers that follow that convention pass cursor="default".
   const cursorClass =
     cursor === "default" ? "cursor-default" : !disabled && "cursor-pointer";
 
@@ -106,7 +93,6 @@ export const TitlebarIconButton = forwardRef<
   );
 });
 
-/** @deprecated Prefer `TitlebarIconButton` — kept as a stable alias. */
 export const TitlebarButton = TitlebarIconButton;
 
 export function SidebarToggleButton({

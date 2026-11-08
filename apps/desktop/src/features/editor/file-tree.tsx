@@ -9,9 +9,6 @@ import {
   ContextMenuTrigger,
   Input,
 } from "@/components/ui";
-// Imported from leaf modules rather than the pdf-reader barrel: the barrel also
-// exports PdfViewer, which imports the editor barrel — pulling it from here
-// would form an editor ↔ pdf-reader barrel cycle. These leaves have no such edge.
 import { isPdfPath } from "@/features/pdf-reader/is-pdf-path";
 import { openPdfReaderAtom } from "@/features/pdf-reader/pdf-reader-store";
 import {
@@ -48,12 +45,6 @@ import {
   useLoadExpandedTreeDirectories,
 } from "./use-lazy-tree-directories";
 
-/**
- * Convert flat file entries into the path list that `@pierre/trees` expects.
- * Directory entries are marked with a trailing slash — the library's explicit
- * directory syntax — so empty directories render too (inference from file
- * paths alone would drop them).
- */
 function entriesToPaths(
   entries: readonly { kind?: "directory" | "file"; relativePath: string }[],
 ): string[] {
@@ -62,9 +53,6 @@ function entriesToPaths(
   );
 }
 
-// Pierre renders rows inside a shadow root and exposes no row events, so walk
-// the event's composed path to find the row element and read the relative path
-// attribute it carries. Returns undefined when the event missed every row.
 function findTreeRowPath(
   event: React.MouseEvent<HTMLDivElement>,
 ): string | undefined {
@@ -95,9 +83,6 @@ export function FileTree() {
     ? workingPath.replace(/[\\/]+$/, "") || "/"
     : null;
   const rootFolderName = rootPath?.split(/[\\/]/).pop() || rootPath;
-  // Synthetic workspace root row (outside Pierre). Open by default; session-
-  // keyed so tab remounts keep the last open/closed choice. Adjust state when
-  // the workspace root changes (React-recommended props→state sync).
   const [rootExpanded, setRootExpanded] = useState(() =>
     rootPath ? getFileTreeRootExpanded(rootPath) : true,
   );
@@ -124,25 +109,15 @@ export function FileTree() {
     [lazyDirectories.files],
   );
 
-  // Keep a ref so the selection-change callback always sees the latest rootPath
-  // without recreating the closure (which would require a new model).
   const rootPathRef = useRef(rootPath);
   rootPathRef.current = rootPath;
 
-  // Single click selects a row: open it in the transient preview tab so casual
-  // browsing reuses one slot instead of piling up tabs.
   const handleSelectionChange = useCallback(
     (selectedPaths: readonly string[]) => {
       const selected = selectedPaths[0];
       if (!selected || !rootPathRef.current) return;
-      // Skip directories (paths ending with /)
       if (selected.endsWith("/")) return;
-      // Build the absolute path from rootPath + relative selection
       const absolutePath = `${rootPathRef.current}/${selected}`;
-      // PDFs open in the dedicated reader, but only on a deliberate click (see
-      // handleClick). Selection-change also fires when the tree restores a
-      // previously selected row (e.g. focusing the tree tab with one file), and
-      // auto-jumping the panel on that would be jarring — so do nothing here.
       if (isPdfPath(absolutePath)) {
         return;
       }
@@ -151,9 +126,6 @@ export function FileTree() {
     [openPreviewFile],
   );
 
-  // Open the PDF reader only on a genuine pointer click of a PDF row. A DOM
-  // click never fires from programmatic selection restore, so this avoids the
-  // auto-jump while still reacting to a real user click.
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       const root = rootPathRef.current;
@@ -168,14 +140,11 @@ export function FileTree() {
     [openPdfReader],
   );
 
-  // Double click pins the file as a permanent tab. Pierre exposes no activate
-  // event, so resolve the clicked row from the composed path.
   const handleDoubleClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       const root = rootPathRef.current;
       if (!root) return;
       const relativePath = findTreeRowPath(event);
-      // Directories carry a trailing slash; only files are pinnable.
       if (!relativePath || relativePath.endsWith("/")) return;
       const absolutePath = `${root}/${relativePath}`;
       if (isPdfPath(absolutePath)) {
@@ -187,9 +156,6 @@ export function FileTree() {
     [openFile, openPdfReader],
   );
 
-  // Right click opens the row's context menu. The target is captured from the
-  // composed path before the menu opens; right-clicks that miss every row are
-  // suppressed via the open guard below so no empty menu appears.
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuTarget, setMenuTarget] = useState<FileTreeContextTarget | null>(
     null,
@@ -199,14 +165,12 @@ export function FileTree() {
   const handleContextMenu = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       const target = resolveFileTreeContextTarget(findTreeRowPath(event));
-      // Ref drives the synchronous open guard; state drives menu rendering.
       menuTargetRef.current = target;
       setMenuTarget(target);
     },
     [],
   );
 
-  // Keep the menu closed when the right-click landed on empty tree space.
   const handleMenuOpenChange = useCallback((open: boolean) => {
     if (open && !menuTargetRef.current) return;
     setMenuOpen(open);
@@ -216,18 +180,12 @@ export function FileTree() {
     paths: filePaths,
     initialExpansion: "closed",
     flattenEmptyDirectories: true,
-    // Filter via model.setSearch from the external input (hide-non-matches).
-    // Keep Pierre's built-in search chrome off so we own layout and i18n.
     fileTreeSearchMode: "hide-non-matches",
     onSelectionChange: handleSelectionChange,
     unsafeCSS: TREES_UNSAFE_CSS,
-    // Keep Pierre's `complete` brand-aware icon set — explicit for clarity.
     icons: { set: "complete", colored: true },
   });
 
-  // Push workspace paths, search filter, active-file selection, expansion
-  // memory, and git badges into Pierre's imperative model. All are
-  // external-system syncs; effects live in these hooks.
   const isLoading = workspaceFiles.status === "loading";
   useSyncTreePaths(model, rootPath, filePaths, isLoading);
   usePersistTreeExpansion(model, rootPath, filePaths, isLoading);
@@ -241,8 +199,6 @@ export function FileTree() {
     lazyDirectories.loadDirectory,
   );
 
-  // Branch on workspace/listing state before the tree itself; kept as a local
-  // helper (not nested ternaries) so each state stays readable.
   function renderTreeBody() {
     if (!activeWorkspace) {
       return (
@@ -262,9 +218,6 @@ export function FileTree() {
       return null;
     }
     return (
-      // Keyboard navigation/activation is owned by the embedded
-      // PierreFileTree; this wrapper's pointer handlers only augment it
-      // (PDF routing, double-click pin, context menu).
       // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handling is delegated to PierreFileTree
       <div
         aria-label={rootFolderName ?? activeWorkspace.name}
@@ -287,8 +240,6 @@ export function FileTree() {
 
   return (
     <div
-      // Shared horizontal inset for search, synthetic root, and Pierre rows so
-      // hover chips share the same left/right edges (no per-row pe guessing).
       className="flex min-h-0 flex-1 flex-col ps-2 pe-2"
       onPointerEnter={() => setIsScrollbarVisible(true)}
       onPointerLeave={() => setIsScrollbarVisible(false)}
@@ -322,8 +273,6 @@ export function FileTree() {
             className="flex min-h-0 flex-1 flex-col"
             onContextMenu={handleContextMenu}
           >
-            {/* Synthetic workspace root: same content width as Pierre rows below
-                (parent pe-2/ps-2 + FILE_TREE_STYLE zero list insets). */}
             <button
               aria-expanded={rootExpanded}
               aria-label={

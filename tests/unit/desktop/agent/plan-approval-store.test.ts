@@ -1,8 +1,6 @@
 import type { AgentEvent, AgentPlanApprovalRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
-// Imported from the source modules rather than the feature barrel: the barrel
-// pulls in the app shell, whose module-level preference sync needs a browser.
 import {
   applyPlanApprovalEventAtom,
   findPendingPlanApproval,
@@ -84,8 +82,6 @@ describe("getActiveSessionModeId", () => {
     expect(
       getActiveSessionModeId({ sessionModeId: "plan" }, runtime("plan")),
     ).toBe("plan");
-    // Approving or abandoning a plan drops the agent back to default; the
-    // composer toggle must not keep claiming plan mode.
     expect(
       getActiveSessionModeId({ sessionModeId: "plan" }, runtime("default")),
     ).toBe("default");

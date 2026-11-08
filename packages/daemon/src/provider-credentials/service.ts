@@ -43,8 +43,6 @@ export class ProviderCredentials {
       if (apiKey === null) return;
       throw new Error("Provider not found");
     }
-    // A manually entered key replaces bundled OAuth: drop the Pi login so the
-    // key is the single credential source for built-in providers.
     if (apiKey !== null && listPiBuiltInProviderIds().includes(provider.id)) {
       await logoutPiProvider(this.userDataPath, providerId);
     }

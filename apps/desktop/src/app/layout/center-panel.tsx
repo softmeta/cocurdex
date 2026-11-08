@@ -125,8 +125,6 @@ function getSessionThinkingLevelOptions(
   if (!supportsInSessionRuntimeAxis(agentType, "thinking")) {
     return options;
   }
-  // Sessions persisted before the agent reported effort metadata fall back
-  // to the live session config option (Devin's `thought_level`).
   const liveLevels = getConfigOptionThinkingLevels(configOptions);
   if (options.length === 0) {
     return liveLevels;
@@ -285,10 +283,6 @@ export function CenterPanel({
   const activeAgentRuntime = activeSession
     ? (agentRuntimeBySession[activeSession.id] ?? null)
     : null;
-  // Agents that own plan mode (Grok Build) switch it off themselves once a plan
-  // is approved or abandoned and report the new mode over ACP. Deriving the
-  // composer toggle from that report keeps the two from drifting apart; the
-  // stored session value is the source of truth only until the agent speaks.
   const activeSessionModeId = getActiveSessionModeId(
     activeSession,
     activeAgentRuntime,
@@ -492,9 +486,6 @@ export function CenterPanel({
       persistSession(updatedSession);
     }
 
-    // A live agent owns its own mode, and the stored value would only reach it
-    // on the next prompt. Push the switch now so it also applies mid-turn;
-    // agents without runtime modes keep picking it up from the session record.
     const runtimeModes = agentRuntimeBySession[sessionId]?.mode;
     if (
       modeId &&
@@ -608,11 +599,6 @@ export function CenterPanel({
       <div className="min-h-0 flex-1 overflow-hidden">
         {centerSurface === "agent-session" && activeSession ? (
           <ChatView
-            // Tie ChatView's identity to the session. Its scroll position,
-            // "initial bottom settled" gate and other session-scoped state
-            // should not bleed across switches — reusing the instance caused
-            // a flash where the previous session's scrollTop was applied to
-            // the new content before the layout effect pulled it to bottom.
             key={activeSession.id}
             agentLabel={getAgentDisplayLabel(activeSession.agentType)}
             agentType={activeSession.agentType}
@@ -639,9 +625,6 @@ export function CenterPanel({
             }
             messages={activeMessages}
             queuedInputs={activeQueuedInputs}
-            // Pass stable Jotai/IPC functions directly. Wrapping them in
-            // fresh inline arrows would allocate a new ref every render and
-            // propagate through ChatView's children for no behavioral gain.
             onClearAttachment={clearChatComposerAttachment}
             onAnswerQuestion={handleAnswerQuestion}
             onOpenToolLocation={openToolLocation}

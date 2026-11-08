@@ -40,10 +40,6 @@ import type { PdfFindMatches, PdfJsViewerHandle } from "./renderer";
 import { usePdfData } from "./use-pdf-data";
 import { usePdfSelection } from "./use-pdf-selection";
 
-// pdf.js (worker + canvas) is loaded lazily so the heavy code is only evaluated
-// when a PDF is actually opened. This keeps it out of the main renderer chunk
-// and out of jsdom test runs, where pdf.js's reliance on DOMMatrix/canvas would
-// otherwise throw at import time.
 const PdfJsViewer = lazyComponent(
   async () => (await import("./renderer")).PdfJsViewer,
 );
@@ -52,16 +48,11 @@ const SCALE_EPSILON = 0.01;
 
 interface PdfViewerProps {
   filePath: string;
-  // Whether the PDF reader view is currently visible. The component stays
-  // mounted when the panel switches to another view, so document-level
-  // shortcuts must not fire while hidden.
   isActive: boolean;
   onInsertTextToChat?(text: string): boolean;
 }
 
 export function PdfViewer(props: PdfViewerProps) {
-  // Remount on file change so per-document view state (zoom, outline, search)
-  // resets without an effect. Reading page is restored from persisted storage.
   return <PdfViewerContent key={props.filePath} {...props} />;
 }
 
@@ -85,7 +76,6 @@ function PdfViewerContent({
   const removeHighlight = useSetAtom(removePdfHighlightAtom);
   const insertMarkdownIntoNote = useSetAtom(insertMarkdownIntoActiveNoteAtom);
 
-  // PdfViewer remounts per filePath; load marks from userData once on mount.
   useMountEffect(() => {
     void hydrateAnnotations(filePath);
   });
@@ -95,9 +85,6 @@ function PdfViewerContent({
     [annotationsByPath, filePath],
   );
 
-  // Seed the toolbar from the last stored page so the indicator does not flash
-  // "1" while pdf.js finishes its first layout and navigates. The viewer
-  // clamps against the real page count once the document is ready.
   const initialPosition = readingPositions[filePath];
   const initialPage = initialPosition?.page ?? 1;
   const [numPages, setNumPages] = useState(0);
@@ -161,8 +148,6 @@ function PdfViewerContent({
     [],
   );
 
-  // Outline, marks, and thumbnails share the left rail; opening one closes the
-  // others so only a single drawer is visible.
   const handleToggleOutline = useCallback(() => {
     setIsOutlineOpen((open) => {
       const next = !open;
@@ -208,8 +193,6 @@ function PdfViewerContent({
     [],
   );
 
-  // pdf.js navigates by real page geometry, so the jump is exact regardless of
-  // which pages have rendered.
   const handleSelectPage = useCallback((pageNumber: number) => {
     viewerHandleRef.current?.goToPage(pageNumber);
   }, []);
@@ -282,9 +265,6 @@ function PdfViewerContent({
     [],
   );
 
-  // ⌘F / Ctrl+F opens the in-document find bar while a PDF is shown, mirroring
-  // the platform find shortcut and preventing the browser's own find overlay.
-  // Escape dismisses the text / highlight action bubble.
   const handleViewerKeydown = useCallback(
     (event: KeyboardEvent) => {
       if (!isActive || status !== "ready") {
@@ -412,11 +392,6 @@ function PdfViewerContent({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-editor-canvas">
-      {/*
-        Drop toolbar DOM while the reader tab is inactive. Keep-alive still
-        holds the pdf.js document; only chrome unmounts so icons never lag
-        under the next right-panel view after a tab switch.
-      */}
       {status === "ready" && isActive ? (
         <PdfToolbar
           currentPage={currentPage}

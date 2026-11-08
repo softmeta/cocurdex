@@ -38,16 +38,7 @@ function ToolCallTriggerRow({ toolCall }: { toolCall: AgentToolCallRecord }) {
     toolCall,
     status === "completed" ? "past" : "present",
   );
-  // The target (file path, command, query) is what makes one "read" row
-  // distinguishable from the next — without it the rows are interchangeable and
-  // force a click to learn anything. Commands keep a short action label and put
-  // their content in the truncating secondary slot so they cannot widen chat.
   const isCompleted = status === "completed";
-  // Completed rows lean entirely on the status icon, and the enclosing group
-  // header already carries the shared time range — so a finished row is just
-  // "icon + title + target". Only non-completed states (failed / pending /
-  // running) still surface a text label, keeping problems and in-flight work
-  // visible.
   const showStatusLabel = !isCompleted;
 
   return (
@@ -239,12 +230,6 @@ export function ToolCallGroup({
 }: {
   toolCalls: AgentToolCallRecord[];
   onOpenToolLocation?: (location: ToolCallPreviewLocation) => void;
-  // When rendered inside an ActivityBlock the activity header already carries
-  // the count / status rollup and supplies the enclosing guide line.
-  // `nested` flattens the calls straight into the activity timeline instead of
-  // wrapping them in a second collapsible + guide line, so each tool row sits
-  // at the same depth as the reasoning rows around it and the whole run reads
-  // as one execution log.
   nested?: boolean;
 }) {
   const { t } = useTranslation("agent");

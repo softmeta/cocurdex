@@ -6,8 +6,6 @@ const SELECTION_CONTEXT_PADDING = 2;
 const MIN_SELECTION_ACTIONABLE_CHARS = 2;
 
 export const SELECTION_BUBBLE_DELAY_MS = 180;
-// Approximate bubble width reserved when clamping the popup inside the editor
-// bounds. The button itself is auto-sized; this only keeps it off the edge.
 export const SELECTION_BUBBLE_WIDTH = 168;
 
 export type SelectionBubbleState = {
@@ -82,9 +80,6 @@ export function getSelectionAttachment(
     return null;
   }
 
-  // Whole-line selections (line head to line tail) carry no useful column
-  // detail, so drop the columns and let the label render as `L19-19`. Partial
-  // spans keep their columns for `L19:5-19:20`.
   const isWholeLineSpan =
     startColumn === 1 && endColumn === model.getLineMaxColumn(endLine);
 

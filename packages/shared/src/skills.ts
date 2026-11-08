@@ -22,7 +22,6 @@ export interface ProductSkillDetail {
   document: SkillDocument | null;
 }
 
-/** Install status for the bundled cocurdex-* agent skill pack. */
 export interface ProductSkillsStatusResult {
   scope: ProductSkillScope;
   packVersion: string;

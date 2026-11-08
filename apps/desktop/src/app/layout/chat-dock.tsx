@@ -28,11 +28,8 @@ import {
 
 interface ChatDockProps {
   visibility: ChatDockVisibility;
-  /** Controlled pin state from the shell layout preference. */
   pinned: boolean;
-  /** False on surfaces that do not offer pinning (settings overlay). */
   pinnable?: boolean;
-  /** Geometry hoisted to the shell so it can reserve the pinned rail width. */
   dock: ReturnType<typeof useDockGeometry>;
   onOpen(): void;
   onClose(): void;
@@ -41,30 +38,6 @@ interface ChatDockProps {
   children: ReactNode;
 }
 
-/*
- * Chat surface used while the editor panel is fullscreen (center chat column
- * is hidden). Always an out-of-flow overlay so neither floating nor pinning
- * ever takes width from the editor/content area.
- *
- * - Hidden: nothing rendered; reopen via shortcut / layout actions.
- * - Collapsed: draggable FAB (absolute; position persisted separately from the
- *   open card). Click opens; drag past a small threshold repositions only.
- * - Open + floating (unpinned): overlay card at its persisted position/size.
- * - Open + pinned: full-height overlay rail flush to the trailing edge; it
- *   floats above the editor instead of shrinking it.
- *
- * The rail's top row is the session pane header: session-list toggle, the
- * session menu, the title, then the rail actions (same size-6 chrome icons and
- * 32px row as every other pane header, so titles and menus sit in one place
- * whichever layout the chat is in). With a split, the panes own their headers
- * and this row falls back to rail chrome only.
- *
- * Session list is a full-height left drawer (toggle row + list, one bg column)
- * with a drag handle on its trailing edge for width.
- *
- * Outer shell toggles flex participation; the inner surface keeps one DOM
- * tree so pin/unpin does not remount `children` (CenterPanel / composer).
- */
 export function ChatDock({
   visibility,
   pinned: pinRequested,
@@ -99,8 +72,6 @@ export function ChatDock({
     return <ChatDockLauncher onOpen={onOpen} onHideFab={onHideFab} />;
   }
 
-  // Session toggle must stay the same size as pin/close so opening the drawer
-  // (toggle leaves the row for a width spacer) does not change row height.
   const sessionToggle = (
     <SidebarToggleButton
       label={t("actions.toggleChatSessions")}
@@ -119,9 +90,6 @@ export function ChatDock({
     />
   );
 
-  // Full-height LeftSidebar — same `bg-sidebar` token as the main shell rail.
-  // Click-outside catcher covers only the trailing side of the drawer (no
-  // scrim — a dim made the drawer look like a different surface).
   const sessionListDrawer = sessionListOpen ? (
     <>
       <button
@@ -177,9 +145,6 @@ export function ChatDock({
         <div
           className={cn(
             "relative z-30 shrink-0",
-            // Drawer open: parent pe-none so the left strip does not steal hits
-            // from the session toggle / outside catcher underneath, while the
-            // row's own buttons stay clickable.
             drawerOpen && "pointer-events-none [&_button]:pointer-events-auto",
             canDrag && "cursor-move",
           )}
@@ -187,8 +152,6 @@ export function ChatDock({
         >
           <SessionPaneHeader
             canClose={false}
-            // pe-3 aligns the rail actions with the titlebar pills above;
-            // transparent keeps the session drawer's own header row visible.
             className="bg-transparent pe-3"
             isFocused
             leading={leading}
@@ -207,12 +170,7 @@ export function ChatDock({
       // biome-ignore lint/a11y/noStaticElementInteractions: floating dock drag handle
       <div
         className={cn(
-          // pe-3 when pinned aligns close with the titlebar settings pill above.
           "relative z-30 flex shrink-0 items-center py-1 pe-3",
-          // Drawer open: parent pe-none so the left strip does not steal hits from
-          // the session toggle / outside catcher underneath. Drag + pin/close
-          // re-enable pe on their own nodes (pe-none child does not punch a hole
-          // through a pe-auto parent).
           drawerOpen && "pointer-events-none",
           canDrag && "cursor-move",
         )}
@@ -238,9 +196,6 @@ export function ChatDock({
   };
 
   return (
-    // Outer: never a flex item. Pinned → full-height overlay flush to the
-    // trailing edge; floating → positioned overlay card. Both leave the editor
-    // flex sibling the whole row, so pinning never squeezes the content area.
     <div
       className={cn(
         "pointer-events-none absolute z-40",
@@ -249,8 +204,6 @@ export function ChatDock({
       style={pinned ? { width: pinLayout.width } : undefined}
     >
       {pinned ? (
-        // Continues ViewSwitcherTabs' border-b across the rail column while the
-        // chat surface below stays clear of the header band.
         <div
           aria-hidden
           className="absolute inset-x-0 top-0 box-content border-b border-editor-border"
@@ -261,12 +214,8 @@ export function ChatDock({
         className={cn(
           "pointer-events-auto flex flex-col overflow-hidden bg-chat-canvas",
           pinned
-            ? // Docked rail: same canvas plane as the editor, separated by the
-              // leading divider below the header band.
-              "absolute inset-x-0 bottom-0"
-            : // Floating card is a self-contained surface (matches CenterPanel
-              // canvas; bg-app is a different token in light mode).
-              "absolute rounded-panel shadow-overlay ring-1 ring-menu-ring",
+            ? "absolute inset-x-0 bottom-0"
+            : "absolute rounded-panel shadow-overlay ring-1 ring-menu-ring",
         )}
         style={
           pinned
@@ -280,7 +229,6 @@ export function ChatDock({
         }
       >
         {pinned ? (
-          // z-40: above action header (z-30) and session-list drawer (z-20).
           <ResizeSeparator
             ariaLabel={t("actions.resizeChat")}
             className="z-40"
@@ -288,8 +236,6 @@ export function ChatDock({
             onMouseDown={beginPinnedResize}
           />
         ) : (
-          // Top-start corner grip. Must sit above the z-30 drag header or
-          // mousedown is stolen for move-only and the card cannot be resized.
           <button
             aria-label={t("actions.resizeChat")}
             className="absolute top-0 left-0 z-40 size-4 cursor-nwse-resize"

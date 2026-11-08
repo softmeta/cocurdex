@@ -44,7 +44,6 @@ ${changeSummary}
 </change_summary>`;
 }
 
-// Cap high enough for thinking models and a concise bullet-list body.
 const COMMIT_MESSAGE_MAX_TOKENS = 512;
 const MAX_SUBJECT_LENGTH = 72;
 
@@ -112,8 +111,6 @@ export function normalizeGeneratedCommitMessage(raw: string): string | null {
   return `${title}\n\n${bodyItems.map((item) => `- ${item}`).join("\n")}`;
 }
 
-// Single-shot Conventional Commits subject via the pi ai layer. No session is
-// created. Returns null when the model produced no usable subject.
 export async function generatePiCommitMessage(params: {
   provider: ProviderConfigRecord;
   model: ProviderModelRecord;

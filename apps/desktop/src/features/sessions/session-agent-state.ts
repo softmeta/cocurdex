@@ -24,7 +24,6 @@ import { resources } from "@/i18n/resources";
 import { isAgentReadyToStart } from "./adapter-status";
 
 const LAST_SELECTED_AGENT_STORAGE_KEY = "agents.desktop.last-selected-agent";
-// Prefer the same order as the new-session agent picker.
 const agentFallbackOrder: AgentId[] = [
   "pi",
   "codex",
@@ -46,8 +45,6 @@ function planSessionModes(): AgentSessionMode[] {
   ];
 }
 
-// CLI 适配器启动时没有 installation 记录，选择器显示「检测中」；
-// listAgents 返回前不要把这个空窗当成已经装好。
 export const agentsAtom = atom<AgentDescriptor[]>([
   {
     id: "claude-agent",
@@ -270,9 +267,6 @@ export function supportsPlanMode(
   );
 }
 
-// Adapters that honor permission changes after session creation. The current
-// choice is carried into the next turn and applied through the live adapter
-// transport; no adapter uses a restart-session fallback.
 export function supportsLivePermissionMode(agentType: unknown) {
   const normalizedAgentType = normalizeAgentId(agentType);
   return supportsInSessionRuntimeAxis(normalizedAgentType, "permission");
@@ -323,8 +317,6 @@ export function getSessionPermissionMode(
     : getDefaultPermissionMode(agents, session.agentType);
 }
 
-// Built-in default is cocurdex (agent id `pi`). Unknown or missing storage
-// values fall back here so first-run and corrupt prefs stay on the built-in.
 const DEFAULT_LAST_SELECTED_AGENT: AgentId = "pi";
 
 function getLastSelectedAgentStorage() {
@@ -363,10 +355,7 @@ function persistLastSelectedAgent(agentType: AgentId) {
 
   try {
     storage.setItem(LAST_SELECTED_AGENT_STORAGE_KEY, agentType);
-  } catch {
-    // Quota / private mode — in-memory atom still holds the choice for the
-    // current session; next cold start falls back to the built-in default.
-  }
+  } catch {}
 }
 
 const lastSelectedAgentBaseAtom = atom<AgentId>(getStoredLastSelectedAgent());
@@ -381,10 +370,6 @@ function getFirstAvailableAgent(agents: AgentDescriptor[]) {
   );
 }
 
-// Last agent the user picked on the new-session card. Seeded from
-// localStorage (survives restart); writes update both memory and storage so
-// the next visit — same session or after relaunch — restores the choice.
-// Default when nothing is stored: built-in cocurdex (`pi`).
 export const lastSelectedAgentAtom = atom(
   (get) => {
     const selectedAgent = get(lastSelectedAgentBaseAtom);

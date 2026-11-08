@@ -39,9 +39,6 @@ export interface SettingsCatalogEntry {
   key: string;
   scope: "global" | "workspace";
   tier: SettingsTier;
-  // Where the value lives. "daemon" entries are read/written by the daemon
-  // directly; "renderer" entries are applied by the desktop client via the
-  // pending-settings-changes queue.
   storage: SettingsStorage;
   description: string;
   valueSchema: Record<string, unknown>;

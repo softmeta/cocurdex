@@ -36,8 +36,6 @@ export const settingsClusters = [
 
 export type SettingsClusterId = (typeof settingsClusters)[number];
 
-// Owned by a leaf module so the screen and the sidebar can both read the
-// section list without importing each other.
 export const settingsSections = [
   { id: "general", labelKey: "general", icon: Settings, cluster: "interface" },
   {

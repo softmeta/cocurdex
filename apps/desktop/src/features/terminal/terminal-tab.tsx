@@ -13,16 +13,12 @@ import {
 
 interface TerminalTabItemProps {
   terminalId: string;
-  // 1-based position label, used as the fallback before the shell is known.
   index: number;
   selected: boolean;
   onSelect: (terminalId: string) => void;
   onClose: (terminalId: string) => void;
 }
 
-// Subscribe to a single terminal's lifecycle status. The registry parks the
-// listener until the entry exists, so this works for inactive tabs that have
-// never been attached as well as the active one.
 function useTerminalStatus(terminalId: string): TerminalStatus {
   return useSyncExternalStore(
     useCallback((notify) => subscribeStatus(terminalId, notify), [terminalId]),
@@ -30,7 +26,6 @@ function useTerminalStatus(terminalId: string): TerminalStatus {
   );
 }
 
-// Foreground process / cwd pushed from the main-process poller.
 function useTerminalActivity(terminalId: string): TerminalActivity | null {
   return useSyncExternalStore(
     useCallback(
@@ -57,12 +52,6 @@ export function TerminalTabItem({
   const status = useTerminalStatus(terminalId);
   const activity = useTerminalActivity(terminalId);
 
-  // Label priority: the running foreground command, else the current working
-  // directory name, else the shell name once live, else the numbered fallback.
-  // While spawning we render no text at all — the icon stays put and the label
-  // appears once the shell resolves (a transient spinner flickered for the ~1
-  // frame spawning lasts, and a CJK placeholder was wider than "zsh" so it
-  // shrank on ready and nudged the adjacent "+" button).
   function resolveLabel(): string {
     if (activity?.foregroundProcess) {
       return activity.foregroundProcess;

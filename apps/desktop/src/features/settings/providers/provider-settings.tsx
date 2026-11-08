@@ -42,10 +42,6 @@ function createEmptyProvider(): ProviderConfigRecord {
   };
 }
 
-// First-paint cache: the persisted server data so the panel can render
-// instantly before the IPC round-trip resolves. It intentionally holds only
-// loaded data plus the last selected provider — never transient editor/draft
-// state, which is owned by the keyed ProviderEditor.
 interface ProviderSettingsSnapshot {
   models: ProviderModelRecord[];
   providers: ProviderConfigRecord[];
@@ -117,17 +113,12 @@ function persistProviderSettingsSnapshot(snapshot: ProviderSettingsSnapshot) {
       PROVIDER_SETTINGS_SNAPSHOT_STORAGE_KEY,
       JSON.stringify(snapshot),
     );
-  } catch {
-    // Snapshot persistence is only a first-paint optimization.
-  }
+  } catch {}
 }
 
 let providerSettingsSnapshot: ProviderSettingsSnapshot | null =
   readPersistentProviderSettingsSnapshot();
 
-// Dedicated title model is encoded as `providerId|modelId` for the select. A
-// model id may contain "|" rarely, so split on the first separator only; a
-// provider id never does.
 function encodeTitleModelValue(selection: TitleModelSelection | null) {
   return selection ? `${selection.providerId}|${selection.modelId}` : "";
 }
@@ -167,21 +158,13 @@ export function ProviderSettingsPanel() {
   const [templates, setTemplates] = useState<ProviderTemplateRecord[]>(
     providerSettingsSnapshot?.templates ?? [],
   );
-  // selectedProviderId and isCreatingProvider are pure UI intent. Data loading
-  // never writes them, so an in-flight reload can never overwrite the editor
-  // the user just opened.
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
     providerSettingsSnapshot?.selectedProviderId ?? null,
   );
   const [isCreatingProvider, setIsCreatingProvider] = useState(false);
-  // Preset picked from the empty-state template grid: pre-fills a new-provider
-  // draft so the user only needs to paste an API key.
   const [pendingTemplateId, setPendingTemplateId] = useState("");
   const [providerQuery, setProviderQuery] = useState("");
-  // Encoded `providerId|modelId` of the dedicated title model, or "" for none.
   const [titleModelValue, setTitleModelValue] = useState("");
-  // Connectivity probe result for the dedicated title model. Reset when the
-  // selection changes so a stale latency does not outlive a different model.
   const [titleModelProbe, setTitleModelProbe] = useState<
     | { status: "idle" }
     | { status: "testing" }
@@ -221,9 +204,6 @@ export function ProviderSettingsPanel() {
       .toLowerCase()
       .includes(providerFilterQuery);
   });
-  // A provider created from a template takes the template's id, so hide any
-  // template already instantiated — otherwise the strip shows a duplicate card
-  // next to the real provider.
   const providerIds = new Set(providers.map((provider) => provider.id));
   const filteredTemplates = templates.filter((template) => {
     if (providerIds.has(template.id)) return false;
@@ -240,8 +220,6 @@ export function ProviderSettingsPanel() {
     templates.find((template) => template.id === editorProvider.id)
       ?.authMethods ?? [];
 
-  // Loads server data only. It must never touch UI intent (selection /
-  // creating), otherwise an async reload could clobber what the user is doing.
   const reload = useCallback(async () => {
     const [nextProviders, nextModels, nextTemplates, nextTitleModel] =
       await Promise.all([
@@ -258,7 +236,6 @@ export function ProviderSettingsPanel() {
 
     providerSettingsSnapshot = {
       models: nextModels,
-      // headersJson may carry auth headers; keep it out of localStorage.
       providers: nextProviders.map((provider) => ({
         ...provider,
         headersJson: null,
@@ -268,14 +245,10 @@ export function ProviderSettingsPanel() {
     };
     persistProviderSettingsSnapshot(providerSettingsSnapshot);
 
-    // Every provider mutation funnels through reload(), so this is the single
-    // point where session pickers must drop their cached provider/model list
-    // and the app-wide provider/model store (chat's model picker) must reload.
     invalidateProviderModelCache();
     void bootstrapProviderModels();
   }, [bootstrapProviderModels]);
 
-  // Sync external system (IPC-backed provider store) into local state on mount.
   useMountEffect(() => {
     void reload();
   });
@@ -311,9 +284,6 @@ export function ProviderSettingsPanel() {
     }
 
     const persisted = providers.find((provider) => provider.id === id);
-    // The id field is locked when editing an existing provider, so a match
-    // while no provider is selected means a new draft is about to silently
-    // overwrite an existing config.
     if (!selectedProvider && persisted) {
       toast.error(t("providers.status.idExists", { id }));
       return false;
@@ -325,8 +295,6 @@ export function ProviderSettingsPanel() {
       id,
       name,
       baseUrl,
-      // The editor never edits headers; keep whatever the store has so a
-      // draft seeded from the sanitized localStorage snapshot can't wipe it.
       headersJson: persisted?.headersJson ?? draftProvider.headersJson,
       updatedAt: now,
       createdAt: draftProvider.createdAt || now,
@@ -348,13 +316,7 @@ export function ProviderSettingsPanel() {
     setIsCreatingProvider(false);
     setPendingTemplateId("");
 
-    // With a key configured, pull the provider's model list right away so the
-    // user doesn't have to hit refresh manually after setup. Best-effort: a
-    // failed fetch still leaves the saved provider in place.
     let fetchedModels: ProviderModelRecord[] | null = null;
-    // Fetch whenever the provider can authenticate: either a key was just typed
-    // or one is already stored. Otherwise re-saving a configured provider would
-    // silently leave it without models.
     const hasApiKey = Boolean(apiKey.trim() || provider.apiKeySecretId);
     if (hasApiKey) {
       const result = await desktopApi.listProviderModels(provider.id);
@@ -503,8 +465,6 @@ export function ProviderSettingsPanel() {
   }
 
   async function selectTitleModel(value: string) {
-    // Instant save; the dropdown itself reflects the selection, so no success
-    // toast — only surface failures.
     setTitleModelValue(value);
     setTitleModelProbe({ status: "idle" });
     try {
@@ -562,7 +522,6 @@ export function ProviderSettingsPanel() {
     return t("providers.titleModel.probeOk", { latencyMs });
   })();
 
-  // Group selectable title models by provider, hiding providers with no models.
   const titleModelGroups = providers
     .map((provider) => ({
       label: provider.name,

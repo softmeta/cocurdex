@@ -1,6 +1,3 @@
-// PDF annotation types and normalization live in @cocurdex/shared so the
-// daemon can persist annotations for non-Electron clients.
-
 export type {
   PdfAnnotationsByPath,
   PdfAnnotationsOperation,

@@ -120,7 +120,6 @@ function QueuedInputRow({
             {error}
           </Text>
         ) : null}
-        {/* Thumbnails share the action row so the buttons stay near the editor. */}
         <div className="flex min-w-0 items-end justify-between gap-2">
           <ImageAttachmentChips
             attachments={item.message.attachments}
@@ -142,7 +141,6 @@ function QueuedInputRow({
               {t("queue.cancel")}
             </Button>
             <Button
-              // Attachment-only queued messages stay saveable with empty text.
               disabled={
                 (!draft.trim() && item.message.attachments.length === 0) ||
                 pendingAction !== null

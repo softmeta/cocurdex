@@ -28,16 +28,12 @@ export type SlashCommandKey =
   | "divider";
 
 export interface SlashCommandItem {
-  // i18n key suffix under notes:slash.items.* (shared by all Markdown bodies).
   key: SlashCommandKey;
   icon: LucideIcon;
-  // Lowercased terms used to match the typed query.
   keywords: string[];
   run: (editor: Editor, range: Range) => void;
 }
 
-// The full slash-command palette. Each `run` first deletes the typed "/query"
-// range, then applies the block transform.
 export const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
   {
     key: "paragraph",

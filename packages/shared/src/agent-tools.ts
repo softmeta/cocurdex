@@ -63,11 +63,6 @@ export function agentToolFullName(descriptor: {
   return `${descriptor.group}_${descriptor.name}`;
 }
 
-// Providers render MCP permission titles differently: ACP agents produce
-// "Calling <tool> from <server>", Claude-style agents use the raw tool name
-// "mcp__<server>__<tool>". Returns the first-party tool name or null when the
-// title is not recognizably a Cocurdex tool call — callers must then fall back
-// to the normal approval flow.
 export function agentToolNameFromPermissionTitle(title: string): string | null {
   const mcpMatch = new RegExp(`^mcp__${AGENT_TOOL_SERVER_NAME}__(\\S+)$`).exec(
     title,

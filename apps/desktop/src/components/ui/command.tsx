@@ -10,29 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-// Thin compatibility shell that preserves cmdk's component API surface but is
-// powered by Base UI's `Autocomplete` (action-based combobox). The shell
-// always runs in `inline` mode — the list renders without a popup, matching
-// cmdk's behavior of being a standalone palette/menu container.
-//
-// Filtering is intentionally *not* delegated to Autocomplete: cmdk used per-
-// item `value` strings for fuzzy filtering, an idiom that doesn't map cleanly
-// onto Base UI's `items`-prop model. Callers do their own filtering and pass
-// the result as `children`. The shell keeps keyboard navigation and the
-// `data-highlighted` state from Base UI.
-
 type CommandProps = Omit<React.ComponentProps<"div">, "ref" | "onSelect"> & {
   ref?: React.Ref<HTMLDivElement>;
-  /** Accepted for parity with cmdk; the shell never auto-filters. */
   filter?: (...args: unknown[]) => number | boolean;
-  /** Accepted for parity with cmdk; the shell never auto-filters. */
   shouldFilter?: boolean;
-  /**
-   * Forwarded to Base UI. Defaults to the menu-style "always" highlight, but
-   * callers that drive their own selection state should pass `false` to stop
-   * Base UI from claiming a row (its `data-highlighted` would otherwise fight
-   * the caller's own highlight styling).
-   */
   autoHighlight?: boolean | "always";
 };
 
@@ -96,7 +77,6 @@ type CommandInputProps = Omit<
   "value" | "defaultValue" | "onValueChange"
 > & {
   value?: string;
-  /** cmdk-style controlled value change. */
   onValueChange?: (value: string) => void;
 };
 
@@ -142,8 +122,6 @@ function CommandList({
   );
 }
 
-// Plain wrapper — callers gate visibility themselves (we don't use
-// Autocomplete.Empty because it requires the `items` prop on Root).
 function CommandEmpty({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -205,13 +183,7 @@ type CommandItemProps = Omit<
   React.ComponentProps<typeof Autocomplete.Item>,
   "onSelect"
 > & {
-  /** cmdk-style action callback. Translated to onClick internally. */
   onSelect?: (value: string) => void;
-  /**
-   * Marks the row as the currently selected value, giving it a persistent
-   * highlight so an opened menu visibly lands on the active option (distinct
-   * from Base UI's transient keyboard `data-highlighted`).
-   */
   selected?: boolean;
 };
 
@@ -235,8 +207,6 @@ function CommandItem({
         onSelect?.(typeof value === "string" ? value : "");
       }}
       className={cn(
-        // Selected = persistent check (via children), not a solid fill — keeps
-        // parity with DropdownMenuRadioItem. Highlight is hover/keyboard only.
         "group/command-item relative flex w-full cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-selected:font-medium data-highlighted:bg-accent data-highlighted:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-highlighted:*:[svg]:text-accent-foreground gap-1.5 rounded-md px-1.5 py-1 text-sm",
         className,
       )}

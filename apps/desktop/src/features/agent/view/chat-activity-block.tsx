@@ -24,19 +24,7 @@ export function ActivityBlock({
   variant: "step" | "turn";
 }) {
   const [open, setOpen] = useTranscriptState(stateKey, false);
-  // Defer mounting the expanded rows. The click commits the chevron rotation
-  // and panel reveal on a fast frame; React then mounts the (often heavy) tool
-  // / reasoning subtree as a low-priority update. Mounting that whole subtree
-  // synchronously in the click frame is what made the chevron transition
-  // stutter on expand.
   const showRows = useDeferredValue(open);
-  // Latch `keepMounted` after the first open so collapsing hides the panel
-  // instead of unmounting it. Without this, Base UI's default `keepMounted={false}`
-  // tears down the whole subtree on close, re-paying the full mount cost on every
-  // expand — the jank the user sees on repeat toggles of heavy panels. First
-  // open still mounts once (deferred); every later expand is a no-op render.
-  // Adjusted during render (React's documented pattern) instead of an effect,
-  // so the latch lands in the same commit that flips `showRows`.
   const [keepMounted, setKeepMounted] = useState(false);
   if (showRows && !keepMounted) {
     setKeepMounted(true);
@@ -72,10 +60,6 @@ export function ActivityBlock({
           variant === "step" && "gap-1",
           variant === "step" &&
             "ms-3 -me-1.5 mt-0.5 mb-1 border-s border-chat-border-soft ps-2.5 pe-1.5",
-          // Height/margin interpolate between 0 and `auto` (interpolate-size)
-          // in both directions so surrounding content glides instead of
-          // snapping. `auto` resolves at layout time, so rows mounted late by
-          // the deferred reveal still grow smoothly.
           "transition-[opacity,transform,height,margin] duration-200 ease-[cubic-bezier(0.2,0,0,1)] [interpolate-size:allow-keywords] data-ending-style:duration-150 data-starting-style:mt-0 data-starting-style:mb-0 data-starting-style:h-0 data-starting-style:-translate-y-1 data-starting-style:opacity-0 data-ending-style:mt-0 data-ending-style:mb-0 data-ending-style:h-0 data-ending-style:opacity-0",
         )}
         keepMounted={keepMounted}

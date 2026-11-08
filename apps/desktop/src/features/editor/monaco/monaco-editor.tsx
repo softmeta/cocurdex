@@ -6,8 +6,6 @@ import type { editor as MonacoEditorNamespace } from "monaco-editor";
 import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui";
-// Leaf imports (not the pdf-reader barrel) to avoid an editor ↔ pdf-reader
-// barrel cycle: the barrel re-exports PdfViewer, which imports the editor barrel.
 import { isPdfPath } from "@/features/pdf-reader/is-pdf-path";
 import { openPdfReaderAtom } from "@/features/pdf-reader/pdf-reader-store";
 import type { AppearanceSettings } from "@/features/settings";
@@ -80,7 +78,6 @@ interface MonacoTextEditorProps {
   syncSelectionUiRef: ReturnType<
     typeof useSelectionBubble
   >["syncSelectionUiRef"];
-  /** Color pack id — remounts chrome when the pack changes without light/dark flip. */
   themePreset: AppearanceSettings["themePreset"];
   typography: ReturnType<typeof getEditorTypography>;
 }
@@ -107,10 +104,6 @@ function MonacoTextEditor({
   const languageStatus = useMonacoLoaderStatus(language);
   const decorationCollectionRef =
     useRef<MonacoEditorNamespace.IEditorDecorationsCollection | null>(null);
-  // A citation reveal that has not landed yet. It stays pending while the
-  // viewport is too small to show the range — the editor mounts before the
-  // right panel has its final height — and is replayed on the next layout
-  // change so the citation ends up centered instead of glued to the top edge.
   const pendingRevealRef = useRef<PreviewRevealTarget | null>(null);
   const { content, hasCachedContent, hasReadError, isContentLoaded } =
     useMountedFileContent(activeFile, cachedContent, onContentLoaded);
@@ -123,9 +116,6 @@ function MonacoTextEditor({
     }),
     [codeMinimap, typography.fontFamily, typography.fontSize],
   );
-  // themePreset is part of the key so chrome colors re-bind when the user
-  // switches color packs without flipping light/dark (Monaco themes snapshot
-  // CSS variables at defineTheme time).
   const editorKey = [
     activeFile,
     activePreviewLocation?.startLine ?? "",
@@ -254,10 +244,6 @@ function MonacoTextEditor({
   if (languageStatus !== "ready") {
     return null;
   }
-  // Mount Monaco only once the text is in hand. Opening an uncached file would
-  // otherwise create the model from the empty placeholder, and the preview
-  // reveal below would clamp the target line away — the citation then lands at
-  // line 1 and only scrolls on a second click, when the content is cached.
   if (!isContentLoaded) {
     return null;
   }
@@ -285,9 +271,6 @@ export function MonacoEditor({
   const { t } = useTranslation("editor");
   const activeFile = useAtomValue(activeFileAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
-  // PDFs are read in the dedicated PDF reader tab, never in Monaco. A `.pdf` can
-  // still reach here via a legacy/persisted editor tab, so guard against
-  // reading or rendering its raw bytes as text.
   const isActivePdf = activeFile !== null && isPdfPath(activeFile);
   const openPdfReader = useSetAtom(openPdfReaderAtom);
   const previewLocationsByFile = useAtomValue(previewLocationsByFileAtom);
@@ -295,8 +278,6 @@ export function MonacoEditor({
   const activePreviewLocation = activeFile
     ? (previewLocationsByFile[activeFile] ?? null)
     : null;
-  // Bumped on every explicit open, so re-opening the same path:line re-scrolls
-  // even when the preview location is unchanged.
   const editorRevealNonce = useAtomValue(editorRevealNonceAtom);
   const [contentByFile, setContentByFile] = useState<Record<string, string>>(
     {},
@@ -318,10 +299,6 @@ export function MonacoEditor({
   );
   const { codeMinimap } = useAtomValue(editorSettingsAtom);
 
-  // Single source of truth for the editor theme: the shared hook tracks the
-  // document `data-theme` attribute that app-shell keeps in sync with the
-  // resolved app theme. Deriving the Monaco theme name here keeps mount,
-  // theme registration, and live updates reading from one value.
   const resolvedTheme = useResolvedTheme();
   const editorThemeName = getEditorThemeName(resolvedTheme);
 
@@ -385,7 +362,6 @@ export function MonacoEditor({
             </p>
           </div>
         ) : monacoLoaderStatus !== "ready" ? (
-          // Blank canvas while the Monaco loader initializes — no loading text.
           <div className="h-full" />
         ) : (
           <div className="relative h-full">

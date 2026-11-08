@@ -18,7 +18,6 @@ export interface ManifestEntry {
   size: number;
   stored: boolean;
   mode?: number;
-  /** Enables the stat cache below; absent in manifests written before it. */
   mtimeMs?: number;
   storeReason?: "too-large" | "quota" | "concurrent-modification";
 }
@@ -73,8 +72,6 @@ export async function walkWorkspace(
       if (!fileStat?.isFile() || fileStat.nlink > 1) {
         continue;
       }
-      // Unchanged files skip the read+hash: the previous capture already
-      // stored their bytes, which dominates checkpoint cost on big workspaces.
       const cached = previous?.get(relativePath);
       if (
         cached?.mtimeMs === fileStat.mtimeMs &&

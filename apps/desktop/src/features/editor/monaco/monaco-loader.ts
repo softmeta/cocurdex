@@ -22,9 +22,6 @@ let loadEditorLanguage: ReturnType<typeof configureMonacoHighlighter> | null =
 
 export { isTestEnvironment };
 
-// The Shiki highlighter that backs Monaco's syntax highlighting. Available once
-// `ensureMonacoLoaderConfigured` resolves; used to re-derive themes when the app
-// appearance changes (see monaco-theme `applyEditorTheme`).
 export function getEditorHighlighter() {
   return editorHighlighter;
 }
@@ -104,15 +101,11 @@ async function setupMonaco() {
     },
   };
 
-  // Drive highlighting with Shiki's TextMate grammars (same engine as VS Code)
-  // instead of Monaco's built-in tokenizer, which lacks an Astro grammar and is
-  // less accurate for embedded languages.
   const highlighter = await createHighlighter({
     themes: [EDITOR_SHIKI_THEMES.dark, EDITOR_SHIKI_THEMES.light],
     langs: [],
   });
 
-  // Only registered language ids receive a Shiki tokens provider.
   for (const language of EDITOR_SHIKI_LANGUAGES) {
     monaco.languages.register({ id: language });
   }

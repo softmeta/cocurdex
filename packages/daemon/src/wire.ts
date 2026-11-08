@@ -318,12 +318,8 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
         sessions: WatchedSessions,
       ) => {
         watchedSessions = sessions;
-        // Replay first, then go live: this block is synchronous, so no live
-        // event can interleave between the journaled tail and the flag flip.
         const crossEpoch =
           requestEpoch !== undefined && requestEpoch !== startedAt;
-        // A position from a previous daemon lifetime cannot be honored:
-        // replay everything this lifetime retained and flag the gap.
         const replay = crossEpoch
           ? eventJournal.entriesAfter(0)
           : eventJournal.entriesAfter(afterSeq);

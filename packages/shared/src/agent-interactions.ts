@@ -114,18 +114,8 @@ export interface AgentQuestionResolvedEvent {
   question: AgentQuestionRequestRecord;
 }
 
-// Grok Build parks its `exit_plan_mode` tool call on an ACP reverse-request
-// (`x.ai/exit_plan_mode`) and waits for the client to approve the written plan.
-// The outcome strings are the agent's wire values: anything the agent does not
-// recognize is treated as "cancelled" on its side, so never invent new ones.
-//
-// - approved:  agent leaves plan mode and implements in the same turn
-// - cancelled: agent stays in plan mode and revises, optionally using `feedback`
-// - abandoned: agent leaves plan mode and stops, waiting for the user
 export type AgentPlanApprovalOutcome = "approved" | "cancelled" | "abandoned";
 export type AgentPlanApprovalStatus = "pending" | "resolved" | "stale";
-// "inline" plans travel with the tool call; "file-backed" plans are read from
-// the agent's own `plan.md`. Only the feedback reference format differs.
 export type AgentPlanApprovalSource = "inline" | "file-backed";
 
 export interface AgentPlanApprovalRecord {

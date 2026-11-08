@@ -35,7 +35,6 @@ export interface ListFieldOption {
 
 interface IssueListRowProps {
   card: IssueRecord;
-  /** Active grouping — the grouping field is already the section header. */
   groupBy: ViewGroupBy;
   statusOptions: ListFieldOption[];
   priorityOptions: ListFieldOption[];
@@ -89,7 +88,6 @@ export function IssueListRow({
       tabIndex={0}
       data-issue-id={card.id}
       className={cn(
-        // Same row chrome as notes sidebar / issues sidebar.
         "group flex h-8 w-full items-center gap-1.5 rounded-control px-2 text-start",
         "hover:bg-editor-tab-hover-bg",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",

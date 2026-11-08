@@ -56,7 +56,6 @@ describe("getSubtreePaths", () => {
   });
 
   it("excludes entries that only share a name prefix, not a path boundary", () => {
-    // "srcfoo/a.ts" must not match the "src" directory.
     const tricky: SubtreeEntry[] = [
       { kind: "file", relativePath: "src/a.ts" },
       { kind: "file", relativePath: "srcfoo/b.ts" },

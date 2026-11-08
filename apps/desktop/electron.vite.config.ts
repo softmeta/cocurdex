@@ -8,11 +8,6 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 import { getWorkspaceDependencyNames } from "./electron-vite-workspace-dependencies";
 import { buildPolicyDefine } from "./scripts/build-policy-define.mjs";
 
-// pdf.js ships cMaps (CJK glyph maps) and standard fonts as separate assets the
-// renderer fetches at runtime. They must land in the renderer output so the
-// packaged build (electron-builder only bundles out/**) can resolve `/cmaps/`
-// and `/standard_fonts/`. Resolve the package directory through Node so the
-// pnpm symlinked layout is handled correctly.
 const require = createRequire(import.meta.url);
 const pdfjsDistRoot = path.dirname(require.resolve("pdfjs-dist/package.json"));
 const desktopPackage = require("./package.json") as {

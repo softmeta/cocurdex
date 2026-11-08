@@ -81,11 +81,6 @@ export function useMountedFileContent(
     };
 
     load();
-    // Agents and external tools rewrite files on disk while a tab stays open.
-    // The editor is read-only, so re-reading can never clobber local edits, and
-    // main already debounces fs bursts before broadcasting.
-    // ponytail: reloads on any workspace change instead of matching the changed
-    // path; a single readTextFile is cheap. Narrow it if large files stutter.
     const unsubscribe = desktopApi.onWorkspaceFilesChanged(() => {
       load();
     });

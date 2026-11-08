@@ -1,8 +1,6 @@
 import type { AgentEvent } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
-// Imported from the source file, not the feature barrel: the barrel pulls in
-// the app shell and its browser-only preference bootstrap.
 import {
   applyPlanEventAtom,
   autoCollapsedPlansBySessionAtom,

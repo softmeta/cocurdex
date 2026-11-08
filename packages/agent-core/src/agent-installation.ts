@@ -98,7 +98,6 @@ export async function lookupExecutable(
   }
 }
 
-/** Every supported CLI answers `--version`; the shapes differ, the flag does not. */
 export async function readExecutableVersion(
   executablePath: string,
 ): Promise<string | null> {

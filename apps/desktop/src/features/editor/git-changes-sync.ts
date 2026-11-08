@@ -47,10 +47,6 @@ export function useSyncWorkspaceGitChanges({
     }
   }, [rootPath, scopeKey, loadDiff, loadBranches]);
 
-  // External system sync: the main process pushes debounced notifications for
-  // worktree edits (files-changed) and git metadata updates such as commits,
-  // stages, or branch switches done outside the app (git-state-changed).
-  // Reload silently so the panel refreshes in place without a loading flash.
   useEffect(() => {
     if (!rootPath) {
       return;

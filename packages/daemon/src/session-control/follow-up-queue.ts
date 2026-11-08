@@ -151,8 +151,6 @@ export class SessionFollowUpQueue {
       throw new Error(`Queued message ${messageId} was not found`);
     }
 
-    // An image-only queued message has no text, so emptiness is only invalid
-    // when the message carries no attachments either.
     if (!trimmedContent && message.attachments.length === 0) {
       throw new Error("Queued message cannot be empty");
     }

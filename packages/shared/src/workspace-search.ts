@@ -6,7 +6,6 @@ export interface WorkspaceSearchStartPayload {
   wholeWord: boolean;
   useRegex: boolean;
   maxResults: number;
-  // Comma-separated glob patterns. Empty string means no filter.
   include: string;
   exclude: string;
 }

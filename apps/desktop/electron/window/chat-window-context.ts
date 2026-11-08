@@ -112,9 +112,6 @@ export function registerChatWindowContext({
 }) {
   const pending = new Map<string, ChatWindowIntentRequest>();
   let annotations: BrowserAnnotation[] = [];
-  // Resolve a logical surface to the window currently hosting it. Returns null
-  // while a surface has no live window (mid-handoff), leaving intents queued
-  // until ownership settles.
   const surfaceWindow = (surface: ChatWindowSurface) =>
     surface === "chat" ? owner() : primary();
   const publish = () => {
@@ -138,8 +135,6 @@ export function registerChatWindowContext({
   ipcMain.handle("chatWindow:dispatchIntent", (event, value: unknown) => {
     sender(event);
     const parsed = dispatchSchema.parse(value);
-    // A shell intent implies the user wants the workspace surface back — bring
-    // the primary window up rather than queueing behind a destroyed one.
     if (parsed.surface === "shell") ensurePrimary();
     const id = parsed.id ?? randomUUID();
     pending.set(id, { id, surface: parsed.surface, intent: parsed.intent });

@@ -178,7 +178,5 @@ export function updateAgentRuntimePreferences(
       AGENT_RUNTIME_PREFERENCES_STORAGE_KEY,
       JSON.stringify(preferences),
     );
-  } catch {
-    // Keep the in-memory UI state usable when storage is unavailable or full.
-  }
+  } catch {}
 }

@@ -239,12 +239,6 @@ export function useCenterSessionSend({
         durationMs: Math.round(performance.now() - startedAt),
       });
 
-      // Refine the title only after sendMessage has persisted the session:
-      // agent sessions are created lazily on first send, so firing the
-      // refineSessionTitle IPC earlier races ahead of the DB row and the main
-      // process skips it (missing session / title mismatch). By now the DB
-      // holds nextSession.title (the local fallback), which is the expected
-      // title the refine handler validates against.
       if (
         !isQueuedFollowUp &&
         !activeAgentUsesNativeSessionTitles &&
@@ -319,10 +313,6 @@ export function useCenterSessionSend({
       worktreePath: worktreePath ?? draftWorktreePath,
     });
     setDraftWorktreePath(null);
-    // Carry the tabs the user was viewing during the draft into the new
-    // session so switching to it does not blank the editor. openFiles still
-    // reflects the pre-draft view because the draft (null session) no longer
-    // clears it (see restoreEditorViewForSession).
     saveEditorViewSnapshot(session.id);
     loadSessionMessages({ messages: [], sessionId: session.id });
     loadSessionToolCalls({ sessionId: session.id, toolCalls: [] });

@@ -14,15 +14,12 @@ import { getBreadcrumbTreeTarget } from "./editor-breadcrumb-dir-tree-utils";
 import { activeFileAtom } from "./editor-store";
 import { getRelativePath } from "./monaco/monaco-utils";
 
-// VSCode-style path bar shown between the tab strip and the editor canvas.
-// Clicking a segment opens a popover file tree rooted at that directory.
 export function EditorBreadcrumb() {
   const { t } = useTranslation("editor");
   const activeFile = useAtomValue(activeFileAtom);
   const workspaces = useAtomValue(workspacesAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);
   const workingPath = useAtomValue(activeWorkingPathAtom);
-  // Key of the segment whose popover is open; only one opens at a time.
   const [openSegment, setOpenSegment] = useState<string | null>(null);
 
   if (!activeFile) {
@@ -34,8 +31,6 @@ export function EditorBreadcrumb() {
   );
   const rootPath = workingPath ?? activeWorkspace?.rootPaths[0];
 
-  // Without a workspace root we cannot derive a clean relative path; hiding the
-  // bar is better than dumping an absolute filesystem path.
   if (!rootPath) {
     return null;
   }
@@ -54,8 +49,6 @@ export function EditorBreadcrumb() {
       className="app-drag flex h-7 shrink-0 items-center gap-1 overflow-hidden border-b border-editor-border px-2 text-body text-editor-fg-muted"
     >
       {segments.map((segment, index) => {
-        // Use the accumulated path prefix as a stable, unique key so that
-        // sibling directories with the same name (e.g. src/src/) are distinct.
         const pathKey = segments.slice(0, index + 1).join("/");
         const target = getBreadcrumbTreeTarget(segments, index);
         const isFileSegment = index === segments.length - 1;

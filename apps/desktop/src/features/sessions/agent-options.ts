@@ -15,7 +15,6 @@ function planSessionModes(): AgentSessionMode[] {
   ];
 }
 
-// Display order: Pi → Codex → Claude Agent → OpenCode; installed registry agents follow.
 export const agentOptions = [
   { id: "pi", name: "Pi", descKey: "pi" },
   {

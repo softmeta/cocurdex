@@ -13,9 +13,6 @@ interface TerminalSearchOverlayProps {
   onClose: () => void;
 }
 
-// Floating search bar wired to xterm's SearchAddon. Lives in the panel layer
-// so it can use React state for the input + i18n; the registry just emits an
-// "open" signal on Cmd+F.
 export function TerminalSearchOverlay({
   terminalId,
   query,

@@ -108,11 +108,7 @@ export class DaemonState {
       this.database.sessionAttention,
       this.database.sessions,
     );
-    // Capture shell-inherited proxy env, then overlay the app setting so agent
-    // spawns and daemon fetch see a consistent policy for this process.
     this.networkProxyReady = this.loadAndApplyNetworkProxy();
-    // Runs once per daemon process, before any agent can start a turn: at this
-    // point a non-terminal tool call can only be debris from a previous run.
     this.staleSessionsSwept = this.failInterruptedSessions();
     this.staleToolCallsSwept = this.database.toolCalls.failNonTerminal();
   }

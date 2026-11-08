@@ -123,9 +123,6 @@ export function ChatView({
   const runStartedAt = perfSessionId
     ? runStartedAtBySession[perfSessionId]
     : undefined;
-  // Capture render-start only when perf observability is enabled. In
-  // production this is a constant zero so React's effect dep diffing on this
-  // value is stable across renders and the layout effects below early-bail.
   const renderStartedAt = isPerfEnabled() ? performance.now() : 0;
   const pendingPermissionRequest =
     [...permissionRequests]
@@ -185,12 +182,6 @@ export function ChatView({
       }),
     [isRunning, messages, status, toolCalls],
   );
-  // Stabilize parent-supplied event handlers via a ref. center-panel allocates
-  // fresh inline arrows on every render (it re-renders on each Jotai update,
-  // i.e. every streaming delta), which would otherwise propagate down through
-  // ChatConversationItem and defeat React.memo on the history conversations.
-  // The wrappers below have empty deps so their identity stays stable for the
-  // full session; they read the latest callbacks through this ref.
   const callbacksRef = useRef({
     onAnswerQuestion,
     onResolvePermission,
@@ -280,8 +271,6 @@ export function ChatView({
       return timelineScrollRef.current.restorePosition(position);
     },
   );
-  // Sending a new prompt pins it to the top of the viewport once it renders;
-  // the response then grows in place below it instead of being followed.
   const { anchoredPromptId, anchorNextPrompt } = useSentPromptAnchor({
     awaitingReplyOnMount: isRunning && latestMessage?.role === "user",
     latestPromptId: stickyUserMessages.at(-1)?.id ?? null,
@@ -315,9 +304,6 @@ export function ChatView({
   });
   const shouldShowJumpToLatest = jumpButton === "latest";
   const shouldShowJumpToTop = jumpButton === "top";
-  // Latest values for diagnostics only — kept in a ref so the scroll handler
-  // identity stays stable (otherwise ScrollArea would rebind every streaming
-  // delta because conversationGroups.length changes).
   const perfScrollSnapshotRef = useRef({
     perfSessionId,
     conversationCount: conversationGroups.length,

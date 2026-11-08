@@ -6,11 +6,6 @@ import type { MarkdownFilePathHandlers } from "@/components";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
 import { desktopApi, toAbsolutePath } from "@/lib";
 
-// Build the handlers that turn file-path-looking inline code in assistant
-// messages into clickable links. Opening is dispatched as a shell-surface
-// intent so it lands in the window hosting the editor — the same window while
-// chat is attached, the primary window once chat is detached. Memoized so the
-// markdown renderer's component map stays stable across re-renders.
 export function useMessageFilePathHandlers(): MarkdownFilePathHandlers {
   const workspaces = useAtomValue(workspacesAtom);
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom);

@@ -1,11 +1,7 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
-// Longest edge of a thumbnail canvas in CSS pixels. Small enough for a dense
-// rail, large enough to read page shape at a glance.
 export const PDF_THUMBNAIL_MAX_EDGE = 140;
 
-// Render a single page to a JPEG data URL for the thumbnails rail. Kept inside
-// the pdf.js isolation boundary so the rest of the reader never imports pdfjs.
 export async function renderPdfPageThumbnail(
   pdf: PDFDocumentProxy,
   pageNumber: number,
@@ -44,7 +40,6 @@ export async function renderPdfPageThumbnail(
       intent: "display",
     });
     await task.promise;
-    // JPEG keeps localStorage-free memory lower than PNG for photo-heavy pages.
     return canvas.toDataURL("image/jpeg", 0.72);
   } finally {
     page.cleanup();

@@ -13,7 +13,6 @@ describe("buildPdfSelectionAttachment", () => {
     expect(attachment.filePath).toBe("/workspace/doc.pdf");
     expect(attachment.language).toBe("pdf");
     expect(attachment.selectedText).toBe("selected passage");
-    // Selected text doubles as surrounding context for the MVP.
     expect(attachment.surroundingContext).toBe("selected passage");
   });
 

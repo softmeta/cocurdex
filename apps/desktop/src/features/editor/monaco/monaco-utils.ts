@@ -24,9 +24,6 @@ export function getPreviewRangeLabel(
   return `L${startLine ?? endLine}`;
 }
 
-// Maps file extensions to Shiki language ids. The values double as the language
-// set we register with the Shiki highlighter, so anything listed here gets real
-// TextMate-grade syntax highlighting in the editor (see monaco-loader).
 const EXTENSION_TO_SHIKI_LANGUAGE: Record<string, BundledLanguage> = {
   ts: "typescript",
   tsx: "tsx",
@@ -207,19 +204,6 @@ export function syncPreviewRange(
   ]);
 }
 
-// Scroll the target line, or range, into the editor's center. Kept separate
-// from decoration syncing because callers must defer this to a frame after
-// @monaco-editor/react swaps/restores the model on a path change — revealing
-// synchronously in the same commit gets overwritten by the library's
-// restoreViewState.
-//
-// Returns the clamped first line once the whole range is on screen, or null
-// when it is not — either there is nothing to reveal, or the viewport cannot
-// hold the range yet. Opening the editor mounts Monaco while the right panel is
-// still collapsing to its final height; Monaco floors that measurement, its
-// reveal then takes the "range larger than viewport" branch and parks the
-// citation against the top edge. Callers keep such a request pending and replay
-// it on the next layout change instead of leaving it stuck at the top.
 export function revealPreviewRange(
   editor: MonacoEditorNamespace.IStandaloneCodeEditor,
   startLine?: number | null,
@@ -237,8 +221,6 @@ export function revealPreviewRange(
     Math.min(endLine ?? safeStartLine, lineCount),
   );
 
-  // A range reveals as a whole (Monaco only scrolls when it does not fit), so a
-  // multi-line citation stays visible instead of centering on its first line.
   if (safeEndLine > safeStartLine) {
     editor.revealLinesInCenter(safeStartLine, safeEndLine);
   } else {

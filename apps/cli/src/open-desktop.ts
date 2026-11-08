@@ -5,7 +5,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BACKGROUND_DAEMON_ARG } from "@cocurdex/daemon/background-launch";
 
-/** Flag the desktop main process recognizes for CLI folder open. */
 export const OPEN_FOLDER_FLAG = "--open-folder";
 
 function looksLikePath(value: string, platform: NodeJS.Platform) {
@@ -19,10 +18,6 @@ function looksLikePath(value: string, platform: NodeJS.Platform) {
   );
 }
 
-/**
- * True when argv should open the desktop app (optionally with a folder)
- * before any subcommand is tried. Matches VS Code-style `code .` / `code`.
- */
 export function shouldHandleAsOpen(
   resource: string | undefined,
   platform: NodeJS.Platform = process.platform,
@@ -42,12 +37,6 @@ export async function isExistingDirectory(folderPath: string) {
   }
 }
 
-/**
- * Resolve the folder path from CLI args.
- * - `cocurdex` → undefined (open app only)
- * - `cocurdex open` → undefined
- * - `cocurdex open .` / `cocurdex .` → path string
- */
 export function resolveOpenFolderArg(
   resource: string | undefined,
   action: string | undefined,
@@ -75,10 +64,6 @@ export async function assertDirectory(folderPath: string): Promise<string> {
   return resolved;
 }
 
-/**
- * Launch (or signal) the Cocurdex desktop app, optionally opening a folder.
- * Detaches so the CLI can exit immediately, like `code .`.
- */
 export async function openDesktopApp(folderPath?: string): Promise<void> {
   const { binary, args } = await resolveLaunch(folderPath);
   spawnDesktopApp(binary, args);
@@ -124,8 +109,6 @@ export async function resolveLaunch(folderPath?: string): Promise<{
   }
 
   if (folderPath) {
-    // Single-token form survives packaged second-instance argv reshuffling better
-    // than a separate flag + value pair on some platforms.
     args.push(`${OPEN_FOLDER_FLAG}=${folderPath}`);
   }
 
@@ -133,7 +116,6 @@ export async function resolveLaunch(folderPath?: string): Promise<{
 }
 
 export function isPackagedAppBinary(execPath: string): boolean {
-  // Normalize separators so Windows paths compare correctly on macOS/Linux hosts.
   const normalized = execPath.replace(/\\/g, "/").toLowerCase();
   if (normalized.includes("/node_modules/electron/")) {
     return false;
@@ -144,7 +126,6 @@ export function isPackagedAppBinary(execPath: string): boolean {
     return false;
   }
 
-  // Packaged product: Cocurdex / Cocurdex.exe (and case variants).
   return (
     base === "cocurdex" || base === "cocurdex.exe" || base.endsWith(".appimage")
   );
@@ -163,7 +144,6 @@ async function resolveElectronBinary(): Promise<string> {
     return appImage;
   }
 
-  // Packaged / Electron-as-Node CLI: execPath is the app or Electron binary.
   if (process.versions.electron) {
     return process.execPath;
   }
@@ -173,9 +153,7 @@ async function resolveElectronBinary(): Promise<string> {
     try {
       await access(candidate);
       return candidate;
-    } catch {
-      // try next
-    }
+    } catch {}
   }
 
   throw new Error(
@@ -225,8 +203,6 @@ async function listElectronCandidates(): Promise<string[]> {
     }
   }
 
-  // Packaged macOS install next to a user-local CLI symlink is handled via
-  // process.versions.electron when the launcher uses Electron-as-Node.
   if (process.platform === "darwin") {
     candidates.push(
       "/Applications/Cocurdex.app/Contents/MacOS/Cocurdex",
@@ -251,7 +227,6 @@ async function resolveDesktopAppPath(): Promise<string | null> {
   }
 }
 
-/** Walk up from this file looking for the monorepo workspace marker. */
 export async function findMonorepoRoot(): Promise<string | null> {
   let current = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 

@@ -23,23 +23,17 @@ describe("git-diff-service", () => {
     await git.init();
     await git.addConfig("user.email", "test@example.com");
     await git.addConfig("user.name", "Test");
-    // Mainline commit.
     await writeFile(join(dir, "readme.txt"), "hello\n", "utf8");
     await git.add("readme.txt");
     await git.commit("initial");
-    // Prefer a stable main branch name across git versions.
     try {
       await git.branch(["-M", "main"]);
-    } catch {
-      // Already on main.
-    }
-    // Feature branch with a second commit.
+    } catch {}
     await git.checkoutLocalBranch("feature");
     await writeFile(join(dir, "feature.txt"), "feature work\n", "utf8");
     await git.add("feature.txt");
     const commit = await git.commit("add feature");
     featureCommit = commit.commit;
-    // Staged + unstaged working-tree edits on feature.
     await writeFile(join(dir, "staged.txt"), "staged body\n", "utf8");
     await git.add("staged.txt");
     await writeFile(join(dir, "unstaged.txt"), "unstaged body\n", "utf8");
@@ -101,7 +95,6 @@ describe("git-diff-service", () => {
   });
 
   it("branch mode shows source changes relative to target", async () => {
-    // source=feature → target=main ⇒ git diff main...feature
     const result = await getWorkspaceDiff(dir, {
       mode: "branch",
       source: "feature",

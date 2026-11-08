@@ -3,9 +3,6 @@ import { isPerfEnabled, markSessionSwitch, measureSessionSwitch } from "@/lib";
 
 interface ChatViewPerfMarkersParams {
   perfSessionId: string | null;
-  // Captured at render start in the component so the render-to-commit /
-  // render-to-frame deltas measure the right span. In production this is a
-  // constant 0, keeping the effect deps stable so the bodies early-bail.
   renderStartedAt: number;
   messageCount: number;
   conversationCount: number;
@@ -17,10 +14,6 @@ interface ChatViewPerfMarkersParams {
   shouldShowJumpToLatest: boolean;
 }
 
-// Emits the chat-view performance markers (commit timing, first frame, scroll
-// snapshot, jump-to-latest visibility). All bodies early-bail when perf
-// observability is disabled, so this is a no-op in production. Kept as a
-// dedicated hook so ChatView itself holds no perf-only effects.
 export function useChatViewPerfMarkers({
   perfSessionId,
   renderStartedAt,

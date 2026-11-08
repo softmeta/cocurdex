@@ -1,12 +1,10 @@
 import type { PdfHighlight, PdfQuad } from "./pdf-annotations";
 
-// Geometry extracted from a DOM text selection over a pdf.js text layer.
 export interface PdfSelectionGeometry {
   pageNumber: number;
   quads: PdfQuad[];
 }
 
-// pdf.js page roots carry `data-page-number` (1-based) and the `page` class.
 export function findPdfPageElement(node: Node | null): HTMLElement | null {
   let current: Node | null = node;
   while (current) {
@@ -35,8 +33,6 @@ export function parsePdfPageNumber(pageElement: HTMLElement): number | null {
   return pageNumber;
 }
 
-// Highlight layers fill the page's padding box, so quads are normalized to it
-// rather than to the border box getBoundingClientRect reports.
 export function pdfPageContentRect(pageElement: HTMLElement): DOMRectReadOnly {
   const borderBox = pageElement.getBoundingClientRect();
   return new DOMRect(
@@ -47,7 +43,6 @@ export function pdfPageContentRect(pageElement: HTMLElement): DOMRectReadOnly {
   );
 }
 
-// Convert a client-space rect into page-normalized coordinates (0–1).
 export function clientRectToPageQuad(
   rect: DOMRectReadOnly,
   pageRect: DOMRectReadOnly,
@@ -64,9 +59,6 @@ export function clientRectToPageQuad(
   const x2 = (rect.right - pageRect.left) / pageRect.width;
   const y2 = (rect.bottom - pageRect.top) / pageRect.height;
 
-  // Drop rects that fall completely outside the page box (e.g. inter-page
-  // selection artefacts). Allow slight overflow and clamp at paint time via
-  // normalize; here we only require a positive area after intersection.
   const clampedX1 = Math.max(0, Math.min(1, x1));
   const clampedY1 = Math.max(0, Math.min(1, y1));
   const clampedX2 = Math.max(0, Math.min(1, x2));
@@ -82,8 +74,6 @@ export function clientRectToPageQuad(
   };
 }
 
-// Build geometry for a single-page selection. Cross-page selections return
-// null so the highlight action can be disabled rather than half-storing.
 export function extractSelectionGeometry(
   range: Range,
 ): PdfSelectionGeometry | null {
@@ -123,8 +113,6 @@ export function pointInQuad(
   x: number,
   y: number,
   quad: PdfQuad,
-  // Optional padding in normalized page space (0–1). Makes thin text lines
-  // easier to hit with a right-click.
   pad = 0,
 ): boolean {
   return (
@@ -135,8 +123,6 @@ export function pointInQuad(
   );
 }
 
-// Hit-test page-normalized coordinates against stored highlights. Later entries
-// win so overlapping marks match paint order (last drawn is on top).
 export function findHighlightAtNormalizedPoint(
   highlights: readonly PdfHighlight[],
   pageNumber: number,
@@ -174,14 +160,10 @@ function hitTestPage(
   }
   const x = (clientX - pageRect.left) / pageRect.width;
   const y = (clientY - pageRect.top) / pageRect.height;
-  // ~4px tolerance so short lines / subpixel text boxes still hit.
   const pad = Math.max(4 / pageRect.width, 4 / pageRect.height);
   return findHighlightAtNormalizedPoint(highlights, pageNumber, x, y, pad);
 }
 
-// Temporarily enable pointer-events on painted highlight rects, sample the
-// topmost element under the cursor, then restore. More reliable than pure
-// math when page chrome / scale introduce sub-pixel drift.
 export function findHighlightIdAtClientPointViaDom(
   root: ParentNode | null | undefined,
   clientX: number,
@@ -227,23 +209,17 @@ export function findHighlightIdAtClientPointViaDom(
   return highlightId;
 }
 
-// Resolve a client-space click to a stored highlight via the nearest pdf.js
-// page root. Tries the event target first, then the full element stack under
-// the cursor (pdf.js text-layer targets can sit outside a simple parent walk
-// after virtualization reshuffles).
 export function findHighlightAtClientPoint(
   highlights: readonly PdfHighlight[],
   clientX: number,
   clientY: number,
   target: EventTarget | null,
-  // Optional viewer root for DOM hit-testing of painted highlight rects.
   viewerRoot?: ParentNode | null,
 ): PdfHighlight | null {
   if (highlights.length === 0) {
     return null;
   }
 
-  // Prefer the painted overlay when available — matches what the user sees.
   if (viewerRoot) {
     const id = findHighlightIdAtClientPointViaDom(viewerRoot, clientX, clientY);
     if (id) {

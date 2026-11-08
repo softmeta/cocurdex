@@ -108,8 +108,6 @@ function formatContextFileXml(attachment: ContextFileAttachment, body: string) {
   ].join("\n");
 }
 
-// Agent-neutral context format: compact Sidekick-style source marker first,
-// then structured XML for models that need explicit metadata.
 export function formatContextFileAttachments(
   attachments: ContextFileAttachment[],
 ) {
@@ -163,11 +161,6 @@ export function formatContextItemAttachments(
     .join("");
 }
 
-// Only reached when the agent cannot take images natively (see
-// `includeImageSummaries`), and then the path is the sole way it can get at the
-// bytes at all — without it the agent knows an image exists and goes hunting
-// for it across the filesystem. Agents that do take images natively never see
-// this summary, so no local path is disclosed on that route.
 export function formatImageAttachmentSummary(attachment: ImageAttachment) {
   return [
     `Image: ${attachment.name}`,

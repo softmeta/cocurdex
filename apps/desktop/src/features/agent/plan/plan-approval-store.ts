@@ -22,9 +22,6 @@ function upsertPlanApproval(
   );
 }
 
-// Same reconciliation as hydratePendingPermissionsAtom: upsert the daemon's
-// pending approvals, drop locally-pending entries it no longer holds, and
-// preserve resolved/stale records for transcript history.
 export const hydratePendingPlanApprovalsAtom = atom(
   null,
   (get, set, pending: AgentPlanApprovalRecord[]) => {

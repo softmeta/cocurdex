@@ -1,7 +1,3 @@
-// Wire types shared between the daemon (node-pty owner) and clients (xterm.js
-// consumers). A PTY session is keyed by terminalId, while
-// workspaceId keeps the renderer able to group broadcast events by workspace.
-
 export interface PtySpawnPayload {
   terminalId: string;
   workspaceId: string;
@@ -38,18 +34,10 @@ export interface PtyExitEvent {
   signal?: number;
 }
 
-// Emitted by the daemon when a terminal's foreground activity changes:
-// the deepest descendant process under the shell (the command the user is
-// currently running) and that process's working directory. Both are best
-// effort and may be null when idle, unresolved, or unsupported on the platform.
 export interface PtyActivityEvent {
   terminalId: string;
   workspaceId: string;
-  // Friendly name of the foreground command (e.g. "node", "vim"), or null when
-  // the shell sits at its prompt.
   foregroundProcess: string | null;
-  // Absolute working directory of the foreground process (or the shell when
-  // idle), or null when it can't be resolved.
   cwd: string | null;
 }
 

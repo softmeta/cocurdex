@@ -28,23 +28,17 @@ import {
 } from "./dropdown";
 import { AppPreviewCardTooltipContent } from "./preview-card-tooltip";
 
-/** One row in a searchable single-select list. */
 export interface AppSearchableSelectOption {
   value: string;
-  /** Plain text for filtering, a11y, and default display. */
   label: string;
-  /** Extra text included in built-in filtering (ids, aliases). */
   keywords?: string;
   icon?: ReactNode;
   description?: ReactNode;
   trailing?: ReactNode;
   preview?: ReactNode;
   disabled?: boolean;
-  /** Optional style on the label span (e.g. font-family previews). */
   labelStyle?: CSSProperties;
-  /** Stable group key; options with the same group are rendered together. */
   group?: string;
-  /** Display heading for `group` (first option in the group wins). */
   groupLabel?: string;
 }
 
@@ -54,7 +48,6 @@ export interface AppSearchableSelectProps {
   options: readonly AppSearchableSelectOption[];
   emptyText?: ReactNode;
   searchPlaceholder?: string;
-  /** Shown on the trigger; defaults to the selected option label. */
   triggerLabel?: ReactNode;
   triggerAriaLabel?: string;
   appearance?: AppDropdownTriggerAppearance;
@@ -64,16 +57,7 @@ export interface AppSearchableSelectProps {
   contentClassName?: string;
   align?: "start" | "center" | "end";
   side?: ComponentProps<typeof ComboboxContent>["side"];
-  /**
-   * Custom trigger element for Base UI `render` composition
-   * (e.g. a pre-styled Button). Replaces the default pill trigger.
-   */
   trigger?: ReactElement;
-  /**
-   * Extra content below the filtered list (still inside the popup).
-   * Use for secondary actions or multi-axis runtime rows that should not
-   * participate in Combobox filtering/selection.
-   */
   footer?: ReactNode;
 }
 
@@ -137,14 +121,6 @@ function AppSearchableSelectItem({ item }: { item: SelectItem }) {
   );
 }
 
-/**
- * Canonical searchable single-select for the whole app.
- *
- * Built on official shadcn Base UI Combobox (`@/components/ui/combobox`).
- * All "trigger + search + pick one" UIs must use this component (or extend it),
- * not hand-rolled Popover/Command stacks. Short unsearchable lists use
- * AppSelect (shadcn Select) instead.
- */
 export function AppSearchableSelect({
   value,
   onValueChange,
@@ -168,7 +144,6 @@ export function AppSearchableSelect({
     [options, value],
   );
 
-  // Base UI Group shape: { value: heading, items: T[] }
   const items = useMemo((): SelectItem[] | SelectGroup[] => {
     const hasGroups = options.some((option) => option.group);
     if (!hasGroups) return [...options];
@@ -253,7 +228,6 @@ export function AppSearchableSelect({
       itemToStringLabel={itemToStringLabel}
       itemToStringValue={itemToStringValue}
       onValueChange={(next) => {
-        // null/undefined when cleared; map back to our string value API.
         onValueChange(next?.value ?? "");
       }}
       onItemHighlighted={showPreview}
@@ -271,7 +245,6 @@ export function AppSearchableSelect({
               appearance={appearance}
               className={triggerClassName}
               disabled={disabled}
-              // ComboboxTrigger already paints the chevron.
               showChevron={false}
               title={
                 typeof resolvedTriggerLabel === "string"

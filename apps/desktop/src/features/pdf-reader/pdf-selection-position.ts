@@ -1,7 +1,3 @@
-// Viewport-aware placement for the fixed PDF selection toolbar.
-// Prefer bottom-start under the selection; flip above and shift horizontally
-// when the bubble would overflow the window edge.
-
 export const PDF_SELECTION_BUBBLE_GAP = 8;
 export const PDF_SELECTION_BUBBLE_PADDING = 8;
 

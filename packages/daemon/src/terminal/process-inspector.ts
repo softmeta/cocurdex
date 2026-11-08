@@ -5,8 +5,6 @@ import { logDaemonDiagnostic } from "../diagnostics";
 
 const execFileAsync = promisify(execFile);
 
-// What's running in a terminal, derived from the OS process tree. node-pty
-// exposes no foreground-process API, so we inspect the shell's descendants.
 export interface PtyActivity {
   foregroundProcess: string | null;
   cwd: string | null;
@@ -18,8 +16,6 @@ interface ProcNode {
   command: string;
 }
 
-// Reduce a full command line to a friendly name: "/usr/bin/vim file" -> "vim",
-// "-zsh" (login shell) -> "zsh", "node /x/cli.js --foo" -> "node".
 function commandName(command: string): string | null {
   const first = command.trim().split(/\s+/)[0];
   if (!first) {
@@ -30,7 +26,6 @@ function commandName(command: string): string | null {
 }
 
 async function listProcesses(): Promise<ProcNode[]> {
-  // BSD vs procps option spelling differ; `command=` (headerless) works on both.
   const args =
     process.platform === "darwin"
       ? ["-axo", "pid=,ppid=,command="]
@@ -51,9 +46,6 @@ async function listProcesses(): Promise<ProcNode[]> {
   return nodes;
 }
 
-// Walk from a shell pid down to its deepest descendant, always following the
-// most-recently-spawned child (highest pid). That leaf is the user's current
-// foreground command; if the shell has no children it is idle.
 function findForeground(
   shellPid: number,
   childrenByParent: Map<number, ProcNode[]>,
@@ -87,16 +79,13 @@ async function resolveCwds(pids: number[]): Promise<Map<number, string>> {
       pids.map(async (pid) => {
         try {
           result.set(pid, await readlink(`/proc/${pid}/cwd`));
-        } catch {
-          // Process may have exited or be inaccessible; skip.
-        }
+        } catch {}
       }),
     );
     return result;
   }
   if (process.platform === "darwin") {
     try {
-      // One batched lsof call: `-Fpn` emits `p<pid>` then `n<path>` records.
       const { stdout } = await execFileAsync(
         "lsof",
         ["-a", "-d", "cwd", "-Fpn", "-p", pids.join(",")],
@@ -110,17 +99,12 @@ async function resolveCwds(pids: number[]): Promise<Map<number, string>> {
           result.set(currentPid, line.slice(1));
         }
       }
-    } catch {
-      // lsof can be slow or restricted; cwd stays unresolved.
-    }
+    } catch {}
     return result;
   }
-  // Windows: no cheap foreground-cwd probe; left unresolved.
   return result;
 }
 
-// Inspect a batch of shell pids in two OS calls total (one `ps`, one `lsof` on
-// macOS / parallel /proc reads on Linux), keyed back by shell pid.
 export async function inspectSessions(
   shellPids: number[],
 ): Promise<Map<number, PtyActivity>> {

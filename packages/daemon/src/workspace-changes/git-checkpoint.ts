@@ -221,11 +221,6 @@ async function assertGitCheckpointBudget(
   }
 }
 
-/**
- * Checkpoints reuse one scratch index per workspace so `git add -A` can rely
- * on its stat cache. A throwaway index re-hashes the whole working tree on
- * every turn, which dominates checkpoint cost on large repositories.
- */
 const indexLocks = new Map<string, Promise<unknown>>();
 
 async function withScratchIndex<T>(
@@ -260,8 +255,6 @@ async function withScratchIndex<T>(
 
 export function captureGitCommit(workspaceRootPath: string) {
   return withScratchIndex(workspaceRootPath, async (env, cold) => {
-    // A cold index starts from HEAD so files that are tracked but also
-    // gitignored stay in the tree; later captures reuse the stat cache.
     const head = (
       await runGit(["rev-parse", "--verify", "HEAD"], {
         cwd: workspaceRootPath,
@@ -296,9 +289,7 @@ async function diffGitCheckpoints(
   beforeRef: string,
   afterRef: string,
 ) {
-  // `--raw` already carries both blob ids, so no per-file `ls-tree` is needed.
   const raw = await runGit(
-    // --abbrev=40 keeps the full blob ids that restore verification compares.
     [
       "diff",
       "--find-renames",
@@ -373,7 +364,6 @@ function isHeadMoveEntry(
   );
 }
 
-/** One `cat-file --batch-check` instead of a `cat-file -s` per file. */
 async function readBlobSizes(cwd: string, hashes: (string | null)[]) {
   const sizes = new Map<string, number>();
   const wanted = [...new Set(hashes.filter((hash): hash is string => !!hash))];
@@ -396,10 +386,6 @@ async function readBlobSizes(cwd: string, hashes: (string | null)[]) {
   return sizes;
 }
 
-/**
- * Parses `git diff --raw -z` records:
- * `:<srcmode> <dstmode> <srcsha> <dstsha> <status>\0<path>[\0<newPath>]`.
- */
 function parseRawDiff(output: string) {
   const tokens = output.split("\0").filter(Boolean);
   const entries: Array<{

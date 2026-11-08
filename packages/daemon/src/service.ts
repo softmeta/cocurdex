@@ -286,7 +286,6 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-/** How often checkpoint retention runs on a daemon that never restarts. */
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const REPORTED_SETTING_VALUES_KEY = "settings.reportedValues";
 const BRIEF_POSTED_SETTING_KEY = "personal.briefPostedAt";
@@ -824,8 +823,6 @@ export class CocurdexDaemonService {
       },
     });
     void this.reconcileWorkspaceChanges();
-    // Retention only runs inside reconcile, so a long-lived daemon would never
-    // expire checkpoints without this heartbeat.
     this.checkpointReconcileTimer = setInterval(
       () => void this.reconcileWorkspaceChanges(),
       CHECKPOINT_RECONCILE_INTERVAL_MS,
@@ -887,8 +884,6 @@ export class CocurdexDaemonService {
             logDaemonDiagnostic("warn", "outbox.alertFailed", { error }),
           );
       }
-      // Only a terminal error ends the turn; a mid-turn "error" event can be
-      // followed by more tool calls whose changes still belong to this turn.
       if (event.type === "state.changed" && event.status === "error") {
         await this.workspaceChanges.failTurn(event.sessionId, "failed");
       }
@@ -1416,8 +1411,6 @@ export class CocurdexDaemonService {
     );
   }
 
-  // file.* RPCs are reachable by any daemon client, so reads are confined to
-  // registered workspace/worktree roots instead of trusting request paths.
   async readWorkspaceTextFile(filePath: string) {
     if (!(await this.scanPolicy.canAccessFile(filePath))) {
       throw new Error(
@@ -1489,9 +1482,6 @@ export class CocurdexDaemonService {
     return fileExists(filePath);
   }
 
-  // Directory browsing for picking a workspace root is intentionally not
-  // confined to scan roots: the whole point is choosing a new root. It lists
-  // directory names only and is still gated by the daemon token.
   async listHostDirectories(directoryPath?: string) {
     return listHostDirectories(directoryPath);
   }
@@ -1881,8 +1871,6 @@ export class CocurdexDaemonService {
     return this.runtime.getPendingInteractions();
   }
 
-  // Journal seq provider bound by the wire layer so resync snapshots can
-  // report the position their reads are consistent with.
   private readEventSeq: () => number = () => 0;
 
   bindEventSeqProvider(provider: () => number) {
@@ -2636,8 +2624,6 @@ export class CocurdexDaemonService {
     return session;
   }
 
-  // Only replaces a title the user has not changed since the request was
-  // made: expectedTitle guards against overwriting a manual rename.
   async refineSessionTitle(
     payload: RefineSessionTitlePayload,
   ): Promise<SessionRecord | null> {
@@ -3138,7 +3124,6 @@ export class CocurdexDaemonService {
     );
   }
 
-  /** User-facing stop: abandon the current turn, keep the agent session usable. */
   async stopSession(sessionId: string) {
     validateSessionId(sessionId);
     await this.team.onLeadStopped(sessionId);

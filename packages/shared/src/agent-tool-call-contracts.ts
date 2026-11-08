@@ -43,7 +43,6 @@ export interface AgentToolCallRecord {
   kind?: string | null;
   status: "pending" | "in_progress" | "completed" | "failed";
   subagent?: AgentSubagentReference | null;
-  // Undefined is reserved for summary records whose result is loaded lazily.
   content: AgentToolCallContent[] | undefined;
   rawInput?: unknown;
   rawOutput?: unknown;

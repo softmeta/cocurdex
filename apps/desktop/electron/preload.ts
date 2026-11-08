@@ -46,8 +46,6 @@ const hostBridge: HostBridge = {
     ipcRenderer.invoke("workspace:consumeOpenFolder") as Promise<{
       rootPath: string;
     } | null>,
-  // Electron no longer exposes File.path on the renderer File object; resolve
-  // local drag-and-drop paths through webUtils in the preload bridge.
   getPathForFile: (file: File) => {
     try {
       return webUtils.getPathForFile(file);

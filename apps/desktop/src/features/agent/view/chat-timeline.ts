@@ -391,9 +391,6 @@ export function getVisibleConversationItems(
   );
 }
 
-// A render segment is either a single timeline item rendered as-is, or an
-// `activity` run — a contiguous stretch of process (tool calls, reasoning and
-// interim replies) folded into one collapsible block for the "condensed" mode.
 export type ConversationRenderSegment =
   | { kind: "item"; item: TimelineGroup }
   | { kind: "activity"; items: TimelineGroup[] };
@@ -402,9 +399,6 @@ export type TurnPhase = "live" | "completed" | "interrupted";
 
 type TurnEnd = string | null | undefined;
 
-// Process items are the turn's "working" steps — tool calls, reasoning and
-// interim replies. Final answers, permissions and questions stay outside:
-// answers are the payload, and permission/question cards are interactive.
 function isProcessItem(item: TimelineGroup, turnEndMessageId: TurnEnd) {
   if (item.kind === "toolCalls") {
     return true;

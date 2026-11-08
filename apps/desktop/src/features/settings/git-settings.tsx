@@ -89,8 +89,6 @@ export function GitSettingsPanel() {
           }),
         )
       : [];
-  // No "inherit" row on this axis: an unset selection runs at the model's own
-  // default effort, so that level is what the menu preselects.
   const codexReasoningDefaultValue =
     selectedProviderModel?.model.defaultReasoningEffort ?? "";
   const codexServiceTierOptions =

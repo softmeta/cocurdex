@@ -5,8 +5,6 @@ import { renameNoteAtom } from "../notes-store";
 
 const TITLE_DEBOUNCE_MS = 500;
 
-// Debounced title rename. Pending title is flushed on unmount so switching
-// notes cannot lose the edit; saves share the note's ordered save queue.
 export function useDebouncedNoteRename({
   noteId,
   onRenamed,
@@ -49,7 +47,6 @@ export function useDebouncedNoteRename({
   }, []);
 }
 
-// Folder renames commit on blur/Enter only.
 export function useCommitFolderRename(noteId: string) {
   const renameNote = useSetAtom(renameNoteAtom);
   const noteIdRef = useRef(noteId);

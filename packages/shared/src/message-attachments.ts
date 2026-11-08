@@ -10,8 +10,6 @@ export interface ContextFileAttachment {
   endLine: number;
   endColumn?: number;
   surroundingContext: string;
-  // Whole-file @mentions omit bytes so the agent Reads the path. Selections
-  // keep selectedText / surroundingContext inlined.
   contentOmitted?: boolean;
 }
 
@@ -114,10 +112,6 @@ export function isContextAttachment(
   );
 }
 
-// Line/column range label for a code selection. Columns are only present when
-// the selection is a partial range (a whole-line selection drops them at
-// capture time), so `L19-19` reads as "whole line(s)" and `L19:5-19:20` as a
-// partial span.
 export function formatContextFileRange(
   attachment: Pick<
     ContextFileAttachment,

@@ -1,9 +1,5 @@
-// App-side PDF marks (user bookmarks + text highlights). Stored outside the
-// PDF file so the workspace document stays read-only and git-clean.
-
 export type PdfHighlightColor = "yellow" | "green" | "blue" | "pink";
 
-// Stable order for color pickers and paint lookup.
 export const PDF_HIGHLIGHT_COLORS: readonly PdfHighlightColor[] = [
   "yellow",
   "green",
@@ -20,9 +16,6 @@ export function isPdfHighlightColor(
   );
 }
 
-// Axis-aligned box in page space, coordinates normalized to 0–1 relative to
-// the rendered page box (not PDF user-space). Survives zoom because painting
-// multiplies by the live page width/height.
 export interface PdfQuad {
   x1: number;
   y1: number;
@@ -33,9 +26,7 @@ export interface PdfQuad {
 export interface PdfUserBookmark {
   id: string;
   pageNumber: number;
-  // Optional user label; when omitted the UI shows a localized page fallback.
   label?: string;
-  // Optional vertical position within the page (0 = top, 1 = bottom).
   scrollYRatio?: number;
   createdAt: number;
 }
@@ -359,8 +350,6 @@ export function addBookmarkToDocument(
   doc: PdfDocumentAnnotations,
   bookmark: PdfUserBookmark,
 ): PdfDocumentAnnotations {
-  // One bookmark per page: replacing keeps the list small and the toolbar
-  // toggle predictable (pin / unpin the current page).
   const withoutPage = doc.bookmarks.filter(
     (entry) => entry.pageNumber !== bookmark.pageNumber,
   );

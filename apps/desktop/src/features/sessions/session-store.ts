@@ -77,9 +77,6 @@ export {
 
 export const sessionRunStartedAtAtom = atom<Record<string, number>>({});
 
-// Sort newest-first by last message. Fall back to the immutable createdAt (not
-// updatedAt) so settings-only edits — agent, collaboration mode, permission
-// mode, rename — don't reorder a session that hasn't received a message yet.
 function compareSessionsByRecency(
   left: SessionRecord,
   right: SessionRecord,
@@ -148,11 +145,6 @@ export const bootstrapSessionsAtom = atom(
   null,
   (_get, set, sessions: SessionRecord[]) => {
     set(reconcileSessionsAtom, sessions);
-    // Deliberately no auto-selection: selecting the most recent session on cold
-    // start loads and renders its whole transcript right after the first paint,
-    // which blocks the renderer's main thread (hover, menus) for seconds on a
-    // long history. Launch lands on the new-session surface instead; the
-    // sidebar is one click away.
     set(resetSessionSplitLayoutAtom);
   },
 );
@@ -435,9 +427,6 @@ export const deleteSessionAtom = atom(
   },
 );
 
-// Bulk-remove every session belonging to a workspace. Used when a workspace
-// is removed from the app so its sessions vanish from the sidebar without
-// requiring a full re-bootstrap.
 export const removeSessionsByWorkspaceAtom = atom(
   null,
   (get, set, workspaceId: string) => {

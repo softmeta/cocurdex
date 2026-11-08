@@ -1,5 +1,3 @@
-/* App-wide browser and Electron shell defaults. Theme values are referenced
- * here but defined in theme-preset.css and theme-tokens.css. */
 @layer base {
   * {
     box-sizing: border-box;
@@ -40,8 +38,6 @@
   }
 }
 
-/* Electron titlebar drag regions must remain globally available because layout
- * pieces across features opt in and out of native window dragging. */
 .app-drag {
   -webkit-app-region: drag;
   app-region: drag;
@@ -60,16 +56,6 @@
   );
 }
 
-/*
- * macOS renders native scrollbars through AppKit, and they flash on top of the
- * window whenever it changes focus state -- e.g. the cmd+shift screenshot
- * shortcut deactivates the window -- which is the "phantom scrollbars" caught in
- * screenshots. Even auto-hiding overlay scrollbars flash this way, so the only
- * reliable fix is to remove native scrollbars from every surface on macOS.
- * Visible scrollbars there come only from custom DOM implementations (ScrollArea's
- * Base UI thumb, xterm, Monaco), never the native pseudo. Other platforms have no
- * overlay flash and keep a thin styled native bar.
- */
 html[data-platform="darwin"] * {
   scrollbar-width: none;
 }
@@ -96,47 +82,18 @@ html[data-platform="other"] ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
 }
 
-/*
- * xterm.js v5 ships a VS Code-derived custom DOM scrollbar
- * (.xterm-scrollable-element > .scrollbar). Width is driven by the
- * `overviewRuler.width` Terminal option (see terminal-registry.ts), and the
- * slider color comes from theme options (see terminal-theme.ts). The only
- * thing left to do in CSS is round the slider.
- */
 .xterm .xterm-scrollable-element > .scrollbar > .slider {
   border-radius: 3px;
 }
 
-/*
- * The WebGL renderer (see terminal-registry.ts) paints the terminal background
- * per-cell onto its canvas, but xterm.js never mirrors `theme.background` onto
- * the `.xterm-viewport` element — its stylesheet leaves it opaque black. While
- * dragging a window divider the canvas is briefly resized/cleared and the black
- * viewport shows through for a frame, reading as a black flicker on light
- * themes. Mirror the theme surface here so any uncovered frame matches the
- * terminal background instead. The CSS var tracks dark/light switches for free.
- */
 .xterm .xterm-viewport {
   background-color: var(--editor-canvas);
 }
 
-/*
- * Hide the overview-ruler canvas. We use `overviewRuler.width` solely as
- * the lever for the scrollbar width (xterm derives verticalScrollbarSize
- * from it), but we never paint decoration markers, and the canvas still
- * renders a 1px left divider that looks like a stray vertical hairline.
- */
 .xterm-decoration-overview-ruler {
   display: none;
 }
 
-/* pdf.js paints glyphs onto a canvas and overlays a transparent text layer for
-   selection. pdf.js's own `.textLayer ::selection` rule sets only a background,
-   relying on the spans staying `color: transparent` while selected. The global
-   `::selection` rule above also sets `color`, which repaints the otherwise
-   transparent spans on top of the canvas — producing the doubled, misaligned
-   text seen while selecting. Keep the text layer transparent during selection
-   so only pdf.js's highlight background shows. */
 .textLayer ::selection {
   color: transparent;
 }
@@ -157,12 +114,6 @@ html {
   display: none;
 }
 
-/*
- * Chromium on macOS can still ask AppKit to paint overlay scrollbars while a
- * modifier shortcut is held, even when the viewport has hidden WebKit scrollbar
- * pseudos. Move those native overlays into the ScrollArea root's clipped gutter
- * while preserving the original content box with matching inline padding.
- */
 html[data-platform="darwin"] .scrollbar-native-gutter {
   margin-inline: -32px;
   width: calc(100% + 64px);
@@ -173,9 +124,6 @@ html[data-platform="darwin"] .scrollbar-native-gutter {
   scrollbar-color: transparent transparent;
 }
 
-/* The sidebar surface is a touch darker than the chat canvas, so the shared
-   thumb reads heavier there. Lighten the thumb locally (cascades to every
-   ScrollArea inside the sidebar) to match the perceived weight on chat. */
 .sidebar-scrollbar {
   --scrollbar-thumb: color-mix(in srgb, var(--foreground) 5%, transparent);
   --scrollbar-thumb-hover: color-mix(
@@ -251,13 +199,6 @@ html[data-platform="darwin"] .scrollbar-native-gutter {
   pointer-events: auto;
 }
 
-/* Suppress the thumb when content does not truly overflow. Base UI renders a
-   scrollbar for a phantom 1px sub-pixel overflow; the ScrollArea component
-   re-derives real overflow with a tolerance and exposes it via
-   `data-overflowing-*`, so gate visibility on that instead of Base UI's check.
-   Use the direct-child combinator: a descendant selector would let a
-   non-overflowing outer ScrollArea hide the scrollbar of a nested, genuinely
-   overflowing inner ScrollArea (e.g. the capped workspace list). */
 .scrollbar-interactive:not([data-overflowing-y])
   > [data-slot="scroll-area-scrollbar"]:not([data-orientation="horizontal"]) {
   display: none;

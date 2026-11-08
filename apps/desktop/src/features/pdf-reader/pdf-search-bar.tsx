@@ -13,9 +13,6 @@ interface PdfSearchBarProps {
   onClose(): void;
 }
 
-// In-document find bar. Enter steps to the next match, Shift+Enter to the
-// previous, Escape closes. Match tally streams in from pdf.js as pages are
-// scanned, so the count can lag the query by a frame.
 export function PdfSearchBar({
   query,
   matches,

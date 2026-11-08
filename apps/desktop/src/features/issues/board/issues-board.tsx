@@ -25,8 +25,6 @@ import { IssueColumn } from "./issue-column";
 
 const SORT_STEP = 1000;
 
-// Sort order between two neighbors; sort_order is REAL in SQLite so repeated
-// midpoints stay exact long past any realistic drag count.
 function sortOrderBetween(before?: number, after?: number): number {
   if (before !== undefined && after !== undefined) return (before + after) / 2;
   if (after !== undefined) return after - SORT_STEP;
@@ -34,7 +32,6 @@ function sortOrderBetween(before?: number, after?: number): number {
   return SORT_STEP;
 }
 
-// Sort order for an item of `items` landing at `index` after an arrayMove.
 function sortOrderAt<T extends { sortOrder: number }>(
   items: T[],
   index: number,
@@ -144,8 +141,6 @@ export function IssuesBoard({
         (candidate) => candidate.id === (activeData.card as IssueRecord).id,
       );
       if (card && card.columnId !== targetColumnId) {
-        // Local-only optimistic move so the card renders in the hovered
-        // column while dragging; persisted once in handleDragEnd.
         const targetCards = issuesByColumn.get(targetColumnId) ?? [];
         const lastSort =
           targetCards.length > 0
@@ -172,8 +167,6 @@ export function IssuesBoard({
 
       const overData = over.data.current;
       const targetColumnId = overData?.columnId as string | undefined;
-      // Read the card from board state: handleDragOver may already have
-      // moved it to the hovered column, and active.data can lag behind.
       const card = board.issues.find((c) => c.id === origin.card.id);
       if (!card || !targetColumnId) return;
       const move = (sortOrder: number) =>

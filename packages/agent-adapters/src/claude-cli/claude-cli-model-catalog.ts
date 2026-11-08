@@ -7,9 +7,6 @@ export interface T3ClaudeModelCatalogEntry {
   supportsFastMode?: boolean;
 }
 
-// T3 Code keeps this catalog as a compatibility supplement to Claude Code's
-// account-aware model picker. The dynamic picker remains authoritative when
-// it reports the same model id.
 export const T3_CLAUDE_MODEL_CATALOG: ReadonlyArray<T3ClaudeModelCatalogEntry> =
   [
     {

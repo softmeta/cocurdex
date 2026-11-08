@@ -83,8 +83,6 @@ export function SettingsSidebar({
       className="flex h-full min-h-0 shrink-0 flex-col bg-sidebar text-sidebar-fg"
       style={{ width: sidebarWidth ?? 240 }}
     >
-      {/* Draggable titlebar spacer; the back/forward controls live in the
-          titlebar overlay rendered by SettingsScreen. */}
       <div className="app-drag h-9 shrink-0" />
 
       <div className="shrink-0 px-3 pb-2">

@@ -8,18 +8,12 @@ import {
 import type { CompatibleProviderModel } from "./provider-contracts";
 
 const agentApiCompatibility: Record<BuiltInAgentId, ProviderApi[]> = {
-  // Claude Agent runs the user's own `claude` binary with its own auth; it never
-  // consumes an app-managed provider, so no api is compatible by design.
   "claude-agent": [],
   codex: ["openai-responses"],
   opencode: ["openai-completions", "openai-responses", "anthropic-messages"],
-  // Pi is Cocurdex's built-in agent — it drives every api Cocurdex supports.
   pi: [...providerApis],
 };
 
-// Sessions persist their agentType, so a stored id can outlive the agent it
-// names (renamed, removed, or written by a newer build). Treat those as "no
-// compatible api" rather than letting the lookup miss reach callers.
 export function getCompatibleProviderApis(agentId: AgentId): ProviderApi[] {
   if (isAcpRegistryAgentId(agentId)) {
     return [];
@@ -31,9 +25,6 @@ export function isApiCompatibleWithAgent(agentId: AgentId, api: ProviderApi) {
   return getCompatibleProviderApis(agentId).includes(api);
 }
 
-// Agent pickers only surface models that can drive an agent loop. A model with
-// no explicit capabilities is treated as agent-capable for backward
-// compatibility; once capabilities are declared, "agent" must be present.
 export function isAgentCapableModel(
   capabilities: CompatibleProviderModel["model"]["capabilities"],
 ) {
@@ -46,9 +37,6 @@ export function isChatSupportedApi(api: ProviderApi) {
   return providerApis.includes(api);
 }
 
-// Chat pickers only surface models that can serve a chat turn. Same backward
-// compatibility rule as agent capability: no explicit capabilities means the
-// model is assumed chat-capable.
 export function isChatCapableModel(
   capabilities: CompatibleProviderModel["model"]["capabilities"],
 ) {

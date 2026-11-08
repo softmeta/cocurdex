@@ -5,8 +5,6 @@ import {
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 
-// `kind` doubles as the i18n key suffix (`agent:activity.<kind>`), so a renamed
-// state fails to compile instead of silently falling through to "ready".
 export type ActivityKind =
   | "attention"
   | "completed"

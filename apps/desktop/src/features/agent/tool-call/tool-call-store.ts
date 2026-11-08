@@ -23,7 +23,6 @@ function toToolCallSummary(toolCall: AgentToolCallRecord): AgentToolCallRecord {
 export const bootstrapToolCallsAtom = atom(
   null,
   (_get, set, toolCalls: AgentToolCallRecord[]) => {
-    // Group then sort. Avoids spread-on-accumulator (O(n^2)).
     const grouped = new Map<string, AgentToolCallRecord[]>();
     for (const toolCall of toolCalls) {
       const bucket = grouped.get(toolCall.sessionId);

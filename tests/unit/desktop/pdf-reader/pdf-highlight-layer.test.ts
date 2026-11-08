@@ -41,7 +41,6 @@ describe("paintPdfHighlights", () => {
     expect(page1.querySelector(`.${PDF_HIGHLIGHT_LAYER_CLASS}`)).toBeNull();
     const layer = page2.querySelector(`.${PDF_HIGHLIGHT_LAYER_CLASS}`);
     expect(layer).not.toBeNull();
-    // Layer is appended after the text layer so DOM hit-testing can sample it.
     expect(
       page2.lastElementChild?.classList.contains(PDF_HIGHLIGHT_LAYER_CLASS),
     ).toBe(true);

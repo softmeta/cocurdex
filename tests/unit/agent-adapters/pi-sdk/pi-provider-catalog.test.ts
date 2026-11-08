@@ -95,7 +95,6 @@ describe("Pi provider catalog", () => {
     );
     const models = await listModels({ id: "gateway" });
 
-    // Both supported apis survive; the unsupported openrouter-images is dropped.
     expect(models?.map((model) => model.api).sort()).toEqual([
       "anthropic-messages",
       "openai-completions",

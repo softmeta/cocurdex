@@ -47,11 +47,6 @@ type DaemonNoParamMethod = {
     : never;
 }[DaemonMethod];
 
-/**
- * Runtime catalog of methods whose payload is `undefined`. Must stay in lockstep
- * with `DaemonRequestPayloadByMethod`: missing or extra keys fail typecheck.
- * The client uses this to tell `{ userDataPath }` options apart from params.
- */
 export const DAEMON_NO_PARAM_METHODS = {
   "agent.list": true,
   "app.bootstrap": true,
@@ -139,10 +134,6 @@ export type DaemonResponse<M extends DaemonMethod = DaemonMethod> = {
     | { error: DaemonError; id: string };
 }[M];
 
-// Epoch identifies one daemon lifetime (its start timestamp). Sequence numbers
-// restart with each lifetime, so a client must only reuse afterSeq within the
-// epoch that produced it. replayGap tells the subscriber the journaled replay
-// was incomplete and authoritative state must be refetched.
 export interface DaemonEventEnvelope {
   event: CocurdexDaemonEvent;
   seq?: number;

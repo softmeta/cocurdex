@@ -4,10 +4,6 @@ import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/ui";
 import { loadTurnChangeSetsAtom } from "@/features/turn-workspace-changes";
 import { desktopApi, useMountEffect, watchSessionStream } from "@/lib";
-// Intentional render recursion: a tool call can expand into a subagent
-// transcript, whose items render tool call groups again. The import cycle is
-// structural, not a layering mistake — keep the imports deep (never the
-// tool-call barrel) so it stays confined to these three modules.
 import { ChatConversationItem } from "../view/chat-conversation-item";
 import {
   createConversationGroups,

@@ -211,7 +211,6 @@ export class CodexAppServerClient {
     await this.#request("thread/name/set", { threadId, name });
   }
 
-  // Generic escape hatch for methods without a typed wrapper (account/*, …).
   async request(method: string, params?: unknown): Promise<unknown> {
     return this.#request(method, params);
   }

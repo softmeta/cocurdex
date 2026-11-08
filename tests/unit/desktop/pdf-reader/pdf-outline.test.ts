@@ -15,9 +15,7 @@ function createSource(
 ): PdfOutlineSource {
   return {
     getOutline: vi.fn().mockResolvedValue(outline),
-    // Named destinations resolve to an array whose first element is the page ref.
     getDestination: vi.fn(async (name: string) => [{ name }]),
-    // Default: the ref object carries the resolved page index.
     getPageIndex: vi.fn(async (ref: unknown) => (ref as { page: number }).page),
     ...overrides,
   };

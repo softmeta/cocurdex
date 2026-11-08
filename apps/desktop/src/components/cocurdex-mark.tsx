@@ -10,13 +10,11 @@ const MOTION_CLASS_NAMES: Record<CocurdexMarkMotion, string> = {
 
 interface CocurdexMarkProps {
   className?: string;
-  /** Welcome-surface hover: redraw the C, then blink the prompt caret. */
   interactive?: boolean;
   motion?: CocurdexMarkMotion;
   onWorkingCycleComplete?: () => void;
 }
 
-/** App mark used on the boot splash and the empty-session greeting. */
 export function CocurdexMark({
   className,
   interactive = false,

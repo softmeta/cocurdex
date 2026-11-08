@@ -30,9 +30,6 @@ interface PdfSidePanelsProps {
   onClose(): void;
 }
 
-// Left rail for outline, marks, and page thumbnails. Only one panel is open at
-// a time; the backdrop dismisses whichever is showing. Width is shared and
-// drag-resizable (persisted via pdfSidePanelWidthAtom).
 export function PdfSidePanels({
   outline,
   annotations,
@@ -155,8 +152,6 @@ function PdfSidePanelShell({
   return (
     <aside
       className={cn(
-        // No panel border-e / shadow: match shell chrome so the edge is a
-        // single ResizeSeparator line, not a stacked 2px edge.
         "absolute inset-y-0 start-0 z-10 bg-editor-canvas transition-transform duration-200 ease-in-out",
         open ? "translate-x-0" : "ltr:-translate-x-full rtl:translate-x-full",
       )}

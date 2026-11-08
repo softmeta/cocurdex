@@ -115,8 +115,6 @@ describe("tool call utils", () => {
     expect(entries).not.toBeNull();
     const commandEntry = entries?.find((entry) => entry.key === "command");
     expect(commandEntry).toBeDefined();
-    // A shell command is a code-like value that should stack full-width under
-    // its label instead of sitting inline with a wide empty gutter.
     expect(commandEntry?.mono).toBe(true);
     expect(commandEntry && isMultilineInputField(commandEntry)).toBe(true);
   });

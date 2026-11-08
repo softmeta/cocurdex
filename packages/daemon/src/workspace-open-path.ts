@@ -15,9 +15,6 @@ async function canonicalDirectory(directoryPath: string) {
   }
 }
 
-// Map a directory onto an existing workspace's stored rootPath when they are
-// the same directory (including symlink / realpath differences), so opening
-// it reuses that workspace instead of creating a duplicate.
 async function matchExistingRootPath(
   directoryPath: string,
   existingRootPaths: string[],
@@ -39,9 +36,6 @@ async function matchExistingRootPath(
   return directoryPath;
 }
 
-// Resolve a user-supplied path (CLI argument or a drop onto the window) into
-// the workspace root to open. With allowFile, a file opens its parent
-// directory. Returns null for a missing or unusable path.
 export async function resolveWorkspaceOpenPath(
   inputPath: string,
   existingRootPaths: string[],

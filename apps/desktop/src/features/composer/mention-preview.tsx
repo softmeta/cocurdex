@@ -7,18 +7,11 @@ interface MentionPreviewProps {
 }
 
 interface TreeNode {
-  // Absolute path on disk for the partial segment. Used as the icon hint so
-  // FileTypeIcon can resolve the right glyph (folders fall back to the
-  // generic folder icon, file segments use their basename extension).
   hintPath: string;
   isFolder: boolean;
   name: string;
 }
 
-// Tree-outline preview that mirrors Cursor's mention-suggestion side panel:
-// renders the highlighted entry's path as a vertically nested chain so the
-// user can see exactly where in the workspace the candidate lives without
-// having to read a long inline path. Purely presentational — no I/O.
 export function MentionPreview({ file }: MentionPreviewProps) {
   const { t } = useTranslation("sessions");
   const segments = file.relativePath.split("/").filter(Boolean);
@@ -27,8 +20,6 @@ export function MentionPreview({ file }: MentionPreviewProps) {
     return null;
   }
 
-  // Reconstruct the absolute path prefix for each level so FileTypeIcon
-  // receives a usable hint for the leaf node.
   const rootPrefix = file.path.slice(
     0,
     file.path.length - file.relativePath.length,

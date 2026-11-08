@@ -1,11 +1,3 @@
-// pnpm's content-addressed store + link strategy can strip the +x bit from
-// node-pty's `spawn-helper` prebuild on macOS/Linux, leaving the binary
-// readable but not executable. Without it, `posix_spawnp` fails with EACCES at
-// runtime and the renderer surfaces "Error: posix_spawnp failed.".
-//
-// Run this as a postinstall step to make sure all platform prebuilds are
-// marked executable. Safe to run repeatedly; missing files are skipped.
-
 import { chmodSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -22,9 +14,6 @@ function nodePtyRoot() {
 
 const root = nodePtyRoot();
 if (!root) {
-  // node-pty might not be installed (e.g. someone is running scripts on
-  // packages/* before linking). Bail silently — pnpm will install it on
-  // the next pass.
   process.exit(0);
 }
 

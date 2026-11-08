@@ -30,9 +30,6 @@ export {
   FileTypeIconSprite,
   renderFileTypeIconHtml,
 } from "./file-type-icon";
-// markdown-body-editor is deliberately absent: it pulls in TipTap/ProseMirror,
-// and re-exporting it here would drag that into every `@/components` import —
-// i.e. the startup path. Import it from "@/components/markdown-body-editor".
 export type {
   MarkdownFilePathHandlers,
   ResolvedFilePath,

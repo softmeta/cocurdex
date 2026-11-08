@@ -8,10 +8,6 @@ import {
 } from "./shortcut-catalog";
 import type { ShortcutOverrides } from "./shortcut-store";
 
-/**
- * Effective binding for one action: override when the id is present in
- * overrides (including explicit null = unbound), otherwise the catalog default.
- */
 export function resolveShortcutCombo(
   id: ShortcutId,
   overrides: ShortcutOverrides,
@@ -51,7 +47,6 @@ export interface ShortcutConflict {
   conflictsWith: ShortcutId[];
 }
 
-/** Pairs of actions that share the same non-null combo. */
 export function findShortcutConflicts(
   overrides: ShortcutOverrides,
 ): ShortcutConflict[] {

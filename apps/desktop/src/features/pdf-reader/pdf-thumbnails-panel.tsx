@@ -15,11 +15,8 @@ const OVERSCAN = 3;
 interface PdfThumbnailsPanelProps {
   totalPages: number;
   currentPage: number;
-  // Current left-rail width in CSS px — thumbnails fill this minus padding.
   panelWidth: number;
   onSelectPage(pageNumber: number): void;
-  // Renders a JPEG data URL for the given 1-based page at maxEdge CSS px.
-  // Cached by the panel keyed on page + render edge bucket.
   renderThumbnail(
     pageNumber: number,
     maxEdgePx: number,
@@ -44,7 +41,6 @@ function useThumbnailScroll({
   const [viewportHeight, setViewportHeight] = useState(0);
   rowHeightRef.current = rowHeight;
 
-  // Track viewport height so the visible window stays correct after rail resize.
   useMountEffect(() => {
     const el = scrollRef.current;
     if (!el) {
@@ -81,8 +77,6 @@ function useThumbnailScroll({
     captureAnchorFromScrollTop(el.scrollTop);
   }, [captureAnchorFromScrollTop]);
 
-  // When the rail width changes, row heights change. Restore the previously
-  // visible top page via scrollTop. Legitimate layout effect: external scroll.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (prevRowHeightRef.current === null) {
@@ -110,7 +104,6 @@ function useThumbnailScroll({
     setScrollTop(nextTop);
   }, [rowHeight, totalPages]);
 
-  // Only auto-follow the reading page when it actually changes — never on resize.
   useLayoutEffect(() => {
     if (prevCurrentPageRef.current === currentPage) {
       return;
@@ -169,9 +162,6 @@ export function PdfThumbnailsPanel({
     return null;
   }
 
-  // Manual windowing with the *live* row height. TanStack Virtual was caching
-  // item sizes/ranges from the previous width, leaving blank holes while page
-  // labels still existed in the full scroll height.
   const totalHeight = totalPages * rowHeight;
   const safeViewport = Math.max(viewportHeight, 1);
   const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - OVERSCAN);

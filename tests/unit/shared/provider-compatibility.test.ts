@@ -68,9 +68,6 @@ describe("filterCompatibleProviderModels", () => {
     ]);
   });
 
-  // Sessions persist agentType, so an id from an older or newer build reaches
-  // this lookup; an undefined api list crashed every caller filtering models
-  // for that session.
   it("drops every model for an unknown agent id", () => {
     const unknown = "retired-agent" as AgentId;
 

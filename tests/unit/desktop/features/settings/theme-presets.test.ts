@@ -30,10 +30,6 @@ describe("theme presets", () => {
   });
 
   it("supplies light and dark token maps for every non-default preset", async () => {
-    // Import the module-private maps indirectly via apply-ready definitions:
-    // re-read token completeness from list + require each non-cocurdex entry
-    // to expose both swatches (tokens are private; completeness is enforced
-    // by TypeScript ThemeTokenMap — this asserts runtime registration).
     for (const preset of listThemePresets()) {
       expect(preset.swatch.light).toBeTruthy();
       expect(preset.swatch.dark).toBeTruthy();

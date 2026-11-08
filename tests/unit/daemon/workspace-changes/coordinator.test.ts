@@ -397,7 +397,6 @@ describe("workspace change coordinator", () => {
       workspaceRootPath: workspace,
     });
     expect(undo.status).toBe("restored");
-    // A successful undo drops its recovery snapshot right away.
     expect(undo.recoveryCheckpointRef).toBeNull();
     expect(await readFile(path.join(workspace, "notes/a.md"), "utf8")).toBe(
       "one\n",

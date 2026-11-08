@@ -77,9 +77,6 @@ function HostDirectoryBrowser({
     }
   };
 
-  // Select resolves the path field: an edited draft is validated through the
-  // daemon before being returned, so a failed or uncommitted path can never
-  // select the previously listed directory.
   const selectCurrent = async () => {
     const draft = pathDraft.trim();
     if (!draft) return;

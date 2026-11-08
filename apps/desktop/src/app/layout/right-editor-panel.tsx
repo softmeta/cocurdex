@@ -67,11 +67,6 @@ import { ViewSwitcherTabs } from "./view-switcher-tabs";
 const MIN_FILE_TREE_WIDTH = 170;
 const MIN_EDITOR_WIDTH = 240;
 const INTERNAL_SEPARATOR_WIDTH = 1;
-// Views without an internal horizontal scroller need the body-level pan to
-// reach content a pinned rail covers — xterm truncates at grid width and
-// pdf.js clips overflow-x. Everything else shrinks instead and relies on its
-// own scrollbar (Monaco, kanban, diff, tab strips) or reflow (notes, browser),
-// which also avoids stacking a second horizontal bar under the view's own.
 const PANNABLE_VIEWS = new Set<RightPanelView>(["pdf", "terminal"]);
 
 function clamp(value: number, min: number, max: number) {
@@ -96,12 +91,7 @@ function clampFileTreeWidth(nextWidth: number, totalWidth: number) {
 export interface RightEditorPanelProps {
   onClose(): void;
   appearanceSettings?: AppearanceSettings;
-  // In global (fullscreen) mode the panel reaches the window's left edge, so the
-  // view switcher must clear the macOS traffic-light buttons.
   reserveTrafficLights?: boolean;
-  // Width a trailing-edge overlay (pinned chat rail) reserves. Enables
-  // horizontal scroll on the body region only — the view switcher and toolbar
-  // rows above it stay put.
   overlayInset?: number;
   onAddContextToChat?(attachment: MessageAttachment): boolean;
   onInsertTextToChat?(text: string): boolean;
@@ -124,10 +114,7 @@ export function RightEditorPanel({
   const store = useStore();
   const personal = useAtomValue(rightPanelPersonalContextAtom);
   const openRoutineSession = useOpenPersonalSession();
-  // Atom-backed so a drag-resized width survives panel collapse/remount.
   const [fileTreeWidth, setFileTreeWidth] = useAtom(fileTreeWidthAtom);
-  // Shared so a chat path link can collapse the explorer straight from its click
-  // handler; persists across the panel's collapse/remount like the view atoms.
   const [fileTreeVisible, setFileTreeVisible] = useAtom(fileTreeVisibleAtom);
   const [searchPanelVisible, setSearchPanelVisible] = useState(false);
   const hasPdfsOpen = useAtomValue(openPdfsAtom).length > 0;
@@ -137,8 +124,6 @@ export function RightEditorPanel({
   );
   const setLastNonTerminalView = useCallback(
     (view: RightPanelView) => {
-      // PDF / terminal are ephemeral surfaces — remember the last durable tab
-      // so closing the last PDF (or terminal) can return somewhere useful.
       if (view === "pdf" || view === "terminal") {
         return;
       }
@@ -147,12 +132,6 @@ export function RightEditorPanel({
     },
     [setLastNonTerminalViewAtom, store],
   );
-  // Keep-alive flags: once a lazy pane has been shown it stays mounted so
-  // internal state (xterm scrollback, Tiptap, etc.) survives tab switches.
-  // Always also mount when `activeView` is that tab — including cold-start
-  // restore — so we never show a selected tab with an empty body. Mirrors
-  // pdfEverActive below; do not seed from store.get once in useState alone
-  // (storage may hydrate after the first paint).
   const [terminalKeepAlive, setTerminalKeepAlive] = useState(() =>
     store.get(rightPanelTerminalEverActiveAtom),
   );
@@ -170,8 +149,6 @@ export function RightEditorPanel({
     setGitKeepAlive(true);
   }
   const pdfEverActive = hasPdfsOpen || activeView === "pdf";
-  // Notes editor stays mounted after first activation so the Tiptap instance
-  // (and any unsaved-but-debounced edits) survive view switches.
   const [notesKeepAlive, setNotesKeepAlive] = useState(false);
   const notesEverActive = notesKeepAlive || activeView === "notes";
   const [decksKeepAlive, setDecksKeepAlive] = useState(false);
@@ -188,8 +165,6 @@ export function RightEditorPanel({
     () => workspaces.find((w) => w.id === activeWorkspaceId) ?? null,
     [workspaces, activeWorkspaceId],
   );
-  // Terminal works without a workspace: shell starts in the user home directory.
-  // Home is resolved in main (sandboxed preload cannot import node:os).
   const [homeDir, setHomeDir] = useState<string | null>(null);
   useMountEffect(() => {
     void desktopApi.getHomeDir().then(setHomeDir);
@@ -341,8 +316,6 @@ export function RightEditorPanel({
           } else {
             setLastNonTerminalView(value);
           }
-          // Entering the explorer tab should surface the file tree so the empty
-          // preview is not the only thing on screen.
           if (value === "editor") {
             setFileTreeVisible(true);
           }
@@ -383,12 +356,6 @@ export function RightEditorPanel({
         </PanelToolbar>
       ) : null}
 
-      {/*
-        Swappable body region. It's a positioned container so the terminal can
-        live here as an always-sized absolute layer (see below) rather than a
-        display:none sibling — revealing a collapsed xterm reflowed its grid
-        for a frame, which read as a cursor/content flash on view switch.
-      */}
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div
           className={cn(
@@ -469,15 +436,6 @@ export function RightEditorPanel({
               </div>
             ) : null}
 
-            {/*
-          PDF reader kept mounted after first activation, like git/terminal:
-          remounting would re-read and re-parse the document (which can be large)
-          on every tab switch. Use `hidden` (display:none) rather than
-          `invisible` so chrome (toolbar icons) and pdf.js canvases leave the
-          paint tree immediately on tab switch — visibility:hidden left the
-          layer in the compositor and toolbar icons lagged a frame or two.
-          Absolute inset-0 + ResizeObserver re-lays out when shown again.
-        */}
             {pdfEverActive ? (
               <div
                 className={cn(
@@ -494,11 +452,6 @@ export function RightEditorPanel({
               </div>
             ) : null}
 
-            {/*
-          Notes editor kept mounted after first activation (like git/pdf) so the
-          Tiptap instance and its debounced autosave survive tab and workspace
-          switches. Notes remain app-owned and independent of workspace tabs.
-        */}
             {notesEverActive ? (
               <div
                 data-testid="right-panel-notes-layer"
@@ -559,12 +512,6 @@ export function RightEditorPanel({
               </div>
             ) : null}
 
-            {/*
-          Git panel kept mounted across view switches (same rationale as the
-          terminal layer below): remounting re-fetched the diff and re-parsed
-          every file, which showed a "loading" flash and janked on each switch.
-          Hidden via visibility so its layout never collapses.
-        */}
             {gitEverActive ? (
               <div
                 className={cn(
@@ -578,31 +525,16 @@ export function RightEditorPanel({
               </div>
             ) : null}
 
-            {/*
-        Terminal stays mounted across view switches so the xterm scrollback
-        buffer and running shell survive when the user toggles back. We hide
-        it via CSS rather than unmount; node-pty in main keeps the shell alive
-        regardless, but unmounting would drop in-renderer scrollback.
-      */}
             {terminalEverActive && terminalCwd ? (
               <div
                 data-testid="editor-terminal-pane"
                 className={cn(
-                  // Always laid out at full size as an absolute layer so it never
-                  // collapses; only visibility/interactivity toggle on view switch.
                   "absolute inset-0 flex",
                   activeView === "terminal"
                     ? "visible"
                     : "invisible pointer-events-none",
                 )}
               >
-                {/*
-            No `key` here: the panel stays mounted as workspace/scope changes so
-            React doesn't tear down xterm just because of a tree-wide remount.
-            TerminalPanel handles workspaceId / cwd prop changes via the attach
-            effect. Workspace shells and the no-workspace (home) shell keep
-            separate tab state keys.
-          */}
                 <TerminalPanel
                   cwd={terminalCwd}
                   isActive={activeView === "terminal"}

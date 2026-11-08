@@ -28,13 +28,7 @@ function createEmptyModel(providerId: string): ProviderModelRecord {
 }
 
 interface ProviderEditorProps {
-  // The provider this editor edits. For a brand-new provider it is an empty
-  // record. The parent assigns a stable `key` (provider id or a "new" sentinel)
-  // so switching providers remounts the editor with a fresh draft instead of
-  // syncing draft state imperatively.
   provider: ProviderConfigRecord;
-  // The persisted provider backing this editor, or undefined when creating a
-  // new one. Drives delete affordances and "configured" badges.
   selectedProvider?: ProviderConfigRecord;
   selectedModels: ProviderModelRecord[];
   authMethods: ProviderAuthMethodRecord[];

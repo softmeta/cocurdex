@@ -1,9 +1,3 @@
-/**
- * Product wrappers over `components/ui` (shadcn). Business code should prefer
- * these APIs; do not hand-assemble Select/Combobox/Dropdown primitives for
- * value-select UIs. Keep domain composites (chat, markdown, …) outside this folder.
- */
-
 export { AppActivityTime } from "./activity-time";
 export { AppConfirmDialog } from "./confirm-dialog";
 export { AppCopyButton } from "./copy-button";

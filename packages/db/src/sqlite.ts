@@ -143,12 +143,6 @@ export interface CocurdexDatabase {
   routines: RoutineRepository;
   pushOutbox: PushOutboxRepository;
   delegations: DelegationRepository;
-  /**
-   * Run a set of repository writes atomically. The callback must be synchronous:
-   * node:sqlite is a single synchronous connection, so awaiting inside a
-   * transaction would let another write interleave between BEGIN and COMMIT.
-   * Repository methods write synchronously, so call them without awaiting here.
-   */
   transaction<T>(fn: () => T): T;
   reclaimFreePages(maxPages: number): { reclaimed: number; remaining: number };
   close(): void;
@@ -204,10 +198,6 @@ function openDatabase(databasePath: string): DatabaseSync {
 
 export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
   const database = openDatabase(databasePath);
-  // WAL keeps writers from blocking readers and survives crashes without
-  // corrupting the file; NORMAL fsyncs only at checkpoints, which matters because
-  // streaming writes commit frequently. busy_timeout avoids SQLITE_BUSY if a
-  // second connection (e.g. a future sync worker) briefly contends.
   database.exec("PRAGMA journal_mode = WAL");
   database.exec("PRAGMA synchronous = NORMAL");
   database.exec("PRAGMA busy_timeout = 5000");

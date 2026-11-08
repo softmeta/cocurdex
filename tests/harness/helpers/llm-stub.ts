@@ -33,11 +33,9 @@ export type StubLlmPlan =
   | { kind: "fail"; status: number; message: string };
 
 export interface StubLlmServer {
-  /** OpenAI-compatible base URL, e.g. http://127.0.0.1:PORT/v1 */
   baseUrl: string;
   requests: StubLlmRequest[];
   plan: StubLlmPlan;
-  /** Resolves with the next incoming request. */
   nextRequest(timeoutMs?: number): Promise<StubLlmRequest>;
   close(): Promise<void>;
 }
@@ -111,7 +109,6 @@ export async function startStubLlmServer(): Promise<StubLlmServer> {
       return;
     }
     if (plan.kind === "hang") {
-      // Deliberately never answer: the caller exercises abort propagation.
       request.on("close", () => response.destroy());
       return;
     }

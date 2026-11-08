@@ -10,8 +10,6 @@ import {
   type AppSearchableSelectOption,
 } from "@/components";
 import { Button, Spinner } from "@/components/ui";
-// Sub-entry, not the settings barrel: that barrel reaches SettingsScreen ->
-// @/app/layout, closing an initialization cycle back onto this module.
 import { openSettings } from "@/features/settings/settings-navigation";
 import { cn, desktopApi } from "@/lib";
 import { usesAdapterOwnedModelCatalog } from "./adapter-owned-catalog";
@@ -61,9 +59,7 @@ interface ProviderModelMenuProps {
   appearance?: AppDropdownTriggerAppearance;
   compatibleProviders: CompatibleProviderModel[];
   disabled?: boolean;
-  /** Optional empty selection for settings surfaces where the model is opt-in. */
   emptyOptionLabel?: string;
-  /** Extra rows rendered inside the menu (e.g. the permission mode submenu). */
   footer?: ReactNode;
   isLoading?: boolean;
   fastModeOptions?: ProviderModelMenuOption[];
@@ -74,7 +70,6 @@ interface ProviderModelMenuProps {
   openCodeVariantOptions?: ProviderModelMenuOption[];
   openCodeVariantValue?: string;
   reasoningEffortOptions?: ProviderModelMenuOption[];
-  /** Effort the model runs at when the session has no override. */
   reasoningEffortDefaultValue?: string;
   reasoningEffortValue?: string;
   serviceTierOptions?: ProviderModelMenuOption[];
@@ -286,8 +281,6 @@ export function ProviderModelMenu({
     );
   }
 
-  // Agents exposing runtime axes (Codex reasoning effort / service tier) get
-  // the compound submenu picker; everyone else keeps the searchable list.
   if (hasRuntimeOptions || footer) {
     return (
       <ProviderModelCompoundMenu

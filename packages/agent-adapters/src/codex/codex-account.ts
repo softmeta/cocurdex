@@ -9,10 +9,6 @@ import {
   type CodexClientLease,
 } from "./codex-app-server-pool";
 
-// Codex owns the whole ChatGPT OAuth flow: account/login/start returns an
-// authUrl, the app-server hosts the localhost callback, and tokens persist in
-// ~/.codex. This module only drives the RPCs and relays the outcome.
-
 interface ActiveLogin {
   lease: CodexClientLease;
   unsubscribe(): void;
@@ -22,8 +18,6 @@ interface ActiveLogin {
 
 const activeLogins = new Map<string, ActiveLogin>();
 
-// ponytail: 10 min covers a human browser roundtrip; abandoned logins get
-// cancelled so the pooled app-server process is not held open forever.
 const loginTimeoutMs = 10 * 60 * 1000;
 
 function getString(value: unknown) {

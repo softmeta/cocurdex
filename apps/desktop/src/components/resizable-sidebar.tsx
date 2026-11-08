@@ -8,15 +8,10 @@ interface ResizableSidebarProps {
   defaultWidth: number;
   minWidth?: number;
   maxWidth?: number;
-  // Accessible label for the drag handle.
   ariaLabel: string;
-  // Extra classes for the sidebar container.
   className?: string;
 }
 
-// A fixed-position sidebar with a draggable separator on its inline-end edge.
-// Width is local component state — not persisted. Shared by the notes and
-// issues tabs.
 export const WORKBENCH_SIDEBAR_WIDTH_PX = 220;
 
 export function ResizableSidebar({
@@ -47,8 +42,6 @@ export function ResizableSidebar({
     <>
       <div
         className={cn(
-          // min-w-0 so flex children (truncate titles) track the dragged width
-          // instead of locking to content intrinsic size.
           "flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden bg-editor-shell",
           className,
         )}
