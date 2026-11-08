@@ -1,7 +1,14 @@
 .md-body-prose {
-  color: var(--editor-text);
+  color: var(--reading-text);
   font-size: var(--text-body);
   line-height: 1.7;
+}
+
+.md-body-prose
+  :is(h1, h2, h3, h4, h5, h6, th, strong):not(
+    :where(a *, blockquote *, li[data-checked="true"] *)
+  ) {
+  color: var(--editor-text);
 }
 
 .md-body-prose > :first-child {

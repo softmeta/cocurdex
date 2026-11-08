@@ -52,6 +52,9 @@ function requiredPath(value: string | undefined, flag: string) {
 }
 
 function buildInputs() {
+  const { "enriched-markdown": markdownFeatures } = JSON.parse(
+    readFileSync(path.join(mobileDir, "package.json"), "utf8"),
+  );
   const patches = readdirSync(patchesDir)
     .sort()
     .map((name) => `${name}\n${readFileSync(path.join(patchesDir, name))}`);
@@ -67,7 +70,12 @@ function buildInputs() {
         (file) => `${path.relative(mobileDir, file)}\n${readFileSync(file)}`,
       ),
   );
-  return [...patches, ...scripts, ...nativeSources].join("\n");
+  return [
+    JSON.stringify(markdownFeatures),
+    ...patches,
+    ...scripts,
+    ...nativeSources,
+  ].join("\n");
 }
 
 async function nativeFingerprint(platform: MobilePlatform) {
@@ -79,7 +87,12 @@ async function nativeFingerprint(platform: MobilePlatform) {
         type: "contents",
         id: "cocurdexNativeBuildInputs",
         contents: buildInputs(),
-        reasons: ["pnpmPatches", "e2eBuildScripts", "nativeSources"],
+        reasons: [
+          "markdownFeatures",
+          "pnpmPatches",
+          "e2eBuildScripts",
+          "nativeSources",
+        ],
       },
     ],
     silent: true,
