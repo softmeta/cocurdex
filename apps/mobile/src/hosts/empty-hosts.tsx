@@ -5,13 +5,20 @@ import { space, useThemeColors } from "@/theme";
 import { BrandHost, useTabBarInset } from "@/ui";
 import type { EmptyHostsProps } from "./empty-hosts-props";
 
-export function EmptyHosts({ onScan, onPaste }: EmptyHostsProps) {
+export function EmptyHosts({
+  onScan,
+  onPaste,
+  onLayoutContent,
+}: EmptyHostsProps) {
   const { t } = useTranslation("hosts");
   const colors = useThemeColors();
   const tabBarInset = useTabBarInset();
   return (
     <View style={[styles.center, { paddingBottom: tabBarInset }]}>
-      <BrandHost matchContents={{ vertical: true }}>
+      <BrandHost
+        matchContents={{ vertical: true }}
+        onLayoutContent={onLayoutContent}
+      >
         <Column alignment="center" spacing={space.md}>
           <Text textStyle={{ fontWeight: "600" }}>{t("empty.title")}</Text>
           <Text

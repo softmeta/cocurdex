@@ -6,13 +6,17 @@ import { space, useThemeColors } from "@/theme";
 import { BrandHost, useTabBarInset } from "@/ui";
 import type { EmptyHostsProps } from "./empty-hosts-props";
 
-export function EmptyHosts({ onScan, onPaste }: EmptyHostsProps) {
+export function EmptyHosts({
+  onScan,
+  onPaste,
+  onLayoutContent,
+}: EmptyHostsProps) {
   const { t } = useTranslation("hosts");
   const colors = useThemeColors();
   const tabBarInset = useTabBarInset();
   return (
     <View style={[styles.fill, { paddingBottom: tabBarInset }]}>
-      <BrandHost style={styles.fill}>
+      <BrandHost style={styles.fill} onLayoutContent={onLayoutContent}>
         <VStack spacing={space.lg}>
           <ContentUnavailableView
             title={t("empty.title")}
