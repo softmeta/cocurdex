@@ -8,6 +8,10 @@ export type {
 } from "./execution-types";
 export { SessionFollowUpQueue } from "./follow-up-queue";
 export { resolveForkPoint } from "./fork-point";
+export {
+  handleSessionRequest,
+  isSessionRequest,
+} from "./handle-session-request";
 export { forkProviderThreads } from "./native-fork";
 export { MessageIdConflictError, resolveRepeatedSend } from "./repeated-send";
 export { RunCapacity } from "./run-capacity";

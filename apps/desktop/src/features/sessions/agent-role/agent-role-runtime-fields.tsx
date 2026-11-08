@@ -23,12 +23,12 @@ import {
   ProviderModelMenu,
   shouldShowProviderGroupLabels,
 } from "../provider-model";
-import { SessionModeSubmenu } from "../session-mode-control";
-import { useSessionModeLabels } from "../session-mode-label";
 import {
   getPermissionModeOptions,
   getSessionModeOptions,
-} from "../session-store";
+} from "../session-agent-state";
+import { SessionModeSubmenu } from "../session-mode-control";
+import { useSessionModeLabels } from "../session-mode-label";
 import { ThinkingLevelSubmenu } from "../thinking-level-submenu";
 
 export function AgentRoleRuntimeFields({

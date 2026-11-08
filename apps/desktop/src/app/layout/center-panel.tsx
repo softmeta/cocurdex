@@ -6,16 +6,10 @@ import {
   type AgentQuestionRequestRecord,
   type AgentSessionConfigOption,
   type AgentThinkingLevel,
-  type BrowserAnnotation,
-  generateLocalSessionTitle,
   getConfigOptionThinkingLevels,
   getThinkingLevelOptions,
-  hashLogValue,
-  hostForLog,
   isChatSession,
   isPersonalSession,
-  type MessageAttachment,
-  type MessageRecord,
   normalizeWorkspaceRootPaths,
   primaryWorkspaceRootPath,
   resolveSessionWorkingPath,
@@ -30,8 +24,6 @@ import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactNode, Ref } from "react";
 import {
   agentRuntimeBySessionAtom,
-  appendMessageAtom,
-  appendQueuedInputAtom,
   autoCollapsedPlansBySessionAtom,
   ChatView,
   collapsedPlansBySessionAtom,
@@ -40,16 +32,12 @@ import {
   findPendingPlanApproval,
   followUpBehaviorAtom,
   getActiveSessionModeId,
-  getAgentInputDelivery,
-  loadSessionMessagesAtom,
-  loadSessionToolCallsAtom,
   messagesLoadedBySessionAtom,
   permissionsBySessionAtom,
   planApprovalsBySessionAtom,
   plansBySessionAtom,
   questionsBySessionAtom,
   queuedInputsBySessionAtom,
-  removeQueuedInputAtom,
   selectVisiblePlan,
   togglePlanCollapsedForSessionAtom,
   toolCallsBySessionAtom,
@@ -57,42 +45,31 @@ import {
   useSessionMessages,
 } from "@/features/agent";
 import { NewChatCard } from "@/features/chat";
-import type {
-  ChatComposerHandle,
-  ComposerSendOutcome,
-} from "@/features/composer";
+import type { ChatComposerHandle } from "@/features/composer";
 import {
   chatComposerAttachmentAtom,
   clearChatComposerAttachmentAtom,
   openFilePreviewAtom,
   remapEditorRootAtom,
-  saveEditorViewSnapshotAtom,
 } from "@/features/editor";
 import { NewSessionCard } from "@/features/new-session";
 import {
   activeSessionIdAtom,
   agentsAtom,
-  applyRefinedSessionTitleAtom,
-  beginSessionSendAtom,
   canSwitchSessionAgent,
-  createDraftSessionAtom,
   getAgentDisplayLabel,
   getDisplaySessionStatus,
   getSessionPermissionMode,
-  isDefaultSessionTitle,
   isSubagentSession,
   lastSelectedAgentAtom,
-  markSessionMessageAtom,
   type SessionPaneBinding,
   selectSessionAtom,
   sessionsAtom,
-  settleSessionSendAtom,
   updateAgentRuntimePreferences,
   updateSessionModeAtom,
   updateSessionPermissionModeAtom,
   updateSessionProviderRuntimeAtom,
   updateSessionStatusAtom,
-  updateSessionTitleAtom,
   useSwitchSessionAgent,
 } from "@/features/sessions";
 import {
@@ -106,12 +83,7 @@ import {
   selectWorkspaceAtom,
   workspacesAtom,
 } from "@/features/workspaces";
-import {
-  desktopApi,
-  logRendererDiagnostic,
-  taskApi,
-  toAbsolutePath,
-} from "@/lib";
+import { desktopApi, taskApi, toAbsolutePath } from "@/lib";
 import { TITLEBAR_HEIGHT } from "./app-shell/app-shell-layout";
 import {
   useActiveSessionTranscript,
@@ -122,16 +94,11 @@ import {
 import { resolveCenterPanelSurface } from "./center-panel-surface";
 import { ChatSessionPanel } from "./chat-session/chat-session-panel";
 import { useChatSessionActions } from "./chat-session/use-chat-session-actions";
-import { buildBrowserAnnotationAttachments } from "./chat-window/browser-annotation-attachments";
 import { BrowserAnnotationChips } from "./chat-window/browser-annotation-chips";
-import { withBrowserAnnotations } from "./chat-window/browser-annotation-message";
-import {
-  chatBrowserAnnotationsAtom,
-  consumeBrowserAnnotations,
-  useBrowserAnnotationSender,
-} from "./chat-window/chat-browser-context";
+import { chatBrowserAnnotationsAtom } from "./chat-window/chat-browser-context";
 import { PersonalEmptyState } from "./personal-empty-state";
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
+import { useCenterSessionSend } from "./use-center-session-send";
 import { usePersonalSessionView } from "./use-personal-session-view";
 import { useQueuedInputActions } from "./use-queued-input-actions";
 
@@ -175,73 +142,6 @@ function getSessionThinkingLevelOptions(
     ...option,
     isDefault: option.level === liveDefault,
   }));
-}
-
-function summarizeAttachmentForLog(attachment: MessageAttachment) {
-  if (attachment.kind === "image") {
-    return {
-      height: attachment.height,
-      id: attachment.id,
-      kind: attachment.kind,
-      mimeType: attachment.mimeType,
-      sizeBytes: attachment.sizeBytes,
-      width: attachment.width,
-    };
-  }
-
-  if (attachment.kind === "context-folder") {
-    return {
-      kind: attachment.kind,
-    };
-  }
-
-  if (attachment.kind === "document") {
-    return {
-      id: attachment.id,
-      kind: attachment.kind,
-      mimeType: attachment.mimeType,
-      sizeBytes: attachment.sizeBytes,
-    };
-  }
-
-  if (attachment.kind === "context-item") {
-    return {
-      bodyLength: attachment.body.length,
-      itemKind: attachment.itemKind,
-      kind: attachment.kind,
-    };
-  }
-
-  return {
-    endLine: attachment.endLine,
-    kind: attachment.kind ?? "context-file",
-    language: attachment.language,
-    selectedTextLength: attachment.selectedText.length,
-    startLine: attachment.startLine,
-    surroundingContextLength: attachment.surroundingContext.length,
-  };
-}
-
-function summarizeProviderSnapshotForLog(
-  snapshot: AgentProviderSnapshot | null | undefined,
-) {
-  if (!snapshot) {
-    return null;
-  }
-
-  return {
-    api: snapshot.api,
-    endpointHost: hostForLog(snapshot.baseUrl),
-    modelEndpointHost: hostForLog(snapshot.modelBaseUrl),
-    modelId: snapshot.modelId,
-    modelName: snapshot.modelName,
-    providerId: snapshot.providerId,
-    providerName: snapshot.providerName,
-    reasoningEffort: snapshot.reasoningEffort ?? null,
-    serviceTier: snapshot.serviceTier ?? null,
-    thinkingLevel: snapshot.thinkingLevel ?? null,
-    supportsReasoning: snapshot.supportsReasoning ?? null,
-  };
 }
 
 function resolveCenterWorkingPath(
@@ -288,9 +188,6 @@ export function CenterPanel({
   const agentRuntimeBySession = useAtomValue(agentRuntimeBySessionAtom);
   const queuedInputsBySession = useAtomValue(queuedInputsBySessionAtom);
   const composerAttachment = useAtomValue(chatComposerAttachmentAtom);
-  const appendMessage = useSetAtom(appendMessageAtom);
-  const appendQueuedInput = useSetAtom(appendQueuedInputAtom);
-  const removeQueuedInput = useSetAtom(removeQueuedInputAtom);
   const queuedInputActions = useQueuedInputActions();
   const dismissPlanForSession = useSetAtom(dismissPlanForSessionAtom);
   const togglePlanCollapsedForSession = useSetAtom(
@@ -300,24 +197,15 @@ export function CenterPanel({
     clearChatComposerAttachmentAtom,
   );
   const openFilePreview = useSetAtom(openFilePreviewAtom);
-  const createDraftSession = useSetAtom(createDraftSessionAtom);
   const remapEditorRoot = useSetAtom(remapEditorRootAtom);
-  const saveEditorViewSnapshot = useSetAtom(saveEditorViewSnapshotAtom);
   const setDraftWorktreePath = useSetAtom(draftWorktreePathAtom);
   const setLastSelectedAgent = useSetAtom(lastSelectedAgentAtom);
   const switchSessionAgent = useSwitchSessionAgent();
-  const markSessionMessage = useSetAtom(markSessionMessageAtom);
   const updateSessionMode = useSetAtom(updateSessionModeAtom);
   const updateSessionPermissionMode = useSetAtom(
     updateSessionPermissionModeAtom,
   );
   const updateSessionStatus = useSetAtom(updateSessionStatusAtom);
-  const beginSessionSend = useSetAtom(beginSessionSendAtom);
-  const settleSessionSend = useSetAtom(settleSessionSendAtom);
-  const loadSessionMessages = useSetAtom(loadSessionMessagesAtom);
-  const loadSessionToolCalls = useSetAtom(loadSessionToolCallsAtom);
-  const updateSessionTitle = useSetAtom(updateSessionTitleAtom);
-  const applyRefinedSessionTitle = useSetAtom(applyRefinedSessionTitleAtom);
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
   const openWorkspaceByPath = useSetAtom(openWorkspaceByPathAtom);
   const pickHostDirectory = useSetAtom(pickHostDirectoryAtom);
@@ -424,7 +312,6 @@ export function CenterPanel({
       agents.find((agent) => agent.id === activeSession.agentType)?.capabilities
         .sessionTitleStrategy === "native",
   );
-  const followUpBehavior = useAtomValue(followUpBehaviorAtom);
   const activePermissionMode = activeSession
     ? getSessionPermissionMode(agents, activeSession)
     : null;
@@ -460,6 +347,7 @@ export function CenterPanel({
     }
   };
   const annotations = useAtomValue(chatBrowserAnnotationsAtom);
+  const followUpBehavior = useAtomValue(followUpBehaviorAtom);
 
   useSessionSwitchMetrics(
     activeSession,
@@ -476,291 +364,6 @@ export function CenterPanel({
     workingPath ?? undefined,
   );
   useGitWorktrees(activeWorkspace?.rootPaths[0]);
-
-  useBrowserAnnotationSender((sent) => {
-    void handleSend("", [], false, sent);
-  });
-
-  const prepareAutoSessionTitle = (
-    session: SessionRecord,
-    message: string,
-    enabled: boolean,
-  ) => {
-    if (!enabled) {
-      logRendererDiagnostic(
-        "debug",
-        "[SessionTitle] local generation disabled",
-        {
-          sessionId: session.id,
-        },
-      );
-      return session;
-    }
-
-    const fallbackTitle = session.title;
-    const title = generateLocalSessionTitle(message, fallbackTitle);
-    logRendererDiagnostic(
-      "debug",
-      "[SessionTitle] local generation evaluated",
-      {
-        changed: title !== fallbackTitle,
-        messageLength: message.length,
-        sessionId: session.id,
-      },
-    );
-
-    if (title === fallbackTitle) {
-      return session;
-    }
-
-    const updatedAt = new Date().toISOString();
-    const updatedSession = updateSessionTitle({
-      sessionId: session.id,
-      title,
-      expectedTitle: fallbackTitle,
-      updatedAt,
-    });
-
-    logRendererDiagnostic(
-      "debug",
-      "[SessionTitle] local title update applied",
-      {
-        sessionId: session.id,
-        updated: Boolean(updatedSession),
-      },
-    );
-
-    return updatedSession ?? session;
-  };
-
-  const refineAutoSessionTitle = (
-    session: SessionRecord,
-    message: string,
-    expectedTitle: string,
-  ) => {
-    logRendererDiagnostic(
-      "debug",
-      "[SessionTitle] provider refinement requested",
-      {
-        messageLength: message.length,
-        sessionId: session.id,
-      },
-    );
-
-    void desktopApi
-      .refineSessionTitle({
-        sessionId: session.id,
-        message,
-        fallbackTitle: session.title,
-        expectedTitle,
-      })
-      .then((updatedSession) => {
-        logRendererDiagnostic(
-          "debug",
-          "[SessionTitle] provider refinement completed",
-          {
-            sessionId: session.id,
-            updated: Boolean(
-              updatedSession && updatedSession.title !== expectedTitle,
-            ),
-          },
-        );
-
-        if (updatedSession && updatedSession.title !== expectedTitle) {
-          applyRefinedSessionTitle({
-            expectedTitle,
-            refinedSession: updatedSession,
-          });
-        }
-      })
-      .catch((error) => {
-        logRendererDiagnostic(
-          "debug",
-          "[SessionTitle] provider refinement failed",
-          {
-            error: error instanceof Error ? error.message : "Unknown error",
-            sessionId: session.id,
-          },
-        );
-      });
-  };
-
-  const handleSend = async (
-    message: string,
-    attachments: MessageAttachment[] = composerAttachment
-      ? [composerAttachment]
-      : [],
-    useOppositeFollowUpBehavior = false,
-    sentAnnotations: BrowserAnnotation[] = annotations,
-  ): Promise<ComposerSendOutcome> => {
-    if (
-      !(activeSession && canDriveActiveSession) ||
-      isSubagentSession(activeSession)
-    ) {
-      return "kept";
-    }
-
-    const isSteering = activeDisplayStatus === "running";
-    const delivery = getAgentInputDelivery({
-      behavior: followUpBehavior,
-      isRunning: isSteering,
-      supportsSteering: activeAgentSupportsSteering,
-      useOppositeBehavior: useOppositeFollowUpBehavior,
-    });
-
-    const requestId = crypto.randomUUID();
-    const startedAt = performance.now();
-    logRendererDiagnostic("info", "[AgentSession] send start", {
-      requestId,
-      agentType: activeSession.agentType,
-      sessionId: activeSession.id,
-      workspaceHash: hashLogValue(sessionRootPath ?? ""),
-      contentLength: message.length,
-      attachmentCount: attachments.length,
-    });
-
-    let optimisticQueuedMessageId: string | null = null;
-    let sendInFlight = false;
-    try {
-      const nextSession = prepareAutoSessionTitle(
-        activeSession,
-        message,
-        activeMessages.length === 0 &&
-          isDefaultSessionTitle(activeSession.title, activeSession.agentType),
-      );
-      const userMessage: MessageRecord = {
-        id: crypto.randomUUID(),
-        sessionId: nextSession.id,
-        role: "user",
-        content: withBrowserAnnotations(message, sentAnnotations),
-        attachments,
-        createdAt: new Date().toISOString(),
-      };
-      const isQueuedFollowUp = delivery === "queue-after-run";
-      const queuedInputBase = {
-        sessionId: nextSession.id,
-        workspaceRootPath: sessionRootPath ?? "",
-        thinkingLevel: selectedThinkingLevel ?? undefined,
-      };
-
-      if (isQueuedFollowUp) {
-        optimisticQueuedMessageId = userMessage.id;
-        appendQueuedInput({
-          ...queuedInputBase,
-          messageId: userMessage.id,
-          createdAt: userMessage.createdAt,
-          message: userMessage,
-        });
-      } else {
-        sendInFlight = true;
-        beginSessionSend(nextSession.id);
-        appendMessage(userMessage);
-      }
-      markSessionMessage({
-        sessionId: nextSession.id,
-        createdAt: userMessage.createdAt,
-      });
-      clearChatComposerAttachment();
-      consumeBrowserAnnotations(sentAnnotations);
-
-      const annotationAttachments =
-        await buildBrowserAnnotationAttachments(sentAnnotations);
-      const nextAttachments = [...attachments, ...annotationAttachments];
-      logRendererDiagnostic("info", "[AgentSession] send payload", {
-        attachments: nextAttachments.map(summarizeAttachmentForLog),
-        sessionModeId: nextSession.sessionModeId,
-        contentLength: userMessage.content.length,
-        createdAt: userMessage.createdAt,
-        messageId: userMessage.id,
-        permissionMode: nextSession.permissionMode ?? null,
-        providerSnapshot: summarizeProviderSnapshotForLog(
-          nextSession.providerSnapshot,
-        ),
-        session: {
-          agentType: nextSession.agentType,
-          id: nextSession.id,
-          workspaceId: nextSession.workspaceId,
-        },
-        thinkingLevel:
-          thinkingLevelOptions.length > 0 ? selectedThinkingLevel : undefined,
-        workspaceHash: hashLogValue(sessionRootPath ?? ""),
-      });
-      if (nextSession.title !== activeSession.title) {
-        await desktopApi.updateSessionTitle({
-          sessionId: nextSession.id,
-          title: nextSession.title,
-          expectedTitle: activeSession.title,
-        });
-      }
-      const savedMessage = await taskApi.sendMessage({
-        sessionId: nextSession.id,
-        messageId: userMessage.id,
-        createdAt: userMessage.createdAt,
-        content: userMessage.content,
-        attachments: nextAttachments.length > 0 ? nextAttachments : undefined,
-        thinkingLevel: selectedThinkingLevel ?? undefined,
-        delivery,
-      });
-
-      if (isQueuedFollowUp) {
-        appendQueuedInput({
-          ...queuedInputBase,
-          messageId: savedMessage.id,
-          createdAt: savedMessage.createdAt,
-          message: savedMessage,
-        });
-      }
-
-      logRendererDiagnostic("info", "[AgentSession] send completed", {
-        requestId,
-        sessionId: nextSession.id,
-        messageId: userMessage.id,
-        durationMs: Math.round(performance.now() - startedAt),
-      });
-
-      // Refine the title only after sendMessage has persisted the session:
-      // agent sessions are created lazily on first send, so firing the
-      // refineSessionTitle IPC earlier races ahead of the DB row and the main
-      // process skips it (missing session / title mismatch). By now the DB
-      // holds nextSession.title (the local fallback), which is the expected
-      // title the refine handler validates against.
-      if (
-        !isQueuedFollowUp &&
-        !activeAgentUsesNativeSessionTitles &&
-        nextSession.title !== activeSession.title
-      ) {
-        refineAutoSessionTitle(nextSession, message, nextSession.title);
-      }
-    } catch (error) {
-      if (optimisticQueuedMessageId) {
-        removeQueuedInput({
-          sessionId: activeSession.id,
-          messageId: optimisticQueuedMessageId,
-        });
-      } else {
-        updateSessionStatus({ sessionId: activeSession.id, status: "error" });
-      }
-      console.error("[AgentSession] send failed", {
-        requestId,
-        sessionId: activeSession.id,
-        durationMs: Math.round(performance.now() - startedAt),
-      });
-      appendMessage({
-        id: crypto.randomUUID(),
-        sessionId: activeSession.id,
-        role: "system",
-        content:
-          error instanceof Error
-            ? error.message
-            : "Unknown agent runtime error",
-        attachments: [],
-        createdAt: new Date().toISOString(),
-      });
-    } finally {
-      if (sendInFlight) settleSessionSend(activeSession.id);
-    }
-    return "sent";
-  };
 
   const handleStop = async () => {
     if (!activeSession || isSubagentSession(activeSession)) {
@@ -803,6 +406,25 @@ export function CenterPanel({
     }
     return workspace;
   };
+
+  const { handleSend, handleStartSession } = useCenterSessionSend({
+    activeSession,
+    activeWorkspace,
+    activeDisplayStatus,
+    activeAgentSupportsSteering,
+    activeAgentUsesNativeSessionTitles,
+    followUpBehavior,
+    canDriveActiveSession,
+    hasMessages: activeMessages.length > 0,
+    hasThinkingOptions: thinkingLevelOptions.length > 0,
+    selectedThinkingLevel,
+    composerAttachment,
+    annotations,
+    sessionRootPath,
+    workingPath,
+    draftWorktreePath,
+    openWorkspaceFromDialog,
+  });
 
   const handleOpenWorkspace = async () => {
     await openWorkspaceFromDialog();
@@ -850,168 +472,6 @@ export function CenterPanel({
     });
     handleSelectWorktree(created.path);
     return created.path;
-  };
-
-  const handleStartSession = async ({
-    agentType,
-    sessionModeId,
-    permissionMode,
-    attachments,
-    message,
-    providerSnapshot,
-    thinkingLevel,
-    agentRoleId,
-    teamTemplateId,
-    worktreePath,
-  }: {
-    agentType: AgentId;
-    sessionModeId: string | null;
-    permissionMode?: AgentPermissionMode | null;
-    attachments?: MessageAttachment[];
-    message: string;
-    providerSnapshot?: AgentProviderSnapshot | null;
-    thinkingLevel?: AgentThinkingLevel;
-    agentRoleId?: string | null;
-    teamTemplateId?: string | null;
-    worktreePath?: string;
-  }): Promise<ComposerSendOutcome> => {
-    const workspace = activeWorkspace ?? (await openWorkspaceFromDialog());
-    if (!workspace) return "kept";
-
-    const session = createDraftSession({
-      workspaceId: workspace.id,
-      agentType,
-      sessionModeId,
-      permissionMode,
-      agentRoleId: agentRoleId ?? null,
-      providerSnapshot: providerSnapshot ?? null,
-      worktreePath: worktreePath ?? draftWorktreePath,
-    });
-    setDraftWorktreePath(null);
-    // Carry the tabs the user was viewing during the draft into the new
-    // session so switching to it does not blank the editor. openFiles still
-    // reflects the pre-draft view because the draft (null session) no longer
-    // clears it (see restoreEditorViewForSession).
-    saveEditorViewSnapshot(session.id);
-    loadSessionMessages({ messages: [], sessionId: session.id });
-    loadSessionToolCalls({ sessionId: session.id, toolCalls: [] });
-    const titledSession = prepareAutoSessionTitle(session, message, true);
-    const requestId = crypto.randomUUID();
-    const startedAt = performance.now();
-
-    logRendererDiagnostic("info", "[AgentSession] start session send", {
-      requestId,
-      agentType,
-      sessionId: titledSession.id,
-      workspaceHash: hashLogValue(
-        workingPath ?? primaryWorkspaceRootPath(workspace),
-      ),
-      contentLength: message.length,
-      attachmentCount: attachments?.length ?? 0,
-    });
-
-    try {
-      const initialAttachments = attachments ?? [];
-      const userMessage: MessageRecord = {
-        id: crypto.randomUUID(),
-        sessionId: titledSession.id,
-        role: "user",
-        content: withBrowserAnnotations(message, annotations),
-        attachments: initialAttachments,
-        createdAt: new Date().toISOString(),
-      };
-
-      beginSessionSend(titledSession.id);
-      appendMessage(userMessage);
-      markSessionMessage({
-        sessionId: titledSession.id,
-        createdAt: userMessage.createdAt,
-      });
-      clearChatComposerAttachment();
-      consumeBrowserAnnotations(annotations);
-
-      await taskApi.saveSessionConfiguration(
-        sessionConfiguration(titledSession),
-      );
-      if (teamTemplateId) {
-        await desktopApi.createTeam({
-          leadSessionId: titledSession.id,
-          templateId: teamTemplateId,
-        });
-      }
-
-      const annotationAttachments =
-        await buildBrowserAnnotationAttachments(annotations);
-      const nextAttachments = [...initialAttachments, ...annotationAttachments];
-      logRendererDiagnostic(
-        "info",
-        "[AgentSession] start session send payload",
-        {
-          attachments: nextAttachments.map(summarizeAttachmentForLog),
-          sessionModeId: titledSession.sessionModeId,
-          contentLength: userMessage.content.length,
-          createdAt: userMessage.createdAt,
-          messageId: userMessage.id,
-          permissionMode: titledSession.permissionMode ?? null,
-          providerSnapshot: summarizeProviderSnapshotForLog(
-            titledSession.providerSnapshot,
-          ),
-          session: {
-            agentType: titledSession.agentType,
-            id: titledSession.id,
-            workspaceId: titledSession.workspaceId,
-          },
-          thinkingLevel,
-          workspaceHash: hashLogValue(
-            workingPath ?? primaryWorkspaceRootPath(workspace),
-          ),
-        },
-      );
-      await taskApi.sendMessage({
-        sessionId: titledSession.id,
-        messageId: userMessage.id,
-        createdAt: userMessage.createdAt,
-        content: userMessage.content,
-        attachments: nextAttachments.length > 0 ? nextAttachments : undefined,
-        thinkingLevel,
-      });
-
-      if (titledSession.title !== session.title) {
-        refineAutoSessionTitle(titledSession, message, titledSession.title);
-      }
-
-      logRendererDiagnostic(
-        "info",
-        "[AgentSession] start session send completed",
-        {
-          requestId,
-          sessionId: titledSession.id,
-          messageId: userMessage.id,
-          durationMs: Math.round(performance.now() - startedAt),
-        },
-      );
-    } catch (error) {
-      updateSessionStatus({ sessionId: titledSession.id, status: "error" });
-      console.error("[AgentSession] start session send failed", {
-        requestId,
-        sessionId: titledSession.id,
-        durationMs: Math.round(performance.now() - startedAt),
-      });
-      appendMessage({
-        id: crypto.randomUUID(),
-        sessionId: titledSession.id,
-        role: "system",
-        content:
-          error instanceof Error
-            ? error.message
-            : "Unknown agent runtime error",
-        attachments: [],
-        createdAt: new Date().toISOString(),
-      });
-    } finally {
-      settleSessionSend(titledSession.id);
-    }
-    return "sent";
   };
 
   const persistSession = (session: SessionRecord) => {

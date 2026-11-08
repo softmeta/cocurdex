@@ -11,7 +11,7 @@ import type {
   CompatibleProviderModel,
   SessionRecord,
 } from "@cocurdex/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const now = "2026-10-25T00:00:00.000Z";
 
@@ -97,6 +97,7 @@ function context(
       agent("claude-agent", ["claude-auto", "claude-default"]),
     ],
     workspaceSessions: [],
+    discoverCapabilities: async (agent) => agent,
     compatibleModels: async (agentId) =>
       agentId === "claude-agent"
         ? [
@@ -380,6 +381,31 @@ describe("resolveNewSession with a role", () => {
 });
 
 describe("resolveNewSessionDefaults", () => {
+  it("discovers capabilities only for the selected workspace agent", async () => {
+    const discoverCapabilities = vi.fn(async (selected: AgentDescriptor) => ({
+      ...selected,
+      capabilities: {
+        ...selected.capabilities,
+        permissionModes: agent("claude-agent", ["claude-default"]).capabilities
+          .permissionModes,
+      },
+    }));
+    const defaults = await resolveNewSessionDefaults(
+      { workspaceId: "workspace-1" },
+      context({
+        workspaceSessions: [previous("claude-agent")],
+        discoverCapabilities,
+      }),
+    );
+    expect(discoverCapabilities).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ id: "claude-agent" }),
+    );
+    expect(defaults).toMatchObject({
+      agentType: "claude-agent",
+      permissionModes: ["claude-default"],
+    });
+  });
+
   it("reports the choices a new session would get and the modes its model allows", async () => {
     const defaults = await resolveNewSessionDefaults(
       {

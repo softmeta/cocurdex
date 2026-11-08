@@ -1,3 +1,4 @@
+import type { AgentId } from "./agent-identity";
 import type {
   AgentPermissionRequestedEvent,
   AgentPermissionResolvedEvent,
@@ -7,6 +8,7 @@ import type {
   AgentQuestionRequestedEvent,
   AgentQuestionResolvedEvent,
 } from "./agent-interactions";
+import type { AgentToolCallRecord } from "./agent-tool-call-contracts";
 import type {
   AgentContextBreakdownUpdatedEvent,
   AgentRateLimitsUpdatedEvent,
@@ -20,37 +22,11 @@ import type {
   TurnChangeSet,
 } from "./workspace-changes";
 
+export * from "./agent-identity";
 export * from "./agent-interactions";
+export * from "./agent-tool-call-contracts";
 export * from "./agent-usage";
 export * from "./message-attachments";
-export * from "./provider-contracts";
-
-export type BuiltInAgentId = "claude-agent" | "codex" | "pi" | "opencode";
-
-export const ACP_REGISTRY_AGENT_ID_PREFIX = "acp:";
-
-export type AcpRegistryAgentId = `acp:${string}`;
-
-export type AgentId = BuiltInAgentId | AcpRegistryAgentId;
-
-export function isAcpRegistryAgentId(id: string): id is AcpRegistryAgentId {
-  return (
-    id.startsWith(ACP_REGISTRY_AGENT_ID_PREFIX) &&
-    id.length > ACP_REGISTRY_AGENT_ID_PREFIX.length
-  );
-}
-
-export const PLAN_USAGE_AGENT_IDS = [
-  "claude-agent",
-  "codex",
-  "acp:grok-build",
-] as const satisfies readonly AgentId[];
-
-export type PlanUsageAgentId = (typeof PLAN_USAGE_AGENT_IDS)[number];
-
-export function isPlanUsageAgentId(id: AgentId): id is PlanUsageAgentId {
-  return (PLAN_USAGE_AGENT_IDS as readonly AgentId[]).includes(id);
-}
 
 export type SessionStatus = "idle" | "running" | "error" | "exited";
 export type WriteMode = "read-only" | "native-write";
@@ -410,62 +386,6 @@ export interface RunRecord {
   startedAt: string;
   endedAt?: string | null;
   agentType?: AgentId | null;
-}
-
-export interface AgentToolCallLocation {
-  path: string;
-  line?: number | null;
-}
-
-export type AgentToolCallContent =
-  | {
-      type: "text";
-      text: string;
-    }
-  | {
-      type: "diff";
-      path: string;
-      oldText?: string | null;
-      newText?: string;
-      additions?: number;
-      deletions?: number;
-    }
-  | {
-      type: "terminal";
-      terminalId: string;
-    }
-  | {
-      type: "data";
-      value: unknown;
-    };
-
-export interface AgentToolCallResult {
-  content: AgentToolCallContent[];
-  rawOutput: unknown;
-}
-
-export interface AgentSubagentReference {
-  sessionId: string;
-  type: string | null;
-  description: string;
-}
-
-export interface AgentToolCallRecord {
-  id: string;
-  sessionId: string;
-  title: string;
-  kind?: string | null;
-  status: "pending" | "in_progress" | "completed" | "failed";
-  subagent?: AgentSubagentReference | null;
-  // Undefined is reserved for summary records whose result is loaded lazily.
-  content: AgentToolCallContent[] | undefined;
-  rawInput?: unknown;
-  rawOutput?: unknown;
-  locations: AgentToolCallLocation[];
-  startedAt: string;
-  updatedAt: string;
-  seq?: number;
-  runId?: string | null;
 }
 
 export interface AgentMessageDeltaEvent {

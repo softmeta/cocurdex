@@ -1,14 +1,11 @@
-import type {
-  AgentId,
-  CompatibleProviderModel,
-  ProviderApi,
-} from "@cocurdex/shared/internal/contracts";
+import type { AgentId, ProviderApi } from "@cocurdex/shared/internal/contracts";
 import {
   filterCompatibleProviderModels,
   getCompatibleProviderApis,
   isChatCapableModel,
   isChatSupportedApi,
 } from "@cocurdex/shared/internal/provider-compatibility";
+import type { CompatibleProviderModel } from "@cocurdex/shared/internal/provider-contracts";
 import { describe, expect, it } from "vitest";
 
 function item(

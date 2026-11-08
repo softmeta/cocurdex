@@ -16,6 +16,7 @@ import {
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type {
   AcpRegistryAgentId,
+  AgentDescriptor,
   AgentEvent,
   AgentId,
   AgentPlanApprovalDecision,
@@ -1161,6 +1162,10 @@ export class CocurdexDaemonService {
 
   async listAgents(only?: AgentId) {
     const agents = await this.detectAgents(only);
+    return this.discoverAgentCapabilities(agents);
+  }
+
+  private discoverAgentCapabilities(agents: AgentDescriptor[]) {
     return discoverInstalledAgentCapabilities(agents, {
       cache: this.state.agentCapabilityCache,
     });
@@ -1864,7 +1869,7 @@ export class CocurdexDaemonService {
   }
 
   private async defaultAssistantAgentId(): Promise<AgentId> {
-    const agent = (await this.listAgents()).find(
+    const agent = (await this.detectAgents()).find(
       (item) => item.availability === "available",
     );
     if (!agent) {
@@ -2304,7 +2309,11 @@ export class CocurdexDaemonService {
     const { workspaceId } = input;
     return {
       role,
-      agents: await this.listAgents(input.agentType ?? role?.agentId),
+      agents: await this.detectAgents(input.agentType ?? role?.agentId),
+      discoverCapabilities: async (agent) => {
+        const [discovered] = await this.discoverAgentCapabilities([agent]);
+        return discovered ?? agent;
+      },
       workspaceSessions: sessions
         .filter((session) => session.workspaceId === workspaceId)
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),

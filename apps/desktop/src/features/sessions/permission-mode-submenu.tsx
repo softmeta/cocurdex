@@ -11,7 +11,7 @@ import {
   agentsAtom,
   getPermissionModeOptions,
   supportsPermissionModeForModel,
-} from "./session-store";
+} from "./session-agent-state";
 
 interface PermissionModeSubmenuProps {
   agentType: AgentId;

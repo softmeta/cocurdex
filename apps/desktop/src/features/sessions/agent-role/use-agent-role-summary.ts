@@ -1,12 +1,12 @@
 import type { AgentId, AgentRoleDraft } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
-import { useSessionModeLabels } from "../session-mode-label";
 import {
   agentsAtom,
   getAgentDisplayLabel,
   getSessionModeOptions,
-} from "../session-store";
+} from "../session-agent-state";
+import { useSessionModeLabels } from "../session-mode-label";
 import { formatAgentRoleRecordSummary } from "./agent-role-summary";
 
 const DEFAULT_SESSION_MODE_ID = "default";

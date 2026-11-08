@@ -1,4 +1,5 @@
-import type { AgentId, AgentToolCallLocation } from "./contracts";
+import type { AgentId } from "./agent-identity";
+import type { AgentToolCallLocation } from "./agent-tool-call-contracts";
 
 export type AgentPermissionDecision =
   | "allow_once"

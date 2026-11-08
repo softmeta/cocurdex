@@ -1,11 +1,11 @@
 import {
   type AgentId,
   type BuiltInAgentId,
-  type CompatibleProviderModel,
   isAcpRegistryAgentId,
   type ProviderApi,
   providerApis,
 } from "./contracts";
+import type { CompatibleProviderModel } from "./provider-contracts";
 
 const agentApiCompatibility: Record<BuiltInAgentId, ProviderApi[]> = {
   // Claude Agent runs the user's own `claude` binary with its own auth; it never

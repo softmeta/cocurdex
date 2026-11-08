@@ -1,4 +1,5 @@
-import type { AgentProviderSnapshot, ProviderModelRecord } from "../contracts";
+import type { AgentProviderSnapshot } from "../contracts";
+import type { ProviderModelRecord } from "../provider-contracts";
 
 export interface OpenCodeRuntimeOptions {
   agents: string[];

@@ -1,4 +1,7 @@
-import type { ProviderConfigRecord, ProviderModelRecord } from "../contracts";
+import type {
+  ProviderConfigRecord,
+  ProviderModelRecord,
+} from "../provider-contracts";
 
 type JsonObject = Record<string, unknown>;
 

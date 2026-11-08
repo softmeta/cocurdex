@@ -1,10 +1,12 @@
 import {
   type ProviderApi,
-  type ProviderConfigRecord,
   type ProviderModelCapability,
-  type ProviderModelRecord,
   providerApis,
 } from "../contracts";
+import type {
+  ProviderConfigRecord,
+  ProviderModelRecord,
+} from "../provider-contracts";
 
 // Pi `~/.pi/agent/models.json` shape (coding-agent docs/models.md).
 // Supports the full file `{ "providers": { ... } }` or a bare providers map.
