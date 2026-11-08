@@ -95,17 +95,21 @@ describe("AcpAgentAdapter over a real agent process", () => {
     });
   });
 
-  it("shows the agent's redacted stderr when it crashes", async () => {
+  it("shows a redacted crash excerpt without forwarding raw agent output", async () => {
     const { send } = startSession();
 
     await send("hello");
-    const failure = send("crash-loud").catch((error: Error) => error);
-
-    await expect(failure).resolves.toMatchObject({
-      message: expect.stringContaining(
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    try {
+      await expect(send("crash-loud")).rejects.toThrow(
         "Agent output:\nfatal: token [redacted] rejected",
-      ),
-    });
+      );
+      expect(
+        stderr.mock.calls.map(([chunk]) => String(chunk)).join(""),
+      ).not.toContain("fatal: token");
+    } finally {
+      stderr.mockRestore();
+    }
   });
 
   it("stops an agent that ignores cancel and resumes in a fresh process", async () => {

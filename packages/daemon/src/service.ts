@@ -1155,12 +1155,17 @@ export class CocurdexDaemonService {
     };
   }
 
-  async listAgents(only?: AgentId) {
+  private async detectAgents(only?: AgentId) {
     const descriptors = createAgentRegistry()
       .list()
       .filter((descriptor) => !only || descriptor.id === only);
     const agents = await this.agentInstallationProbes.detect(descriptors);
     this.state.recordAgentVersions(agents);
+    return agents;
+  }
+
+  async listAgents(only?: AgentId) {
+    const agents = await this.detectAgents(only);
     return discoverInstalledAgentCapabilities(agents, {
       cache: this.state.agentCapabilityCache,
     });
@@ -1203,10 +1208,7 @@ export class CocurdexDaemonService {
   }
 
   async readAgentSessionModes(agentId: AgentId) {
-    const agents = await this.agentInstallationProbes.detect(
-      createAgentRegistry().list(),
-    );
-    this.state.recordAgentVersions(agents);
+    const agents = await this.detectAgents(agentId);
     return discoverAgentSessionModes(agents, {
       agentId,
       cache: this.state.agentCapabilityCache,

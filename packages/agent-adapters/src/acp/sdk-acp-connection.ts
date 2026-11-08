@@ -67,7 +67,6 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
   let stderrTail = "";
   child.stderr.setEncoding("utf8");
   child.stderr.on("data", (chunk: string) => {
-    process.stderr.write(chunk);
     stderrTail = appendStderrTail(stderrTail, chunk);
   });
   const processGone = new Promise<void>((resolve) => {
