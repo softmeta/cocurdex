@@ -34,7 +34,6 @@ describe("createInitialAppUpdateState", () => {
       currentVersion: "0.1.0",
       dismissedVersion: null,
       downloadPercent: null,
-      errorMessage: null,
       releaseNotesUrl: null,
       status: "idle",
     });
@@ -133,10 +132,8 @@ describe("reduceAppUpdateState", () => {
   it("records a check error", () => {
     const state = reduceAppUpdateState(packagedState(), {
       type: "error",
-      message: "net down",
     });
     expect(state).toMatchObject({
-      errorMessage: "net down",
       status: "error",
     });
   });
@@ -180,9 +177,7 @@ describe("reduceAppUpdateState", () => {
       ready,
     );
     expect(reduceAppUpdateState(ready, { type: "not-available" })).toBe(ready);
-    expect(
-      reduceAppUpdateState(ready, { type: "error", message: "later fail" }),
-    ).toBe(ready);
+    expect(reduceAppUpdateState(ready, { type: "error" })).toBe(ready);
   });
 
   it("keeps a channel change on unpackaged builds", () => {
@@ -239,18 +234,16 @@ describe("appUpdateEventForError", () => {
     expect(appUpdateEventForError(error)).toEqual({ type: "not-available" });
   });
 
-  it("reports other updater failures as errors", () => {
-    const error = updaterError("net::ERR_INTERNET_DISCONNECTED");
-    expect(appUpdateEventForError(error)).toEqual({
-      type: "error",
-      message: "net::ERR_INTERNET_DISCONNECTED",
-    });
+  it("keeps the response body and headers out of update status", () => {
+    const error = updaterError(
+      '504 <html>Gateway Timeout</html> Headers: {"set-cookie":["test-cookie"]}',
+    );
+    expect(appUpdateEventForError(error)).toEqual({ type: "error" });
   });
 
   it("reports non-Error values as errors", () => {
     expect(appUpdateEventForError("boom")).toEqual({
       type: "error",
-      message: "boom",
     });
   });
 
@@ -262,6 +255,6 @@ describe("appUpdateEventForError", () => {
     );
     expect(
       reduceAppUpdateState(checking, appUpdateEventForError(error)),
-    ).toMatchObject({ errorMessage: null, status: "idle" });
+    ).toMatchObject({ status: "idle" });
   });
 });

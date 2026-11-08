@@ -1522,7 +1522,7 @@
       "checking": "Checking for updates…",
       "downloading": "Downloading version {{version}}…",
       "downloadingWithPercent": "Downloading version {{version}}… {{percent}}%",
-      "error": "Could not check for updates. {{message}}",
+      "error": "Could not check for updates. Try again later.",
       "ready": "Version {{version}} is downloaded and ready to install.",
       "unsupported": "Automatic updates are off for this build.",
       "upToDate": "You're up to date."

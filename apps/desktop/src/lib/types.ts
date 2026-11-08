@@ -276,7 +276,6 @@ export interface AppUpdateState {
   currentVersion: string;
   dismissedVersion: string | null;
   downloadPercent: number | null;
-  errorMessage: string | null;
   releaseNotesUrl: string | null;
   status: AppUpdateStatus;
 }

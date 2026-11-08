@@ -72,9 +72,7 @@ export function describeAppUpdateCheckDialog(
     case "error":
       return {
         kind: "message",
-        message: fillTemplate(copy.status.error, {
-          message: state.errorMessage ?? "",
-        }),
+        message: copy.status.error,
         type: "warning",
       };
     case "unsupported":

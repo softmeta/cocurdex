@@ -29,9 +29,7 @@ function statusText(state: AppUpdateState, t: TFunction<"settings">) {
         version: state.availableVersion ?? "",
       });
     case "error":
-      return t("updates.status.error", {
-        message: state.errorMessage ?? "",
-      });
+      return t("updates.status.error");
     case "idle":
       return t("updates.status.upToDate", { version: state.currentVersion });
   }
@@ -86,7 +84,7 @@ export function AppUpdateSettingsPanel() {
           <div className="mt-0.5 text-body text-muted-foreground">
             {t("updates.description", { version: state.currentVersion })}
           </div>
-          <Text className="mt-2 block" size="meta" tone="muted">
+          <Text className="mt-2 block break-words" size="meta" tone="muted">
             {statusText(state, t)}
           </Text>
           {downloadPercent === null ? null : (
