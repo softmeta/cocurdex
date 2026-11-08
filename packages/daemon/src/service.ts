@@ -12,7 +12,6 @@ import { loginPiProvider } from "@cocurdex/agent-adapters/provider-auth";
 import {
   AgentSteeringUnavailableError,
   createAgentRegistry,
-  detectAgentInstallations,
 } from "@cocurdex/agent-core";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type {
@@ -122,6 +121,7 @@ import {
 } from "./agent-tools";
 import { registerApplicationTools } from "./agent-tools/groups/applications";
 import {
+  createAgentInstallationProbes,
   discoverAgentSessionModes,
   discoverInstalledAgentCapabilities,
 } from "./agents";
@@ -315,6 +315,7 @@ function isExistingDirectory(directoryPath: string) {
 
 export class CocurdexDaemonService {
   readonly events = new EventEmitter();
+  private readonly agentInstallationProbes = createAgentInstallationProbes();
   readonly agentTools: AgentToolBridge;
   readonly peerMessaging: PeerMessagingService;
   readonly team: TeamModule;
@@ -1158,7 +1159,7 @@ export class CocurdexDaemonService {
     const descriptors = createAgentRegistry()
       .list()
       .filter((descriptor) => !only || descriptor.id === only);
-    const agents = await detectAgentInstallations(descriptors);
+    const agents = await this.agentInstallationProbes.detect(descriptors);
     this.state.recordAgentVersions(agents);
     return discoverInstalledAgentCapabilities(agents, {
       cache: this.state.agentCapabilityCache,
@@ -1167,6 +1168,7 @@ export class CocurdexDaemonService {
 
   installAcpRegistryAgent(registryId: string) {
     return this.acpRegistry.install(registryId).then((agent) => {
+      this.agentInstallationProbes.invalidate();
       resetAcpProviderModelsCache(agent.agentId);
       return agent;
     });
@@ -1180,6 +1182,7 @@ export class CocurdexDaemonService {
     return this.acpRegistry
       .installCommand(params.registryId, params.command, params.args)
       .then((agent) => {
+        this.agentInstallationProbes.invalidate();
         resetAcpProviderModelsCache(agent.agentId);
         return agent;
       });
@@ -1187,18 +1190,22 @@ export class CocurdexDaemonService {
 
   async updateAcpRegistryAgent(agentId: AcpRegistryAgentId) {
     const agent = await this.acpRegistry.update(agentId);
+    this.agentInstallationProbes.invalidate();
     resetAcpProviderModelsCache(agent.agentId);
     return agent;
   }
 
   async uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId) {
     await this.acpRegistry.uninstall(agentId);
+    this.agentInstallationProbes.invalidate();
     resetAcpProviderModelsCache(agentId);
     return null;
   }
 
   async readAgentSessionModes(agentId: AgentId) {
-    const agents = await detectAgentInstallations(createAgentRegistry().list());
+    const agents = await this.agentInstallationProbes.detect(
+      createAgentRegistry().list(),
+    );
     this.state.recordAgentVersions(agents);
     return discoverAgentSessionModes(agents, {
       agentId,
