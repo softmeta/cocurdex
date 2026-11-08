@@ -83,11 +83,6 @@ export function useChatBrowserContext() {
   });
 }
 
-// Detached-window side of the HTML preview flow. The main window's browser
-// event bridge is not mounted here, so the in-window CustomEvent from
-// openHtmlPreviewInBrowser would go unanswered. The BrowserView itself is host
-// IPC and works from any window — what the shell needs is a show-panel intent
-// so the right panel flips to the browser view.
 export function useChatBrowserPreviewBridge() {
   useMountEffect(() => {
     if (!isDetachedChatWindow) return;

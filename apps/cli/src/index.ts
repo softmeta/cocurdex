@@ -114,7 +114,6 @@ async function main(rawArgs: string[]) {
     return;
   }
 
-  // VS Code-style: `cocurdex`, `cocurdex .`, `cocurdex open <path>`
   if (shouldHandleAsOpen(resource)) {
     const folderArg = resolveOpenFolderArg(resource, action);
     const folderPath =

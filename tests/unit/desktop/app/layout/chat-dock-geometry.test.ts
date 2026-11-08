@@ -8,7 +8,6 @@ import {
 } from "@/app/layout/chat-dock-geometry";
 
 describe("fitFabPositionToWindow", () => {
-  // Matches TOP_MARGIN in chat-dock-geometry (titlebar + edge padding).
   const topMargin = 40;
   const edgeMargin = 8;
 
@@ -31,7 +30,6 @@ describe("fitFabPositionToWindow", () => {
       1200,
       winH,
     );
-    // Top edge of the FAB must stay under the header clearance.
     expect(winH - next.bottom - CHAT_FAB_SIZE_PX).toBeGreaterThanOrEqual(
       topMargin,
     );

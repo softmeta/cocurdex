@@ -33,9 +33,6 @@ export function getInlineCodeToneClass(tone: MarkdownRendererTone) {
   return "bg-chat-code-inline text-chat-fg";
 }
 
-// Tone-aware text color for a confirmed-existing, clickable file-path chip. The
-// link hue distinguishes it from plain inline code and stays constant; hover
-// only adds the underline (applied by the chip itself).
 export function getFilePathToneClass(tone: MarkdownRendererTone) {
   if (tone === "system") {
     return "text-chat-system-fg";

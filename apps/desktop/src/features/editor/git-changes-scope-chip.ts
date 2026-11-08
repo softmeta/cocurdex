@@ -2,8 +2,6 @@ import type { TurnChangeSet } from "@cocurdex/shared";
 import type { GitCommitInfo } from "@/lib";
 import { turnChangeSetKey } from "./git-diff-scope";
 
-// Narrow helper so the toolbar can render the scope chip without importing
-// translation keys elsewhere.
 export function formatCommitChip(
   commits: readonly GitCommitInfo[],
   commit: string,

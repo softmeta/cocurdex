@@ -2,22 +2,11 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-// pi's models.json lets users reference arbitrary environment variables in
-// provider/model auth fields (e.g. `"apiKey": "$OPEN_CODE_API_KEY"`). Our
-// child-process env allowlist (see process-env.ts) cannot know those names up
-// front, so it would strip them and pi's `getAvailable()` would silently drop
-// the model for "missing auth". We mirror pi's config-value reference syntax
-// here to discover those names and forward them when spawning pi.
-
-// Override env var for pi's agent dir; mirrors pi's `PI_CODING_AGENT_DIR`.
 const PI_AGENT_DIR_ENV = "PI_CODING_AGENT_DIR";
 
 const ENV_VAR_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const ENV_VAR_NAME_PREFIX_RE = /^[A-Za-z_][A-Za-z0-9_]*/;
 
-// Mirror of pi's resolve-config-value.ts template parser: collect every
-// `$VAR` / `${VAR}` env reference in a single config value. Command-form
-// values (leading `!`) and `$$` / `$!` escapes contribute no env names.
 export function extractConfigValueEnvNames(value: string): string[] {
   if (value.startsWith("!")) {
     return [];
@@ -118,9 +107,6 @@ function collectFromAuthBearer(source: unknown, into: string[]): void {
   collectFromHeaders(record.headers, into);
 }
 
-// Read pi's models.json and return every environment variable name referenced
-// by provider/model auth fields. Never throws: a missing or malformed file
-// yields an empty list so model discovery and turns degrade gracefully.
 export function collectPiModelsEnvNames(env: NodeJS.ProcessEnv): string[] {
   let parsed: unknown;
   try {

@@ -19,6 +19,7 @@ import {
 export interface NewSessionContext {
   agents: readonly AgentDescriptor[];
   workspaceSessions: readonly SessionRecord[];
+  discoverCapabilities(agent: AgentDescriptor): Promise<AgentDescriptor>;
   compatibleModels(agentId: AgentId): Promise<CompatibleProviderModel[]>;
   defaultModel(
     agentId: AgentId,
@@ -171,7 +172,11 @@ async function resolveChoices(
   input: CreateSessionPayload,
   context: NewSessionContext,
 ) {
-  const agent = resolveAgent(input.agentType ?? context.role?.agentId, context);
+  const selected = resolveAgent(
+    input.agentType ?? context.role?.agentId,
+    context,
+  );
+  const agent = await context.discoverCapabilities(selected);
   const preset = rolePreset(context.role, agent.id);
   const model = await resolveModel(
     agent.id,

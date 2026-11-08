@@ -80,12 +80,7 @@ interface AppShellFrameProps {
   appearanceSettings: AppearanceSettings;
   contentRowRef: Ref<HTMLElement>;
   effectiveRightWidth: number;
-  /** Visible in the app shell (may be forced closed while editor is fullscreen). */
   isLeftSidebarOpen: boolean;
-  /**
-   * User preference for the left rail. Settings uses this so the nav can open
-   * even when the underlying app shell is in editor-fullscreen (global) mode.
-   */
   isLeftSidebarPreferredOpen: boolean;
   isRightPanelOpen: boolean;
   isRightPanelMaximized: boolean;
@@ -172,9 +167,6 @@ export function AppShellFrame({
   const isAssistantSidebar = sidebarTab === "personal";
   const providerModelsLoaded = useAtomValue(providerModelsLoadedAtom);
   const onboardingDismissed = useAtomValue(onboardingDismissedAtom);
-  // Decided once, when the snapshot and provider rows are both in: opening a
-  // workspace from the welcome screen fills the workspace list, and re-deriving
-  // from that would yank the screen away mid-flow.
   const onboardingNeededRef = useRef<boolean | null>(null);
   if (
     onboardingNeededRef.current === null &&
@@ -214,7 +206,6 @@ export function AppShellFrame({
     [requestChatContext],
   );
 
-  // Match CLI / "Open Folder": activate workspace and clear foreign session UI.
   const handleOpenDroppedWorkspace = useCallback(
     (rootPath: string) => {
       openWorkspaceByPath(rootPath);
@@ -233,10 +224,6 @@ export function AppShellFrame({
     handleOpenDroppedWorkspace(rootPath);
   }, [handleOpenDroppedWorkspace, pickHostDirectory]);
 
-  // One chat node shared by the center column and the floating dock. Only one
-  // mount point renders it at a time (center when side by side, dock when the
-  // editor is fullscreen), so chat state and composerRef survive the switch.
-  // The dock drops the titlebar spacer but keeps the session pane header.
   let paneHeaderEndInset: number | string = 0;
   if (isRightPanelCompact && !isRightPanelMaximized) {
     paneHeaderEndInset = CHAT_DOCK_ACTIONS_INSET;
@@ -261,19 +248,10 @@ export function AppShellFrame({
     />
   );
 
-  // Before the snapshot lands the stores are empty, which is indistinguishable
-  // from a fresh install. Show the mark instead of an app frame full of empty
-  // panels — hooks above have already run, so bootstrap is underway.
-  // Provider rows load alongside the snapshot; deciding before both are in
-  // would flash the welcome screen at an install that is already configured.
   if (!appBootstrapped || onboardingNeeded === null) {
     return <BootSplash />;
   }
 
-  // Nothing is set up yet: no workspace to open and no provider to talk to. The
-  // welcome screen replaces the frame entirely — sidebar and panels have
-  // nothing to list. Leaving it is always an explicit choice, so setup done
-  // inside it never yanks the screen away mid-flow.
   if (
     activeScreen === "app" &&
     onboardingNeeded &&
@@ -314,12 +292,6 @@ export function AppShellFrame({
             className="absolute inset-x-0 top-0 z-30 flex select-none items-center"
             style={{ height: TITLEBAR_HEIGHT }}
           >
-            {/*
-              Toolbar box clamped to the sidebar width. Its footprint
-              (traffic-light reserve + 3 size-6 pills + gaps) drives
-              MIN_LEFT in app-shell-layout.ts; keep them in sync or the
-              trailing forward arrow overflows past the sidebar separator.
-            */}
             <div
               className="app-drag flex h-full shrink-0 items-center"
               style={{
@@ -330,14 +302,8 @@ export function AppShellFrame({
                   : undefined,
               }}
             >
-              {/*
-                Hidden in global mode: the left sidebar is collapsed, so these
-                sidebar-scoped controls would otherwise float on top of the
-                fullscreen editor's view switcher.
-              */}
               <div
                 className={cn(
-                  // Vertically center size-6 pills in TITLEBAR_HEIGHT (no mt).
                   "app-no-drag min-w-0 flex-1 items-center gap-1",
                   isPanelFullWidth ? "hidden" : "flex",
                 )}

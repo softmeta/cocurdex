@@ -1,17 +1,3 @@
-// GitHub-flavored heading slugs and same-document anchor navigation.
-//
-// Streamdown does not inject heading `id`s (its default rehype chain only ships
-// sanitize + harden), and its harden step rewrites relative `#section` links to
-// absolute URLs (e.g. `file:///.../index.html#section`). Both break in-document
-// table-of-contents links: the target heading has no id to scroll to, and the
-// link no longer starts with `#`, so it gets treated as an external link.
-//
-// We solve both here: generate slugs with github-slugger (the de-facto standard
-// the assistant follows when authoring TOC anchors) so heading ids match the
-// emitted anchors across the full Unicode punctuation table — including
-// full-width CJK punctuation like `（）` — and resolve same-document anchors
-// whether the href is a bare hash or an absolute URL pointing at this document.
-
 import { slug } from "github-slugger";
 
 export function slugifyHeading(text: string): string {
@@ -23,7 +9,6 @@ interface HastTextNode {
   children?: unknown[];
 }
 
-// Extract the plain text of a hast element/node tree for slug generation.
 export function extractNodeText(node: unknown): string {
   if (!node || typeof node !== "object") {
     return "";
@@ -37,9 +22,6 @@ export function extractNodeText(node: unknown): string {
   return (textNode.children ?? []).map(extractNodeText).join("");
 }
 
-// Returns the decoded target id when `href` points to an anchor in the current
-// document, otherwise null (external link). Handles both the bare `#section`
-// form and the absolute-URL form harden rewrites links into.
 export function resolveAnchorTarget(href: string | undefined): string | null {
   if (!href) {
     return null;

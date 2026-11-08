@@ -95,7 +95,6 @@ describe("extractSelectionGeometry", () => {
     const range = document.createRange();
     range.setStart(text, 0);
     range.setEnd(text, 5);
-    // jsdom's getClientRects is often empty — stub a single line box.
     range.getClientRects = () =>
       ({
         length: 1,

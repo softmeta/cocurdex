@@ -1,20 +1,11 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 
-/**
- * Which logical edge of the resizable column the drag handle sits on.
- *
- * - `inline-end`: left sidebar / explorer / notes (LTR: drag right → wider)
- * - `inline-start`: right panel / pinned chat (LTR: drag left → wider)
- *
- * RTL flips the physical pointer delta so growth stays on the logical axis.
- */
 export type ColumnResizeEdge = "inline-end" | "inline-start";
 
 export interface BeginColumnResizeOptions {
   edge: ColumnResizeEdge;
   startWidth: number;
   onWidthChange(width: number): void;
-  /** Clamp on every move / mouseup. Defaults to identity. */
   clamp?(width: number): number;
   onDragStart?(): void;
   onDragEnd?(finalWidth: number): void;
@@ -25,11 +16,6 @@ function isDocumentRtl(): boolean {
   return getComputedStyle(document.documentElement).direction === "rtl";
 }
 
-/**
- * Shared left/right column drag. Sets body cursor + user-select for the drag,
- * tracks pointer delta in logical inline direction, and returns a cancel fn
- * (e.g. unmount mid-drag).
- */
 export function beginColumnResize(
   event: ReactMouseEvent,
   {

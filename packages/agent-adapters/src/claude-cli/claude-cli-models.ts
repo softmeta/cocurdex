@@ -27,8 +27,6 @@ function getVersionedModelDisplayName(model: ClaudeCliModelInfo): string {
     return model.displayName;
   }
 
-  // Claude reports compact picker names such as "Opus" while the first
-  // description segment carries the user-facing generation, such as "Opus 5".
   const descriptionHeading = model.description.split(" · ", 1)[0]?.trim();
   const headingPrefix = `${baseName} `;
   if (
@@ -78,8 +76,6 @@ function toCompatibleModel(
   now: string,
 ): CompatibleProviderModel {
   const catalogEntry = getCatalogEntry(model);
-  // Claude Code owns this ladder: forward whatever levels the picker reports
-  // instead of pinning the menu to a snapshot of today's vocabulary.
   const supportedReasoningEfforts = (model.supportedEffortLevels ?? []).flatMap(
     (effort) =>
       isReasoningEffort(effort)
@@ -102,7 +98,6 @@ function toCompatibleModel(
       providerId: CLAUDE_CLI_PROVIDER_ID,
       modelId: model.value === "default" ? "" : model.value,
       name: getVersionedModelDisplayName(model),
-      // This is UI metadata only. Claude Agent owns transport and auth.
       api: "anthropic-messages",
       enabled: true,
       source: "api",
@@ -198,9 +193,6 @@ async function probeClaudeCliModels(
 
   const now = new Date().toISOString();
   const models = await readModels(executablePath);
-  // Claude's account-default alias is not a pickable model. The picker only
-  // lists concrete ids (sonnet, opus, …) so new sessions and settings stay
-  // on an explicit model.
   const reportedModels = (models ?? []).filter(
     (model) => model.value !== "default",
   );

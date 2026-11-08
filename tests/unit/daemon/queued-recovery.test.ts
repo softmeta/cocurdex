@@ -55,7 +55,7 @@ async function start(root: string) {
   return daemon;
 }
 
-async function seed(archived = false) {
+async function seed(archived = false, queued = true) {
   const root = await tempDirs.create("cdq-");
   const first = await start(root);
   await vi.waitFor(() =>
@@ -83,17 +83,30 @@ async function seed(archived = false) {
     lastMessageAt: null,
     archivedAt: archived ? timestamp : null,
   });
-  await first.service.state.saveQueuedUserMessage(message, {
-    sessionId: message.sessionId,
-    messageId: message.id,
-    workspaceRootPath: "/stale-client-path",
-    createdAt: timestamp,
-  });
+  if (queued) {
+    await first.service.state.saveQueuedUserMessage(message, {
+      sessionId: message.sessionId,
+      messageId: message.id,
+      workspaceRootPath: "/stale-client-path",
+      createdAt: timestamp,
+    });
+  } else {
+    await first.service.state.saveUserMessage(message);
+  }
   await first.close();
   return root;
 }
 
 describe("daemon-owned queue recovery", () => {
+  it("does not read conversation history when there is no queue to resume", async () => {
+    const root = await seed(false, false);
+    const daemon = await start(root);
+    const history = vi.spyOn(daemon.service.state, "listMessagesBySessionId");
+
+    await expect(resumeQueued(root)).resolves.toBe(false);
+    expect(history).not.toHaveBeenCalled();
+  });
+
   it("keeps persisted inputs paused when the daemon starts", async () => {
     const root = await seed();
     const dispatch = vi

@@ -103,9 +103,6 @@ const rendererRootDir = resolveElectronEntryPath(
   "../renderer",
 );
 
-// Capture native crashes (renderer/GPU/utility/main) as on-disk minidumps.
-// Must run at module load, before `app` is ready and before any window opens,
-// so early and bypass-the-JS-handler crashes are still recorded.
 startCrashReporter();
 
 function configureRemoteDebugging() {
@@ -131,9 +128,6 @@ function configureRemoteDebugging() {
   console.info("[perf] remote debugging enabled", { port });
 }
 
-// Isolate local-dev persisted state from an installed build. Must run before
-// app 'ready' so Chromium storage (IndexedDB, cookies, Local Storage) also
-// lands in the dev-specific directory.
 if (backgroundLaunch?.userDataPath) {
   process.env[COCURDEX_USER_DATA_PATH_ENV] = backgroundLaunch.userDataPath;
 }
@@ -142,12 +136,6 @@ app.setPath(
   resolveUserDataPath(app.getPath("userData"), app.isPackaged),
 );
 
-// Single-instance after userData is settled so the lock file lives next to the
-// correct profile (dev vs packaged). `cocurdex .` from a second terminal focuses
-// the existing window and opens the folder there (VS Code-style).
-//
-// Packaged builds: second-instance argv order is unstable on some platforms —
-// pass the folder via additionalData (Electron-recommended) and fall back to argv.
 const openFolderFromLaunch = extractOpenFolderFromProcess(process.argv);
 const gotTheLock =
   !backgroundLaunch &&
@@ -193,16 +181,11 @@ async function handleCliOpenFolder(
   queueOpenFolder(rootPath, { broadcast: options?.broadcast });
 }
 
-// Restore the user's login-shell environment so packaged builds launched from
-// Finder/Dock get the real PATH (agent detection / CLI spawns) plus provider
-// auth and proxy vars exported from the shell profile (the managed OpenCode
-// server inherits process.env directly).
 applyShellEnv({
   platform: process.platform,
   env: process.env,
   resolveEnv: resolveShellEnv,
 });
-// Snapshot shell proxy env after merge, before any app overlay.
 initializeNetworkProxyRuntime();
 
 configureRemoteDebugging();
@@ -215,8 +198,6 @@ function requireDaemonRuntimeClient() {
   return daemonRuntimeClient;
 }
 
-// Match the renderer's surface color so there is no dark flash before the
-// first paint and no black gutters during async child-view resizes.
 function getSurfaceColor() {
   return nativeTheme.shouldUseDarkColors ? "#0f0f11" : "#ffffff";
 }
@@ -235,12 +216,7 @@ function createWindow() {
     ...titleBarChromeOptions(process.platform, surfaceColor),
     webPreferences: {
       preload: preloadPath,
-      // Keep painting at full rate when the window is occluded/resizing so
-      // child WebContentsView resizes don't reveal an unpainted layer.
       backgroundThrottling: false,
-      // Disable DevTools on the main window in packaged builds (menu items,
-      // keyboard shortcuts and openDevTools() all become no-ops). The in-app
-      // browser view keeps its own DevTools.
       devTools: resolveMainWindowDevTools({ packaged: app.isPackaged }),
     },
   });
@@ -254,8 +230,6 @@ function createWindow() {
     window.show();
   };
 
-  // Defer the first show until the renderer has produced a frame; otherwise
-  // the OS would composite an empty window using `backgroundColor` first.
   window.once("ready-to-show", showWindowOnce);
   window.webContents.once("did-finish-load", showWindowOnce);
   window.webContents.once(
@@ -270,9 +244,6 @@ function createWindow() {
     },
   );
 
-  // The renderer takes over background color via `window:setSurfaceColor`
-  // once it mounts — that path knows about the user's manual theme override.
-  // The initial `backgroundColor` above is just for the pre-mount frame.
   attachBrowserHost(window);
 
   denyWindowNavigation(window.webContents);
@@ -357,8 +328,6 @@ function registerBrowserHandlers() {
     return image.toDataURL();
   });
 
-  // Annotations come from arbitrary web pages via the browser view's preload
-  // bridge — validate before rebroadcasting to the trusted main renderer.
   const broadcast = (channel: string, payload: unknown) => {
     for (const window of BrowserWindow.getAllWindows()) {
       window.webContents.send(channel, payload);
@@ -496,7 +465,6 @@ process.on("unhandledRejection", (reason) => {
   app.quit();
 });
 
-// Privileges must be registered before app ready.
 protocol.registerSchemesAsPrivileged([rendererScheme]);
 
 function configureAppLogging(userDataPath: string) {
@@ -566,7 +534,6 @@ app
 
     const userDataPath = app.getPath("userData");
     configureAppLogging(userDataPath);
-    // Surface where native minidumps land so crash investigations can find them.
     appLogger.info("crashReporter.ready", {
       crashDumpsDirectory: app.getPath("crashDumps"),
     });
@@ -588,9 +555,6 @@ app
         }
       },
     });
-    // Spawning the daemon and loading the renderer are independent, so start
-    // the daemon and keep going: the window appears while it boots. Everything
-    // that talks to the daemon waits on this promise instead (setDaemonReady).
     const daemonReady = daemonRuntimeClient.initialize();
     setDaemonReady(daemonReady);
     daemonReady.catch((error: unknown) => {
@@ -598,10 +562,6 @@ app
         message: error instanceof Error ? error.message : String(error),
       });
     });
-    // Needs app_settings storage, so it trails the daemon: apply the app proxy
-    // to main process.env + Chromium session (daemon applied its own on boot).
-    // Nothing paints before this lands — the renderer's first outbound request
-    // is user-triggered, long after startup.
     const proxyReady = loadAndApplyNetworkProxyFromDaemon().catch(
       (error: unknown) => {
         appLogger.warn("networkProxy.loadFailed", {
@@ -646,16 +606,10 @@ app
     ipcMain.handle("daemon:restart", async () =>
       requireDaemonRuntimeClient().restart(),
     );
-    // Packaged builds: best-effort symlink/shim into ~/.local/bin (or
-    // %LOCALAPPDATA%\Cocurdex\bin) so `cocurdex` is on the user PATH.
     void ensureCliOnPathBestEffort();
     ipcMain.handle("dialog:openDirectory", async () =>
       dialog.showOpenDialog({ properties: ["openDirectory"] }),
     );
-    // Renderer owns the resolved theme (it includes the user's manual override
-    // on top of system prefersDark), so it pushes the surface color back here.
-    // We mirror it onto the native BrowserWindow + child WebContentsView so
-    // resize/startup compositing matches what React will paint.
     registerHandler(
       ipcMain,
       "window:setSurfaceColor",
@@ -669,9 +623,6 @@ app
         getBrowserView()?.setBackgroundColor(color);
       },
     );
-    // Renderer-driven external link opening — used by terminal links so users
-    // hit their real browser instead of having Electron load the URL inside
-    // BrowserWindow / BrowserView.
     registerHandler(
       ipcMain,
       "shell:openExternal",
@@ -688,8 +639,6 @@ app
         event.sender.downloadURL(url);
       },
     );
-    // CLI cold-start: renderer pulls the path after bootstrap so jotai stores
-    // are ready. Live second-instance opens also push workspace:openFromCli.
     ipcMain.handle("workspace:consumeOpenFolder", () => {
       const rootPath = consumePendingOpenFolder();
       return rootPath ? { rootPath } : null;
@@ -707,9 +656,6 @@ app
     const initialFolder =
       openFolderFromLaunch ?? extractOpenFolderFromProcess(process.argv);
     if (initialFolder) {
-      // Do not broadcast: renderer consumes after bootstrap so selection is not
-      // overwritten by bootstrapWorkspaces. WorkspacePicker + sidebar both read
-      // activeWorkspaceId after consumePendingOpenFolder.
       void handleCliOpenFolder(initialFolder, { broadcast: false }).catch(
         (error) => {
           appLogger.error("openFolder.initialFailed", {

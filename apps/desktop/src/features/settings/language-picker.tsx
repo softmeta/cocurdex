@@ -9,7 +9,6 @@ interface LanguagePickerProps {
   onChange(value: LanguageMode): void;
 }
 
-// Short list (system + current locales); not searchable.
 export function LanguagePicker({ value, onChange }: LanguagePickerProps) {
   const { t } = useTranslation("settings");
 

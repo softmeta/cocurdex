@@ -203,7 +203,6 @@ describe("cli-path helpers", () => {
       home,
       env: {},
     });
-    // Foreign install left alone.
     expect(afterUninstall.installed).toBe(true);
   });
 });

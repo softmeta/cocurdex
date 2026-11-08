@@ -337,7 +337,6 @@ export function issueBodyExcerpt(body: string, maxLength = 240): string | null {
     : `${plain.slice(0, maxLength).trimEnd()}…`;
 }
 
-/** Stable id of the built-in issue view. */
 export const DEFAULT_VIEW_ID = "project";
 
 export interface ViewRecord {
@@ -346,7 +345,6 @@ export interface ViewRecord {
   icon: string | null;
   groupBy: ViewGroupBy;
   layout: ViewLayout;
-  /** Saved filters for this view (AND). Empty = unfiltered pool. */
   filters: ViewFilter[];
   display: ViewDisplay;
   revision: number;
@@ -376,26 +374,19 @@ export interface ViewColumnRecord {
   updatedAt: string;
 }
 
-/** Issue projected onto an issue view (column from active groupBy). */
 export interface IssueRecord {
   id: string;
   number: number;
   identifier: string;
-  /** Column id in the *current* groupBy view (status or priority value). */
   columnId: string;
   columnIds: string[];
   viewId: string;
   title: string;
-  /**
-   * View list loads: short plain-text excerpt (not full markdown).
-   * `getIssue` / detail editor: full markdown body.
-   */
   description: string | null;
   color: string | null;
   status: string;
   statusCategory: IssueStatusCategory | null;
   priority: string;
-  /** Linked workspace id, or null when unassigned (no workspace). */
   workspaceId: string | null;
   parentId: string | null;
   labelIds: string[];
@@ -415,11 +406,8 @@ export interface IssueFieldOption {
 
 export interface ViewFull {
   view: ViewRecord;
-  /** Columns for the active groupBy view. */
   columns: ViewColumnRecord[];
-  /** Full status field options (for editors / chips). */
   statusOptions: IssueFieldOption[];
-  /** Full priority field options (for editors / chips). */
   priorityOptions: IssueFieldOption[];
   labels: IssueLabel[];
   issues: IssueRecord[];
@@ -552,14 +540,12 @@ export interface DeleteColumnPayload {
 
 export interface CreateIssuePayload {
   viewId: string;
-  /** Column id under the view's current groupBy; defaults from status/priority. */
   columnId?: string;
   title?: string;
   description?: string | null;
   color?: string | null;
   status?: string;
   priority?: string;
-  /** Null / omit = no workspace association. */
   workspaceId?: string | null;
   parentId?: string | null;
   labelIds?: string[];
@@ -575,7 +561,6 @@ export interface UpdateIssuePayload {
   color?: string | null;
   status?: string;
   priority?: string;
-  /** Null clears the association (no workspace). */
   workspaceId?: string | null;
   parentId?: string | null;
   labelIds?: string[];
@@ -598,10 +583,8 @@ export interface DeleteIssuePayload {
   expectedRevision?: number;
 }
 
-/** Load one issue with full markdown body for the detail editor. */
 export interface GetIssuePayload {
   id: string;
-  /** Optional view for column projection; defaults to default view. */
   viewId?: string;
 }
 

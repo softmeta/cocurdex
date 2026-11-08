@@ -1,11 +1,3 @@
-/**
- * Process-scoped network proxy runtime helpers.
- *
- * Callers own the env map (usually `process.env` in Node/Electron). Capture the
- * shell/system proxy snapshot once after login-shell inheritance, then re-apply
- * app settings whenever the user changes proxy mode.
- */
-
 import {
   applyNetworkProxyToEnv,
   type EnvMap,
@@ -32,10 +24,6 @@ export function getNetworkProxySettings(): NetworkProxySettings {
   return { ...currentSettings };
 }
 
-/**
- * Persist the in-memory settings and rewrite proxy-related keys on `env`.
- * Safe to call repeatedly.
- */
 export function applyNetworkProxySettings(
   settings: NetworkProxySettings,
   env: EnvMap,

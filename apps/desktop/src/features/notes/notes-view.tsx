@@ -15,9 +15,7 @@ import {
 } from "./notes-store";
 import { NotesSidebar } from "./sidebar";
 
-// Usable note body strip beside the list (mirrors editor min content width).
 const MIN_NOTES_EDITOR_WIDTH_PX = 280;
-// Sidebar + body; pin / panel resize must not collapse either column.
 const MIN_NOTES_VIEW_WIDTH_PX =
   WORKBENCH_SIDEBAR_WIDTH_PX + MIN_NOTES_EDITOR_WIDTH_PX;
 

@@ -32,8 +32,6 @@ export function resolveRuntimeProviderModel(
     return runtimeItem.model;
   }
 
-  // Adapter-owned catalogs never resolve against the app-managed provider
-  // table — ids can collide across catalogs and the row metadata differs.
   if (usesAdapterOwnedModelCatalog(agentType)) {
     return null;
   }
@@ -47,6 +45,4 @@ export function resolveRuntimeProviderModel(
   );
 }
 
-// Build the same provider snapshot used by the new-session picker. Runtime
-// axes are reset because their valid values belong to the previous model.
 export { createProviderSnapshotForModel } from "@cocurdex/shared";

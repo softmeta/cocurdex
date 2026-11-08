@@ -40,13 +40,6 @@ export function readClaudeRuntimeFingerprint(
   }
 }
 
-/**
- * Compare two MCP catalogs by membership and status.
- *
- * The SDK reports server order from its own config walk, which is stable within
- * a session, so position is treated as part of the identity here — a reorder
- * only costs one redundant runtime event.
- */
 export function hasSameMcpServerStatuses(
   current: readonly AgentMcpServerRuntime[],
   next: readonly AgentMcpServerRuntime[],

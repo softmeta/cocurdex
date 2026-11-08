@@ -7,7 +7,6 @@ interface WorkspaceFolderDropOverlayProps {
   active: boolean;
 }
 
-/** Full-window affordance while an OS folder (or file) is dragged over the app. */
 export function WorkspaceFolderDropOverlay({
   active,
 }: WorkspaceFolderDropOverlayProps) {

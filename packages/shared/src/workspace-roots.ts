@@ -21,8 +21,6 @@ function platformName(): string | undefined {
   return (globalThis as { process?: { platform?: string } }).process?.platform;
 }
 
-// Windows and default macOS filesystems are case-insensitive. Renderer
-// contexts have no process.platform, so fall back to navigator.platform.
 function isCaseInsensitivePathPlatform(): boolean {
   const platform = platformName();
   if (platform === "win32" || platform === "darwin") {

@@ -17,18 +17,14 @@ import {
   type AppDropdownTriggerRadius,
 } from "./dropdown";
 
-/** One selectable row in a short unsearchable single-select. */
 export interface AppSelectOption {
   value: string;
   label: ReactNode;
-  /** Plain text for Base UI `items` / a11y when `label` is not a string. */
   textValue?: string;
   description?: ReactNode;
   disabled?: boolean;
   icon?: ReactNode;
-  /** Content before the official check indicator (counts, mono ids, …). */
   trailing?: ReactNode;
-  /** Force multi-line row layout; defaults to true when `description` is set. */
   multiLine?: boolean;
 }
 
@@ -97,11 +93,9 @@ export interface AppSelectProps {
   onValueChange(value: string): void;
   options?: readonly AppSelectOption[];
   sections?: readonly AppSelectSection[];
-  /** Shown on the default pill trigger when `trigger` is omitted. */
   triggerLabel?: ReactNode;
   triggerAriaLabel?: string;
   appearance?: AppDropdownTriggerAppearance;
-  /** Default `control`. Use `full` only for true pill/chip triggers. */
   triggerRadius?: AppDropdownTriggerRadius;
   disabled?: boolean;
   triggerClassName?: string;
@@ -110,30 +104,12 @@ export interface AppSelectProps {
   contentClassName?: string;
   align?: React.ComponentProps<typeof SelectContent>["align"];
   side?: React.ComponentProps<typeof SelectContent>["side"];
-  /**
-   * `popper` (default): popup anchors to the trigger edge.
-   * `item-aligned`: selected row lines up with the trigger.
-   */
   position?: React.ComponentProps<typeof SelectContent>["position"];
-  /**
-   * Custom trigger host for Base UI `render` composition
-   * (e.g. a settings form Button). Replaces the default pill trigger.
-   */
   trigger?: ReactElement;
-  /** Rendered when there are no options/sections (e.g. empty agent list). */
   empty?: ReactNode;
   placeholder?: ReactNode;
 }
 
-/**
- * Canonical unsearchable single-select for the whole app.
- *
- * Built on official shadcn Base UI Select (`@/components/ui/select`).
- * Use for agent / permission / thinking / settings / short filter lists.
- * Searchable long lists must use AppSearchableSelect (Combobox).
- * Compound action menus that mix radios with checkboxes/submenus keep
- * AppDropdownRadioList inside DropdownMenu.
- */
 export function AppSelect({
   value,
   onValueChange,
@@ -162,7 +138,6 @@ export function AppSelect({
 
   const hasChoices = flatOptions.length > 0;
 
-  // Base UI Select uses `items` so SelectValue can resolve labels.
   const items = useMemo(
     () =>
       flatOptions.map((option) => ({
@@ -189,7 +164,6 @@ export function AppSelect({
       <SelectTrigger
         aria-label={triggerAriaLabel}
         disabled={disabled || !hasChoices}
-        // Custom host (pill button / settings Button) draws its own chevron.
         showIcon={false}
         size="sm"
         render={

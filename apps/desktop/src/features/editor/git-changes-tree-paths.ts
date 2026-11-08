@@ -1,7 +1,3 @@
-// Map repo-relative git paths into Pierre tree paths that always sit under a
-// single workspace-root folder, so the user can collapse the whole tree by
-// clicking that top-level directory.
-
 export function normalizeWorkspaceTreeRootName(name: string): string {
   const trimmed = name.replace(/[/\\]+$/g, "").trim();
   return trimmed.length > 0 ? trimmed : "workspace";
@@ -15,8 +11,6 @@ export function toGitTreePath(
   return `${root}/${repoRelativePath}`;
 }
 
-// Strip the workspace-root prefix. Returns null when the path is not under it
-// (including the root directory row itself when callers pass a bare root).
 export function fromGitTreePath(
   workspaceName: string,
   treePath: string,

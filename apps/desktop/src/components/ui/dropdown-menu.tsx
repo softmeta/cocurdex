@@ -76,9 +76,6 @@ function DropdownMenuContent({
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
           className={cn(
-            // No `w-*` here: auto width shrink-wraps to the longest row and
-            // keeps caller `w-*` overrides working (`w-max` would sort after
-            // and beat them).
             "relative z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-closed:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-card bg-popover text-popover-foreground shadow-menu ring-1 ring-menu-ring p-1.5 min-w-(--anchor-width) max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
             className,
           )}
@@ -166,10 +163,6 @@ function DropdownMenuRadioItem({
   className,
   children,
   inset,
-  // Base UI defaults RadioItem closeOnClick to false (stay open while
-  // comparing options). Our menus are pick-and-done (agent, mode, …), so
-  // close after select like a regular MenuItem. Pass closeOnClick={false}
-  // when a settings-style menu should stay open.
   closeOnClick = true,
   ...props
 }: React.ComponentProps<typeof MenuPrimitive.RadioItem> & {
@@ -199,8 +192,6 @@ function DropdownMenuRadioItem({
   );
 }
 
-// Base UI's Menu has no standalone Label primitive — GroupLabel is for use
-// inside Menu.Group. We expose it under the radix-style name for API parity.
 function DropdownMenuLabel({
   className,
   inset,
@@ -221,7 +212,6 @@ function DropdownMenuLabel({
   );
 }
 
-// Base UI's Menu has no Separator primitive — render a plain divider.
 function DropdownMenuSeparator({
   className,
   ...props
@@ -277,8 +267,6 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        // Match DropdownMenuItem spacing so a sub-row sits flush with sibling
-        // items; keep the chevron pinned to the trailing edge.
         "flex w-full cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground data-inset:ps-7 data-open:bg-accent data-open:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
@@ -306,8 +294,6 @@ type DropdownMenuSubContentProps = React.ComponentProps<
 function DropdownMenuSubContent({
   className,
   sideOffset = FLYOUT_GAP,
-  // Nudge up slightly so the first row of the submenu lines up with the
-  // sub-trigger row (classic menu flyout alignment).
   alignOffset = -4,
   align = "start",
   side,
@@ -327,8 +313,6 @@ function DropdownMenuSubContent({
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-sub-content"
           className={cn(
-            // Mirror DropdownMenuContent: allow vertical scroll, keep a clear
-            // elevated surface so the flyout reads as a separate panel.
             "z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-closed:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-card bg-popover text-popover-foreground shadow-menu ring-1 ring-menu-ring p-1.5 max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
             className,
           )}

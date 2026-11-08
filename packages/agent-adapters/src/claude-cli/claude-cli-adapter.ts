@@ -232,9 +232,6 @@ function readContextTokenCount(value: unknown, allowZero = false) {
   return Math.floor(value);
 }
 
-// Claude Agent SDK owns the Claude Code subprocess and protocol. Cocurdex
-// keeps the product transcript in SQLite and only persists the native session
-// cursor needed to resume that transcript after the daemon restarts.
 export function createClaudeCliAdapter(
   dependencies: ClaudeCliAdapterDependencies = {},
 ): AgentAdapter {
@@ -399,9 +396,6 @@ export function createClaudeCliAdapter(
         onEvent({ type: "state.changed", sessionId, status: "error" });
       }
 
-      // Plan quota lives behind an SDK method the SDK itself marks unstable
-      // ("may change or be removed in any release"), so it is resolved by name
-      // at call time and any failure simply leaves the quota section hidden.
       async function emitPlanUsage(queryToInspect: ClaudeQuery) {
         const getPlanUsage = (
           queryToInspect as unknown as Record<string, unknown>
@@ -432,10 +426,6 @@ export function createClaudeCliAdapter(
         }
       }
 
-      // The init message is the only MCP catalog the SDK pushes, and it is
-      // pushed once per query — not per turn. Servers that finish connecting
-      // later, drop, or start needing auth never re-announce, so the status is
-      // re-read from the control channel at turn end.
       async function emitMcpServerStatus(queryToInspect: ClaudeQuery) {
         const runtime = latestRuntime;
         const getMcpServerStatus = queryToInspect.mcpServerStatus;
@@ -489,9 +479,6 @@ export function createClaudeCliAdapter(
             contextUsage?.maxTokens,
           );
 
-          // The SDK reports the same composition Claude Code's `/context`
-          // prints. Forward it alongside the totals so the footer meter can
-          // break the window down instead of only sizing it.
           const breakdown =
             detail === "full"
               ? mapClaudeContextBreakdown(
@@ -627,8 +614,6 @@ export function createClaudeCliAdapter(
           await emitContextUsage(queryToConsume, "summary");
         }
 
-        // Quota only moves once a turn has been billed, so it rides the result
-        // message rather than every streamed usage delta.
         if (message.type === "result") {
           await emitPlanUsage(queryToConsume);
           await emitMcpServerStatus(queryToConsume);

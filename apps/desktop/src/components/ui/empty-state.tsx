@@ -3,21 +3,6 @@ import type * as React from "react";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib";
 
-/*
- * Empty state primitive.
- *
- * Use this for "no results", "no items configured", or "nothing to show here"
- * panels so the title / description / optional action / optional icon stay
- * visually consistent across the app. Callers that previously hand-rolled
- * `<div className="text-center ..."><div>title</div><div>description</div>`
- * should reach for this component instead.
- *
- *   <EmptyState
- *     icon={<FolderSearch />}
- *     title={t('search:empty.noFiles.title')}
- *     description={t('search:empty.noFiles.description')}
- *   />
- */
 export interface EmptyStateProps {
   title: React.ReactNode;
   description?: React.ReactNode;

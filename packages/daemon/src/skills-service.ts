@@ -36,8 +36,6 @@ export class DaemonSkillsService {
     this.sourceRoot = sourceRoot;
   }
 
-  // Project scope writes into <root>/.claude/skills, so the target must be a
-  // registered workspace/worktree — never a client-supplied arbitrary path.
   private async requireAuthorizedProjectRoot(
     payload: ProductSkillsRequestPayload,
   ) {

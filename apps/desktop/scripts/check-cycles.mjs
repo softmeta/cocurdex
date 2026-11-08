@@ -6,19 +6,8 @@ import { fileURLToPath } from "node:url";
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = resolve(SCRIPT_DIR, "..");
 
-/**
- * Cycles that are known and accepted, so the check can stay zero-tolerance for
- * everything else. Each entry is the module list madge reports, in any
- * rotation. Only add one with a reason — the point of this list is that it
- * stays short.
- */
 const ALLOWED_CYCLES = [
   {
-    // Recursive UI mirroring recursive data: a session renders tool calls, a
-    // tool call may be a subagent, and that subagent renders a session. React
-    // resolves the components at render time, so the cycle never produces an
-    // undefined module. Breaking it would mean injecting the component through
-    // a registry, which trades readability for a green check.
     reason: "subagent transcripts nest tool calls inside sessions",
     modules: [
       "features/agent/tool-call/tool-call-detail.tsx",
@@ -29,7 +18,6 @@ const ALLOWED_CYCLES = [
   },
 ];
 
-// A cycle has no natural starting point, so compare it as an unordered set.
 function cycleKey(modules) {
   return [...modules].sort().join(" | ");
 }
@@ -61,8 +49,6 @@ function runMadge() {
       stderr += chunk;
     });
     child.on("error", reject);
-    // madge exits non-zero when it finds cycles, which is the normal path here;
-    // only a missing/broken run (no parseable JSON) is a real failure.
     child.on("close", () => {
       try {
         resolvePromise(JSON.parse(stdout));

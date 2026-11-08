@@ -23,9 +23,6 @@ function usePanThumb(viewportRef: React.RefObject<HTMLDivElement | null>) {
         return;
       }
       const scale = trackLength / scrollWidth;
-      // Chrome reports RTL scrollLeft in [trackLength - scrollWidth, 0]; LTR
-      // uses [0, scrollWidth - trackLength]. The sign fold makes |scrollLeft|
-      // the distance from the inline start edge in both directions.
       const sign = getComputedStyle(viewport).direction === "rtl" ? -1 : 1;
       const length = Math.max(trackLength * scale, MIN_THUMB_LENGTH);
       const start = Math.min(
@@ -50,9 +47,6 @@ function usePanThumb(viewportRef: React.RefObject<HTMLDivElement | null>) {
   return thumb;
 }
 
-// Custom horizontal scrollbar for the overlay-pan body region. macOS hides all
-// native scrollbars (see base.css), and the native BrowserView swallows wheel
-// gestures above it anyway, so panning needs a visible, draggable DOM thumb.
 export function PanScrollbar({ viewportRef, className }: PanScrollbarProps) {
   const thumb = usePanThumb(viewportRef);
   const dragRef = useRef<{

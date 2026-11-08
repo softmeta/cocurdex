@@ -26,16 +26,6 @@ type TranscriptCacheEntry = {
   model: TranscriptModel;
 };
 
-// Per-session structural cache. The previous WeakMap chain keyed off the
-// `messages` array identity, but `messagesBySessionAtom` allocates a fresh
-// array on every streaming delta, so every token forced a full rebuild of
-// timeline/conversation groups (O(N) over the whole transcript) — and every
-// ChatConversationItem received a new prop reference, defeating React.memo.
-//
-// This cache reuses prefix references aggressively. Hot path: streaming tail
-// patch (same length, only the last message's content grew). We replace just
-// the last timeline group and the last conversation group's last item; every
-// other group keeps its previous reference so memoized children skip render.
 const transcriptModelCache = new Map<string, TranscriptCacheEntry>();
 const FALLBACK_CACHE_KEY = "__no_session__";
 const TRANSCRIPT_MODEL_CACHE_MAX_ENTRIES = 100;
@@ -72,12 +62,6 @@ function buildTranscriptModel(
   };
 }
 
-// Detect the "streaming tokens appended" case: only a trailing run of message
-// references changed (their content grew), everything else identical. A single
-// flush can grow several tail messages at once — typically a reasoning block
-// and the response streaming in the same 16ms window — so the patch accepts
-// any changed suffix, not just the last message. Returns the index where the
-// changed suffix starts, or null when the model must be fully rebuilt.
 function getPatchableSuffixStart(
   prev: TranscriptCacheEntry,
   messages: MessageRecord[],
@@ -95,10 +79,6 @@ function getPatchableSuffixStart(
     if (prev.messages[i].id !== messages[i].id) return null;
   }
 
-  // The changed messages must be exactly the trailing timeline groups, in
-  // order, and the trailing items of the last conversation group (not its
-  // `prompt`, which would mean we're streaming a user prompt — atypical but
-  // bail to full rebuild for correctness).
   const changedCount = messages.length - start;
   const timeline = prev.model.timelineGroups;
   if (timeline.length < changedCount) return null;
@@ -135,7 +115,6 @@ function patchStreamingTail(
   ];
 
   const prevConv = prev.model.conversationGroups;
-  // getPatchableSuffixStart already validated structure.
   const lastConv = prevConv[prevConv.length - 1];
   const newItems = [
     ...lastConv.items.slice(0, lastConv.items.length - newGroups.length),

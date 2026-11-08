@@ -38,8 +38,6 @@ interface SearchPanelProps {
   rootPath: string | null;
 }
 
-// In-input icon toggle with a hover tooltip. Kept as a single component so the
-// option toggles and the filter toggle share one layout/markup definition.
 function IconToggle({
   className,
   icon,
@@ -74,7 +72,6 @@ function IconToggle({
   );
 }
 
-// Result-toolbar action — same chrome footprint as titlebar / panel icons.
 function ToolButton({
   disabled,
   icon,
@@ -106,7 +103,6 @@ export function SearchPanel({ rootPath }: SearchPanelProps) {
   const [useRegex, setUseRegex] = useAtom(searchUseRegexAtom);
   const [include, setInclude] = useAtom(searchIncludeAtom);
   const [exclude, setExclude] = useAtom(searchExcludeAtom);
-  // Auto-expand the filter fields when a glob is already set so users see them.
   const [filtersExpanded, setFiltersExpanded] = useState(
     () => include.trim() !== "" || exclude.trim() !== "",
   );
@@ -118,15 +114,9 @@ export function SearchPanel({ rootPath }: SearchPanelProps) {
   const setCollapsedPaths = useSetAtom(collapsedSearchPathsAtom);
   const collapsedPaths = useAtomValue(collapsedSearchPathsAtom);
 
-  // Option toggles live inside the input. Base UI's Toggle exposes pressed
-  // state via aria-pressed/data-pressed (not data-state), so the active
-  // highlight keys off those.
-  // Toggle's default size variant ships `min-w-8 px-2.5`; without min-w-0 the
-  // 18px square gets stretched to 32px and the icons eat half the input.
   const hasQuery = query.trim() !== "";
   const hasResults = resultCount > 0;
   const resultPaths = [...results.keys()];
-  // Every group collapsed → the toggle should expand all; otherwise collapse all.
   const allCollapsed =
     resultPaths.length > 0 &&
     resultPaths.every((path) => collapsedPaths.has(path));

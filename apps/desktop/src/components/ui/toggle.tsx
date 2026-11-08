@@ -11,8 +11,6 @@ const toggleVariants = cva(
       variant: {
         default: "bg-transparent",
         outline: "border border-input bg-transparent hover:bg-muted",
-        // Connected segmented-control item: lives inside a muted track, the
-        // selected item floats above with a raised background + shadow.
         segmented:
           "rounded-md bg-transparent text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm data-pressed:bg-background data-pressed:text-foreground data-pressed:shadow-sm dark:aria-pressed:bg-foreground/12 dark:data-pressed:bg-foreground/12",
       },

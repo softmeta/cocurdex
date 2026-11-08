@@ -33,8 +33,6 @@ interface GitChangesBodyProps extends GitChangesDiffStackProps {
   turnEmptyReason?: "none" | "expired" | "missing" | null;
 }
 
-// Pick the empty-state copy for the panel: git failures and non-repo folders
-// must read differently from a genuinely clean working tree.
 function resolveEmptyStateCopy(
   t: ReturnType<typeof useTranslation<"editor">>["t"],
   diffStatus: WorkspaceGitDiffStatus,
@@ -101,8 +99,6 @@ function resolveEmptyStateCopy(
   };
 }
 
-// Dispatch between the loading / empty placeholders and the change view: the
-// diffs always stack the same way, with the file index optionally beside them.
 export function GitChangesBody({
   isLoading,
   actionsBusy,

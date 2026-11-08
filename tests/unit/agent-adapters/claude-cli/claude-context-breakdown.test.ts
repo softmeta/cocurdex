@@ -41,7 +41,6 @@ describe("mapClaudeContextBreakdown", () => {
       maxTokens: 1_000_000,
       model: "claude-opus-5",
       updatedAt,
-      // Empty slices carry no information in a token panel.
       categories: [{ name: "System prompt", tokens: 5500 }],
     });
     expect(breakdown?.groups).toMatchObject([
@@ -55,8 +54,6 @@ describe("mapClaudeContextBreakdown", () => {
         tokens: 1200,
         items: [{ name: "ctx_search", detail: "ctx", tokens: 1200 }],
       },
-      // The reported group total wins over the sum of its rows: the SDK counts
-      // frontmatter it does not enumerate.
       { id: "skills", tokens: 6800, summary: "54/54" },
     ]);
   });

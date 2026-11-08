@@ -282,8 +282,6 @@ describe("probeAcpProviderModelAxes", () => {
       configId: "model",
       value: "claude-opus-5-5-medium",
     });
-    // Devin's "none" rung reads as our "off"; the baseline speed is folded
-    // into the picker's built-in row and only "fast" remains a named tier.
     expect(
       axes?.supportedReasoningEfforts.map((e) => e.reasoningEffort),
     ).toEqual(["off", "low", "medium", "high", "max"]);

@@ -1,7 +1,3 @@
-// Cross-feature chat primitives. Lives outside features/ on purpose:
-// both features/chat (pure chat) and features/agent import from here.
-// Keep this module small and dependency-free — anything that pulls Jotai
-// atoms or feature-specific types belongs in the feature.
 export { CollapsibleUserMessageBody } from "./collapsible-user-message-body";
 export { JumpControls } from "./jump-controls";
 export { LinkifiedText } from "./linkified-text";

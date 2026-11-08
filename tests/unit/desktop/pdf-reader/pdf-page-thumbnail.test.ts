@@ -38,7 +38,6 @@ describe("renderPdfPageThumbnail", () => {
       height: 200,
     });
 
-    // jsdom's canvas 2d context is missing; stub the minimum the helper needs.
     const toDataURL = vi.fn().mockReturnValue("data:image/jpeg;base64,abc");
     const getContext = vi.fn().mockReturnValue({});
     vi.spyOn(document, "createElement").mockImplementation(((tag: string) => {
@@ -59,7 +58,6 @@ describe("renderPdfPageThumbnail", () => {
     expect(getContext).toHaveBeenCalledWith("2d");
     expect(render).toHaveBeenCalled();
     expect(cleanup).toHaveBeenCalled();
-    // Longest edge is width 400 → scale 100/400 = 0.25 → canvas 100×50.
     const renderArg = render.mock.calls[0]?.[0] as {
       canvas: { width: number; height: number };
       viewport: { width: number; height: number };

@@ -18,10 +18,8 @@ export function ShortcutKeys({
     );
   }
 
-  // formatShortcut order is primary → alt → shift → key; zip with fixed roles.
   const parts = formatShortcut(combo);
   const roleOrder = ["primary", "alt", "shift", "key"] as const;
-  // Skip roles for missing modifiers by aligning from the end (key is always last).
   const keyLabel = parts[parts.length - 1] ?? "";
   const modifierLabels = parts.slice(0, -1);
   const modifierRoles = roleOrder.slice(0, 3).filter((_, index) => {

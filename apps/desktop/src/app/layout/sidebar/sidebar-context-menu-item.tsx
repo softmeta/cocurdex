@@ -11,8 +11,6 @@ type SidebarContextMenuItemProps = Omit<
   icon: LucideIcon;
 };
 
-// Thin icon+label wrapper over shadcn ContextMenuItem — no padding/typography
-// overrides; destructive maps to the built-in variant.
 export function SidebarContextMenuItem({
   children,
   destructive = false,

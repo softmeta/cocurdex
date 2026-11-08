@@ -1,10 +1,7 @@
 import type { AgentEvent, AgentSessionMode } from "@cocurdex/shared";
 import { atom } from "jotai";
-import {
-  agentsAtom,
-  applyAgentSessionModesAtom,
-  sessionsAtom,
-} from "./session-store";
+import { agentsAtom, applyAgentSessionModesAtom } from "./session-agent-state";
+import { sessionsAtom } from "./session-navigation-state";
 
 function sameModeIds(left: AgentSessionMode[], right: AgentSessionMode[]) {
   return (

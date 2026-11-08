@@ -224,7 +224,5 @@ export const refreshNotesAtom = atom(null, async (get, set) => {
       pullNoteDoc(activeId),
       titleMayHaveChanged ? refreshActiveTitle(get, set, activeId) : null,
     ]);
-  } catch {
-    // External refresh is best-effort; preserve the current editor state.
-  }
+  } catch {}
 });

@@ -5,8 +5,6 @@ import { useTranslation } from "react-i18next";
 import { onDaemonAlert } from "@/lib";
 import type { NotificationSettings } from "./notifications";
 
-// Show a native OS notification. In Electron the renderer Notification API is
-// routed to the platform's notification center, so no main-process IPC needed.
 export function showCompletionNotification(title: string, body: string) {
   if (typeof Notification === "undefined") {
     return;
@@ -15,9 +13,7 @@ export function showCompletionNotification(title: string, body: string) {
   const fire = () => {
     try {
       new Notification(title, { body });
-    } catch {
-      // Ignore platform failures; the notification is best-effort.
-    }
+    } catch {}
   };
 
   if (Notification.permission === "granted") {
@@ -59,7 +55,6 @@ function getAudioContext(): AudioContext | null {
   return sharedAudioContext;
 }
 
-// Synthesize a short two-note chime via Web Audio so we ship no binary asset.
 export function playCompletionSound() {
   const audioContext = getAudioContext();
 

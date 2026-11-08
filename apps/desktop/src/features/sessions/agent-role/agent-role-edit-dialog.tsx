@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { agentsAtom } from "../session-store";
+import { agentsAtom } from "../session-agent-state";
 import { blankRoleDraft } from "./agent-role-draft";
 import { AgentRoleForm } from "./agent-role-form";
 

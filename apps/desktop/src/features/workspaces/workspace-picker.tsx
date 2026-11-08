@@ -54,10 +54,6 @@ export function WorkspacePicker({
 }: WorkspacePickerProps) {
   const { t } = useTranslation("sessions");
 
-  // This trigger sits on the composer header, whose background is --muted —
-  // the same color the ghost variant hovers to, leaving no hover feedback at
-  // all. Tint against the foreground instead so it reads as clickable on any
-  // surface this picker is mounted on.
   const triggerClass = cn(
     "h-7 max-w-60 gap-1.5 px-2 hover:bg-welcome-surface-strong-hover aria-expanded:bg-welcome-surface-strong-hover data-[state=open]:bg-welcome-surface-strong-hover dark:hover:bg-welcome-surface-strong-hover",
     triggerClassName,
@@ -111,8 +107,6 @@ export function WorkspacePicker({
     [recentWorkspaces, t],
   );
 
-  // First-run with zero workspaces: skip the empty menu and open the folder
-  // picker on the outer trigger directly.
   if (workspaces.length === 0) {
     return (
       <Button

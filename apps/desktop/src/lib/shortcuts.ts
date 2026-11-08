@@ -12,7 +12,6 @@ export interface ShortcutCombo {
 export interface ShortcutDescriptor {
   id: string;
   label: string;
-  /** null = unbound / disabled */
   combo: ShortcutCombo | null;
   handler(event: KeyboardEvent): void;
   enabled?(): boolean;
@@ -30,7 +29,6 @@ const MODIFIER_KEYS = new Set([
   "super",
 ]);
 
-/** Normalize a KeyboardEvent.key / stored key into a stable comparison form. */
 export function normalizeShortcutKey(key: string): string {
   if (key === " ") {
     return "space";
@@ -70,10 +68,6 @@ export function shortcutCombosEqual(
   );
 }
 
-/**
- * Build a combo from a keydown event. Returns null for modifier-only presses
- * (user is still holding Meta before choosing a key).
- */
 export function shortcutComboFromKeyboardEvent(
   event: KeyboardEvent,
 ): ShortcutCombo | null {
@@ -114,7 +108,6 @@ export function matchesShortcut(
   return normalizeShortcutKey(event.key) === normalizeShortcutKey(combo.key);
 }
 
-/** Display tokens for a combo (e.g. ["⌘", "⇧", "F"]). */
 export function formatShortcut(combo: ShortcutCombo): string[] {
   const keys: string[] = [];
 
@@ -169,11 +162,6 @@ function formatShortcutKeyLabel(key: string): string {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
-/**
- * Stable string form for maps / diagnostics.
- * Key is always `key:<name>` so single-letter keys never collide with
- * modifier flags (e.g. key "p" vs primary flag).
- */
 export function serializeShortcutCombo(combo: ShortcutCombo): string {
   const parts: string[] = [];
   if (combo.primary) {
@@ -211,7 +199,6 @@ export function parseShortcutCombo(value: unknown): ShortcutCombo | null {
     return null;
   }
 
-  // Stored as "cmd+opt+shift+key:f" style tokens.
   const tokens = value.split("+").filter(Boolean);
   if (tokens.length === 0) {
     return null;
@@ -239,7 +226,6 @@ export function parseShortcutCombo(value: unknown): ShortcutCombo | null {
       key = token.slice("key:".length);
       continue;
     }
-    // Legacy bare key token (last non-modifier).
     key = token;
   }
 

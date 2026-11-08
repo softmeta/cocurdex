@@ -19,10 +19,6 @@ export type RendererSettingAppliers = Record<string, RendererSettingApplier>;
 
 const jotaiStore = getDefaultStore();
 
-// Settings whose values live in Jotai atoms can be applied without any React
-// state, so they register statically. Settings backed by AppShell useState
-// (theme, appearance, language, notifications) register through the ref the
-// shell passes to useSettingsChangeBridge.
 const jotaiBackedAppliers: RendererSettingAppliers = {
   "agent.followUpBehavior": {
     apply: (value) => {
@@ -78,14 +74,10 @@ async function drainPendingChanges(stateBacked: RendererSettingAppliers) {
   }
 }
 
-// Mirrors one renderer-owned value into the daemon so settings_get stays
-// truthful when the user changes a setting through the UI directly.
 export function reportRendererSettingValue(key: string, value: unknown) {
   void desktopApi.reportSettingValues({ [key]: value }).catch(() => {});
 }
 
-// Mirrors the renderer-owned values into the daemon so settings_get can report
-// them back to agents.
 async function reportCurrentValues(stateBacked: RendererSettingAppliers) {
   const appliers = collectAppliers(stateBacked);
   const values: Record<string, unknown> = {};

@@ -8,8 +8,6 @@ export function shouldPersistProviderDefault(
   agentId: AgentId,
   providerId: string,
 ) {
-  // These adapters own their model catalogs; persist their selection in the
-  // adapter runtime preferences instead of the global provider model store.
   if (
     isAcpRegistryAgentId(agentId) ||
     agentId === "claude-agent" ||

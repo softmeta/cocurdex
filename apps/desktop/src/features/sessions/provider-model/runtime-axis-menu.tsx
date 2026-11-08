@@ -20,19 +20,12 @@ export interface RuntimeAxisOption {
   value: string;
 }
 
-// Long axes (model lists) get a filter box; short ones (effort, speed,
-// permission) stay a plain list.
 const SEARCH_THRESHOLD = 10;
 
 function matchesQuery(option: RuntimeAxisOption, query: string) {
   return option.label.toLowerCase().includes(query.toLowerCase());
 }
 
-/**
- * One row of a compound runtime menu (model, reasoning effort, speed,
- * permission): the row shows the axis name plus its current value and opens
- * the choices in a submenu, mirroring the Codex model picker.
- */
 export function RuntimeAxisSubmenu({
   inspectOnly = false,
   label,
@@ -56,8 +49,6 @@ export function RuntimeAxisSubmenu({
     options ??
     sections?.flatMap((section) => section.options as RuntimeAxisOption[]) ??
     [];
-  // No fallback to the first row: when nothing is selected the axis shows no
-  // value, rather than claiming a level the agent was never told to use.
   const currentLabel =
     flatOptions.find((option) => option.value === value)?.label ?? "";
   const hasSearch = flatOptions.length > SEARCH_THRESHOLD;
@@ -68,8 +59,6 @@ export function RuntimeAxisSubmenu({
       .filter((option) => !hasSearch || !query || matchesQuery(option, query))
       .map(({ description, isDefault, label, ...option }) => ({
         ...option,
-        // The agent's own default is tagged in place instead of getting a
-        // separate "default" row that selects nothing.
         label: isDefault ? (
           <span className="flex min-w-0 items-center gap-1.5">
             <span className="truncate">{label}</span>

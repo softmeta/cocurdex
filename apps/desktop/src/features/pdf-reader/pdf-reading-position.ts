@@ -1,10 +1,5 @@
 import { isPathWithinRoots } from "@cocurdex/shared";
 
-// Per-document reading position helpers. Page numbers are 1-based to match
-// pdf.js's public API (currentPageNumber / scrollPageIntoView). `top` / `left`
-// are the in-page offsets pdf.js reports on `updateviewarea`, expressed in PDF
-// user space, so a restored position is independent of zoom and panel width.
-
 export interface PdfReadingPosition {
   page: number;
   top: number;
@@ -47,9 +42,6 @@ export function normalizeReadingPositions(value: unknown): PdfReadingPositions {
   return result;
 }
 
-// Clamp a stored position into the document's page range. Falls back to the
-// document start when nothing usable is stored (or the document is empty); an
-// out-of-range page loses its in-page offset, which no longer means anything.
 export function resolveRestoredPosition(
   saved: PdfReadingPosition | undefined,
   numPages: number,

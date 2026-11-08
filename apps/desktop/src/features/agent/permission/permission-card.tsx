@@ -106,8 +106,6 @@ function PermissionDetailPanel({ detail }: { detail: PermissionDetail }) {
     URL: t("permissions.url"),
   }[detail.label];
 
-  // Flat detail: small label + value. No nested bordered "card in a card"
-  // chrome (that was the heavy look on dock permission prompts).
   return (
     <div className="min-w-0">
       <div className="mb-1 flex min-h-5 items-center justify-between gap-2">
@@ -325,7 +323,6 @@ export function PermissionCard({
           className={cn(
             "space-y-2.5",
             isDock ? "px-3 pt-2.5 pb-5" : "px-4 pt-2.5 pb-6",
-            // Indent body under the header text column on roomy layouts.
             !isDock && "ps-[3.125rem]",
           )}
         >

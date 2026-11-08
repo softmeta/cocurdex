@@ -67,7 +67,6 @@ interface SessionSplitLayoutProps {
   composerRef?: Ref<ChatComposerHandle>;
   onOpenAssistantOverview?(): void;
   hideTitlebarSpacer?: boolean;
-  /** Set when the surrounding shell renders the pane header for a lone pane. */
   hideSinglePaneHeader?: boolean;
   headerEndInset?: number | string;
   headerStartInset?: number;

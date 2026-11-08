@@ -85,14 +85,8 @@ export interface AcpAgentAdapterOptions {
   env?: Record<string, string>;
   descriptor: AgentDescriptor;
   initializeMeta?: Record<string, unknown>;
-  // Provider ID whose catalog-backed model selection this ACP adapter owns.
-  // Other ACP agents keep their native/default model behavior.
   modelProviderId?: string;
-  // Devin always advertises `devin-browser` even when the CLI already has
-  // stored credentials. Calling authenticate would open a login tab.
   skipAuthenticate?: boolean;
-  // Agents whose permission mode is set through a vendor ext notification map
-  // it here; returning null means "this agent has nothing to send".
   permissionModeNotification?: {
     method: string;
     buildParams(mode: AgentPermissionMode): Record<string, unknown> | null;
@@ -101,26 +95,16 @@ export interface AcpAgentAdapterOptions {
     method: string;
     mapResponse(value: unknown): AgentRateLimitsRecord | null;
   };
-  // Agents that recompute their context fill while restoring a session report
-  // the new value only on request: the restore emits no session notification,
-  // so a client that only listens would keep displaying the pre-restore number
-  // until the next turn. Configure the read here to refresh it right away.
   contextUsageRequest?: {
     method: string;
     buildParams(providerSessionId: string): Record<string, unknown>;
     mapResponse(value: unknown): AcpContextUsage | null;
   };
   contextFromUsageUpdates?: boolean;
-  // Agents that expose a live MCP catalog (Grok's `x.ai/mcp/list`) report it
-  // here so the session runtime menu can list connected servers.
   mcpServersRequest?: {
     method: string;
     buildParams(providerSessionId: string): Record<string, unknown>;
     mapResponse(value: unknown): AgentMcpServerRuntime[] | null;
-    // Ext notifications that mean "the catalog moved" (a server finished its
-    // handshake, died, or was reconfigured). Without them the catalog is only
-    // sampled at session start — while servers are still initializing — and
-    // after a turn ends, so the whole first turn shows stale statuses.
     changeNotifications?: string[];
   };
   planApprovalRequest?: AcpPlanApprovalRequest;
@@ -135,8 +119,6 @@ export interface AcpAgentAdapterOptions {
     }): Record<string, unknown>;
   };
   subagentProtocol?: AcpSubagentProtocol;
-  // Runs after initialize + auth and before session/new. Grok Build uses this
-  // to wait for the remote model catalog so session/new advertises every model.
   afterInitialize?(connection: AcpConnection): Promise<void>;
   cancelTimeoutMs?: number;
 }
@@ -147,9 +129,6 @@ export interface AcpPlanApprovalRequest {
     toolCallId: string;
     planContent: string | null;
   };
-  // Tool-call titles whose plan body travels inline with the call rather than
-  // living in the agent's own plan file. Drives the reference format the user's
-  // review feedback has to use, nothing else.
   inlinePlanToolTitles: string[];
 }
 
@@ -159,8 +138,6 @@ function readResumableProviderSessionId(payload: CreateAgentSessionPayload) {
     : payload.providerSession?.providerSessionId;
 }
 
-// Servers finish handshaking in a burst, and each one pushes its own status
-// notification. Coalesce them into a single catalog re-read.
 const MCP_CHANGE_DEBOUNCE_MS = 300;
 const DEFAULT_CANCEL_TIMEOUT_MS = 15_000;
 
@@ -575,9 +552,6 @@ export class AcpAgentAdapter implements AgentAdapter {
     let appliedModelId: string | null = null;
     let appliedReasoningEffort: string | null = null;
     let appliedPermissionMode: AgentPermissionMode | null = null;
-    // A set_config_option response carries the session's whole option list:
-    // refresh the tracked axes (they come and go with the selected model) and
-    // forward them so the composer repaints.
     const syncSessionAxes = (response: unknown) => {
       const configOptions =
         typeof response === "object" && response !== null
@@ -690,9 +664,6 @@ export class AcpAgentAdapter implements AgentAdapter {
       }
     };
 
-    // Pushed catalog changes land here: re-read the authoritative list rather
-    // than patching a row from the notification payload, so one debounced
-    // request covers status, membership and tool changes alike.
     const scheduleMcpRefresh = () => {
       if (disposed || mcpRefreshTimer) {
         return;
@@ -707,9 +678,7 @@ export class AcpAgentAdapter implements AgentAdapter {
           ?.then((connection) =>
             refreshMcpServers(connection, providerSessionId),
           )
-          .catch(() => {
-            // A connection that never came up has no catalog to read.
-          });
+          .catch(() => {});
       }, MCP_CHANGE_DEBOUNCE_MS);
       mcpRefreshTimer.unref?.();
     };
@@ -814,9 +783,6 @@ export class AcpAgentAdapter implements AgentAdapter {
           modes,
           contextWindowSize: currentModel?.contextWindow ?? null,
         });
-        // A restored session carries a context fill the app cannot derive: the
-        // stored usage predates whatever the agent recomputed while restoring.
-        // A fresh session starts empty, so there is nothing to ask about.
         if (providerSession.sessionAction !== "new") {
           void refreshContextUsage(connection, providerSessionId);
         }
@@ -941,9 +907,6 @@ export class AcpAgentAdapter implements AgentAdapter {
                 messagePayload.thinkingLevel,
               )
             : null;
-          // Requested axes resolve against the session's live config options
-          // (refreshed after every model switch) rather than stale snapshot
-          // metadata — Devin only accepts levels the current model offers.
           const requestedEffort =
             messagePayload.thinkingLevel &&
             messagePayload.thinkingLevel !== "default"
@@ -980,9 +943,6 @@ export class AcpAgentAdapter implements AgentAdapter {
             appliedModelId = currentModelId;
             appliedReasoningEffort = reasoningEffort;
           }
-          // Agents that expose effort or speed as their own config option
-          // (Devin's thought_level/speed) receive the change there; the model
-          // paths above only reach agents that read effort off set_model.
           if (
             effortConfig &&
             requestedEffort &&
@@ -999,8 +959,6 @@ export class AcpAgentAdapter implements AgentAdapter {
             syncSessionAxes(effortResponse);
           }
           if (speedConfig) {
-            // An unset tier follows the baseline (Devin's "standard") — the
-            // same value the picker shows for an empty selection.
             const targetSpeed =
               serviceTier ?? baselineAcpSpeedValue(speedConfig);
             if (
@@ -1129,18 +1087,13 @@ export class AcpAgentAdapter implements AgentAdapter {
         if (!providerSessionId) {
           return;
         }
-        // Awaited so the notification is on the wire before any caller-side
-        // teardown: `session/cancel` is fire-and-forget, and a connection that
-        // closes first leaves the agent running the turn it was told to drop.
         try {
           const connection = await connectionPromise;
           await connection?.cancel({
             sessionId: providerSessionId,
             _meta: { cancelTrigger: "client_stop" },
           });
-        } catch {
-          // A closed transport means the turn is already over; nothing to cancel.
-        }
+        } catch {}
         const prompt = activePrompt;
         if (!prompt || (await settlesWithin(prompt, cancelTimeoutMs))) {
           return;
@@ -1168,9 +1121,7 @@ export class AcpAgentAdapter implements AgentAdapter {
         const connection = connectionPromise;
         try {
           await connection?.then((value) => value.close());
-        } catch {
-          // A connection that never came up has no process to tear down.
-        }
+        } catch {}
       },
     };
   }

@@ -14,11 +14,6 @@ interface CacheEntry {
   loadedAt: number;
 }
 
-// Module-level cache so multiple consumers (search palette, @-mention, file
-// tree) share a single `listWorkspaceFiles` result per workspace root. The
-// desktop main process already has its own fd-backed cache; this layer just
-// spares the IPC round-trip and the flash of loading state when the popup
-// reopens. Entries are invalidated by main-process files-changed pushes.
 const cache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<WorkspaceFileEntry[]>>();
 const failures = new Map<string, { delayMs: number; retryAt: number }>();
@@ -27,7 +22,6 @@ const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const INITIAL_RETRY_MS = 2_000;
 const MAX_RETRY_MS = 16_000;
 
-// Mounted hooks per root; files-changed pushes and load results fan out here.
 type WorkspaceFilesListener = (state: WorkspaceFilesState) => void;
 const consumers = new Map<string, Set<WorkspaceFilesListener>>();
 let changeSubscription: (() => void) | null = null;
@@ -99,8 +93,6 @@ async function loadWorkspaceFiles(
   return promise;
 }
 
-// Load (or reuse in-flight load) and fan the result out to every mounted
-// consumer of the root. Errors surface as an explicit error state.
 async function primeWorkspaceFiles(rootPath: string) {
   const failure = failures.get(rootPath);
   if (failure && Date.now() < failure.retryAt) {
@@ -126,12 +118,8 @@ async function primeWorkspaceFiles(rootPath: string) {
   }
 }
 
-// Lazily attach the single files-changed subscription. On a push, mounted roots
-// silently re-fetch while the cached list stays visible as the last-good value.
 function ensureChangeSubscription() {
   if (changeSubscription) return;
-  // Partial test mocks of desktopApi may omit the event bridge; without it the
-  // tree simply doesn't auto-refresh.
   if (typeof desktopApi.onWorkspaceFilesChanged !== "function") return;
   changeSubscription = desktopApi.onWorkspaceFilesChanged(({ rootPath }) => {
     inflight.delete(rootPath);

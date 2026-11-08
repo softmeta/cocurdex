@@ -116,6 +116,7 @@ export function IssueScreen({
               {description ? (
                 <MarkdownText
                   markdown={description}
+                  reading
                   hostId={host.hostId}
                   testID="issue-description"
                 />

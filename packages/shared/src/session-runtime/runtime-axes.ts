@@ -7,9 +7,9 @@ import {
   type AgentThinkingLevel,
   type CodexServiceTierOption,
   isReasoningEffort,
-  type ProviderModelRecord,
   type ReasoningEffort,
 } from "../contracts";
+import type { ProviderModelRecord } from "../provider-contracts";
 import {
   getDefaultOpenCodeAgent,
   getOpenCodeRuntimeOptions,

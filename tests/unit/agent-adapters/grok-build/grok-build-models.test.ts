@@ -23,7 +23,6 @@ const grok45 = {
       { id: "high", value: "high", default: true },
       { id: "medium", value: "medium", default: false },
       { id: "low", value: "low", default: false },
-      // Not in the picker vocabulary — must be dropped.
       { id: "turbo", value: "max", default: false },
     ],
   },
@@ -46,8 +45,6 @@ const grok46 = {
   },
 };
 
-// `initialize` still reports the bundled snapshot (one model). The live catalog
-// is `x.ai/models/list`, which waits for the remote fetch — same as `grok models`.
 const initializeResponse = {
   protocolVersion: 1,
   _meta: {
@@ -70,8 +67,6 @@ function createFactory(overrides: Partial<AcpConnection> = {}) {
   const connection = {
     initialize: vi.fn(async () => initializeResponse),
     extRequest: vi.fn(async () => listResponse),
-    // The probe must never open a session: that would persist a real Grok
-    // session under ~/.grok/sessions.
     newSession: vi.fn(async () => {
       throw new Error("probe must not call session/new");
     }),
@@ -116,8 +111,6 @@ describe("listGrokBuildProviderModels", () => {
       name: "Grok 4.5",
       isDefault: false,
     });
-    // Probing must not create a Grok session, and the process must not outlive
-    // the catalog lookup.
     expect(connection.newSession).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledOnce();
   });

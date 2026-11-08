@@ -1,8 +1,3 @@
-// PDF selection → note citation helpers. Citations serialize as normal Markdown
-// (plain excerpt + source link) so they round-trip through TipTap without a
-// custom node. The link uses a private scheme so the note editor can intercept
-// clicks and open the PDF reader without shelling out to the OS.
-
 export const PDF_NOTE_CITATION_PROTOCOL = "cocurdex-pdf:";
 
 export interface PdfNoteCitationTarget {
@@ -21,14 +16,12 @@ function fileNameFromPath(filePath: string): string {
   return last.length > 0 ? last : filePath;
 }
 
-// Default title when auto-creating a note for a PDF selection clip.
 export function noteTitleFromPdfPath(filePath: string): string {
   const fileName = fileNameFromPath(filePath);
   const withoutExt = fileName.replace(/\.pdf$/i, "").trim();
   return withoutExt.length > 0 ? withoutExt : fileName;
 }
 
-// Bracket content in [label](href) must not contain unescaped ] or newlines.
 function escapeMarkdownLinkLabel(label: string): string {
   return label
     .replace(/\\/g, "\\\\")
@@ -103,6 +96,5 @@ export function buildPdfNoteCitationMarkdown(
   });
   const label = pageNumber != null ? `${fileName} · p.${pageNumber}` : fileName;
 
-  // Plain paragraphs — not blockquotes — so clips read as normal note body text.
   return `${selectedText}\n\n— [${escapeMarkdownLinkLabel(label)}](${href})`;
 }

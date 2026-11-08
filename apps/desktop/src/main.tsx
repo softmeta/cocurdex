@@ -14,8 +14,6 @@ import {
 import "./styles/globals.css";
 
 const webHostAccess = installWebHostBridge();
-// Tag the platform before first paint so platform-conditional styling (e.g.
-// native scrollbar treatment in base.css) applies without a flash.
 applyPlatformAttribute();
 
 async function loadApp(): Promise<ComponentType> {

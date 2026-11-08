@@ -6,8 +6,6 @@ import {
 } from "@cocurdex/shared";
 import { atom } from "jotai";
 
-// Per-session token usage. Additive fields (input/output/cache/cost) accumulate
-// across turns; absolute context-window fields replace on each update.
 export const sessionUsageAtom = atom<Record<string, AgentUsageRecord>>({});
 
 export const bootstrapSessionUsageAtom = atom(
@@ -26,7 +24,6 @@ export const applyUsageEventAtom = atom(null, (get, set, event: AgentEvent) => {
   set(sessionUsageAtom, next);
 });
 
-/** @deprecated Prefer `mergeUsageRecords` from `@cocurdex/shared`. */
 export function addUsageRecords(
   current: AgentUsageRecord | undefined,
   delta: AgentUsageRecord,
@@ -34,7 +31,6 @@ export function addUsageRecords(
   return mergeUsageRecords(current, delta);
 }
 
-/** Current context-window fill, when reported by the active adapter. */
 export function getSessionContextTokens(usage: AgentUsageRecord) {
   return getContextUsageTokens(usage);
 }

@@ -58,9 +58,6 @@ function toSnapshot(
 }
 
 export class SessionAttentionProjection {
-  // Pending interaction continuations live in AgentRuntimeManager promises.
-  // A daemon restart invalidates those continuations, so these IDs must stay
-  // process-local rather than reappear as actionable requests after restart.
   private readonly pendingPermissions = new Map<string, Set<string>>();
   private readonly pendingQuestions = new Map<string, Set<string>>();
   private readonly pendingPlanApprovals = new Map<string, Set<string>>();

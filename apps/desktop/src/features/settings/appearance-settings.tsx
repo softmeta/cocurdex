@@ -104,7 +104,6 @@ function FontFamilySelect({
   ariaLabel: string;
   fallbackOptions: AppearanceFontOption[];
   onChange(value: string): void;
-  /** null while loading; empty/full list once settled. */
   systemFamilies: string[] | null;
   systemLabel: string;
   value: string;
@@ -168,8 +167,6 @@ function ThemePresetSelect({
   value: ThemePresetId;
 }) {
   const { t } = useTranslation("settings");
-  // Swatch follows the resolved surface (light/dark), not the mode toggle alone,
-  // so "System" still previews the palette the user is currently seeing.
   const resolvedTheme = useResolvedTheme();
   const resolved: "light" | "dark" =
     resolvedTheme === "light" ? "light" : "dark";

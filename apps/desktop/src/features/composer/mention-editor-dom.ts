@@ -7,8 +7,6 @@ import {
 import { renderFileTypeIconHtml } from "@/components";
 import { cn } from "@/lib";
 
-// Mention identity/types live in this leaf module so the editor component can
-// depend on the DOM helpers without a cycle.
 export type MentionableAttachment = ContextAttachment;
 
 export interface MentionAnchor {
@@ -39,11 +37,6 @@ function renderMentionIconHtml(attachment: MentionableAttachment) {
 export const MENTION_KEY_ATTR = "data-mention-key";
 export const MENTION_DISPLAY_ATTR = "data-mention-display";
 
-// Cursor-style mention: coloured text, no background / border. Uses
-// `inline-flex` so the icon / × / label children stay on one row.
-// `leading-none` keeps the pill box exactly one em tall so `align-middle` lands
-// it inside the surrounding line box — with the inherited line-height the box
-// was taller than the text and grew the composer by a line on every mention.
 const MENTION_PILL_CLASSNAME = cn(
   "mention-pill group inline-flex items-center gap-1 align-middle leading-none text-chat-link transition-colors hover:text-chat-link-hover",
 );
@@ -228,17 +221,12 @@ interface MentionSelectionState {
   anchor: MentionAnchor | null;
 }
 
-// Anchors carry viewport coordinates: the menus render in a body portal and are
-// fixed-positioned, so they float over the whole window (Cursor-style) instead
-// of being confined to the composer panel's box.
 function measureGlyphAnchor(
   editor: HTMLElement,
   node: Node,
   offset: number,
 ): MentionAnchor {
   const editorRect = editor.getBoundingClientRect();
-  // Fall back to the editor's leading edge whenever the glyph has no box yet
-  // (empty text node, editor not laid out) — the menu still needs a position.
   const fallback = {
     left: editorRect.left,
     top: editorRect.top,
@@ -328,17 +316,12 @@ export function placeCaretAtEnd(editor: HTMLElement) {
   selection.addRange(range);
 }
 
-// True when the editor holds no real content — only whitespace and/or the
-// stray `<br>`/empty block the browser injects into a focused-but-empty
-// contenteditable. Mention pills count as content (they carry MENTION_KEY_ATTR).
 function isEditorEmpty(editor: HTMLElement): boolean {
   if (editor.querySelector(`[${MENTION_KEY_ATTR}]`)) return false;
   return (editor.textContent ?? "").trim() === "";
 }
 
 export function appendMentionAtEnd(editor: HTMLElement, pill: HTMLElement) {
-  // Drop the browser-injected `<br>`/empty block so the first mention lands on
-  // the first line instead of after a blank leading line.
   if (isEditorEmpty(editor)) {
     editor.replaceChildren();
   }

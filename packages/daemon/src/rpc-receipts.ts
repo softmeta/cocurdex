@@ -70,8 +70,6 @@ export function createDaemonReceiptStore(
     }
   };
 
-  // Capacity pressure must never drop an active execution; only settled
-  // receipts are evictable, oldest first.
   const enforceCapacity = () => {
     while (receipts.size > maxEntries) {
       let oldest: string | undefined;
@@ -105,10 +103,6 @@ export function createDaemonReceiptStore(
         return result;
       });
       receipts.set(key, outcome);
-      // Retention starts only once the operation settles: an in-flight
-      // mutation must keep its receipt so retries coalesce instead of
-      // duplicating side effects. Capacity is enforced again on settle so a
-      // burst larger than maxEntries drains once its members finish.
       const markSettled = () => {
         settled.add(key);
         const timer = setTimeout(() => evict(key), ttlMs);

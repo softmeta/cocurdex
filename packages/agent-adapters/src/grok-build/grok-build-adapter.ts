@@ -69,9 +69,6 @@ export function createGrokBuildAdapter(
         buildParams: buildGrokPermissionParams,
       },
       planApprovalRequest: grokBuildPlanApprovalRequest,
-      // The app transcript is authoritative, so the agent's replay of every
-      // past session update would be deserialized, streamed and dropped.
-      // Grok Build reads `noReplay` to skip loading those updates entirely.
       loadSessionMeta: { noReplay: true },
       setModelMeta: (reasoningEffort) => ({ reasoningEffort }),
       steeringRequest: {

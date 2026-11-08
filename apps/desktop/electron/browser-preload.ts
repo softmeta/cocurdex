@@ -7,9 +7,7 @@ ipcRenderer.on("browser:annotation:toggle", (_event, enabled: boolean) => {
   for (const cb of toggleCallbacks) {
     try {
       cb(enabled);
-    } catch {
-      // ignore callback errors
-    }
+    } catch {}
   }
 });
 
@@ -17,9 +15,7 @@ ipcRenderer.on("browser:annotation:markers", (_event, ids: string[]) => {
   for (const cb of markerCallbacks) {
     try {
       cb(ids);
-    } catch {
-      // ignore callback errors
-    }
+    } catch {}
   }
 });
 

@@ -512,7 +512,6 @@ describe("AcpEventMapper", () => {
         sessionUpdate: "agent_message_chunk",
         content: { type: "text", text: " again" },
       },
-      // Same fill — must not re-emit a usage event.
       _meta: { totalTokens: 12_000 },
     });
     mapper.handle({

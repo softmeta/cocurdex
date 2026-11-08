@@ -101,9 +101,7 @@ export function DaemonSettingsPanel() {
       );
       try {
         setStatus(await desktopApi.getDaemonStatus());
-      } catch {
-        // Keep the previous snapshot if a follow-up status probe fails.
-      }
+      } catch {}
     } finally {
       setBusy(false);
     }

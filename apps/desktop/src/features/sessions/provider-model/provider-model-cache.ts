@@ -32,9 +32,6 @@ export interface ProviderModelCacheEntry {
 export const providerModelCache: ProviderModelCache = new Map();
 let hasHydratedProviderModelCache = false;
 
-// Provider settings mutate the same rows this cache holds. Mounted pickers keep
-// showing the pre-edit list until something tells them to reload, so edits bump
-// a version every subscriber watches.
 const providerModelCacheListeners = new Set<() => void>();
 let providerModelCacheVersion = 0;
 
@@ -317,10 +314,6 @@ export function loadProviderModelOptions(
   return promise;
 }
 
-// Agents whose catalog ships without per-model axes (Devin) reveal them on
-// demand: each picked model is probed once per renderer runtime and merged
-// into the cached catalog entry so every picker repaints. The daemon dedupes
-// per model too, so a cleared renderer key only costs a cheap RPC.
 const probedModelAxesKeys = new Set<string>();
 
 export function probeProviderModelAxes(

@@ -23,6 +23,10 @@ const grammarStamp = path.join(
   "grammars",
   ".stamp",
 );
+const assetStamps = [grammarStamp];
+if (process.platform === "darwin") {
+  assetStamps.push(path.join(markdownRoot, "ios", "vendor", ".stamp"));
+}
 
 function vendorAssets() {
   return spawnSync(
@@ -36,10 +40,12 @@ function vendorAssets() {
   );
 }
 
-for (let attempt = 1; !existsSync(grammarStamp); attempt += 1) {
+for (let attempt = 1; ; attempt += 1) {
+  const missing = assetStamps.filter((stamp) => !existsSync(stamp));
+  if (missing.length === 0) break;
   if (attempt > ATTEMPTS) {
     console.error(
-      `react-native-enriched-markdown grammars are missing after ${ATTEMPTS} downloads: ${grammarStamp}`,
+      `react-native-enriched-markdown native assets are missing after ${ATTEMPTS} downloads: ${missing.join(", ")}`,
     );
     process.exit(1);
   }
@@ -47,7 +53,7 @@ for (let attempt = 1; !existsSync(grammarStamp); attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
   }
   console.log(
-    `Downloading react-native-enriched-markdown grammars (attempt ${attempt} of ${ATTEMPTS})`,
+    `Downloading react-native-enriched-markdown native assets (attempt ${attempt} of ${ATTEMPTS})`,
   );
   vendorAssets();
 }

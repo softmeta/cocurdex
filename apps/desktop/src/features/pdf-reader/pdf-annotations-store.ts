@@ -19,11 +19,9 @@ import {
   setDocumentAnnotations,
 } from "./pdf-annotations";
 
-// Legacy localStorage key — one-shot migration into userData, then removed.
 export const PDF_ANNOTATIONS_KEY = "cocurdex.pdf.annotations";
 export const PDF_LAST_HIGHLIGHT_COLOR_KEY = "cocurdex.pdf.lastHighlightColor";
 
-// Remembers the last color the user picked so the toolbar can emphasize it.
 const storedLastHighlightColorAtom = atomWithStorage<PdfHighlightColor>(
   PDF_LAST_HIGHLIGHT_COLOR_KEY,
   "yellow",
@@ -43,9 +41,6 @@ export const pdfLastHighlightColorAtom = atom(
   },
 );
 
-// Per-document bookmarks + highlights: a client cache of daemon-owned storage.
-// Mutations are sent to the daemon as operations, never as whole snapshots, so
-// a cache that is stale or still loading cannot overwrite stored marks.
 export const pdfAnnotationsAtom = atom<PdfAnnotationsByPath>({});
 
 interface PathSyncState {
@@ -109,8 +104,6 @@ function reloadDocument(get: Getter, set: Setter, filePath: string) {
   return load;
 }
 
-// Applies the operation to the cache immediately, then adopts the daemon's
-// resulting document once no other mutation for the path is in flight.
 function mutateDocument(
   get: Getter,
   set: Setter,
@@ -186,9 +179,7 @@ async function migrateLegacyLocalStorageAnnotations(
   if (results.every(Boolean)) {
     try {
       window.localStorage.removeItem(PDF_ANNOTATIONS_KEY);
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 }
 
@@ -204,8 +195,6 @@ function ensureLegacyAnnotationsMigration(get: Getter, set: Setter) {
   return legacyAnnotationsMigration;
 }
 
-// Refreshes marks for a PDF from the daemon. Concurrent calls coalesce, and a
-// response is dropped when a local mutation started after the request.
 export const hydratePdfAnnotationsAtom = atom(
   null,
   async (get, set, filePath: string) => {
@@ -217,7 +206,6 @@ export const hydratePdfAnnotationsAtom = atom(
   },
 );
 
-// Test helper: clear sync tracking between unit tests.
 export function resetPdfAnnotationsSyncStateForTests() {
   syncStates.clear();
   inflightLoads.clear();

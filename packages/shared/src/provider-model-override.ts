@@ -1,8 +1,5 @@
-import {
-  type ProviderModelCapability,
-  type ProviderModelRecord,
-  providerApis,
-} from "./contracts";
+import { type ProviderModelCapability, providerApis } from "./contracts";
+import type { ProviderModelRecord } from "./provider-contracts";
 
 export const providerModelOverrideFields = [
   "enabled",

@@ -23,16 +23,10 @@ import {
   type SlashCommandMenuHandle,
 } from "./slash-command-menu";
 
-// The Suggestion `command` payload: the chosen item plus its run target.
 interface SlashCommandProps {
   run: (editor: Editor, range: Range) => void;
 }
 
-// Position the floating menu against the caret rect provided by Suggestion.
-// We bridge Floating UI directly to a portal-less absolutely-positioned div
-// rather than wiring base-ui's Popover — far less glue for a transient menu.
-// ponytail: direct Floating UI; switch to base-ui Popover only if we need its
-// focus-trap / collision shared behavior elsewhere.
 function attachMenuPosition(
   element: HTMLElement,
   clientRect: (() => DOMRect | null) | null | undefined,
@@ -92,7 +86,6 @@ function createRenderer(): SuggestionOptions["render"] {
         });
         element = document.createElement("div");
         element.style.position = "absolute";
-        // Above dialog/popover surfaces (z-50) so the palette works in modals.
         element.style.zIndex = "100";
         element.appendChild(component.element);
         document.body.appendChild(element);
@@ -123,7 +116,6 @@ function createRenderer(): SuggestionOptions["render"] {
   };
 }
 
-// Slash-command extension: type "/" to open the block-insert palette.
 export function createSlashCommand() {
   return Extension.create({
     name: "slashCommand",
@@ -132,7 +124,6 @@ export function createSlashCommand() {
         Suggestion<SlashCommandItem, SlashCommandProps>({
           editor: this.editor,
           char: "/",
-          // Only trigger at the start of a line / after whitespace.
           allowSpaces: false,
           items: ({ query }) =>
             filterSlashCommandItems(query, SLASH_COMMAND_ITEMS, (item) =>

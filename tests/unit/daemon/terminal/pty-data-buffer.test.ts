@@ -49,7 +49,6 @@ describe("createPtyDataBuffer", () => {
       { terminalId: "term-1", workspaceId: "ws-1", data: "bye" },
     ]);
 
-    // The timer that was scheduled for this chunk must not re-emit it.
     vi.advanceTimersByTime(8);
     expect(emitted).toHaveLength(1);
   });

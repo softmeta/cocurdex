@@ -9,8 +9,6 @@ import {
 
 type ClaudeUserContent = SDKUserMessage["message"]["content"];
 
-// Media types the Anthropic image content block accepts. Anything else stays a
-// text summary so the model at least learns the attachment exists.
 const SUPPORTED_IMAGE_MEDIA_TYPES = [
   "image/gif",
   "image/jpeg",
@@ -33,11 +31,6 @@ function isInlineImageAttachment(attachment: MessageAttachment) {
   );
 }
 
-/**
- * Builds the Claude user message content, sending supported images as native
- * image blocks instead of the agent-neutral text summary. Returns the text
- * portion separately so diagnostics keep reporting the prompt length.
- */
 export function buildClaudeUserContent(
   content: string,
   attachments: MessageAttachment[],

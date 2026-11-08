@@ -44,9 +44,6 @@ export function SettingsSelect({
   onChange,
 }: SettingsSelectProps) {
   const { t } = useTranslation("settings");
-  // Merge, don't pick one: callers may pass both a flat options list and
-  // grouped options (e.g. a "none" option above provider-grouped models). The
-  // selected label must be resolvable from either source.
   const flatOptions = [
     ...(options ?? []),
     ...(groups?.flatMap((group) => group.options) ?? []),
@@ -108,8 +105,6 @@ interface SettingsSearchableSelectProps {
   onChange(value: string): void;
 }
 
-// Searchable setting-row select. Same ghost, content-sized trigger as
-// SettingsSelect so language / font / model pickers do not grow a boxed field.
 export function SettingsSearchableSelect({
   ariaLabel,
   appearance = "ghost",

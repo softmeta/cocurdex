@@ -1,6 +1,3 @@
-// Shared width for the PDF left rail (outline / marks / thumbnails). Matches
-// the previous fixed `w-64` (16rem ≈ 256px) as the default.
-
 export const PDF_SIDE_PANEL_DEFAULT_WIDTH = 256;
 export const PDF_SIDE_PANEL_MIN_WIDTH = 180;
 export const PDF_SIDE_PANEL_MAX_WIDTH = 480;

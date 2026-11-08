@@ -20,15 +20,6 @@ export type ShortcutHandlerMap = Partial<
 
 export type ShortcutEnabledMap = Partial<Record<ShortcutId, () => boolean>>;
 
-/**
- * Bind catalog shortcuts to handlers. Resolves user overrides automatically
- * and pauses all shortcuts while a settings recorder is active.
- *
- * Safe to call from multiple components — each registers only the handlers
- * it supplies. Handlers/enabled maps may be recreated each render; the hook
- * reads them through refs so the keydown listener is not reattached unless
- * bindings or which ids are registered change.
- */
 export function useAppShortcuts(
   handlers: ShortcutHandlerMap,
   options?: {
@@ -48,8 +39,6 @@ export function useAppShortcuts(
     .map((id) => (handlers[id] ? id : ""))
     .join("|");
   const registeredIds = useMemo(() => {
-    // Only re-register when the *set* of handler ids changes, not when
-    // handler function identities churn.
     return registeredKey.split("|").filter(Boolean) as ShortcutId[];
   }, [registeredKey]);
 

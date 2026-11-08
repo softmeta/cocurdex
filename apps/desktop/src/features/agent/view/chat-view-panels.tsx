@@ -35,7 +35,6 @@ import {
 } from "../queued-input";
 import type { ChatComposerOverride } from "./chat-view-types";
 
-// Shared with pure chat — re-export so existing agent imports keep working.
 export { JumpControls };
 
 interface ChatComposerControls {
@@ -64,7 +63,6 @@ interface ChatComposerControls {
   pendingPlanApproval?: AgentPlanApprovalRecord | null;
   queuedInputs?: QueuedAgentInputItem[];
   canSteerQueuedInput?: boolean;
-  /** Live ACP task list (todo_write / plan update) — docked above the composer. */
   plan?: SessionPlan | null;
   workspaceRootPath?: string | null;
   workspaceRootPaths?: string[];
@@ -169,12 +167,6 @@ export function ComposerDock({
 
   return (
     <ComposerDockFrame className="bg-linear-to-t from-chat-canvas via-chat-canvas to-transparent">
-      {/* Every panel above the composer floats out of flow: the task list,
-            status panels, queued inputs, and prompt cards appear, expand, and
-            resolve on their own, and taking dock height would shove the
-            transcript up and down each time. They paint over the tail of the
-            transcript on opaque surfaces instead, and the cap keeps a tall
-            stack from reaching the window chrome. */}
       <div className="absolute inset-x-0 bottom-full z-10 -mx-1 -mt-1 mb-1 flex max-h-[75dvh] min-w-0 flex-col gap-2 overflow-y-auto overscroll-contain p-1">
         {plan && !hideComposer ? (
           <PlanPanel

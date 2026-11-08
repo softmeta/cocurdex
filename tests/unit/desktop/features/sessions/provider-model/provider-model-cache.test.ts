@@ -153,7 +153,6 @@ describe("probeProviderModelAxes", () => {
       "acp:devin",
       "claude-opus-5-5-medium",
     );
-    // A macrotask turn lets the rejection's catch clear the dedupe key.
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     probeProviderModelAxes(

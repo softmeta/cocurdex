@@ -10,7 +10,6 @@ function TooltipProvider({
   delay = TOOLTIP_DELAY_MS,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider> & {
-  /** Backwards-compatible alias for Base UI's `delay`. */
   delayDuration?: number;
 }) {
   return <TooltipPrimitive.Provider delay={delay} {...props} />;
@@ -50,9 +49,6 @@ type TooltipContentProps = React.ComponentProps<
   alignOffset?: React.ComponentProps<
     typeof TooltipPrimitive.Positioner
   >["alignOffset"];
-  // Positioner-only collision props: Base UI exposes no other way to confine a
-  // tooltip to a container (the popup is portaled), so they are forwarded here
-  // rather than wrapped.
   collisionBoundary?: React.ComponentProps<
     typeof TooltipPrimitive.Positioner
   >["collisionBoundary"];
@@ -85,8 +81,6 @@ function TooltipContent({
         anchor={anchor}
         collisionAvoidance={collisionAvoidance}
         collisionBoundary={collisionBoundary}
-        // Tooltips must stay above popup layers (popover/combobox/select all
-        // sit at z-50); same z-index would let portal DOM order win instead.
         className="z-[60]"
       >
         <TooltipPrimitive.Popup
@@ -99,9 +93,6 @@ function TooltipContent({
         >
           {children}
           {!hideArrow && (
-            // Base UI sets position:absolute + the main-axis offset (left/top)
-            // on the arrow; we only position the cross-axis so it straddles the
-            // popup edge facing the trigger. Requires the popup to be relative.
             <TooltipPrimitive.Arrow className="z-50 size-2.5 rotate-45 rounded-micro bg-foreground data-[side=bottom]:-top-1 data-[side=left]:-right-1 data-[side=right]:-left-1 data-[side=top]:-bottom-1" />
           )}
         </TooltipPrimitive.Popup>

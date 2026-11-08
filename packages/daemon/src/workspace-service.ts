@@ -62,8 +62,6 @@ async function resolveFdPath() {
   const target = getFdTarget();
   const resourcesPath = getProcessResourcesPath();
   const candidates = [
-    // Packaged daemon.cjs sits at <resources>/cli/daemon.cjs, so the vendor
-    // directory lands one level above the bundle.
     path.resolve(__dirname, "../vendor/fd", target, executable),
     ...getRepoVendorFdCandidates(target, executable),
     resourcesPath
@@ -75,9 +73,7 @@ async function resolveFdPath() {
     try {
       await access(candidate, constants.X_OK);
       return candidate;
-    } catch {
-      // Try the next candidate before falling back to the Node walker.
-    }
+    } catch {}
   }
 
   return null;
@@ -270,10 +266,7 @@ export async function listWorkspaceFiles(rootPath: string) {
   if (fdPath) {
     try {
       return await listWorkspaceFilesWithFd(rootPath, fdPath);
-    } catch {
-      // Keep workspace browsing usable if the packaged binary is missing,
-      // blocked, or incompatible with the host system.
-    }
+    } catch {}
   }
 
   return listWorkspaceFilesBreadthFirst(rootPath);
@@ -370,9 +363,6 @@ export function readTextFile(filePath: string) {
   return readFile(filePath, "utf8");
 }
 
-// Cheap existence probe for clickable file paths in chat messages. Uses stat()
-// rather than reading the file so hovering a path never pulls its contents.
-// Directories are excluded so only regular files are made clickable.
 export async function fileExists(filePath: string): Promise<boolean> {
   try {
     const stats = await stat(filePath);

@@ -47,8 +47,6 @@ import { createOpenCodeSessionMcp } from "./opencode-session-mcp";
 
 const descriptor = getAgentDescriptor("opencode");
 
-// OpenCode session IDs currently owned by a live adapter instance in this
-// process. A saved session must never be resumed by two Cocurdex sessions.
 const claimedOpenCodeSessionIds = new Set<string>();
 const OPENCODE_PROVIDER_VERSION = "opencode";
 

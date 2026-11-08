@@ -9,9 +9,7 @@ import { formatCommitChip, formatTurnChip } from "./git-changes-scope-chip";
 import type { GitDiffScope } from "./git-diff-scope";
 
 interface GitBranchRefSelectorsProps {
-  // Left: branch under review (has the changes).
   source: string;
-  // Right: branch to compare against (merge destination).
   target: string;
   refs: readonly GitBranchInfo[];
   disabled?: boolean;

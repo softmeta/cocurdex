@@ -14,8 +14,6 @@ afterEach(() => {
 
 function stubPlatform(platform: string) {
   vi.stubGlobal("process", { platform });
-  // Node 21+ exposes a global navigator; override it too so the fallback
-  // branch does not leak the host platform into stubbed-process tests.
   vi.stubGlobal("navigator", { platform: "TestOS" });
 }
 

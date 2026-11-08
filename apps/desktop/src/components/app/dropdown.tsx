@@ -14,7 +14,6 @@ const dropdownTriggerAppearanceClassNames = {
   ),
 } satisfies Record<AppDropdownTriggerAppearance, string>;
 
-/** `control` matches form/select chrome; `full` is for true pills/chips only. */
 export type AppDropdownTriggerRadius = "control" | "full";
 
 const dropdownTriggerRadiusClassNames = {
@@ -24,7 +23,6 @@ const dropdownTriggerRadiusClassNames = {
 
 type AppDropdownTriggerButtonProps = React.ComponentProps<"button"> & {
   appearance?: AppDropdownTriggerAppearance;
-  /** Default `control`. Use `full` only for true pill/chip triggers. */
   radius?: AppDropdownTriggerRadius;
   chevronClassName?: string;
   showChevron?: boolean;

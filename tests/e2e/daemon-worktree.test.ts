@@ -1,11 +1,16 @@
 import { existsSync, realpathSync } from "node:fs";
+import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
+  emptyWorktreeEnvironment,
   type ManagedWorktree,
   parseGitWorktreeList,
   type WorkspaceRecord,
 } from "@cocurdex/shared";
-import { spawnDaemon } from "@cocurdex/test-harness/helpers/daemon-process";
+import {
+  spawnDaemon,
+  waitFor,
+} from "@cocurdex/test-harness/helpers/daemon-process";
 import { describe, expect, it } from "vitest";
 import { createGitRepository, runGit } from "./helpers/git-repository";
 
@@ -30,13 +35,25 @@ function workspaceRecord(rootPath: string): WorkspaceRecord {
 }
 
 describe("daemon managed worktree lifecycle", () => {
-  it("creates, lists, and removes a worktree inside the user data path", async () => {
+  it("runs setup and cleanup around creation and removal of a managed worktree", async () => {
     const repo = await createGitRepository();
     const daemon = await spawnDaemon();
     try {
       await requestDaemon(
         "workspace.save",
         { workspace: workspaceRecord(repo.path) },
+        daemon.options,
+      );
+      await requestDaemon(
+        "workspace.worktreeEnvironment.save",
+        {
+          ...emptyWorktreeEnvironment("e2e-workspace"),
+          setupScript: "echo ready > setup-marker",
+          cleanupScript:
+            process.platform === "win32"
+              ? "del setup-marker"
+              : "rm setup-marker",
+        },
         daemon.options,
       );
 
@@ -51,6 +68,7 @@ describe("daemon managed worktree lifecycle", () => {
         createdPath.startsWith(realpathSync.native(daemon.userDataPath)),
       ).toBe(true);
       expect(gitWorktreePaths(repo.path)).toContain(createdPath);
+      await waitFor(() => existsSync(path.join(created.path, "setup-marker")));
 
       const listed = await requestDaemon("worktree.list", daemon.options);
       const managed = listed.find(

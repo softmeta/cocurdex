@@ -2,9 +2,6 @@ import type { CreateAgentSessionPayload } from "@cocurdex/agent-core";
 import type { CodexAppServerRequest } from "./codex-app-server-client";
 import { isRecord } from "./codex-app-server-events";
 
-// Experimental app-server request asking the user to answer one or more
-// questions mid-turn. Params carry a `questions` array; the response must map
-// each question id to `{ answers: string[] }`.
 const requestUserInputMethod = "item/tool/requestUserInput";
 
 interface CodexUserInputQuestion {

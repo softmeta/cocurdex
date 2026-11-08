@@ -1,13 +1,3 @@
-// Filter the host env before forwarding it to spawned third-party CLIs. We do
-// not want to leak unrelated provider API keys or secrets into adapters that
-// have no business reading them. Anything an agent CLI legitimately needs
-// (locale, proxy, terminal, language toolchains, its own provider keys) must
-// be added here explicitly.
-//
-// Proxy vars are expected to already be correct on process.env via
-// applyNetworkProxyToEnv (daemon + main). buildChildProcessEnv sanitizes and
-// forwards that snapshot so ACP / Codex / Claude Agent all see the same policy.
-
 const ALLOWED_ENV_PREFIXES = [
   "PI_",
   "GEMINI_",
@@ -108,11 +98,6 @@ export function sanitizeChildProcessEnv(
   return result;
 }
 
-/**
- * Env for spawned agent CLIs (including ACP). Sanitizes the host env and
- * merges optional extras (provider keys, runtime flags). Proxy policy is
- * whatever currently lives on `env` after applyNetworkProxyToEnv.
- */
 export function buildChildProcessEnv(
   env: NodeJS.ProcessEnv = process.env,
   options?: {

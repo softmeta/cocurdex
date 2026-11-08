@@ -25,10 +25,6 @@ export function resolvePerfEnabled({
   }
 }
 
-// Resolve once: perf marks/logs run only when the user explicitly opts in via
-// localStorage (`cocurdex.perf = "1"`). With no opt-in we cut every call below
-// to a single boolean check — keeps streaming render hot paths free of
-// diagnostic logging and JSON.stringify cost.
 const PERF_ENABLED: boolean = (() => {
   if (typeof window === "undefined") {
     return false;

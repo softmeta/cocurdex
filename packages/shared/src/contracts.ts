@@ -1,36 +1,32 @@
-import { pathBaseName } from "./files";
+import type { AgentId } from "./agent-identity";
+import type {
+  AgentPermissionRequestedEvent,
+  AgentPermissionResolvedEvent,
+  AgentPlanApprovalRequestedEvent,
+  AgentPlanApprovalResolvedEvent,
+  AgentPlanUpdatedEvent,
+  AgentQuestionRequestedEvent,
+  AgentQuestionResolvedEvent,
+} from "./agent-interactions";
+import type { AgentToolCallRecord } from "./agent-tool-call-contracts";
+import type {
+  AgentContextBreakdownUpdatedEvent,
+  AgentRateLimitsUpdatedEvent,
+  AgentUsageRecord,
+  AgentUsageUpdatedEvent,
+} from "./agent-usage";
+import type { MessageAttachment } from "./message-attachments";
 import type {
   AgentNativeWorkspaceEvidenceEvent,
   AgentTurnChangesUpdatedEvent,
   TurnChangeSet,
 } from "./workspace-changes";
 
-export type BuiltInAgentId = "claude-agent" | "codex" | "pi" | "opencode";
-
-export const ACP_REGISTRY_AGENT_ID_PREFIX = "acp:";
-
-export type AcpRegistryAgentId = `acp:${string}`;
-
-export type AgentId = BuiltInAgentId | AcpRegistryAgentId;
-
-export function isAcpRegistryAgentId(id: string): id is AcpRegistryAgentId {
-  return (
-    id.startsWith(ACP_REGISTRY_AGENT_ID_PREFIX) &&
-    id.length > ACP_REGISTRY_AGENT_ID_PREFIX.length
-  );
-}
-
-export const PLAN_USAGE_AGENT_IDS = [
-  "claude-agent",
-  "codex",
-  "acp:grok-build",
-] as const satisfies readonly AgentId[];
-
-export type PlanUsageAgentId = (typeof PLAN_USAGE_AGENT_IDS)[number];
-
-export function isPlanUsageAgentId(id: AgentId): id is PlanUsageAgentId {
-  return (PLAN_USAGE_AGENT_IDS as readonly AgentId[]).includes(id);
-}
+export * from "./agent-identity";
+export * from "./agent-interactions";
+export * from "./agent-tool-call-contracts";
+export * from "./agent-usage";
+export * from "./message-attachments";
 
 export type SessionStatus = "idle" | "running" | "error" | "exited";
 export type WriteMode = "read-only" | "native-write";
@@ -55,9 +51,6 @@ export type AgentPermissionMode =
   | "codex-read-only"
   | "codex-auto"
   | "codex-full-access"
-  // Grok Build's three permission states, switched over ACP with the
-  // `x.ai/yolo_mode_changed` ext notification. "auto" defers to Grok's own
-  // risk classifier, which costs an extra model call per tool use.
   | "grok-ask"
   | "grok-auto"
   | "grok-always-approve"
@@ -83,8 +76,6 @@ export type ProviderApi = (typeof providerApis)[number];
 
 export type ProviderModelSource = "api" | "manual";
 export type ProviderModelCapability = "agent" | "chat" | "vision" | "reasoning";
-// Codex reports its own ladder up to max / ultra; adapters keep their vendor
-// vocabulary instead of being normalized down to a shared subset.
 export type CodexReasoningEffort =
   | "minimal"
   | "low"
@@ -127,11 +118,8 @@ export function isReasoningEffort(value: string): value is ReasoningEffort {
 }
 
 export interface ReasoningEffortOption {
-  // Thinking-level vocabulary: agents that offer an explicit "no thinking"
-  // rung (Devin's `none`) surface it here as `off`.
   reasoningEffort: Exclude<AgentThinkingLevel, "default">;
   description: string;
-  /** The agent's own name for this level, when it publishes one. */
   label?: string | null;
 }
 
@@ -141,19 +129,12 @@ export interface CodexServiceTierOption {
   description: string;
 }
 
-// Runtime axes a provider model advertises, resolved on demand by agents that
-// only reveal them inside a session (Devin's per-model `thought_level` /
-// `speed`). Probed lazily per selected model and merged into the catalog.
 export interface AgentProviderModelAxes {
   defaultReasoningEffort: Exclude<AgentThinkingLevel, "default"> | null;
   supportedReasoningEfforts: ReasoningEffortOption[];
   serviceTiers: CodexServiceTierOption[];
 }
 
-// Runtime controls are exposed only when the adapter can apply them without
-// recreating the provider session. Missing axes are intentionally unsupported;
-// there is no restart-based fallback because it can break native cache and
-// conversation continuity.
 export type AgentRuntimeAxis =
   | "model"
   | "thinking"
@@ -166,8 +147,6 @@ export type AgentRuntimeAxisCapabilities = Partial<
   Record<AgentRuntimeAxis, AgentRuntimeChangePolicy>
 >;
 
-// Codex account state as reported by `codex app-server` (account/read).
-// Tokens live in ~/.codex and are managed entirely by Codex itself.
 export interface CodexAccountState {
   method: "apikey" | "chatgpt" | "other" | null;
   email: string | null;
@@ -192,8 +171,6 @@ export interface AgentProviderSnapshot {
   modelName: string;
   api: ProviderApi;
   baseUrl: string;
-  // Per-model endpoint override; falls back to baseUrl when absent. See
-  // ProviderModelRecord.baseUrl.
   modelBaseUrl?: string | null;
   headersJson?: string | null;
   providerCompatJson?: string | null;
@@ -204,20 +181,12 @@ export interface AgentProviderSnapshot {
   modelContextWindow?: number | null;
   modelMaxTokens?: number | null;
   reasoningEffort?: ReasoningEffort | null;
-  // Explicit per-session thinking choice for adapters whose reasoning axis is
-  // sent with each prompt. Null means the adapter/model default remains active.
   thinkingLevel?: AgentThinkingLevel | null;
-  // Thinking levels the selected model accepts, as reported by the agent's own
-  // catalog (e.g. Grok Build's reasoning efforts). Drives the composer picker
-  // for agents that don't ship a pi-style thinkingLevelMap.
   supportedReasoningEfforts?: ReasoningEffortOption[];
-  // Effort the model runs at when the session sets none. Null when the agent
-  // publishes no default, in which case the picker shows no selection.
   modelDefaultReasoningEffort?: Exclude<AgentThinkingLevel, "default"> | null;
   supportsReasoning?: boolean;
   serviceTier?: string | null;
   fastMode?: boolean | null;
-  // OpenCode-specific runtime axes. Null keeps the native OpenCode default.
   openCodeAgent?: string | null;
   openCodeVariant?: string | null;
 }
@@ -258,18 +227,13 @@ export interface AgentDescriptor {
   installation?: AgentInstallation | null;
 }
 
-/** A command offered by the composer's slash-triggered skill picker. */
 export interface AgentSlashCommand {
-  /** Stable skill name without an invocation prefix. */
   name: string;
   description?: string;
-  /** Adapter-native text inserted when the user selects the skill. */
   invocation?: string;
   source: "agent" | "extension" | "prompt" | "skill";
 }
 
-// A directory on the daemon host, for clients browsing for a workspace root.
-// Paths are daemon-host absolute paths, not client-local paths.
 export interface HostDirectoryEntry {
   name: string;
   path: string;
@@ -323,313 +287,6 @@ export interface SessionRecord {
   peerInbound?: "deliver" | "refuse";
   importedProviderSessionId?: string | null;
   importedAt?: string | null;
-}
-
-export interface ProviderConfigRecord {
-  id: string;
-  name: string;
-  baseUrl: string;
-  enabled: boolean;
-  apiKeySecretId: string | null;
-  headersJson?: string | null;
-  compatJson?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProviderTemplateRecord {
-  id: string;
-  name: string;
-  baseUrl: string;
-  authMethods?: ProviderAuthMethodRecord[];
-}
-
-export type ProviderAuthMethod = "oauth" | "api_key";
-
-export interface ProviderAuthMethodRecord {
-  type: ProviderAuthMethod;
-  name: string;
-  label: string;
-  isSubscription: boolean;
-}
-
-export type ProviderAuthOrigin = "stored" | "ambient";
-
-export interface ProviderAuthState {
-  providerId: string;
-  type: ProviderAuthMethod | null;
-  origin: ProviderAuthOrigin | null;
-  source: string | null;
-}
-
-export type ProviderAuthPrompt =
-  | {
-      id: string;
-      type: "text" | "secret" | "manual_code";
-      message: string;
-      placeholder: string | null;
-    }
-  | {
-      id: string;
-      type: "select";
-      message: string;
-      options: Array<{
-        id: string;
-        label: string;
-        description: string | null;
-      }>;
-    };
-
-export type ProviderAuthLoginUpdate =
-  | { type: "info" | "progress"; message: string }
-  | { type: "auth_url"; url: string; instructions: string | null }
-  | {
-      type: "device_code";
-      userCode: string;
-      verificationUri: string;
-    }
-  | { type: "prompt"; prompt: ProviderAuthPrompt }
-  | { type: "prompt_cancelled"; promptId: string }
-  | { type: "complete" }
-  | { type: "error"; error: string };
-
-export interface ProviderModelRecord {
-  providerId: string;
-  modelId: string;
-  name: string;
-  api: ProviderApi;
-  enabled: boolean;
-  source: ProviderModelSource;
-  // Per-model endpoint. Pi gateways (e.g. opencode-go) serve different apis at
-  // different paths, so anthropic-messages and openai-completions models under
-  // one provider carry distinct baseUrls. Null falls back to provider.baseUrl.
-  baseUrl?: string | null;
-  contextLimit?: number | null;
-  outputLimit?: number | null;
-  capabilities?: ProviderModelCapability[];
-  reasoning?: boolean;
-  thinkingLevelMapJson?: string | null;
-  costJson?: string | null;
-  compatJson?: string | null;
-  defaultReasoningEffort?: Exclude<AgentThinkingLevel, "default"> | null;
-  supportedReasoningEfforts?: ReasoningEffortOption[];
-  serviceTiers?: CodexServiceTierOption[];
-  supportsFastMode?: boolean;
-  isDefault?: boolean;
-  overridden?: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AgentProviderSelection {
-  agentId: AgentId;
-  providerId: string;
-  modelId: string;
-  isDefault: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CompatibleProviderModel {
-  provider: ProviderConfigRecord;
-  model: ProviderModelRecord;
-}
-
-// Dedicated model for one-shot built-in Pi title generation. Other
-// agent adapters own their session-title strategy (Claude uses Haiku via
-// the CLI; Codex uses `codex exec`).
-export interface TitleModelSelection {
-  providerId: string;
-  modelId: string;
-}
-
-// Result of a one-shot connectivity probe against the dedicated title model.
-export interface TitleModelProbeResult {
-  ok: boolean;
-  /** Wall-clock time from request start to success/failure. */
-  latencyMs: number;
-  /** Sample title produced by the probe, when the model returned usable text. */
-  title?: string | null;
-  error?: string | null;
-}
-
-// Dedicated agent + model for one-shot git commit message generation. The
-// selected agent resolves its own model catalog and runs in a temporary,
-// non-persisted session. When unset, blank commit messages fail until the user
-// types one or configures a model.
-export interface CommitMessageModelSelection {
-  agentId: AgentId;
-  providerId: string;
-  modelId: string;
-  reasoningEffort?: ReasoningEffort | null;
-  thinkingLevel?: AgentThinkingLevel | null;
-  serviceTier?: string | null;
-  fastMode?: boolean | null;
-  openCodeAgent?: string | null;
-  openCodeVariant?: string | null;
-}
-
-export interface ProviderListModelsResult {
-  models: ProviderModelRecord[];
-  error?: string | null;
-}
-
-export interface AgentProviderSessionRecord {
-  sessionId: string;
-  providerSessionId: string | null;
-  providerStateJson: string;
-  providerVersion: string | null;
-  resumable: boolean;
-  updatedAt: string;
-}
-
-export interface ContextFileAttachment {
-  kind?: "context-file";
-  filePath: string;
-  language: string;
-  selectedText: string;
-  startLine: number;
-  startColumn?: number;
-  endLine: number;
-  endColumn?: number;
-  surroundingContext: string;
-  // Whole-file @mentions omit bytes so the agent Reads the path. Selections
-  // keep selectedText / surroundingContext inlined.
-  contentOmitted?: boolean;
-}
-
-export interface ContextFolderAttachment {
-  kind: "context-folder";
-  folderPath: string;
-}
-
-export interface ContextItemAttachment {
-  kind: "context-item";
-  itemKind: "note" | "issue";
-  id: string;
-  title: string;
-  body: string;
-}
-
-export interface ImageAttachment {
-  kind: "image";
-  id: string;
-  name: string;
-  mimeType: string;
-  sizeBytes: number;
-  filePath: string;
-  width: number;
-  height: number;
-}
-
-export interface DocumentAttachment {
-  kind: "document";
-  id: string;
-  name: string;
-  mimeType: "application/pdf";
-  sizeBytes: number;
-  filePath: string;
-}
-
-export type MessageAttachment =
-  | ContextFileAttachment
-  | ContextFolderAttachment
-  | ContextItemAttachment
-  | ImageAttachment
-  | DocumentAttachment;
-
-export function isImageAttachment(
-  attachment: MessageAttachment,
-): attachment is ImageAttachment {
-  return attachment.kind === "image";
-}
-
-export function isDocumentAttachment(
-  attachment: MessageAttachment,
-): attachment is DocumentAttachment {
-  return attachment.kind === "document";
-}
-
-export function isContextFileAttachment(
-  attachment: MessageAttachment,
-): attachment is ContextFileAttachment {
-  return attachment.kind === undefined || attachment.kind === "context-file";
-}
-
-export function isContextFolderAttachment(
-  attachment: MessageAttachment,
-): attachment is ContextFolderAttachment {
-  return attachment.kind === "context-folder";
-}
-
-export function isContextItemAttachment(
-  attachment: MessageAttachment,
-): attachment is ContextItemAttachment {
-  return attachment.kind === "context-item";
-}
-
-export function getContextItemRef(attachment: ContextItemAttachment) {
-  return `${attachment.itemKind}:${attachment.id}`;
-}
-
-export type ContextAttachment =
-  | ContextFileAttachment
-  | ContextFolderAttachment
-  | ContextItemAttachment;
-
-export function getContextAttachmentKey(attachment: ContextAttachment) {
-  if (isContextItemAttachment(attachment)) {
-    return getContextItemRef(attachment);
-  }
-  if (isContextFolderAttachment(attachment)) {
-    return `folder:${attachment.folderPath}`;
-  }
-  return `file:${attachment.filePath}:${attachment.startLine}:${attachment.endLine}`;
-}
-
-export function isContextAttachment(
-  attachment: MessageAttachment,
-): attachment is ContextAttachment {
-  return (
-    isContextFileAttachment(attachment) ||
-    isContextFolderAttachment(attachment) ||
-    isContextItemAttachment(attachment)
-  );
-}
-
-// Line/column range label for a code selection. Columns are only present when
-// the selection is a partial range (a whole-line selection drops them at
-// capture time), so `L19-19` reads as "whole line(s)" and `L19:5-19:20` as a
-// partial span.
-export function formatContextFileRange(
-  attachment: Pick<
-    ContextFileAttachment,
-    "startLine" | "startColumn" | "endLine" | "endColumn"
-  >,
-): string {
-  const { startLine, startColumn, endLine, endColumn } = attachment;
-  if (startColumn !== undefined && endColumn !== undefined) {
-    return `L${startLine}:${startColumn}-${endLine}:${endColumn}`;
-  }
-  return `L${startLine}-${endLine}`;
-}
-
-export function formatContextFileChipLabel(
-  attachment: Pick<
-    ContextFileAttachment,
-    | "contentOmitted"
-    | "filePath"
-    | "startLine"
-    | "startColumn"
-    | "endLine"
-    | "endColumn"
-  >,
-): string {
-  const fileName = pathBaseName(attachment.filePath);
-  if (attachment.contentOmitted) {
-    return fileName;
-  }
-  return `${fileName} ${formatContextFileRange(attachment)}`;
 }
 
 export interface PeerMessageOrigin {
@@ -697,112 +354,6 @@ export interface RunRecord {
   startedAt: string;
   endedAt?: string | null;
   agentType?: AgentId | null;
-}
-
-export interface AgentToolCallLocation {
-  path: string;
-  line?: number | null;
-}
-
-export type AgentToolCallContent =
-  | {
-      type: "text";
-      text: string;
-    }
-  | {
-      type: "diff";
-      path: string;
-      oldText?: string | null;
-      newText?: string;
-      additions?: number;
-      deletions?: number;
-    }
-  | {
-      type: "terminal";
-      terminalId: string;
-    }
-  | {
-      type: "data";
-      value: unknown;
-    };
-
-export interface AgentToolCallResult {
-  content: AgentToolCallContent[];
-  rawOutput: unknown;
-}
-
-export interface AgentSubagentReference {
-  sessionId: string;
-  type: string | null;
-  description: string;
-}
-
-export interface AgentToolCallRecord {
-  id: string;
-  sessionId: string;
-  title: string;
-  kind?: string | null;
-  status: "pending" | "in_progress" | "completed" | "failed";
-  subagent?: AgentSubagentReference | null;
-  // Undefined is reserved for summary records whose result is loaded lazily.
-  content: AgentToolCallContent[] | undefined;
-  rawInput?: unknown;
-  rawOutput?: unknown;
-  locations: AgentToolCallLocation[];
-  startedAt: string;
-  updatedAt: string;
-  seq?: number;
-  runId?: string | null;
-}
-
-export type AgentPermissionDecision =
-  | "allow_once"
-  | "allow_always"
-  | "reject_once"
-  | "reject_always"
-  | "cancelled";
-export type AgentPermissionOptionKind = Exclude<
-  AgentPermissionDecision,
-  "cancelled"
->;
-export interface AgentPermissionOption {
-  id: string;
-  kind: AgentPermissionOptionKind;
-  label: string;
-  labelSource: "generic" | "provider";
-}
-
-export interface AgentPermissionResolution {
-  decision: AgentPermissionDecision;
-  optionId: string | null;
-}
-export type AgentPermissionStatus = "pending" | "allowed" | "denied";
-
-export interface AgentPermissionRequestRecord {
-  id: string;
-  sessionId: string;
-  providerId: AgentId;
-  kind: string;
-  title: string;
-  description?: string | null;
-  rawInput?: unknown;
-  locations: AgentToolCallLocation[];
-  options: AgentPermissionOption[];
-  status: AgentPermissionStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AgentPermissionRequestPayload {
-  id?: string;
-  sessionId: string;
-  providerId: AgentId;
-  kind: string;
-  title: string;
-  description?: string | null;
-  rawInput?: unknown;
-  locations?: AgentToolCallLocation[];
-  options: AgentPermissionOption[];
 }
 
 export interface AgentMessageDeltaEvent {
@@ -958,310 +509,6 @@ export interface AgentErrorEvent {
   sessionId: string;
   message: string;
   systemMessage?: MessageRecord;
-}
-
-export interface AgentPermissionRequestedEvent {
-  type: "permission.requested";
-  sessionId: string;
-  request: AgentPermissionRequestRecord;
-}
-
-export interface AgentPermissionResolvedEvent {
-  type: "permission.resolved";
-  sessionId: string;
-  request: AgentPermissionRequestRecord;
-  decision: AgentPermissionDecision;
-}
-
-export type AgentQuestionStatus = "pending" | "answered";
-
-export interface AgentQuestionOption {
-  label: string;
-  description: string;
-  preview?: string;
-}
-
-export interface AgentQuestionPrompt {
-  header?: string;
-  options?: AgentQuestionOption[];
-  multiSelect?: boolean;
-}
-
-export interface AgentQuestionRequestRecord {
-  id: string;
-  sessionId: string;
-  providerId: AgentId;
-  question: string;
-  header?: string;
-  options?: AgentQuestionOption[];
-  multiSelect?: boolean;
-  status: AgentQuestionStatus;
-  answer?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AgentQuestionRequestPayload {
-  id?: string;
-  sessionId: string;
-  providerId: AgentId;
-  question: string;
-  header?: string;
-  options?: AgentQuestionOption[];
-  multiSelect?: boolean;
-}
-
-export interface AgentQuestionRequestedEvent {
-  type: "question.requested";
-  sessionId: string;
-  question: AgentQuestionRequestRecord;
-}
-
-export interface AgentQuestionResolvedEvent {
-  type: "question.resolved";
-  sessionId: string;
-  question: AgentQuestionRequestRecord;
-}
-
-// Grok Build parks its `exit_plan_mode` tool call on an ACP reverse-request
-// (`x.ai/exit_plan_mode`) and waits for the client to approve the written plan.
-// The outcome strings are the agent's wire values: anything the agent does not
-// recognize is treated as "cancelled" on its side, so never invent new ones.
-//
-// - approved:  agent leaves plan mode and implements in the same turn
-// - cancelled: agent stays in plan mode and revises, optionally using `feedback`
-// - abandoned: agent leaves plan mode and stops, waiting for the user
-export type AgentPlanApprovalOutcome = "approved" | "cancelled" | "abandoned";
-export type AgentPlanApprovalStatus = "pending" | "resolved" | "stale";
-// "inline" plans travel with the tool call; "file-backed" plans are read from
-// the agent's own `plan.md`. Only the feedback reference format differs.
-export type AgentPlanApprovalSource = "inline" | "file-backed";
-
-export interface AgentPlanApprovalRecord {
-  id: string;
-  sessionId: string;
-  providerId: AgentId;
-  planContent: string | null;
-  source: AgentPlanApprovalSource;
-  status: AgentPlanApprovalStatus;
-  outcome?: AgentPlanApprovalOutcome | null;
-  feedback?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AgentPlanApprovalRequestPayload {
-  id?: string;
-  sessionId: string;
-  providerId: AgentId;
-  planContent: string | null;
-  source: AgentPlanApprovalSource;
-}
-
-export interface AgentPlanApprovalDecision {
-  outcome: AgentPlanApprovalOutcome;
-  feedback?: string | null;
-}
-
-export interface AgentPlanApprovalRequestedEvent {
-  type: "plan.approval.requested";
-  sessionId: string;
-  approval: AgentPlanApprovalRecord;
-}
-
-export interface AgentPlanApprovalResolvedEvent {
-  type: "plan.approval.resolved";
-  sessionId: string;
-  approval: AgentPlanApprovalRecord;
-}
-
-export interface AgentPlanStep {
-  step: string;
-  status: "pending" | "in_progress" | "completed";
-}
-
-export interface AgentSessionPlan {
-  explanation?: string | null;
-  steps: AgentPlanStep[];
-  updatedAt: string;
-}
-
-export interface AgentPlanUpdatedEvent {
-  type: "plan.updated";
-  sessionId: string;
-  plan: AgentSessionPlan;
-}
-
-// Snapshot of token usage for one agent run / turn. Field names mirror the
-// Anthropic API + Claude Code SDK so adapters can forward the value with
-// minimal translation. Adapters that cannot observe usage may simply not
-// emit `usage.updated` events; consumers must treat usage as best-effort.
-//
-// `inputTokens` / `outputTokens` / cache / cost are treated as **deltas** that
-// accumulate across a session. `contextTokensUsed` / `contextWindowSize` are
-// **absolute snapshots** of the model context window (Grok ACP's
-// `_meta.totalTokens`, ACP `usage_update`, etc.) — latest value wins.
-export interface AgentUsageRecord {
-  inputTokens: number;
-  outputTokens: number;
-  cacheCreationInputTokens?: number;
-  cacheReadInputTokens?: number;
-  reasoningOutputTokens?: number;
-  totalCostUsd?: number;
-  /** Absolute tokens currently filling the model context window. */
-  contextTokensUsed?: number | null;
-  /** Absolute context window size reported by the agent, when available. */
-  contextWindowSize?: number;
-}
-
-/** Merge a usage delta into stored session usage (absolute fields replace). */
-export function mergeUsageRecords(
-  current: AgentUsageRecord | null | undefined,
-  delta: AgentUsageRecord,
-): AgentUsageRecord {
-  return {
-    inputTokens: (current?.inputTokens ?? 0) + delta.inputTokens,
-    outputTokens: (current?.outputTokens ?? 0) + delta.outputTokens,
-    cacheCreationInputTokens:
-      (current?.cacheCreationInputTokens ?? 0) +
-      (delta.cacheCreationInputTokens ?? 0),
-    cacheReadInputTokens:
-      (current?.cacheReadInputTokens ?? 0) + (delta.cacheReadInputTokens ?? 0),
-    reasoningOutputTokens:
-      (current?.reasoningOutputTokens ?? 0) +
-      (delta.reasoningOutputTokens ?? 0),
-    totalCostUsd:
-      delta.totalCostUsd == null && current?.totalCostUsd == null
-        ? undefined
-        : (current?.totalCostUsd ?? 0) + (delta.totalCostUsd ?? 0),
-    contextTokensUsed:
-      delta.contextTokensUsed === undefined
-        ? current?.contextTokensUsed
-        : delta.contextTokensUsed,
-    contextWindowSize: delta.contextWindowSize ?? current?.contextWindowSize,
-  };
-}
-
-/** Current context fill, when the adapter provides an absolute snapshot. */
-export function getContextUsageTokens(usage: AgentUsageRecord): number | null {
-  return typeof usage.contextTokensUsed === "number"
-    ? usage.contextTokensUsed
-    : null;
-}
-
-export interface AgentUsageUpdatedEvent {
-  type: "usage.updated";
-  sessionId: string;
-  usage: AgentUsageRecord;
-  /** Defaults to the active user turn; session-only usage is never added to turn stats. */
-  attribution?: "active-turn" | "session-only";
-  receivedAt: string;
-}
-
-export type AgentRateLimitWindowKind =
-  | "five-hour"
-  | "weekly"
-  | "monthly"
-  | "primary"
-  | "secondary";
-
-export interface AgentRateLimitWindow {
-  kind: AgentRateLimitWindowKind;
-  usedPercent: number;
-  resetsAt?: string;
-  windowDurationMinutes?: number;
-  // Provider-supplied name for windows that share a `kind` but scope to one
-  // model ("Opus", "Sonnet", …). Part of the window identity: without it the
-  // per-model weekly buckets would collapse into a single "weekly" row.
-  label?: string;
-}
-
-// Prepaid balance that keeps working past the plan windows. Money, not a
-// window, so it is reported next to them rather than as one of them.
-export interface AgentUsageCredits {
-  usedAmount: number;
-  limitAmount: number;
-  currency: string;
-}
-
-export interface AgentRateLimitsRecord {
-  windows: AgentRateLimitWindow[];
-  updatedAt: string;
-  // Subscription the windows belong to ("pro", "max", …), when the provider
-  // names one.
-  planLabel?: string;
-  credits?: AgentUsageCredits;
-}
-
-export type AgentRateLimitsErrorCode =
-  | "authentication-required"
-  | "probe-failed"
-  | "timed-out";
-
-export type AgentRateLimitsReadResult =
-  | {
-      status: "available";
-      rateLimits: AgentRateLimitsRecord;
-    }
-  | {
-      status: "unavailable";
-    }
-  | {
-      status: "error";
-      code: AgentRateLimitsErrorCode;
-      message: string;
-    };
-
-export interface AgentRateLimitsUpdatedEvent {
-  type: "rate_limits.updated";
-  sessionId: string;
-  rateLimits: AgentRateLimitsRecord;
-}
-
-// How the context window is spent, for adapters that can see its composition
-// (currently only the Claude Agent SDK, which also backs Claude Code's
-// `/context`). Informational only — the footer meter still runs off
-// `AgentUsageRecord`, which every adapter can produce.
-export interface AgentContextBreakdownItem {
-  name: string;
-  tokens: number;
-  // Secondary label: MCP server name, memory file type, skill source, …
-  detail?: string;
-}
-
-export type AgentContextBreakdownGroupId =
-  | "agents"
-  | "deferredTools"
-  | "mcpTools"
-  | "memoryFiles"
-  | "skills"
-  | "slashCommands"
-  | "systemPrompt"
-  | "systemTools";
-
-export interface AgentContextBreakdownGroup {
-  id: AgentContextBreakdownGroupId;
-  tokens: number;
-  // Free-form count summary, e.g. "12/54" for partially included skills.
-  summary?: string;
-  items: AgentContextBreakdownItem[];
-}
-
-export interface AgentContextBreakdownRecord {
-  // Top-level slices of the window (system prompt, tools, messages, …), in the
-  // order the agent reports them.
-  categories: AgentContextBreakdownItem[];
-  groups: AgentContextBreakdownGroup[];
-  totalTokens: number;
-  maxTokens: number;
-  model?: string;
-  updatedAt: string;
-}
-
-export interface AgentContextBreakdownUpdatedEvent {
-  type: "context_breakdown.updated";
-  sessionId: string;
-  breakdown: AgentContextBreakdownRecord;
 }
 
 export interface AgentTurnCompletedEvent {
@@ -1436,10 +683,6 @@ export interface EditorViewRecord {
   selections: Array<{ filePath: string; startLine: number; endLine: number }>;
 }
 
-// Agents are intentionally absent: detecting installed agent CLIs spawns one
-// child process per agent, which is orders of magnitude slower than the SQLite
-// reads below. The renderer loads them through `listAgents` in parallel so the
-// sidebar does not wait on process spawns.
 export interface AppBootstrapData {
   workspaces: WorkspaceRecord[];
   sessions: SessionRecord[];

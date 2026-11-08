@@ -1,6 +1,6 @@
 import type { AgentDescriptor, SaveAgentRolePayload } from "@cocurdex/shared";
 import { buildAgentSelectOptions } from "../agent-select-options";
-import { getDefaultPermissionMode } from "../session-store";
+import { getDefaultPermissionMode } from "../session-agent-state";
 
 export function blankRoleDraft(
   agents: AgentDescriptor[],

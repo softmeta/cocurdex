@@ -17,7 +17,6 @@ export interface MarkdownBodyEditorHandle {
 }
 
 interface MarkdownBodyEditorProps {
-  /** Parsed once on mount. Remount with a new `key` to load different content. */
   initialMarkdown: string;
   placeholder: string;
   className?: string;
@@ -32,7 +31,6 @@ function readMarkdown(editor: {
   if (typeof editor.getMarkdown === "function") {
     return editor.getMarkdown();
   }
-  // Fallback if Markdown extension is unavailable in tests.
   return JSON.stringify(editor.getJSON());
 }
 
@@ -43,7 +41,6 @@ export const MarkdownBodyEditor = forwardRef<
   { initialMarkdown, placeholder, className, editorClassName, onChange },
   ref,
 ): ReactNode {
-  // Capture once per mount so parent re-renders do not reset the document.
   const [content] = useState(() => initialMarkdown);
   const dirtyRef = useRef(false);
 
@@ -51,7 +48,6 @@ export const MarkdownBodyEditor = forwardRef<
     extensions: buildMarkdownBodyExtensions(placeholder),
     content,
     contentType: "markdown",
-    // Required: avoids "can't access DOM" errors under jsdom / non-DOM render.
     immediatelyRender: false,
     onUpdate: () => {
       dirtyRef.current = true;

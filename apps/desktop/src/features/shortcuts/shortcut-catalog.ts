@@ -1,14 +1,6 @@
 import type { ShortcutCombo } from "@/lib";
 import { isMacPlatform } from "@/lib/platform";
 
-/**
- * Built-in keyboard shortcut catalog.
- *
- * Defaults are VS Code / Cursor-adjacent where it helps muscle memory.
- * User overrides live in localStorage (see shortcut-store); null override
- * means the action is unbound.
- */
-
 export const shortcutCategories = [
   "general",
   "layout",
@@ -38,10 +30,6 @@ export interface ShortcutDefinition {
   id: ShortcutId;
   category: ShortcutCategory;
   defaultCombo: ShortcutCombo;
-  /**
-   * When true, the shortcut still fires while focus is in an input,
-   * contenteditable, or Monaco-like field.
-   */
   allowInEditable: boolean;
 }
 

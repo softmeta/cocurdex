@@ -33,10 +33,6 @@ function getContextAttachmentLabel(attachment: ContextAttachment) {
   return formatContextFileChipLabel(attachment);
 }
 
-// Match the composer's inline mention pill: coloured file-type icon and
-// link-toned label, no border/background box. `min-h-[1lh]` matches the
-// surrounding `text-sm` line box so the icon, filename, and adjacent text
-// share one vertical center.
 function ContextAttachmentIcon({
   attachment,
 }: {
@@ -113,10 +109,6 @@ export function MessageAttachments({ message }: { message: MessageRecord }) {
   );
 }
 
-// A single plain-text run of a user message. Runs have no stable identity of
-// their own — their position in the message body is the identity — so callers
-// key them by index. `min-h-[1lh]` matches the surrounding `text-sm` line box
-// so the run and adjacent mention chips share one vertical center.
 function MessageTextRun({ text }: { text: string }) {
   return (
     <span className="inline-flex min-h-[1lh] min-w-0 max-w-full items-center whitespace-pre-wrap wrap-break-word">
@@ -239,16 +231,6 @@ export function ReasoningMarkdown({
   const label = isStreaming ? t("thinking") : t("reasoning");
   const body = <ReasoningDetailBody message={message} streaming={streaming} />;
 
-  // Both modes render the reasoning inline so the detail joins the document flow
-  // and pushes the response down, rather than floating over it in a popover or
-  // sheet that overlaps adjacent content. The only difference is the initial
-  // state: full (expanded) mode opens by default but still exposes a collapse
-  // toggle, while collapsed mode starts behind a click-to-expand trigger.
-  //
-  // Row geometry is shared with the tool-call rows (px-1.5 py-1 gap-2, text-body,
-  // size-3.5 icon) so every icon in the activity log sits in one column. The
-  // expansion aligns with the trigger's label: padding (6) + brain (14) +
-  // gap-2 (8) = 28px. No guide line, matching the tool-call detail.
   return (
     <Collapsible
       className="relative -mx-1.5 flex min-w-0 flex-col gap-1.5"

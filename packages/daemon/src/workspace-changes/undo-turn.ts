@@ -168,9 +168,6 @@ export async function undoTurnChanges(input: {
       usedNative,
     );
     if (verified.every((file) => file.status === "restored")) {
-      // Record the undo so the turn cannot be undone twice and the card keeps
-      // showing the right state after a reload. The recovery snapshot only
-      // protects a failed undo, so drop it instead of waiting for expiry.
       await adapter
         .cleanup({
           mode: "refs",

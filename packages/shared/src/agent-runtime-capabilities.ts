@@ -9,8 +9,6 @@ import {
 
 const inSession = "in-session" as const;
 
-// This is a transport-level allowlist. Dynamic model catalogs still decide
-// whether a particular selected model exposes an axis at runtime.
 export const agentRuntimeAxisCapabilities: Readonly<
   Record<BuiltInAgentId, AgentRuntimeAxisCapabilities>
 > = {

@@ -3,14 +3,6 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-// Browsers floor `clientHeight`/`clientWidth` and ceil `scrollHeight`/
-// `scrollWidth`, so a fractional content size reports a phantom 1px overflow.
-// Base UI's own check (`viewportHeight >= scrollHeight`) has no tolerance and
-// therefore renders a thumb for content that visually fits. We re-derive the
-// real overflow with a 1px tolerance and gate scrollbar visibility on it (see
-// `.scrollbar-interactive[data-overflowing-*]` in base.css), which lets every
-// scroll surface share one custom-thumb implementation instead of falling back
-// to a native scrollbar to dodge the phantom.
 const OVERFLOW_TOLERANCE = 1;
 
 interface ScrollMetrics {
@@ -58,9 +50,6 @@ function ScrollArea({
     [viewportRef],
   );
 
-  // Track real overflow ourselves so the shared scrollbar styling can hide the
-  // thumb when content fits. ResizeObserver fires on both viewport and content
-  // size changes; the content wrapper is Base UI's direct child of the viewport.
   React.useEffect(() => {
     const viewport = internalViewportRef.current;
     if (!viewport) {

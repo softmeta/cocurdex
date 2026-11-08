@@ -259,8 +259,6 @@ describe("createCodexTurnStream", () => {
   it("reports the assistant message that completed mid-turn", () => {
     const { stream } = setup();
 
-    // The usual Codex path: the item completes before `turn/completed`, so at
-    // finishTurn nothing is streaming any more.
     stream.handleItem(
       { id: "item_a3", type: "agentMessage", text: "Done" },
       true,

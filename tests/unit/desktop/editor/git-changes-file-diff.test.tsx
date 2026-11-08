@@ -7,8 +7,6 @@ import {
   type GitChangeEntry,
 } from "@/features/editor/git-changes-model";
 
-// Pierre's diff element is a custom element that adopts a constructable
-// stylesheet; jsdom has the API surface but not the implementation.
 beforeAll(() => {
   const proto = CSSStyleSheet.prototype as CSSStyleSheet & {
     replaceSync?: (css: string) => void;
@@ -98,8 +96,6 @@ describe("GitChangeFileDiff row states", () => {
     await waitFor(() => {
       expect(container.querySelector("diffs-container")).not.toBeNull();
     });
-    // jsdom reports no layout, so the body has no height and the reservation
-    // has to stay: an unpainted body must never shrink the row.
     expect(placeholderHeight(container)).toBe(320);
   });
 

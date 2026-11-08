@@ -66,7 +66,6 @@ describe("loadProviderModelOptions", () => {
     desktopApiMock.getAgentProviderDefault.mockResolvedValue(null);
 
     const cache = new Map();
-    // Seed the cache as a prior selection would (kimi picked last session).
     cache.set(PI_AGENT, {
       result: { defaultSelection: null, items: piItems },
       updatedAt: Date.now(),

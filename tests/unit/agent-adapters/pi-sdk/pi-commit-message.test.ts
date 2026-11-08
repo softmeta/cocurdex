@@ -2,6 +2,14 @@ import { normalizeGeneratedCommitMessage } from "@cocurdex/agent-adapters/intern
 import { describe, expect, it } from "vitest";
 
 describe("normalizeGeneratedCommitMessage", () => {
+  it("keeps interior quotes and strips title and fence delimiters", () => {
+    expect(
+      normalizeGeneratedCommitMessage(
+        "```text\n\"Fix 'checkout'.\"\n- Explain the change\t```",
+      ),
+    ).toBe("Fix 'checkout'\n\n- Explain the change");
+  });
+
   it("keeps a title and unordered-list body", () => {
     expect(
       normalizeGeneratedCommitMessage(

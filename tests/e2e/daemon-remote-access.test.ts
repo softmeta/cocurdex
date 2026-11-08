@@ -28,7 +28,10 @@ import {
   generateKeyPair,
   type MessageCompressor,
 } from "@cocurdex/secure-channel";
-import type { HostAccessScope } from "@cocurdex/shared";
+import {
+  emptyWorktreeEnvironment,
+  type HostAccessScope,
+} from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import {
   saveStubProvider,
@@ -627,6 +630,64 @@ describe("remote host access", () => {
         daemon.metadata.token,
       ).request("session.list", undefined),
     ).rejects.toMatchObject({ code: "TRANSPORT_ERROR" });
+  });
+
+  it("confines a remote worktree setup script to registered workspace paths", async () => {
+    const daemon = await spawnDaemon();
+    daemons.push(daemon);
+    const port = await enableRemoteAccess(daemon);
+    const root = tempDirs.createSync("setup-ws-");
+    const outside = tempDirs.createSync("setup-outside-");
+    const now = new Date().toISOString();
+    const workspaceId = "setup-workspace";
+    await requestDaemon(
+      "workspace.save",
+      {
+        workspace: {
+          id: workspaceId,
+          name: "Setup",
+          rootPaths: [root],
+          createdAt: now,
+          updatedAt: now,
+          lastOpenedAt: now,
+          sortOrder: 0,
+        },
+      },
+      daemon.options,
+    );
+    await requestDaemon(
+      "workspace.worktreeEnvironment.save",
+      {
+        ...emptyWorktreeEnvironment(workspaceId),
+        setupScript: "echo ready > setup-marker",
+      },
+      daemon.options,
+    );
+    const client = remoteClient(
+      await pairDevice(daemon, port, ["read", "execute", "files.write"]),
+    );
+
+    await expect(
+      client.request("workspace.runWorktreeSetup", {
+        workspaceId,
+        worktreePath: outside,
+      }),
+    ).rejects.toThrow(/outside every registered workspace/);
+    await expect(
+      client.request("worktree.remove", {
+        workspaceId,
+        worktreePath: outside,
+      }),
+    ).rejects.toThrow(/outside every registered workspace/);
+    expect(await readdir(outside)).toEqual([]);
+
+    await expect(
+      client.request("workspace.runWorktreeSetup", {
+        workspaceId,
+        worktreePath: root,
+      }),
+    ).resolves.toEqual({ ran: true });
+    expect(await readdir(root)).toContain("setup-marker");
   });
 
   it("streams files only to devices whose scopes allow them", async () => {

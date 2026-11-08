@@ -11,17 +11,8 @@ export interface ChatWindowTransfer {
   snapshot: string;
 }
 
-// Logical surfaces an intent addresses — never a physical window. The shell
-// surface (editor, side panels, navigation) always lives in the primary
-// window; the chat surface lives in whichever window currently owns the chat
-// UI (the primary window while attached, the detached chat window otherwise).
-// Routing surface → window happens in the main process, so an intent follows
-// its surface across detach/reattach and queues while no window owns it.
 export type ChatWindowSurface = "shell" | "chat";
 
-// Mirrors RightPanelView in app/layout/right-editor-panel-store — kept as a
-// literal union here so the wire contract does not depend on the shell layout
-// module (which in turn imports feature code).
 export type ChatWindowPanelView =
   | "editor"
   | "notes"

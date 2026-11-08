@@ -35,11 +35,6 @@ import { McpRuntimeSubmenu } from "./mcp-runtime-submenu";
 
 const DEFAULT_VALUE = "";
 
-/**
- * The active-session picker deliberately uses ProviderModelMenu, the same
- * compound picker used by the new-session card. Only the session-owned
- * callbacks and footer rows differ.
- */
 export function SessionRuntimeMenu({
   agentType,
   compatibleProviders,
@@ -70,7 +65,6 @@ export function SessionRuntimeMenu({
 }: {
   agentType: AgentId;
   compatibleProviders: CompatibleProviderModel[];
-  /** Extra runtime rows owned by the composer (e.g. thinking level). */
   footer?: ReactNode;
   label: string;
   model: ProviderModelRecord | null;
@@ -83,7 +77,6 @@ export function SessionRuntimeMenu({
   mcpServers: readonly AgentMcpServerRuntime[] | null;
   configOptions?: readonly AgentSessionConfigOption[] | null;
   thinkingLevel?: string | null;
-  /** Extra trigger chips (thinking / permission), matching new-session card. */
   triggerLeading?: ReactNode;
   triggerValues?: readonly string[];
   onPermissionModeChange(mode: AgentPermissionMode): void;
@@ -102,18 +95,11 @@ export function SessionRuntimeMenu({
   const supportsRuntimeAxis = (
     axis: Parameters<typeof supportsInSessionRuntimeAxis>[1],
   ) => supportsInSessionRuntimeAxis(agentType, axis);
-  // Codex alone uses the compound "reasoning effort" axis. Grok/Claude expose
-  // the same model metadata through the ThinkingLevelSubmenu footer so the
-  // new-session and active-session menus stay parallel.
   const effortOptions =
     agentType === "codex" && supportsRuntimeAxis("thinking")
       ? (model?.supportedReasoningEfforts ?? [])
       : [];
-  // No "inherit" row on this axis: an unset session runs at the model's own
-  // default effort, so that level is what the menu preselects.
   const defaultReasoningEffort = model?.defaultReasoningEffort ?? DEFAULT_VALUE;
-  // Older sessions predate catalog tiers; derive the same rows from the
-  // session's live speed option (Devin's `speed`) when one exists.
   const liveSpeedOption = supportsRuntimeAxis("speed")
     ? findSessionConfigOption(configOptions ?? [], "speed")
     : null;

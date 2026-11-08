@@ -27,9 +27,6 @@ function formatPercent(tokens: number, total: number) {
   return percent >= 0.1 ? `${percent.toFixed(1)}%` : "<0.1%";
 }
 
-// Fill severity: the hue tracks how close the meter is to its limit, so a
-// glance at the panel is enough. The agent's own ANSI colors are ignored —
-// they carry no meaning in the GUI.
 function usageFillClassName(percent: number) {
   if (percent >= 90) {
     return "bg-destructive";
@@ -40,12 +37,9 @@ function usageFillClassName(percent: number) {
   return "bg-primary";
 }
 
-// Linear meter shared by every row in the panel.
 function UsageBar({
   percent,
   className,
-  // Breakdown rows show a share of the window, not a distance to a limit, so
-  // they opt out of the severity hue.
   share = false,
 }: {
   percent: number;
@@ -122,9 +116,6 @@ function BreakdownItemRow({
   );
 }
 
-// One reported group (memory files, MCP tools, skills, …). Collapsed by
-// default: a session can carry dozens of rows, and the panel is a glance
-// surface, not a report.
 function BreakdownGroupSection({
   group,
   total,
@@ -272,12 +263,6 @@ function RateLimitSection({
   );
 }
 
-/**
- * Context usage panel anchored to the footer ring. Every agent gets the window
- * meter and (when reported) plan quota; agents that also report how the window
- * is spent — currently the Claude Agent SDK, the same data `/context` prints —
- * get the composition sections.
- */
 export function ContextUsagePopoverContent({
   used,
   contextLimit,
@@ -296,8 +281,6 @@ export function ContextUsagePopoverContent({
     usedTokens != null && total
       ? Math.min(100, (usedTokens / total) * 100)
       : null;
-  // The breakdown's own window size drives its shares — the agent reported the
-  // slices against it, and the session's contextLimit may come from elsewhere.
   const breakdownTotal = breakdown
     ? breakdown.maxTokens || breakdown.totalTokens
     : 0;
@@ -320,8 +303,6 @@ export function ContextUsagePopoverContent({
       className="max-h-[70vh] w-[22rem] max-w-[90vw] overflow-y-auto"
       side="top"
     >
-      {/* The composition is one level down: the panel opens as a glance
-          surface, and only the chevron pulls in the full `/context` listing. */}
       {breakdown ? (
         <Collapsible>
           <CollapsibleTrigger className="group flex w-full items-center gap-1 rounded-control px-1 py-0.5 text-start hover:bg-accent">

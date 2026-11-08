@@ -3,11 +3,6 @@ import { useCallback, useRef, useState } from "react";
 const DRAG_THRESHOLD_PX = 3;
 const DRAG_EDGE_MARGIN_PX = 8;
 
-// Clamps an offset so the dragged panel stays inside its container. The bounds
-// are taken from the panel's actual natural top (`panelTop`) within the
-// container, not assumed to be centered — a panel anchored near the bottom can
-// travel far up but only a little down, so it never slides past the container
-// edge and gets clipped by `overflow-hidden`.
 export function clampOffset(
   offset: number,
   containerHeight: number,
@@ -23,9 +18,6 @@ export function clampOffset(
   return Math.max(minOffset, Math.min(maxOffset, offset));
 }
 
-// Shared vertical-drag behaviour for left-rail floating panels. Tracks a
-// translateY offset the caller applies to `rootRef`, and distinguishes a real
-// drag from a click so the panel's buttons still fire on a plain click.
 export function useVerticalDrag<T extends HTMLElement>() {
   const [offsetY, setOffsetY] = useState(0);
   const offsetYRef = useRef(0);
@@ -37,8 +29,6 @@ export function useVerticalDrag<T extends HTMLElement>() {
     setOffsetY(next);
   }, []);
 
-  // Returns true (and resets) when the just-finished gesture was a drag, so
-  // callers can swallow the click that the browser fires after mouseup.
   const consumeDragClick = useCallback(() => {
     if (!isDraggingRef.current) {
       return false;
@@ -59,9 +49,6 @@ export function useVerticalDrag<T extends HTMLElement>() {
       const startOffsetY = offsetYRef.current;
       const containerHeight = container.clientHeight;
       const panelHeight = root.clientHeight;
-      // Natural top within the container, ignoring the drag transform. Drives
-      // an asymmetric clamp so a bottom-anchored panel can't be dragged off
-      // the bottom edge.
       const panelTop = root.offsetTop;
       isDraggingRef.current = false;
       document.body.style.userSelect = "none";
@@ -86,7 +73,6 @@ export function useVerticalDrag<T extends HTMLElement>() {
         window.removeEventListener("mouseup", handleMouseUp);
         document.body.style.userSelect = "";
         if (isDraggingRef.current) {
-          // Defer clearing so the trailing click can read the drag flag first.
           window.setTimeout(() => {
             isDraggingRef.current = false;
           }, 0);

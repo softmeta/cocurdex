@@ -8,7 +8,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/ui";
-import { getAgentDisplayLabel } from "../session-store";
+import { getAgentDisplayLabel } from "../session-agent-state";
 import { useMessageContextTransfer } from "./context-transfers-store";
 
 function handoffLabel(

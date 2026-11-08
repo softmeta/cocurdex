@@ -248,7 +248,6 @@ export type {
   WorkspaceGitTreeStatus,
 } from "@cocurdex/shared";
 
-/** Status of the `cocurdex` shell command install (PATH). */
 export interface CliPathStatus {
   available: boolean;
   installed: boolean;
@@ -300,7 +299,6 @@ export interface OssLicensesPayload {
   texts: Record<string, string>;
 }
 
-/** Local Cocurdex daemon process health (no auth token). */
 export interface DaemonRuntimeStatus {
   running: boolean;
   pid: number | null;
@@ -314,17 +312,8 @@ export interface DaemonRuntimeStatus {
   error: string | null;
 }
 
-/**
- * What the client host can do locally. A browser client connected to a remote
- * daemon reports these as absent so UI can hide host-only actions.
- */
 export interface HostCapabilities {
-  /** The host can open or reveal paths in the OS file manager. */
   fileManager: boolean;
-  /**
-   * The host can show a native directory picker. Clients without it use the
-   * daemon `fs.listDirectories` browse RPC to pick paths on the daemon host.
-   */
   nativeDirectoryDialog: boolean;
   terminal: boolean;
   browserView: boolean;
@@ -334,16 +323,8 @@ export interface HostCapabilities {
   scopes?: readonly HostAccessScope[];
 }
 
-/**
- * Product surface backed by daemon RPC — the contract every client (desktop,
- * web, mobile) shares. Members map to named `@cocurdex/rpc` methods or to
- * daemon events bridged by the host. Host-only abilities live in
- * {@link HostApi}.
- */
 export interface ProductApi {
   bootstrapApp(): Promise<AppBootstrapData>;
-  // Authoritative reload after a daemon event replay gap; the snapshot's
-  // eventSeq boundary tells the client which buffered events it covers.
   pullSync(input: SyncPullInput): Promise<SyncPullResult>;
   getProductSkillsStatus(
     scope: ProductSkillScope,
@@ -379,10 +360,6 @@ export interface ProductApi {
   listWorkspaces(): Promise<WorkspaceRecord[]>;
   saveWorkspace(workspace: WorkspaceRecord): Promise<WorkspaceRecord>;
   deleteWorkspace(workspaceId: string): Promise<void>;
-  /**
-   * List directories on the daemon host (for picking a workspace root when no
-   * native directory dialog is available). Paths are daemon-host absolute.
-   */
   listHostDirectories(path?: string): Promise<HostDirectoryListing>;
   getHomeDir(): Promise<string>;
   listFontFamilies(): Promise<string[]>;
@@ -473,17 +450,10 @@ export interface ProductApi {
     rootPath: string,
     query?: WorkspaceGitDiffQuery,
   ): Promise<WorkspaceGitDiffResult>;
-  // Lightweight porcelain status for explorer tree git signs (no contents).
   getWorkspaceGitStatus(rootPath: string): Promise<WorkspaceGitStatusResult>;
-  // Add files' working-tree changes to the index in a single git invocation.
   stageGitFiles(rootPath: string, filePaths: string[]): Promise<void>;
-  // Remove files from the index, leaving their working-tree changes intact.
   unstageGitFiles(rootPath: string, filePaths: string[]): Promise<void>;
-  // Drop files' staged and unstaged changes, restoring them to HEAD (or
-  // removing those that were newly added, untracked-at-HEAD files).
   discardGitFiles(rootPath: string, filePaths: string[]): Promise<void>;
-  // Commit staged changes; optionally stage the whole worktree first. Empty
-  // message → Conventional Commits subject generated from the staged set.
   commitGitChanges(
     rootPath: string,
     options: { message: string; includeUnstaged: boolean },
@@ -492,16 +462,13 @@ export interface ProductApi {
     message: string;
     generatedMessage: boolean;
   }>;
-  // One-shot draft for the commit message field (no stage/commit side effects).
   generateGitCommitMessage(
     rootPath: string,
     options: { includeUnstaged: boolean },
   ): Promise<string>;
-  // Push the current branch to its upstream (or set upstream on origin).
   pushGitBranch(rootPath: string): Promise<{ branch: string; remote: string }>;
   readTextFile(filePath: string): Promise<string>;
   fileExists(filePath: string): Promise<boolean>;
-  // Per-document bookmarks + highlights in app private storage (userData).
   loadPdfAnnotations(payload: {
     filePath: string;
   }): Promise<PdfDocumentAnnotationsDto>;
@@ -695,8 +662,6 @@ export interface ProductApi {
   listHostAudit(limit: number): Promise<HostAccessAuditEntry[]>;
   listSessionMessages(sessionId: string): Promise<SessionMessagesResult>;
   listSessionToolCalls(sessionId: string): Promise<AgentToolCallRecord[]>;
-  // Returns user-facing content and raw machine output for a single tool call.
-  // Summary-only session records hydrate this result on user demand.
   getToolCallResult(toolCallId: string): Promise<AgentToolCallResult | null>;
   undoTurnChanges(
     payload: UndoTurnChangesInput,
@@ -739,7 +704,6 @@ export interface ProductApi {
   onWorkspaceSearchError(
     listener: (event: WorkspaceSearchErrorEvent) => void,
   ): () => void;
-  // === App-owned issues and views ===
   issueListViews(): Promise<ViewSummary[]>;
   issueListLinkedSessionIds(): Promise<string[]>;
   listSessionAttention(): Promise<SessionAttentionSnapshot[]>;
@@ -747,7 +711,6 @@ export interface ProductApi {
     payload: UpdateSessionAttentionPayload,
   ): Promise<SessionAttentionSnapshot>;
   issueLoad(payload: LoadViewPayload): Promise<ViewFull | null>;
-  /** Full markdown body for the issue detail editor. */
   issueGet(payload: GetIssuePayload): Promise<IssueRecord | null>;
   issueCreateView(payload: CreateViewPayload): Promise<ViewSummary>;
   issueDeleteView(payload: DeleteViewPayload): Promise<void>;
@@ -773,13 +736,9 @@ export interface ProductApi {
   onDataChanged(
     listener: (event: CocurdexDataChangedEvent) => void,
   ): () => void;
-  // Fires (debounced) when anything inside a watched workspace root changes on
-  // disk, so cached file listings can be invalidated and refreshed.
   onWorkspaceFilesChanged(
     listener: (event: WorkspaceFilesChangedEvent) => void,
   ): () => void;
-  // Fires (debounced) when git metadata (HEAD, index, refs) changes on disk —
-  // commits, stages, or branch switches done outside the app.
   onWorkspaceGitStateChanged(
     listener: (event: WorkspaceFilesChangedEvent) => void,
   ): () => void;
@@ -801,13 +760,6 @@ export interface ProductApi {
   cancelProviderAuthLogin(loginId: string): Promise<void>;
 }
 
-/**
- * Host-only surface (Electron): OS integration the daemon contract does not
- * cover — native dialogs, BrowserView, updates, CLI install, renderer
- * logging, and daemon process management. Absent
- * on clients without a local host; gate features on
- * {@link HostApi.capabilities} instead of calling blindly.
- */
 export interface HostApi {
   readonly chatWindow: ChatWindowApi;
   readonly capabilities: HostCapabilities;
@@ -830,19 +782,11 @@ export interface HostApi {
     canceled: boolean;
     filePaths: string[];
   }>;
-  /** Cold-start CLI folder open; null when nothing is pending. */
   consumePendingOpenFolder(): Promise<{ rootPath: string } | null>;
-  /**
-   * Absolute path for a File from an OS drag-and-drop (Electron webUtils).
-   * Returns null when the path cannot be resolved.
-   */
   getPathForFile(file: File): string | null;
-  /** Second-instance / live CLI folder open while the app is running. */
   onOpenWorkspaceFromCli(
     listener: (event: { rootPath: string }) => void,
   ): () => void;
-  // Sync the renderer's resolved surface color (from --app-bg) to the native
-  // window/child views so resize and startup do not flash a mismatched color.
   setWindowSurfaceColor(color: string): Promise<void>;
   browserNavigate(url: string): Promise<void>;
   browserOpenHtml(
@@ -910,7 +854,6 @@ export type ProductRequestApi = Omit<ProductApi, keyof ProductEventApi>;
 
 export type HostBridge = HostApi;
 
-/** Desktop facade: product contract plus the Electron host surface. */
 export interface DesktopApi extends ProductApi, HostApi {}
 
 declare global {

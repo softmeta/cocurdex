@@ -83,6 +83,7 @@ function editorTheme(colors: ThemeColors, textScale: number) {
     colors: {
       background: colors.background,
       foreground: colors.foreground,
+      "reading-text": colors.readingText,
       "muted-foreground": colors.mutedForeground,
       muted: colors.muted,
       border: colors.border,

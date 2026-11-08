@@ -65,8 +65,6 @@ export interface DaemonRpcRequestOptions {
 
 export interface DaemonRpcSubscribeOptions extends DaemonRpcRequestOptions {
   afterSeq?: number;
-  // Daemon lifetime that produced afterSeq. Catch-up is only meaningful within
-  // the same epoch; a mismatched epoch triggers a flagged replay.
   epoch?: string;
   sessions?: readonly string[] | null;
   onDisconnect?(error?: Error): void;
@@ -76,8 +74,6 @@ export interface DaemonEventSubscription {
   close(): void;
   readonly epoch: string | null;
   readonly lastSeq: number | null;
-  // True when the journaled replay could not cover the requested position;
-  // subscribers must resync authoritative state instead of trusting replay.
   readonly replayGap: boolean;
   watchSessions(sessions: readonly string[] | null): Promise<void>;
 }

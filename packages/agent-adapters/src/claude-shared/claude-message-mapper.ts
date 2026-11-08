@@ -13,10 +13,6 @@ import {
   extractThinkingText,
 } from "./claude-reasoning-stream";
 
-// Structural message types for the Claude stream-json protocol. Both the
-// Agent SDK (`SDKMessage`) and the headless CLI (`claude -p --output-format
-// stream-json`) speak this same protocol, so the adapters share one mapper
-// keyed on these shapes instead of SDK-only types.
 export interface ClaudeStreamMessage {
   type: string;
 }
@@ -170,9 +166,6 @@ interface ClaudeMessageHandlingOptions {
   resultAttribution?: AgentUsageUpdatedEvent["attribution"];
 }
 
-// Stateful per-session mapper from Claude stream-json messages to AgentEvents.
-// Holds the in-flight assistant message buffer and the open tool-call table;
-// callers reset() it at the start of each turn.
 export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
   const { sessionId, logLabel, onEvent, parentSession } = options;
   let activeAssistantMessageId = "";
@@ -448,9 +441,6 @@ export function createClaudeMessageMapper(options: ClaudeMessageMapperOptions) {
     message: Record<string, unknown>,
     attribution?: AgentUsageUpdatedEvent["attribution"],
   ) {
-    // The terminal `result` message carries cumulative billing usage for this
-    // invocation, not an absolute current-context snapshot. Forward the
-    // counters without fabricating `contextTokensUsed`.
     const usage = asObjectRecord(message.usage);
     if (usage) {
       const modelUsage = asObjectRecord(message.modelUsage);

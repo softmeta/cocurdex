@@ -15,9 +15,6 @@ import type {
   WorkspaceGitFileChange,
 } from "@/lib";
 
-// A changed file ready to render: either a full (non-partial) diff that pierre
-// can expand on demand, or a placeholder row when contents were omitted
-// (binary, oversized, or unparsable).
 export interface GitChangeEntry {
   path: string;
   changeType: GitChangeKind;
@@ -28,9 +25,6 @@ export interface GitChangeEntry {
   deletions: number;
 }
 
-// Git's one-letter status vocabulary with the editor's add/delete/modify tints.
-// The letters match the ones the tree's status lane paints (`@pierre/trees`
-// GIT_STATUS_LABEL), so both indexes of the change set read the same way.
 export function gitChangeMarker(changeType: GitChangeKind): {
   className: string;
   letter: string;
@@ -45,8 +39,6 @@ export function gitChangeMarker(changeType: GitChangeKind): {
   }
 }
 
-// Split a repo-relative path so the directory can truncate while the file name
-// stays visible. The directory keeps its trailing separator.
 export function splitChangePath(path: string): {
   dir: string;
   name: string;
@@ -61,8 +53,6 @@ export function splitChangePath(path: string): {
   };
 }
 
-// Turn raw file changes into renderable entries. Non-omitted files are diffed
-// from their full old/new contents so the result is non-partial (expandable).
 export function toGitFileChangesFromTurn(
   files: TurnChangeDiffFile[],
 ): WorkspaceGitFileChange[] {
@@ -85,16 +75,10 @@ function contentDigest(contents: string): string {
   return `${contents.length.toString(36)}-${(hash >>> 0).toString(36)}`;
 }
 
-// Pierre decides whether a diff needs re-rendering by comparing `cacheKey`, so
-// the key has to change whenever the parsed contents do — a key built from the
-// path alone makes an edited file look unchanged and its body stays empty.
 export function diffCacheKey(path: string, contents: string): string {
   return `${path}:${contentDigest(contents)}`;
 }
 
-// The file tree sorts each level with folders first, then dot-prefixed items,
-// then a case-insensitive name comparison. The diff stack has to read in the
-// same order, so it walks both paths one segment at a time under that rule.
 function isDotPrefixed(name: string): boolean {
   return name.charCodeAt(0) === 46;
 }
@@ -125,11 +109,6 @@ export function sortEntriesInTreeOrder<T extends { path: string }>(
   );
 }
 
-// Cache identity for one rendered row. The virtualizer keys measured heights by
-// this, so anything that changes how tall the row renders — the diff's own
-// identity, the fold state, or the display options — has to be part of it.
-// Without the diff identity a reload with new contents kept the old measured
-// height and shifted the whole list when the row re-mounted.
 export function entryItemKey(
   entry: GitChangeEntry,
   options: {
@@ -186,7 +165,6 @@ export function buildEntries(
           deletions,
         };
       } catch {
-        // A parse failure shouldn't drop the file from the list entirely.
         return {
           path,
           changeType,
@@ -201,7 +179,6 @@ export function buildEntries(
   );
 }
 
-// Sum added / removed line counts straight from a file's parsed hunks.
 function sumHunks(diff: FileDiffMetadata): {
   additions: number;
   deletions: number;
@@ -215,8 +192,6 @@ function sumHunks(diff: FileDiffMetadata): {
   return { additions, deletions };
 }
 
-// The flat file index filters on its own; the tree hands the same query to
-// Pierre's search. Both read as "keep only the paths that match".
 export function filterEntriesByPathQuery(
   entries: GitChangeEntry[],
   query: string,
@@ -251,13 +226,8 @@ export function computeStagedState(
     : "partial";
 }
 
-// The chrome every stacked card carries besides its diff body: the card's
-// borders, the header band, and the gap that separates it from the next card.
 export const CARD_CHROME_HEIGHT = 42;
 
-// Height of one stacked file card before it has ever been painted. A folded
-// card is its header band alone; the band pads symmetrically there, so a
-// collapsed card is the shared chrome plus that bottom spacing.
 export const COLLAPSED_ENTRY_HEIGHT = CARD_CHROME_HEIGHT + 8;
 
 export const GIT_DIFF_THEMES = {
@@ -270,17 +240,10 @@ export const GIT_DIFF_THEME_NAMES: DiffsThemeNames[] = [
   GIT_DIFF_THEMES.light,
 ];
 
-// Pierre can only render a diff synchronously once its highlighter holds the
-// diff's language; a body rendered before that is left empty, so a row that
-// mounts a diff has to wait for this language to load.
 export function entryLanguage(entry: GitChangeEntry): SupportedLanguages {
   return entry.diff?.lang ?? getFiletypeFromFileName(entry.path);
 }
 
-// Pierre renders diff rows at its 20px `--diffs-line-height`, collapses every
-// unchanged gap wider than one line into a fixed 32px `line-info-basic`
-// separator, and pads a header-less diff body by `--diffs-gap-block`, which
-// this app sets to 2px.
 export type GitDiffStyle = "unified" | "split";
 
 export const DIFF_GAP_BLOCK = 2;
@@ -332,10 +295,6 @@ function noNewlineRows(hunk: Hunk, diffStyle: GitDiffStyle): number {
   return (deletionRow ? 1 : 0) + (additionRow ? 1 : 0);
 }
 
-// Height a file's card occupies before the stack has measured it: the card
-// chrome plus the rows pierre will paint for the file's current expansion
-// state, so the whole change set can be laid out up front and opening a file
-// does not move the rows around it.
 export function estimateEntryHeight(
   entry: GitChangeEntry,
   options: {

@@ -4,18 +4,10 @@ import {
   isAcpRegistryAgentId,
 } from "./contracts";
 
-/**
- * Minimum external CLI version each adapter is verified against. `null` means
- * the adapter has no confirmed floor yet, so any installed version is accepted.
- */
 export const agentMinimumVersions: Record<BuiltInAgentId, string | null> = {
-  // Claude Agent SDK 0.3.x drives the Claude Code 2.x CLI protocol.
   "claude-agent": "2.0.0",
-  // No confirmed floor for `codex app-server` yet.
   codex: null,
-  // Matches the @opencode/client version this repo pins.
   opencode: "2.0.20",
-  // Built in, ships with the app.
   pi: null,
 };
 
@@ -45,14 +37,25 @@ export const agentInstallHints: Record<
 
 export type AgentVersionStatus = "ok" | "outdated" | "unknown";
 
-/**
- * CLIs print versions in their own shape ("2.1.239 (Claude Code)",
- * "codex-cli 0.149.0", "grok 1.0.8 (95f4d45)"), so take the first dotted
- * number triple and drop the surrounding text.
- */
 export function parseAgentVersion(output: string | null | undefined) {
-  const match = output?.match(/\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/);
-  return match ? match[0] : null;
+  if (!output) return null;
+  let start = 0;
+  let end = 0;
+  let parts = 0;
+  for (const digits of output.matchAll(/\d+/g)) {
+    if (parts > 0 && digits.index === end + 1 && output[end] === ".") {
+      parts += 1;
+    } else {
+      start = digits.index;
+      parts = 1;
+    }
+    end = digits.index + digits[0].length;
+    if (parts === 3) {
+      const prerelease = /^-[0-9A-Za-z.-]+/.exec(output.slice(end));
+      return output.slice(start, end + (prerelease?.[0].length ?? 0));
+    }
+  }
+  return null;
 }
 
 function toParts(version: string) {
@@ -60,7 +63,6 @@ function toParts(version: string) {
   return core.split(".").map((part) => Number.parseInt(part, 10) || 0);
 }
 
-/** Compares release cores only; prerelease suffixes are ignored. */
 export function compareAgentVersions(left: string, right: string) {
   const leftParts = toParts(left);
   const rightParts = toParts(right);

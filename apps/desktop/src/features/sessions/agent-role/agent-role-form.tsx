@@ -41,7 +41,7 @@ import {
   getDefaultPermissionMode,
   getSessionModeOptions,
   supportsSessionMode,
-} from "../session-store";
+} from "../session-agent-state";
 import { AgentRoleAvatarPicker } from "./agent-role-avatar-picker";
 import { AgentRoleRuntimeFields } from "./agent-role-runtime-fields";
 import { saveAgentRoleRecord } from "./agent-role-store";

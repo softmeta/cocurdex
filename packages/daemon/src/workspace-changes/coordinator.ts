@@ -113,8 +113,6 @@ export function createWorkspaceChangeCoordinator(
   const gitAdapter = createGitCheckpointAdapter();
   const activeTurns = new Map<string, ActiveTurn>();
   const turnClaims: WorkspaceTurnClaim[] = [];
-  // Tool events that land before beginTurn resolves would otherwise be lost;
-  // carrying them into the next turn only costs one extra diff.
   const pendingToolActivity = new Set<string>();
   const completingTurns = new Map<string, Promise<TurnChangeSet | null>>();
   const checkpoints = new Map<string, HostCheckpoint>();
@@ -162,9 +160,6 @@ export function createWorkspaceChangeCoordinator(
     return changeSet;
   }
 
-  // A turn that changed nothing keeps no row and no checkpoint: empty rows
-  // would otherwise consume the per-session checkpoint retention budget and
-  // evict change sets that are still undoable.
   async function discard(
     active: ActiveTurn,
     turnCheckpoints: (HostCheckpoint | null)[],
@@ -209,7 +204,6 @@ export function createWorkspaceChangeCoordinator(
       status: "ready",
       updatedAt: now(),
     };
-    // Still broadcast so the renderer drops the in-progress card for this turn.
     options.onChangeSet?.(emptyChangeSet);
     return emptyChangeSet;
   }
@@ -320,8 +314,6 @@ export function createWorkspaceChangeCoordinator(
 
   return {
     async beginTurn(input) {
-      // A previous turn that never reached turn.completed/error would leak its
-      // checkpoint here, so close it out before starting the next one.
       if (activeTurns.has(input.sessionId)) {
         await completeTurn(input.sessionId, undefined, "interrupted");
       }

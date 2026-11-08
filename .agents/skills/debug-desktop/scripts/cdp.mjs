@@ -93,7 +93,6 @@ async function discoverRendererUrl(options) {
     );
     if (page?.url.startsWith("http")) return page.url;
   } catch {
-    // No inspectable sibling instance; fall back to the dev server default.
   }
   const fallback = "http://localhost:5173/";
   return (await probeHttp(fallback)) ? fallback : null;
@@ -160,7 +159,6 @@ async function launch(options) {
         try {
           process.kill(child.pid, "SIGTERM");
         } catch {
-          // Already gone.
         }
         throw new Error(
           `Instance did not open CDP on ${base} within ${options.readyTimeout}ms: ${error.message}`,

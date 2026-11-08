@@ -28,10 +28,6 @@ export function PdfReaderView({
 
   return (
     <>
-      {/*
-        Unmount tab chrome while the panel is hidden so the strip does not
-        linger a frame under the next view (keep-alive only needs the viewer).
-      */}
       {isActive ? <PdfTabs /> : null}
       {filePath ? (
         <PdfViewer

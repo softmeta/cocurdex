@@ -101,8 +101,6 @@ describe("PermissionCard", () => {
       <PermissionCard onResolve={onResolve} permission={scopedPermission} />,
     );
 
-    // Multiple allow choices collapse into a select; only the default
-    // choice stays visible on the trigger.
     expect(
       screen.queryByRole("button", {
         name: "Yes, always allow `devin` commands in `cocurdex`",
@@ -123,7 +121,6 @@ describe("PermissionCard", () => {
     const option = await screen.findByRole("option", {
       name: "Yes, always allow `devin` commands in all projects",
     });
-    // Base UI only commits mouse selection when the press started on the item.
     fireEvent.pointerDown(option);
     fireEvent.click(option);
 

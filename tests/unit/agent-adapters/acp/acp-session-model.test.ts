@@ -11,7 +11,6 @@ import {
 } from "@cocurdex/agent-adapters/internal/acp/acp-session-model";
 import { describe, expect, it } from "vitest";
 
-// Mirrors a real `session/new` response from `grok agent stdio`.
 const grokResponse = {
   sessionId: "sess-1",
   models: {
@@ -288,8 +287,6 @@ describe("readAcpSessionModelState", () => {
         { value: "fast", label: "Fast" },
       ],
     });
-    // Speed is model-dependent on Devin — it must not leak onto models that
-    // never advertised it.
     expect(
       state?.models.find((model) => model.modelId === "swe-2-high"),
     ).toMatchObject({ defaultSpeed: null, speedOptions: [] });

@@ -25,7 +25,6 @@ export {
 const logger = createLogger("cli-path");
 
 function desktopRootFromMainModule(): string {
-  // electron/cli-path -> apps/desktop
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 }
 
@@ -137,7 +136,6 @@ export async function uninstallCliFromPath(): Promise<CliPathStatus> {
   return status;
 }
 
-/** Silent best-effort install for packaged first launch. */
 export async function ensureCliOnPathBestEffort(): Promise<void> {
   if (!app.isPackaged) {
     return;

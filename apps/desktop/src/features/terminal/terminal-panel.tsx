@@ -27,18 +27,10 @@ import { TerminalTabItem } from "./terminal-tab";
 export interface TerminalPanelProps {
   workspaceId: string;
   cwd: string;
-  // Whether the terminal view is the active one in the right panel. Used to
-  // refocus xterm after the user toggles back from editor / browser / git.
   isActive: boolean;
-  // Fired when the user closes the last remaining terminal. The right panel
-  // uses this to switch back to whichever view was active before.
   onEmptied?: () => void;
 }
 
-// All xterm.js and PTY lifecycle lives in terminal-registry. This component is
-// just a slot: it asks the registry to park its cached host DOM here on mount
-// and to remove it on unmount. The registry never disposes a Terminal while
-// the app is alive, so scrollback survives workspace and view switches.
 export function TerminalPanel({
   workspaceId,
   cwd,
@@ -48,17 +40,9 @@ export function TerminalPanel({
   const { t } = useTranslation("editor");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  // Persisted across remounts so tab ids stay stable (see terminal-store).
   const [workspaceStates, setWorkspaceStates] = useAtom(
     workspaceTerminalStatesAtom,
   );
-  // Derive the visible tabs instead of seeding them through an effect. With no
-  // stored state yet, the workspace gets an implicit primary tab whose id is
-  // deterministic (see primaryTerminalTabId), so it stays stable across
-  // remounts without a store write. The isActive gate keeps a hidden panel from
-  // deriving a tab and letting the attach effect spawn a shell nobody sees;
-  // once the user has explicitly added tabs the stored state takes over and the
-  // terminal stays attached across view switches.
   const workspaceState = workspaceStates[workspaceId] ?? null;
   const storedTabs = workspaceState?.tabs;
   const hasStoredTabs = storedTabs !== undefined && storedTabs.length > 0;
@@ -121,8 +105,6 @@ export function TerminalPanel({
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
-      // Operate on the derived tab list so the implicit primary tab can be
-      // closed even before any state was written to the store.
       const tabIndex = terminalTabs.findIndex((tab) => tab.id === tabId);
       if (tabIndex === -1) {
         return;
@@ -132,8 +114,6 @@ export function TerminalPanel({
       const fallbackTab = nextTabs[Math.min(tabIndex, nextTabs.length - 1)];
       setWorkspaceStates((current) => {
         if (nextTabs.length === 0) {
-          // Drop the workspace entry entirely so reopening the view re-derives a
-          // fresh implicit primary tab instead of restoring an empty list.
           const { [workspaceId]: _removed, ...rest } = current;
           return rest;
         }
@@ -147,9 +127,6 @@ export function TerminalPanel({
         };
       });
       void disposeTerminal(tabId);
-      // Closing the final tab empties the panel; ask the parent to leave the
-      // terminal view. This setState batches with the parent's, so isActive is
-      // already false on the next render and the derived tab list stays empty.
       if (nextTabs.length === 0) {
         onEmptied?.();
       }
@@ -163,9 +140,6 @@ export function TerminalPanel({
         className="app-drag bg-editor-shell"
         data-testid="terminal-tab-row"
       >
-        {/* Tabs and the new-tab button stay grouped on the start edge so the
-            button sits right after the last tab; the row's leftover space is
-            left as a window-drag region. */}
         <div className="app-no-drag flex min-w-0 items-center gap-1">
           <div className="scrollbar-hide flex min-w-0 items-center gap-px overflow-x-auto">
             {terminalTabs.map((tab, index) => (

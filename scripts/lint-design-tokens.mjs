@@ -1,24 +1,4 @@
 #!/usr/bin/env node
-/*
- * Design-token lint.
- *
- * Forbids three classes of arbitrary Tailwind utilities that bypass the
- * project's design token scale:
- *
- *   - text-[Npx]      → use named scale: text-2xs/meta/body/display/title
- *                       (or Tailwind defaults text-xs/sm/base/lg/xl)
- *   - rounded-[Npx]   → use semantic aliases: rounded-control/card/panel/overlay
- *                       (or Tailwind defaults rounded-sm/md/lg/xl/2xl)
- *   - bg-[#hex]       → use a CSS variable–backed color: bg-card / bg-muted /
- *                       bg-chat-surface / etc. defined in theme-tailwind.css
- *
- * Run with `pnpm lint:design-tokens` from the repo root. Exits non-zero when
- * any violation is found so the script can gate CI / pre-commit.
- *
- * A small allow-list covers intentional design one-offs (e.g. composer pill,
- * image preview frame). When extending it, prefer adding a new semantic token
- * to theme-tailwind.css over expanding the allow-list.
- */
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,19 +15,10 @@ const SKIP_DIR_NAMES = new Set([
   "target",
 ]);
 
-/*
- * Allow-list. Each entry is `relative/path/to/file.tsx::pattern-id` so the
- * exception is pinned to a specific file. When the file moves the entry has
- * to move with it — that is intentional friction. Prefer a token over an entry.
- */
 const ALLOW_LIST = new Set([
-  // Composer input pill — unique 28px curvature that does not fit the scale.
   "apps/desktop/src/features/composer/chat-composer.tsx::rounded-px",
-  // Image preview frame — unique 18px curvature, not reused elsewhere.
   "apps/desktop/src/features/composer/image-attachments.tsx::rounded-px",
-  // shadcn Checkbox — 4px corner radius is the upstream component default.
   "apps/desktop/src/components/ui/checkbox.tsx::rounded-px",
-  // shadcn Tooltip arrow — 2px corner radius is the upstream component default.
   "apps/desktop/src/components/ui/tooltip.tsx::rounded-px",
 ]);
 
@@ -131,7 +102,7 @@ async function main() {
         "code" in error &&
         error.code === "ENOENT"
       ) {
-        continue; // Optional scan root that does not exist yet.
+        continue;
       }
       throw error;
     }

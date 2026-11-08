@@ -2,12 +2,6 @@ import path from "node:path";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 
-// Boundary validation for IPC handlers. The renderer is the sole client today,
-// but Electron's preload bridge is still an explicit trust boundary: a renderer
-// compromise (XSS, malicious browserView page bleeding into the main window)
-// could drive these handlers with arbitrary payloads. Enforce shape and string
-// constraints up front so handlers can assume well-formed input.
-
 const filesystemPathSchema = z
   .string()
   .min(1)
@@ -15,10 +9,6 @@ const filesystemPathSchema = z
   .refine((value) => !value.includes("\0"), "path contains null byte")
   .refine((value) => path.isAbsolute(value), "path must be absolute");
 
-// Only web URLs. file:// is deliberately excluded: shell.openExternal on a
-// file URL launches local files (a code-execution primitive on Windows), and
-// loading file URLs in the in-app browser view would let a compromised
-// renderer read local files. Local content flows through daemon RPC instead.
 export const httpUrlSchema = z
   .string()
   .url()
@@ -34,10 +24,6 @@ export const loopbackHttpUrlSchema = httpUrlSchema.refine((value) => {
   return url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname);
 }, "URL must point at the local daemon");
 
-// Annotations originate from arbitrary web pages via the browser view's
-// preload bridge — the least trusted input in the app. Strict shape, capped
-// string lengths, and a data-URL-only screenshot keep a hostile page from
-// smuggling oversized or unexpected payloads to the main renderer.
 const browserAnnotationSchema = z
   .object({
     id: z.string().min(1).max(256),
@@ -105,8 +91,6 @@ export const schemas = {
   bounds: boundsSchema,
   visible: z.boolean(),
   enabled: z.boolean(),
-  // Accept #rgb / #rrggbb / #rrggbbaa hex colors — anything else risks being
-  // interpreted by Electron's color parser in ways we have not vetted.
   hexColor: z
     .string()
     .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/),
@@ -118,9 +102,6 @@ type HandlerArgs<T extends z.ZodTuple<z.ZodType[]>, R> = (
   ...args: z.infer<T>
 ) => Promise<R> | R;
 
-// Wraps ipcMain.handle so the schema runs before the handler ever sees the
-// payload. Validation failures are surfaced as rejected invokes the renderer
-// can catch — they never reach the handler with bad data.
 export function registerHandler<T, R>(
   ipc: IpcMain,
   channel: string,

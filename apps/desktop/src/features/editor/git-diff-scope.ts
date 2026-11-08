@@ -7,7 +7,6 @@ export type GitDiffScope =
 
 export const GIT_DEFAULT_DIFF_SCOPE: GitDiffScope = { mode: "working" };
 
-// Modes that still operate on the live worktree / index and allow stage/discard.
 const MUTABLE_MODES = new Set<GitDiffScope["mode"]>([
   "working",
   "unstaged",
@@ -18,9 +17,6 @@ export function isMutableScope(scope: GitDiffScope): boolean {
   return MUTABLE_MODES.has(scope.mode);
 }
 
-// Working-tree scopes should auto-reload on file edits; commit/branch only
-// care about ref moves (still reloaded on git-state, but not required for
-// correctness of the selection UI).
 export function isWorkingTreeScope(scope: GitDiffScope): boolean {
   return isMutableScope(scope);
 }
@@ -73,8 +69,6 @@ export function resolveTurnScope(
   };
 }
 
-// Left selector default: the currently checked-out local branch (the source
-// under review).
 export function pickDefaultSourceRef(
   refs: readonly GitBranchInfo[],
 ): string | null {
@@ -88,8 +82,6 @@ export function pickDefaultSourceRef(
   return refs[0]?.name ?? null;
 }
 
-// Right selector default: the typical merge destination
-// (origin/main → main → master → first non-current local).
 export function pickDefaultTargetRef(
   refs: readonly GitBranchInfo[],
 ): string | null {
@@ -105,8 +97,6 @@ export function pickDefaultTargetRef(
   return refs[0]?.name ?? null;
 }
 
-// Build a branch scope with sensible defaults when the user first enters
-// branch mode. Reuses prior source/target when still present in the ref list.
 export function resolveBranchScope(
   refs: readonly GitBranchInfo[],
   previous: GitDiffScope | null,
@@ -128,7 +118,6 @@ export function resolveBranchScope(
     "main";
   let target =
     prevTarget ?? pickDefaultTargetRef(refs) ?? refs[0]?.name ?? "main";
-  // Avoid a useless same-ref compare when we can pick a different target.
   if (target === source && refs.length > 1) {
     const other =
       refs.find((ref) => ref.name !== source && !ref.current) ??
@@ -144,7 +133,6 @@ export function resolveCommitScope(
   return { mode: "commit", commit };
 }
 
-// Stable string key so effects can depend on scope without deep compare.
 export function scopeKey(scope: GitDiffScope): string {
   switch (scope.mode) {
     case "working":

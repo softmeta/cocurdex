@@ -16,13 +16,8 @@ import type {
 import type { SimpleGit } from "simple-git";
 import { createGitClient } from "./git-client";
 
-// Cap for building an in-memory textual diff. A side larger than this is
-// omitted (placeholder row) instead of shipping megabytes over IPC and parsing
-// them synchronously in the renderer.
 const MAX_DIFF_TEXT_BYTES = 1_000_000;
 
-// git's well-known empty tree object, used as the diff base when HEAD is
-// unborn (fresh repo without a first commit) so every file shows as added.
 const EMPTY_TREE_HASH = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 const DEFAULT_COMMIT_LIMIT = 50;
@@ -33,12 +28,10 @@ type ContentSide =
   | { kind: "worktree" };
 
 interface ResolvedDiffSpec {
-  // Args for `git diff … --name-status` / `--numstat` (without those flags).
   diffArgs: string[];
   oldSide: ContentSide;
   newSide: ContentSide;
   includeUntracked: boolean;
-  // When set, porcelain drives stagedState (working mode only).
   usePorcelainStagedState: boolean;
   defaultStagedState: GitFileStagedState;
 }
@@ -51,8 +44,6 @@ export async function listGitBranches(
     if (!(await git.checkIsRepo())) {
       return [];
     }
-    // for-each-ref is stable and includes remotes; branchLocal alone misses
-    // origin/* which branch-compare mode needs.
     const raw = await git.raw([
       "for-each-ref",
       "--format=%(refname)\t%(refname:short)\t%(HEAD)",
@@ -65,7 +56,6 @@ export async function listGitBranches(
       if (trimmed.length === 0) continue;
       const [refname, shortName, headMark] = trimmed.split("\t");
       if (refname == null || shortName == null) continue;
-      // Skip remote HEAD symbolic refs (e.g. origin/HEAD).
       if (refname.endsWith("/HEAD") || shortName.endsWith("/HEAD")) continue;
       const kind: GitRefKind = refname.startsWith("refs/remotes/")
         ? "remote"
@@ -76,17 +66,13 @@ export async function listGitBranches(
         kind,
       });
     }
-    // Detached HEAD: no local branch is current, so surface the checked-out
-    // commit's short hash instead of leaving the toolbar on "no branch".
     if (!branches.some((branch) => branch.current)) {
       try {
         const short = (await git.revparse(["--short", "HEAD"])).trim();
         if (short) {
           branches.unshift({ name: short, current: true, kind: "detached" });
         }
-      } catch {
-        // Unborn HEAD (fresh repo): nothing is checked out yet.
-      }
+      } catch {}
     }
     return branches;
   } catch {
@@ -110,7 +96,6 @@ export async function listGitCommits(
       Math.max(options.limit ?? DEFAULT_COMMIT_LIMIT, 1),
       200,
     );
-    // %x1f field sep, %x1e record sep — subjects can contain any printable char.
     const raw = await git.raw([
       "log",
       `-n${limit}`,
@@ -145,8 +130,6 @@ export async function listGitCommits(
   }
 }
 
-// Lightweight working-tree status for the explorer file tree's built-in git
-// signs. Porcelain only — never reads file contents (unlike getWorkspaceDiff).
 export async function getWorkspaceGitStatus(
   rootPath: string,
 ): Promise<WorkspaceGitStatusResult> {
@@ -167,9 +150,6 @@ export async function getWorkspaceGitStatus(
   }
 }
 
-// Parse `git status --porcelain=v1 -z` into pierre-compatible status entries.
-// Exported for unit tests; rename/copy records consume the destination path
-// (the name still present in the worktree listing).
 export function parsePorcelainToGitStatusEntries(
   raw: string,
 ): WorkspaceGitStatusEntry[] {
@@ -182,7 +162,6 @@ export function parsePorcelainToGitStatusEntries(
       index += 1;
       continue;
     }
-    // Status records are `XY path` (third character is a space).
     if (token.length < 3 || token[2] !== " ") {
       index += 1;
       continue;
@@ -192,7 +171,6 @@ export function parsePorcelainToGitStatusEntries(
     let filePath = token.slice(3);
     const isRenameOrCopy = x === "R" || x === "C" || y === "R" || y === "C";
     if (isRenameOrCopy) {
-      // With -z, the next token is the destination path (no XY prefix).
       const destination = tokens[index + 1];
       if (destination != null && destination.length > 0) {
         filePath = destination;
@@ -211,15 +189,12 @@ export function parsePorcelainToGitStatusEntries(
   return entries;
 }
 
-// Collapse the index/worktree pair into a single tree badge. Prefer the more
-// structural signal (rename/delete/add) over plain modification.
 function mapPorcelainCodes(
   x: string,
   y: string,
 ): WorkspaceGitTreeStatus | null {
   if (x === "?" && y === "?") return "untracked";
   if (x === "!" && y === "!") return "ignored";
-  // Unmerged / conflict markers surface as modified.
   if (
     x === "U" ||
     y === "U" ||
@@ -237,10 +212,6 @@ function mapPorcelainCodes(
   return null;
 }
 
-// Collect changed files as full old/new contents for the renderer. Returning
-// whole files (instead of a unified patch) lets pierre build a non-partial
-// diff so unchanged context can be expanded on demand. Renames are disabled
-// so each change maps cleanly to a single file blob.
 export async function getWorkspaceDiff(
   rootPath: string,
   query: WorkspaceGitDiffQuery = { mode: "working" },
@@ -291,8 +262,6 @@ export async function getWorkspaceDiff(
     if (untrackedPaths.length > 0) {
       await markBinaryUntracked(rootPath, untrackedPaths, binaryPaths);
     }
-    // Tracked changes and untracked files come from separate git commands, so
-    // sort the merged set by path to keep a stable order.
     const records = [
       ...parseNameStatus(nameStatus),
       ...untrackedPaths.map((filePath) => ({ status: "A", path: filePath })),
@@ -333,7 +302,6 @@ async function resolveDiffSpec(
     }
     case "unstaged":
       return {
-        // Worktree vs index (no rev): the classic unstaged patch.
         diffArgs: ["diff"],
         oldSide: { kind: "index" },
         newSide: { kind: "worktree" },
@@ -367,8 +335,6 @@ async function resolveDiffSpec(
       };
     }
     case "branch": {
-      // UI: source (left) → target (right). Diff is what source introduces
-      // relative to target: three-dot `target...source` (= merge-base..source).
       const source = query.source.trim();
       const target = query.target.trim();
       if (source.length === 0 || target.length === 0) return null;
@@ -484,7 +450,6 @@ async function markBinaryUntracked(
           binaryPaths.add(filePath);
         }
       } catch {
-        // Unreadable file: leave it out of the binary set.
       } finally {
         await handle?.close().catch(() => {});
       }
@@ -505,7 +470,7 @@ function parseNameStatus(raw: string): NameStatusRecord[] {
     const status = tokens[index++];
     if (status == null) break;
     if (status[0] === "R" || status[0] === "C") {
-      index++; // Skip the rename/copy source path.
+      index++;
     }
     const filePath = tokens[index++];
     if (filePath == null) break;
@@ -550,7 +515,6 @@ async function buildFileChange(
       stagedState,
     };
   }
-  // Added files have no old blob; deleted files have no new blob.
   const [oldContents, newContents] = await Promise.all([
     status === "A"
       ? Promise.resolve("")
@@ -614,8 +578,6 @@ async function readIndexBlob(
   filePath: string,
 ): Promise<string | null> {
   try {
-    // `:path` is the index stage-0 blob. Missing path → empty (new untracked
-    // or never staged).
     const contents = await createGitClient(rootPath).show([`:${filePath}`]);
     return contents.length > MAX_DIFF_TEXT_BYTES ? null : contents;
   } catch {

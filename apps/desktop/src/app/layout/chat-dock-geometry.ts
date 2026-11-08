@@ -8,28 +8,6 @@ import {
 
 export { CHAT_DOCK_MIN_WIDTH } from "./chat-dock-sizing";
 
-/*
- * Chat dock geometry + open/pin preference persistence.
- *
- * Pure UI preference, so it lives in localStorage alongside theme / appearance
- * (see app-shell-preferences.ts) rather than the IPC-backed app snapshot.
- *
- * Floating mode: card anchored bottom-right; geometry stores `right` / `bottom`
- * plus `width` / `height`. Dragging the header moves right/bottom; resizing
- * from the top-left grows width/height while the bottom-right stays pinned.
- *
- * Collapsed FAB position is stored separately (right/bottom only) so the
- * launcher can sit elsewhere than the open card.
- *
- * When the app window shrinks, floating geometry is clamped so the card stays
- * fully visible (width/height only shrink, never grow back with the window).
- * Pinned mode only uses width and floats as a trailing-edge overlay.
- *
- * The app is always LTR (app-shell-preferences.ts forces dir="ltr"), so
- * physical right/bottom is safe.
- */
-
-// Legacy boolean open flag; migrated into VISIBILITY_STORAGE_KEY.
 const OPEN_STORAGE_KEY = "cocurdex.chatDock.open";
 const VISIBILITY_STORAGE_KEY = "cocurdex.chatDock.visibility";
 const HIDE_FAB_STORAGE_KEY = "cocurdex.chatDock.hideFabWhenClosed";
@@ -38,12 +16,6 @@ const GEOMETRY_STORAGE_KEY = "cocurdex.chatDock.geometry";
 const FAB_POSITION_STORAGE_KEY = "cocurdex.chatDock.fabPosition";
 const SESSION_LIST_WIDTH_STORAGE_KEY = "cocurdex.chatDock.sessionListWidth";
 
-/**
- * Chat dock surface while the editor is fullscreen (float / pinned layout).
- * - open: floating card or pinned rail
- * - collapsed: bottom-right FAB only
- * - hidden: nothing; reopen via shortcut or layout actions
- */
 export type ChatDockVisibility = "open" | "collapsed" | "hidden";
 
 export function isChatDockVisibility(
@@ -52,17 +24,12 @@ export function isChatDockVisibility(
   return value === "open" || value === "collapsed" || value === "hidden";
 }
 
-/** Closed surface after the user dismisses an open dock. */
 export function closedChatDockVisibility(
   hideFabWhenClosed: boolean,
 ): ChatDockVisibility {
   return hideFabWhenClosed ? "hidden" : "collapsed";
 }
 
-/**
- * When the "hide FAB when closed" preference flips, keep a non-open dock
- * consistent with the new preference without forcing the dock open.
- */
 export function resolveChatDockVisibilityAfterHideFabChange(
   current: ChatDockVisibility,
   hideFabWhenClosed: boolean,
@@ -76,17 +43,6 @@ export function resolveChatDockVisibilityAfterHideFabChange(
   return current;
 }
 
-/**
- * Next visibility for the toggle-chat shortcut.
- *
- * - open → closed (FAB, or fully hidden when hideFabWhenClosed)
- * - collapsed → open
- * - hidden + hideFabWhenClosed → open (no FAB in the cycle; shortcut is the
- *   only way back into chat)
- * - hidden without that preference → collapsed (one-shot hide from the FAB
- *   close icon; shortcut restores the button, matching the FAB tooltip — not
- *   the full dock, which would surprise users who only hid the launcher)
- */
 export function nextChatDockVisibilityOnToggle(
   current: ChatDockVisibility,
   hideFabWhenClosed: boolean,
@@ -101,17 +57,12 @@ export function nextChatDockVisibilityOnToggle(
 }
 
 export const CHAT_DOCK_MIN_HEIGHT = 360;
-// Dock session-list drawer (floating + pinned). Leave room for chat content.
 export const SESSION_LIST_MIN_WIDTH = 180;
 export const SESSION_LIST_DEFAULT_WIDTH = 220;
 export const SESSION_LIST_MAX_WIDTH = 400;
-// Min remaining chat surface beside the session list inside the dock.
 const SESSION_LIST_CHAT_MIN = 160;
-// Keep the floating card clear of the OS titlebar (top) and window edges.
 const EDGE_MARGIN = 8;
 const TOP_MARGIN = 40;
-// IconButton size="lg" → Button icon-lg → size-9 (36px). Used when measuring
-// the FAB is unavailable (window resize clamp).
 export const CHAT_FAB_SIZE_PX = 36;
 const FAB_DRAG_THRESHOLD_PX = 4;
 const WINDOW_RESIZE_SETTLE_MS = 150;
@@ -123,7 +74,6 @@ export interface DockGeometry {
   height: number;
 }
 
-/** Collapsed chat launcher position (bottom-right anchored, like the card). */
 export interface FabPosition {
   right: number;
   bottom: number;
@@ -145,8 +95,6 @@ let chatDockVisibilityHandler:
   | ((visibility: ChatDockVisibility) => void)
   | null = null;
 
-// Features (e.g. the settings assistant) ask the shell to open/close the dock
-// through this bridge — same registration pattern as settings navigation.
 export function registerChatDockVisibilityHandler(
   handler: (visibility: ChatDockVisibility) => void,
 ) {
@@ -172,7 +120,6 @@ export function getStoredChatDockVisibility(): ChatDockVisibility {
     return stored;
   }
 
-  // Migrate legacy boolean open flag.
   if (window.localStorage.getItem(OPEN_STORAGE_KEY) === "true") {
     return "open";
   }
@@ -184,7 +131,6 @@ export function persistChatDockVisibility(
   visibility: ChatDockVisibility,
 ): void {
   window.localStorage.setItem(VISIBILITY_STORAGE_KEY, visibility);
-  // Keep legacy flag in sync for any leftover readers.
   window.localStorage.setItem(OPEN_STORAGE_KEY, String(visibility === "open"));
 }
 
@@ -200,12 +146,10 @@ export function persistHideFabWhenClosed(hide: boolean): void {
   window.localStorage.setItem(HIDE_FAB_STORAGE_KEY, String(hide));
 }
 
-/** @deprecated Prefer getStoredChatDockVisibility. */
 export function getStoredChatDockOpen(): boolean {
   return getStoredChatDockVisibility() === "open";
 }
 
-/** @deprecated Prefer persistChatDockVisibility. */
 export function persistChatDockOpen(open: boolean): void {
   persistChatDockVisibility(open ? "open" : "collapsed");
 }
@@ -262,11 +206,6 @@ function geometryEquals(a: DockGeometry, b: DockGeometry): boolean {
   );
 }
 
-/*
- * Keep a floating dock fully inside the window when the window shrinks.
- * Width/height only decrease (never auto-grow when the window expands).
- * right/bottom are pulled in only when needed so the card is not clipped.
- */
 export function fitFloatingGeometryToWindow(
   geometry: DockGeometry,
   winW: number,
@@ -274,7 +213,6 @@ export function fitFloatingGeometryToWindow(
 ): DockGeometry {
   const maxWidth = Math.max(EDGE_MARGIN, winW - EDGE_MARGIN * 2);
   const maxHeight = Math.max(EDGE_MARGIN, winH - TOP_MARGIN - EDGE_MARGIN);
-  // Prefer the usual mins, but allow smaller when the window itself is tiny.
   const minWidth = Math.min(CHAT_DOCK_MIN_WIDTH, maxWidth);
   const minHeight = Math.min(CHAT_DOCK_MIN_HEIGHT, maxHeight);
 
@@ -292,15 +230,6 @@ export function fitFloatingGeometryToWindow(
   };
 }
 
-/*
- * Live drag + resize for the expanded card / pinned rail. Handlers snapshot on
- * mousedown and compute absolute geometry from the pointer delta, so no ref
- * mirror of state is needed. Window listeners attach inside the mousedown
- * handler (an event, not an effect) and remove on mouseup, which also persists.
- *
- * A mount-time window resize listener clamps floating geometry when the app
- * window shrinks so the card is not covered by the window edge.
- */
 export function useDockGeometry() {
   const [geometry, setGeometry] = useState<DockGeometry>(() => {
     if (typeof window === "undefined") {
@@ -416,7 +345,6 @@ export function useDockGeometry() {
     [geometry],
   );
 
-  // Pinned rail: only width changes; left edge moves, right edge stays flush.
   const beginPinnedResize = useCallback(
     (event: React.MouseEvent) => {
       const start = geometry;
@@ -472,10 +400,6 @@ function fabPositionEquals(a: FabPosition, b: FabPosition): boolean {
   return a.right === b.right && a.bottom === b.bottom;
 }
 
-/**
- * Keep the collapsed chat FAB inside the window and clear of the absolute
- * titlebar that overlays `main` (same top clearance as the floating card).
- */
 export function fitFabPositionToWindow(
   position: FabPosition,
   winW: number,
@@ -483,8 +407,6 @@ export function fitFabPositionToWindow(
   fabSize = CHAT_FAB_SIZE_PX,
 ): FabPosition {
   const maxRight = Math.max(EDGE_MARGIN, winW - fabSize - EDGE_MARGIN);
-  // bottom is measured from the window bottom; cap so the FAB top stays below
-  // TOP_MARGIN (titlebar + edge padding).
   const maxBottom = Math.max(EDGE_MARGIN, winH - fabSize - TOP_MARGIN);
   return {
     right: clamp(position.right, EDGE_MARGIN, maxRight),
@@ -492,11 +414,6 @@ export function fitFabPositionToWindow(
   };
 }
 
-/*
- * Position + drag for the collapsed chat FAB. Independent of open-card
- * geometry. Click vs drag is distinguished with a small movement threshold so
- * a plain click still opens chat.
- */
 export function useFabPosition() {
   const [position, setPosition] = useState<FabPosition>(() => {
     if (typeof window === "undefined") {
@@ -508,8 +425,6 @@ export function useFabPosition() {
       window.innerHeight,
     );
   });
-  // True after a real drag; cleared by consumeDragClick or a deferred reset
-  // so the trailing click after mouseup can be swallowed.
   const draggedRef = useRef(false);
   const [windowResizing, setWindowResizing] = useState(false);
 
@@ -588,7 +503,6 @@ export function useFabPosition() {
         const next = compute(upEvent);
         setPosition(next);
         persistFabPosition(next);
-        // Defer clearing so the trailing click can read the drag flag first.
         window.setTimeout(() => {
           draggedRef.current = false;
         }, 0);
@@ -640,11 +554,6 @@ export function maxSessionListWidth(dockWidth: number): number {
   );
 }
 
-/**
- * Width of the dock's session-list drawer. Persisted separately from dock
- * geometry so floating/pinned size and the drawer width can change independently.
- * Clamped live against the current dock width so the chat surface stays usable.
- */
 export function useSessionListWidth(dockWidth: number) {
   const [width, setWidth] = useState(getStoredSessionListWidth);
   const maxWidth = maxSessionListWidth(dockWidth);

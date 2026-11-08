@@ -200,8 +200,6 @@ export function IssuesView() {
     onComment: commentIssue,
   };
 
-  // Prefer the selected view's summary so layout/groupBy never stick to the
-  // previously loaded board while selectBoard is in flight.
   const activeSummary = boards.find((b) => b.id === activeBoardId) ?? null;
   const groupBy =
     activeSummary?.groupBy ?? activeBoard?.view.groupBy ?? "status";
@@ -262,8 +260,6 @@ export function IssuesView() {
     }
   };
 
-  // Loading or first-open auto-init of `.cocurdex`. Prefer a blank pane over a
-  // web-style spinner so cold-start restore feels like a native shell.
   if (loading) {
     return null;
   }
@@ -387,7 +383,6 @@ export function IssuesView() {
               />
             )
           ) : boards.length > 0 ? (
-            // Selected view id changed; full board payload still loading.
             <div className="flex-1" />
           ) : (
             <div className="flex flex-1 items-center justify-center">

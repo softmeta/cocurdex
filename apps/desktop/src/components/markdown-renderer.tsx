@@ -41,19 +41,9 @@ interface MarkdownRendererProps {
   tone?: MarkdownRendererTone;
   className?: string;
   streaming?: boolean;
-  // When provided, inline-code tokens that look like existing files become
-  // clickable, opening the file in the editor panel.
   filePathHandlers?: MarkdownFilePathHandlers;
 }
 
-// Streamdown 2.x ships heavyweight render paths as plugin packages.
-// - code: syntax highlighting for fenced code blocks
-// - mermaid: diagram rendering for ```mermaid blocks
-// - math: KaTeX rendering
-// Those three are loaded on demand — see markdown-heavy-plugins.
-// - cjk: critical for a Chinese chat UI — fixes bold/italic that wraps
-//   Chinese punctuation and prevents autolinks from swallowing trailing
-//   ideographic punctuation. Cheap, so it always ships.
 const markdownRehypePlugins = [
   defaultRehypePlugins.raw,
   rehypeEntityLinks,
@@ -61,9 +51,6 @@ const markdownRehypePlugins = [
   defaultRehypePlugins.harden,
 ];
 
-// Per-plugin so a transcript of code fences never pulls in Mermaid. Inline
-// code is deliberately absent: `inlineCode` is a core Streamdown component, so
-// a lone backtick needs none of these bundles.
 function neededHeavyPlugins(content: string): HeavyPluginKind[] {
   const kinds: HeavyPluginKind[] = [];
 
@@ -155,11 +142,6 @@ function escapeTextCurrencyDollars(content: string): string {
   return result;
 }
 
-// Normalize LaTeX-style math delimiters that remark-math does not recognize
-// out of the box. Some LLMs emit `\[ ... \]` and `\( ... \)` instead of the
-// dollar-sign forms; rewrite them so the math plugin renders them as KaTeX.
-// We skip fenced code blocks and inline code spans so genuine source-code
-// snippets keep their original characters.
 function normalizeMathDelimiters(content: string): string {
   if (
     !content.includes("\\[") &&
@@ -172,7 +154,6 @@ function normalizeMathDelimiters(content: string): string {
   const segments = content.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
   return segments
     .map((segment, index) => {
-      // Odd indices are the captured code spans/blocks — leave untouched.
       if (index % 2 === 1) {
         return segment;
       }
@@ -197,8 +178,6 @@ function useStreamdownPlugins(neededPlugins: HeavyPluginKind[]) {
     getStreamdownPlugins,
   );
 
-  // Fetching the plugin bundle is external work, and which content needs it is
-  // only known once a message has been rendered.
   useEffect(() => {
     if (neededPlugins.length > 0) {
       loadHeavyPlugins(neededPlugins);
@@ -234,8 +213,6 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       streaming ? hidePendingTableStart(content) : content,
     );
     const withMath = normalizeMathDelimiters(withCodeFenceLanguages);
-    // Only rewrite when the chat surface can open files — otherwise the
-    // private https://cocurdex.workspace/... URLs would be unclickable.
     return filePathHandlers
       ? rewriteMarkdownLocalFileLinks(withMath)
       : withMath;

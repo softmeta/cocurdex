@@ -54,7 +54,6 @@ export interface NewSessionCardProps {
   }) => ComposerSendOutcome | Promise<ComposerSendOutcome>;
 }
 
-// Hook props are the component props minus render-only fields.
 export type UseNewSessionCardProps = Omit<
   NewSessionCardProps,
   | "activeBranch"

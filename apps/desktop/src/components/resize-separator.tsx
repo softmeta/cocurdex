@@ -1,14 +1,6 @@
 import type { CSSProperties, MouseEvent } from "react";
 import { cn } from "@/lib";
 
-/**
- * Vertical 1px chrome separator with a 7px centered hit target and hover
- * brighten. Shared by app shell columns, editor explorer, notes/issues, PDF
- * rails, and chat dock width handles.
- *
- * - `relative`: flex sibling between panels (default)
- * - `absolute-start` / `absolute-end`: overlay on a panel's logical edge
- */
 export type ResizeSeparatorPosition =
   | "relative"
   | "absolute-start"

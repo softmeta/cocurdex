@@ -86,8 +86,6 @@ function createErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown Codex runtime error";
 }
 
-// Codex reports its own turn statuses; anything unrecognized stays "unknown"
-// rather than claiming the turn ended normally.
 function toCodexStopReason(
   status: unknown,
 ): AgentTurnCompletedEvent["stopReason"] {
@@ -210,8 +208,6 @@ function createCodexSandboxMode(
   payload: CreateAgentSessionPayload,
   permissionMode = payload.session.permissionMode,
 ) {
-  // Mirrors Codex's built-in presets: read-only, workspace-write, and the
-  // danger-full-access one its "Full Access" mode selects.
   if (permissionMode === "codex-full-access") {
     return "danger-full-access";
   }
@@ -243,8 +239,6 @@ function toPlanStepStatus(
   return "pending";
 }
 
-// turn/plan/updated params: { threadId, turnId, explanation, plan: TurnPlanStep[] }
-// where each TurnPlanStep is { step, status: "pending" | "inProgress" | "completed" }.
 function parsePlanUpdate(params: unknown) {
   if (!isRecord(params) || !Array.isArray(params.plan)) {
     return null;
@@ -292,12 +286,8 @@ export function createCodexAdapter(
       let rateLimitsReadStarted = false;
       let threadId: string | null = null;
       let activeTurnId: string | null = null;
-      // Start of the in-flight turn, used to report its duration on completion.
       let turnStartedAt: number | null = null;
       let threadReady = false;
-      // Model / reasoning effort / service tier are adjustable mid-session, so
-      // track the latest snapshot the send path carries instead of the copy
-      // captured when this session was created.
       let activeSnapshot = payload.session.providerSnapshot ?? null;
       let activePermissionMode = payload.session.permissionMode;
       const sessionId = payload.session.id;
@@ -320,14 +310,8 @@ export function createCodexAdapter(
         transformToolCall: (toolCall) => subagentRouter.transform(toolCall),
       });
       let lastUserMessageId: string | null = null;
-      // Codex reports MCP startup per server; keep the merged view so the
-      // composer menu can show the whole list.
       let mcpServers: AgentMcpServerRuntime[] = [];
       let lastTurnDiff: ReturnType<typeof unifiedDiffToEvidence> | null = null;
-      // sendMessage must stay pending until the turn actually ends: the daemon
-      // treats its resolution as "turn finished" and only then dispatches the
-      // next queued follow-up. Codex reports the end asynchronously through
-      // turn/completed, so park the send on this deferred.
       let resolveTurnEnd: (() => void) | null = null;
 
       function waitForTurnEnd(): Promise<void> {
@@ -343,9 +327,6 @@ export function createCodexAdapter(
 
       async function interruptActiveTurn(): Promise<void> {
         if (!lease || !threadId || !activeTurnId) {
-          // Nothing to interrupt is a legitimate state (turn already finished),
-          // but a missing turn id while the user asked to stop means the stop
-          // silently did nothing — log it so that case is diagnosable.
           if (stopRequested) {
             logAdapterDiagnostic(
               "info",
@@ -366,11 +347,6 @@ export function createCodexAdapter(
         try {
           await activeLease.client.interruptTurn(activeThreadId, activeTurn);
         } catch (error) {
-          // Codex rejects turn/interrupt when the turn id does not match its
-          // active turn or the thread is no longer running. Swallowing that
-          // silently made a failed stop indistinguishable from a successful
-          // one, so record it; a closed transport lands here too and simply
-          // means the turn is already over.
           logAdapterDiagnostic("info", "[CodexAdapter] turn interrupt failed", {
             error: error instanceof Error ? error.message : String(error),
             sessionId,
@@ -384,8 +360,6 @@ export function createCodexAdapter(
         lease?.subscribeThread(nextThreadId, {
           onNotification: handleNotification,
           onServerRequest: handleServerRequest,
-          // Transport-level failure (app-server crashed or spawn failed): no
-          // turn/completed is coming, so release the pending send too.
           onError: (error) => {
             endTurnWait();
             emitError(error);
@@ -461,11 +435,6 @@ export function createCodexAdapter(
           }
           case "turn/started": {
             turnStream.reset();
-            // Authoritative turn id: turn/interrupt is rejected unless the id
-            // matches Codex's active turn, and the turn/start response is not
-            // the only way a turn begins (resume, compact, review, and Codex's
-            // own turns only announce themselves here). Without this the stop
-            // button silently no-ops whenever the response id is missing.
             const startedTurn = isRecord(notification.params)
               ? notification.params.turn
               : null;
@@ -553,9 +522,6 @@ export function createCodexAdapter(
               status: status === "failed" ? "error" : "idle",
             });
 
-            // Emitted after `message.completed` so the daemon can attach the
-            // stats to a message that already exists. Without it Codex turns
-            // render without the duration / usage line every other agent shows.
             if (finishedTurn.messageId && turnStartedAt !== null) {
               onEvent({
                 type: "turn.completed",
@@ -583,8 +549,6 @@ export function createCodexAdapter(
             break;
           }
           case "error": {
-            // Transient errors the server retries itself should not surface
-            // as a terminal session error.
             if (
               isRecord(notification.params) &&
               notification.params.willRetry === true
@@ -774,8 +738,6 @@ export function createCodexAdapter(
             activePermissionMode = messagePayload.permissionMode ?? undefined;
           }
           stopRequested = false;
-          // Steering feeds an already running turn, so it must not restart the
-          // clock; every other delivery opens a new turn.
           if (messagePayload.delivery !== "steer-active-run") {
             turnStartedAt = Date.now();
           }
@@ -891,8 +853,6 @@ export function createCodexAdapter(
               isReasoningEffort(snapshotReasoningEffort)
                 ? snapshotReasoningEffort
                 : null;
-            // Registered before turn/start so a turn that completes while the
-            // response is still in flight cannot resolve into the void.
             const turnEnded = waitForTurnEnd();
             const turn = await appServerLease.client.startTurn({
               threadId,
@@ -902,9 +862,6 @@ export function createCodexAdapter(
                 payload,
                 activePermissionMode,
               ),
-              // Plan mode only exists as the experimental collaborationMode
-              // param; the default mode uses the stable model/effort fields
-              // to keep the experimental surface minimal.
               ...(isPlanModeId(payload.session.sessionModeId)
                 ? {
                     collaborationMode: createCodexCollaborationMode(
@@ -933,9 +890,6 @@ export function createCodexAdapter(
 
           return userMessage;
         },
-        // Interrupt only; keep consuming notifications so the partial
-        // assistant message and the terminal turn/completed (status
-        // "interrupted") still land.
         getWorkspaceChangeCapabilities() {
           return {
             turnDiff: "full" as const,

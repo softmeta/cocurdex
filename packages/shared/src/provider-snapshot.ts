@@ -1,7 +1,5 @@
-import type {
-  AgentProviderSnapshot,
-  CompatibleProviderModel,
-} from "./contracts";
+import type { AgentProviderSnapshot } from "./contracts";
+import type { CompatibleProviderModel } from "./provider-contracts";
 
 export function createProviderSnapshotForModel(
   item: CompatibleProviderModel,

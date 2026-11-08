@@ -29,8 +29,6 @@ interface GitChangeRowHeaderProps {
   onDiscard: (path: string) => void;
 }
 
-// Per-change-type glyph + tint, mirroring git's status vocabulary so a row's
-// kind reads at a glance without expanding the diff.
 const CHANGE_ICONS: Record<
   GitChangeKind,
   { icon: LucideIcon; className: string }
@@ -40,9 +38,6 @@ const CHANGE_ICONS: Record<
   modified: { icon: FilePen, className: "text-editor-git-modified" },
 };
 
-// Custom file-diff header: pierre renders its own header (icon + name + a
-// far-right +/- summary) inside a shadow root we cannot restyle, so we replace
-// it wholesale to place the per-file change counts directly after the filename.
 export function GitChangeRowHeader({
   path,
   changeType,

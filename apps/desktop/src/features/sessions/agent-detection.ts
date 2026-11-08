@@ -1,7 +1,7 @@
 import type { AgentDescriptor } from "@cocurdex/shared";
 import { atom } from "jotai";
 import { desktopApi } from "@/lib";
-import { bootstrapAgentsAtom } from "./session-store";
+import { bootstrapAgentsAtom } from "./session-agent-state";
 
 const AGENT_REDETECT_AFTER_MS = 30_000;
 

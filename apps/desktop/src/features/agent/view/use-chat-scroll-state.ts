@@ -66,8 +66,6 @@ export function useChatScrollState({
 }) {
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [isNearTop, setIsNearTop] = useState(true);
-  // Last hand-scroll direction. In the middle region the jump button mirrors
-  // it: scrolling up offers "back to top", scrolling down offers "to latest".
   const [scrollDirection, setScrollDirection] =
     useState<ScrollDirection>("down");
   const lastScrollTopRef = useRef(0);

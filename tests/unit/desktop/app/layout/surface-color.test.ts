@@ -20,14 +20,8 @@ describe("normalizeCssColorToHex", () => {
     expect(normalizeCssColorToHex("rgb(15 15 17 / 1)")).toBe("#0f0f11");
   });
 
-  // Regression: Chromium serializes a computed `oklch()` background-color back
-  // as `oklch(...)`. The old regex matched only #hex and rgb(), so the dark
-  // surface resolved to null and the native window kept its light fallback,
-  // flashing white during resize. See app-shell.tsx setWindowSurfaceColor.
   it("converts oklch() to sRGB hex", () => {
-    // Pure white theme surface.
     expect(normalizeCssColorToHex("oklch(1 0 0)")).toBe("#ffffff");
-    // Dark theme surface should resolve to a near-black hex, not null.
     const dark = normalizeCssColorToHex("oklch(0.145 0 0)");
     expect(dark).not.toBeNull();
     expect(dark).toMatch(/^#0[0-9a-f]0[0-9a-f]0[0-9a-f]$/);

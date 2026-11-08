@@ -57,8 +57,6 @@ describe("git checkpoint adapter", () => {
   });
 
   it("sees a same-size edit between two captures of one workspace", async () => {
-    // Captures reuse a per-workspace scratch index; a stale stat cache would
-    // silently hide edits that keep the file size and mtime second.
     const workspace = await createGitWorkspace();
     const adapter = createGitCheckpointAdapter();
     const before = await adapter.capture({

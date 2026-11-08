@@ -11,7 +11,7 @@ import {
   agentsAtom,
   getPermissionModeOptions,
   supportsPermissionModeForModel,
-} from "./session-store";
+} from "./session-agent-state";
 
 interface PermissionModeSubmenuProps {
   agentType: AgentId;
@@ -22,10 +22,6 @@ interface PermissionModeSubmenuProps {
   onChange(mode: AgentPermissionMode): void;
 }
 
-/**
- * Permission mode lives inside the agent dropdown (it is an agent-scoped
- * setting) so the composer keeps a single agent trigger next to the model pill.
- */
 export function PermissionModeSubmenu({
   agentType,
   inspectOnly = false,
@@ -59,8 +55,6 @@ export function PermissionModeSubmenu({
         return {
           value: nextMode.id,
           label: t(`permissionMode.${nextMode.id}`),
-          // What a mode actually allows is not obvious from its name, so the
-          // explanation stays on the row instead of being hidden on hover.
           description: supported
             ? t(`permissionMode.descriptions.${nextMode.id}`)
             : t("permissionMode.unavailableForModel", {

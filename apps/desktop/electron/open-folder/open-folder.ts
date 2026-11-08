@@ -11,11 +11,6 @@ export type OpenFolderAdditionalData = {
 
 let pendingOpenFolder: string | null = null;
 
-/**
- * Parse `--open-folder <path>` or `--open-folder=<path>` from argv.
- * Packaged second-instance argv order can shuffle; prefer additionalData when
- * available (see requestSingleInstanceLock).
- */
 export function extractOpenFolderFromArgv(argv: string[]): string | null {
   for (const arg of argv) {
     if (arg.startsWith(`${OPEN_FOLDER_FLAG}=`)) {
@@ -37,7 +32,6 @@ export function extractOpenFolderFromArgv(argv: string[]): string | null {
   return path.resolve(value);
 }
 
-/** Prefer Electron switch parsing, fall back to raw argv. */
 export function extractOpenFolderFromProcess(
   argv: string[] = process.argv,
 ): string | null {
@@ -71,10 +65,6 @@ export function getPendingOpenFolder(): string | null {
   return pendingOpenFolder;
 }
 
-/**
- * Return and clear the pending path so cold-start bootstrap can apply it once.
- * Live windows also receive `workspace:openFromCli` push events.
- */
 export function consumePendingOpenFolder(): string | null {
   const value = pendingOpenFolder;
   pendingOpenFolder = null;

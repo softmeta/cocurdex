@@ -23,9 +23,6 @@ export const activeSearchIdAtom = atom<string | null>(null);
 export const searchResultsAtom = atom<Map<string, WorkspaceSearchMatch[]>>(
   new Map(),
 );
-// File paths whose result groups are collapsed. Expansion lives here (not in
-// each group's local state) so the toolbar can expand/collapse every group at
-// once. A path absent from the set means its group is expanded.
 export const collapsedSearchPathsAtom = atom<Set<string>>(new Set<string>());
 
 export const searchResultCountAtom = atom((get) => {
@@ -72,15 +69,8 @@ export function useWorkspaceSearch(rootPath: string | null) {
   useEffect(() => {
     let currentSearchId: string | null = null;
     let cancelled = false;
-    // When a search starts with results already on screen (a re-search, e.g.
-    // toggling case/word/regex) we keep those stale results fully visible and
-    // accumulate the new ones in `pendingResults`, swapping atomically on done.
-    // Replacing the full set with each partial batch made the result count dip
-    // (204 → first-batch → 204) for a frame, which read as a flicker.
     let hadPreviousResults = false;
     let pendingResults = new Map<string, WorkspaceSearchMatch[]>();
-    // For a fresh search (nothing on screen) we instead stream batches in as
-    // they arrive — counting up from zero is expected, not a flash.
     let receivedFirstBatch = false;
 
     const unsubscribeResult = desktopApi.onWorkspaceSearchResult((event) => {
@@ -106,12 +96,9 @@ export function useWorkspaceSearch(rootPath: string | null) {
         return;
       }
 
-      // Re-search: swap the held stale results for the freshly accumulated set
-      // in one shot (empty map when the new search found nothing).
       if (hadPreviousResults) {
         setResults(pendingResults);
       } else if (!receivedFirstBatch) {
-        // Fresh search that streamed nothing → zero matches; clear.
         setResults(new Map());
       }
       setStatus("done");
@@ -164,8 +151,6 @@ export function useWorkspaceSearch(rootPath: string | null) {
       currentSearchId = searchId;
       receivedFirstBatch = false;
       pendingResults = new Map();
-      // Peek at the current results without triggering a render (identity
-      // update) to decide whether to hold-and-swap or stream from empty.
       setResults((current) => {
         hadPreviousResults = current.size > 0;
         return current;

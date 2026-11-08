@@ -9,16 +9,13 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib";
 
-/** One selectable row in a compound-menu radio list. */
 export interface AppDropdownRadioOption {
   value: string;
   label: ReactNode;
   description?: ReactNode;
   disabled?: boolean;
   icon?: ReactNode;
-  /** Content before the official radio check (counts, mono ids, …). */
   trailing?: ReactNode;
-  /** Force multi-line row layout; defaults to true when `description` is set. */
   multiLine?: boolean;
 }
 
@@ -82,12 +79,6 @@ function AppDropdownRadioItem({
   );
 }
 
-/**
- * Official shadcn DropdownMenu radio list for compound menus that mix radios
- * with checkboxes, submenus, or multi-section action rows.
- * Standalone short single-selects must use AppSelect (shadcn Select) instead.
- * Searchable lists must use AppSearchableSelect.
- */
 export function AppDropdownRadioList({
   inspectOnly = false,
   value,

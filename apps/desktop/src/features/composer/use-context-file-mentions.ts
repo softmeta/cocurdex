@@ -53,14 +53,10 @@ function getRelativePath(
   return absolutePath;
 }
 
-// Display label inside the inline pill: shows the entry's base name (file
-// name or folder name). Matches the Cursor-style "@docs" / "@app.tsx" look.
 export function getMentionDisplayLabel(file: WorkspaceFileEntry) {
   return getEntryName(file);
 }
 
-// The textual form that gets serialized into the outgoing message body, used
-// when reading the editor back into a string at send time.
 export function getMentionSerializedText(
   file: WorkspaceFileEntry,
   workspaceRootPaths?: readonly string[] | null,
@@ -106,8 +102,6 @@ export function useContextFileMentions({
       (file) => !attachedContextPaths.has(file.path),
     );
 
-    // Empty query: show the first N entries in workspace order so the menu
-    // still opens immediately after typing `@`.
     if (trimmed.length === 0) {
       return candidates.slice(0, CONTEXT_FILE_RESULT_LIMIT);
     }
@@ -130,8 +124,6 @@ export function useContextFileMentions({
     setHighlightedIndex(0);
   }, []);
 
-  // Close the menu when the user clicks outside both the editor container and
-  // the menu itself. Mirrors the original behaviour with the textarea.
   const handlePointerDownOutside = useCallback(
     (event: PointerEvent) => {
       if (query === null) return;
@@ -139,8 +131,6 @@ export function useContextFileMentions({
       if (!target) return;
       if (menuRef.current?.contains(target)) return;
       if (isMenuRowSidecarEventTarget(target)) return;
-      // The editor itself triggers selectionchange / input updates, so leave
-      // it alone here. The contenteditable click path keeps the menu in sync.
       const editorNode = document.querySelector(".mention-editor");
       if (editorNode?.contains(target)) return;
       clearMention();
@@ -244,11 +234,6 @@ export type ContextFileMentionsState = ReturnType<
   typeof useContextFileMentions
 >;
 
-// Display label for an externally provided context attachment (a code
-// selection from the editor or a whole file/folder added from the file tree)
-// once it is folded into the editor as an inline mention pill. Selections keep
-// their line range so a partial span reads as "ipc.ts L12-13"; whole files
-// and folders fall back to their base name like a typed @-mention.
 export function getContextAttachmentMentionLabel(
   attachment: MentionAttachment,
 ) {
@@ -262,8 +247,6 @@ export function getContextAttachmentMentionLabel(
   return formatContextFileChipLabel(attachment);
 }
 
-// Serialized form written into the outgoing message body for an externally
-// provided context attachment, mirroring typed @-mentions (`@relative/path`).
 export function getContextAttachmentSerializedText(
   attachment: MentionAttachment,
   workspaceRootPaths?: readonly string[] | null,
