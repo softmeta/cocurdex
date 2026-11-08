@@ -214,6 +214,7 @@ import {
   type SessionActivityReader,
   SessionCommandQueue,
   type SessionExecutionContext,
+  SessionFollowUpQueue,
   SessionRunCoordinator,
   type SessionRuntimeMessage,
   type SessionTurnOutcome,
@@ -291,10 +292,6 @@ export interface CocurdexDaemonStatus {
   startedAt: string;
 }
 
-interface QueuedFollowUp {
-  payload: SessionRuntimeMessage & { messageId: string };
-}
-
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
@@ -370,7 +367,7 @@ export class CocurdexDaemonService {
   private readonly sessionCommands = new SessionCommandQueue();
   readonly runs: SessionRunCoordinator;
   private readonly worktreeSetups = new WorktreeSetupRuns();
-  private readonly queuedFollowUps = new Map<string, QueuedFollowUp[]>();
+  private readonly queuedFollowUps: SessionFollowUpQueue;
   private readonly sessionRuntimeStates = new SessionRuntimeStates();
   private readonly runCapacity: RunCapacity;
   private readonly workflowWorkerScheduler: WorkflowWorkerScheduler;
@@ -383,6 +380,7 @@ export class CocurdexDaemonService {
     this.startedAt = options.startedAt ?? new Date().toISOString();
     this.userDataPath = options.userDataPath;
     this.state = new DaemonState(options.userDataPath);
+    this.queuedFollowUps = new SessionFollowUpQueue(this.state);
     this.hostKeys = createHostKeyStore(options.userDataPath);
     this.hostAccess = new HostAccessService({
       localToken: options.localToken ?? crypto.randomUUID(),
@@ -1033,7 +1031,7 @@ export class CocurdexDaemonService {
     }
     return this.sessionCommands.run(sessionId, async () => {
       await this.stopSessionTurn(sessionId);
-      this.queuedFollowUps.delete(sessionId);
+      this.queuedFollowUps.forget(sessionId);
       return this.state.archiveSession(sessionId);
     });
   }
@@ -1113,10 +1111,7 @@ export class CocurdexDaemonService {
   getActiveWork() {
     return {
       agentTurns: this.runs.activeWorkCount,
-      queuedInputs: [...this.queuedFollowUps.values()].reduce(
-        (count, inputs) => count + inputs.length,
-        0,
-      ),
+      queuedInputs: this.queuedFollowUps.size,
       workflowActive: this.workflowWorkerScheduler.isActive,
       workspaceSearches: this.searchService.activeCount,
     };
@@ -2944,7 +2939,7 @@ export class CocurdexDaemonService {
 
     if (decision.kind === "queue" || heldForCapacity) {
       await this.ensureAgentAvailable(payload.session.agentType);
-      if (!hold) await this.loadQueuedFollowUps(sessionId);
+      if (!hold) await this.queuedFollowUps.load(sessionId);
       payload = await this.refreshSessionWorkingPath(payload);
       const createdMessage = this.createUserMessage(payload);
       const userMessage = await this.state.saveQueuedUserMessage(
@@ -2957,19 +2952,14 @@ export class CocurdexDaemonService {
           createdAt: createdMessage.createdAt,
         },
       );
-      const loaded = this.queuedFollowUps.get(sessionId);
-      if (loaded || !hold) {
-        const queued = loaded ?? [];
-        queued.push({
-          payload: {
-            ...payload,
-            messageId: userMessage.id,
-            createdAt: userMessage.createdAt,
-            delivery: "start-new-run",
-          },
-        });
-        this.queuedFollowUps.set(sessionId, queued);
-      }
+      this.queuedFollowUps.append(
+        {
+          ...payload,
+          messageId: userMessage.id,
+          createdAt: userMessage.createdAt,
+        },
+        { onlyIfLoaded: hold },
+      );
       if (heldForCapacity) this.runCapacity.hold(sessionId);
       this.announceSessionsChanged();
       return userMessage;
@@ -3080,104 +3070,20 @@ export class CocurdexDaemonService {
 
   private async restoreQueuedSession(sessionId: string) {
     if (this.runs.hasActiveRun(sessionId) || this.stopping) return false;
-    if (!(await this.loadQueuedFollowUps(sessionId))) return false;
+    if (!(await this.queuedFollowUps.load(sessionId))) return false;
     return this.dispatchNextQueuedInput(sessionId);
   }
 
-  private async loadQueuedFollowUps(sessionId: string) {
-    const loaded = this.queuedFollowUps.get(sessionId);
-    if (loaded) return loaded;
-
-    const [session, inputs, messages] = await Promise.all([
-      this.state.getSession(sessionId),
-      this.state.listQueuedAgentInputs(sessionId),
-      this.state.listMessagesBySessionId(sessionId),
-    ]);
-    if (!session || session.archivedAt || inputs.length === 0) return;
-
-    const messageById = new Map(
-      messages.map((message) => [message.id, message]),
-    );
-    const queued = inputs.flatMap((input): QueuedFollowUp[] => {
-      const message = messageById.get(input.messageId);
-      if (!message) return [];
-      return [
-        {
-          payload: {
-            session,
-            workspaceRootPath: input.workspaceRootPath,
-            messageId: message.id,
-            createdAt: message.createdAt,
-            content: message.content,
-            attachments: message.attachments,
-            thinkingLevel: input.thinkingLevel,
-            delivery: "start-new-run",
-          },
-        },
-      ];
-    });
-    if (queued.length === 0) return;
-
-    this.queuedFollowUps.set(sessionId, queued);
-    return queued;
-  }
-
-  async updateQueuedAgentInput(
+  updateQueuedAgentInput(
     sessionId: string,
     messageId: string,
     content: string,
   ) {
-    const trimmedContent = content.trim();
-    const queued = await this.loadQueuedFollowUps(sessionId);
-    const index = queued?.findIndex(
-      (item) => item.payload.messageId === messageId,
-    );
-    if (!queued || index == null || index < 0) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
-
-    const message = await this.state.getMessageById(messageId);
-    if (
-      !message ||
-      message.sessionId !== sessionId ||
-      message.role !== "user"
-    ) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
-
-    // An image-only queued message has no text, so emptiness is only invalid
-    // when the message carries no attachments either.
-    if (!trimmedContent && message.attachments.length === 0) {
-      throw new Error("Queued message cannot be empty");
-    }
-
-    const updatedMessage = { ...message, content: trimmedContent };
-    await this.state.updateQueuedUserMessage(updatedMessage);
-    queued[index] = {
-      ...queued[index],
-      payload: { ...queued[index].payload, content: trimmedContent },
-    };
-    return updatedMessage;
+    return this.queuedFollowUps.update(sessionId, messageId, content);
   }
 
-  async deleteQueuedAgentInput(sessionId: string, messageId: string) {
-    const queued = await this.loadQueuedFollowUps(sessionId);
-    if (!queued) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
-    const nextQueued = queued.filter(
-      (item) => item.payload.messageId !== messageId,
-    );
-    if (nextQueued.length === queued.length) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
-
-    await this.state.deleteQueuedUserMessage(messageId);
-    if (nextQueued.length === 0) {
-      this.queuedFollowUps.delete(sessionId);
-    } else {
-      this.queuedFollowUps.set(sessionId, nextQueued);
-    }
+  deleteQueuedAgentInput(sessionId: string, messageId: string) {
+    return this.queuedFollowUps.delete(sessionId, messageId);
   }
 
   async steerQueuedAgentInput(sessionId: string, messageId: string) {
@@ -3185,23 +3091,8 @@ export class CocurdexDaemonService {
       return this.sendQueuedAgentInputNow(sessionId, messageId);
     }
 
-    const queued = await this.loadQueuedFollowUps(sessionId);
-    const index = queued?.findIndex(
-      (item) => item.payload.messageId === messageId,
-    );
-    const item = index == null || index < 0 ? undefined : queued?.[index];
-    if (!queued || !item || index == null || index < 0) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
-
-    const queuedMessage = await this.state.getMessageById(messageId);
-    if (
-      !queuedMessage ||
-      queuedMessage.sessionId !== sessionId ||
-      queuedMessage.role !== "user"
-    ) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
+    const { item, message: queuedMessage } =
+      await this.queuedFollowUps.requireInput(sessionId, messageId);
 
     const agent = await this.ensureAgentAvailable(
       item.payload.session.agentType,
@@ -3246,10 +3137,7 @@ export class CocurdexDaemonService {
     );
 
     await this.state.deleteQueuedAgentInput(messageId);
-    queued.splice(index, 1);
-    if (queued.length === 0) {
-      this.queuedFollowUps.delete(sessionId);
-    }
+    this.queuedFollowUps.remove(sessionId, messageId);
     this.runtime.emitAgentEvent({
       type: "message.completed",
       sessionId,
@@ -3261,22 +3149,10 @@ export class CocurdexDaemonService {
   async sendQueuedAgentInputNow(sessionId: string, messageId: string) {
     validateSessionId(sessionId);
     return this.sessionCommands.run(sessionId, async () => {
-      const queued = await this.loadQueuedFollowUps(sessionId);
-      const index = queued?.findIndex(
-        (item) => item.payload.messageId === messageId,
+      const { message } = await this.queuedFollowUps.requireInput(
+        sessionId,
+        messageId,
       );
-      if (!queued || index == null || index < 0) {
-        throw new Error(`Queued message ${messageId} was not found`);
-      }
-
-      const message = await this.state.getMessageById(messageId);
-      if (
-        !message ||
-        message.sessionId !== sessionId ||
-        message.role !== "user"
-      ) {
-        throw new Error(`Queued message ${messageId} was not found`);
-      }
 
       if (this.runs.hasActiveRun(sessionId)) {
         throw new Error(
@@ -3284,9 +3160,7 @@ export class CocurdexDaemonService {
         );
       }
 
-      const [item] = queued.splice(index, 1);
-      queued.unshift(item);
-      this.queuedFollowUps.set(sessionId, queued);
+      this.queuedFollowUps.promote(sessionId, messageId);
 
       const dispatched = await this.dispatchNextQueuedInput(sessionId);
       if (!dispatched) {
@@ -3306,15 +3180,8 @@ export class CocurdexDaemonService {
     if (this.stopping) return false;
     if (this.runs.hasActiveRun(sessionId)) return false;
 
-    const queued = this.queuedFollowUps.get(sessionId);
-    const next = queued?.shift();
-    if (!next) {
-      this.queuedFollowUps.delete(sessionId);
-      return false;
-    }
-    if (!queued || queued.length === 0) {
-      this.queuedFollowUps.delete(sessionId);
-    }
+    const next = this.queuedFollowUps.take(sessionId);
+    if (!next) return false;
 
     try {
       const userMessage = await this.acceptSessionMessage(
@@ -3378,7 +3245,7 @@ export class CocurdexDaemonService {
       for (const input of inputs) {
         await this.state.deleteQueuedUserMessage(input.messageId);
       }
-      this.queuedFollowUps.delete(sessionId);
+      this.queuedFollowUps.forget(sessionId);
       if (inputs.length > 0) {
         this.events.emit("daemon.event", {
           type: "data.changed",
@@ -3399,7 +3266,7 @@ export class CocurdexDaemonService {
   private async disposeSessionRuntime(sessionId: string) {
     this.runCapacity.release(sessionId, new Error("Session was closed"));
     const stopped = this.runs.stop(sessionId);
-    this.queuedFollowUps.delete(sessionId);
+    this.queuedFollowUps.forget(sessionId);
     await Promise.all([stopped, this.runtime.disposeSessionRuntime(sessionId)]);
   }
 
@@ -3895,21 +3762,14 @@ export class CocurdexDaemonService {
       thinkingLevel: payload.thinkingLevel,
       createdAt: userMessage.createdAt,
     });
-    const queued = this.queuedFollowUps.get(payload.session.id) ?? [];
-    queued.push({
-      payload: {
+    this.queuedFollowUps.append(
+      {
         ...payload,
         messageId: userMessage.id,
         createdAt: userMessage.createdAt,
-        delivery: "start-new-run",
       },
-    });
-    queued.sort((left, right) =>
-      (left.payload.createdAt ?? "").localeCompare(
-        right.payload.createdAt ?? "",
-      ),
+      { chronological: true },
     );
-    this.queuedFollowUps.set(payload.session.id, queued);
     this.events.emit("daemon.event", {
       type: "data.changed",
       areas: ["agent"],
