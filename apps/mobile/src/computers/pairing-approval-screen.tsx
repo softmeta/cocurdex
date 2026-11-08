@@ -8,6 +8,8 @@ import { mobileNoiseCrypto, useSavedHosts } from "@/hosts";
 import { useThemeColors } from "@/theme";
 import { Form, FormSection, ModalCloseButton } from "@/ui";
 
+const APPROVAL_CONFIRMATION_MS = 600;
+
 function ApprovalStatus({ hostId }: { hostId: string }) {
   const { t } = useTranslation("hosts");
   const colors = useThemeColors();
@@ -19,26 +21,33 @@ function ApprovalStatus({ hostId }: { hostId: string }) {
   );
   useFocusEffect(
     useCallback(() => {
+      let closeTimer: ReturnType<typeof setTimeout> | undefined;
       const closeWhenLive = () => {
-        if (connection.getState().status !== "live") return;
-        unsubscribe();
-        if (router.canGoBack()) router.back();
-        else router.replace("/");
+        if (connection.getState().status !== "live" || closeTimer) return;
+        closeTimer = setTimeout(() => {
+          if (router.canGoBack()) router.back();
+          else router.replace("/");
+        }, APPROVAL_CONFIRMATION_MS);
       };
       const unsubscribe = connection.subscribeState(closeWhenLive);
       closeWhenLive();
       if (connection.getState().status === "idle") void connection.connect();
-      return unsubscribe;
+      return () => {
+        clearTimeout(closeTimer);
+        unsubscribe();
+      };
     }, [connection, router]),
   );
   const unavailable = state.waitReason === "offline";
   const rejected = state.waitReason === "unauthorized";
+  const approved = state.status === "live";
   let label: string = t("list.status.pending");
   if (unavailable) label = t("list.status.offline");
   if (rejected) label = t("approval.rejected");
+  if (approved) label = t("approval.approved");
   return (
     <View style={styles.status}>
-      {!unavailable && !rejected && (
+      {!unavailable && !rejected && !approved && (
         <ActivityIndicator color={colors.mutedForeground} />
       )}
       <Text
