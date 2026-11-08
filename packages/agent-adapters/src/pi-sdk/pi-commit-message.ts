@@ -70,22 +70,22 @@ function buildPiCommitModel(
 }
 
 export function normalizeGeneratedCommitMessage(raw: string): string | null {
-  const lines = raw.split(/\r?\n/).map((line) =>
-    line
-      .trim()
-      .replace(/^```(?:\w+)?\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim(),
-  );
+  const lines = raw.split(/\r?\n/).map((line) => {
+    const text = line.trim().replace(/^```(?:\w+)?\s*/i, "");
+    return text.endsWith("```") ? text.slice(0, -3).trimEnd() : text;
+  });
   const titleIndex = lines.findIndex((line) => line.length > 0);
   if (titleIndex < 0) {
     return null;
   }
 
-  const rawTitle = lines[titleIndex]
-    ?.replace(/^["'`]+|["'`]+$/g, "")
-    .replace(/\.+$/, "")
-    .trim();
+  const quotedTitle = (lines[titleIndex] ?? "").replace(/^["'`]+/, "");
+  let titleEnd = quotedTitle.length;
+  while (titleEnd > 0 && /["'`]/.test(quotedTitle.charAt(titleEnd - 1))) {
+    titleEnd -= 1;
+  }
+  while (quotedTitle.charAt(titleEnd - 1) === ".") titleEnd -= 1;
+  const rawTitle = quotedTitle.slice(0, titleEnd).trim();
   if (!rawTitle) {
     return null;
   }

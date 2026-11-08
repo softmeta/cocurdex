@@ -38,8 +38,14 @@ export const agentInstallHints: Record<
 export type AgentVersionStatus = "ok" | "outdated" | "unknown";
 
 export function parseAgentVersion(output: string | null | undefined) {
-  const match = output?.match(/\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/);
-  return match ? match[0] : null;
+  if (!output) return null;
+  const version = /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/y;
+  for (const digits of output.matchAll(/\d+/g)) {
+    version.lastIndex = digits.index;
+    const match = version.exec(output);
+    if (match) return match[0];
+  }
+  return null;
 }
 
 function toParts(version: string) {

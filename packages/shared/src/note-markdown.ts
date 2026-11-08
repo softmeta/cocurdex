@@ -63,7 +63,7 @@ export function noteFilenameFromTitle(title: string): string {
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/gu, "")
+    .replace(/^-|-$/g, "")
     .slice(0, 80);
   return `${slug || "untitled"}.md`;
 }

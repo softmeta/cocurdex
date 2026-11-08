@@ -75,7 +75,7 @@ describe("workspace file markdown links", () => {
     expect(out).toContain(
       encodeURIComponent(
         "crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md",
-      ).replace(/%2F/g, "%2F"),
+      ),
     );
     const hrefMatch = out.match(
       /\((https:\/\/cocurdex\.workspace\/open\?[^)]+)\)/,
