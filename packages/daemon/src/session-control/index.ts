@@ -1,6 +1,10 @@
 export { selectArchivableRoots } from "./archive-selection";
 export { SessionCommandQueue } from "./commands";
 export { applySessionConfiguration } from "./configuration";
+export {
+  dispatchSessionTurn,
+  loadDispatchHistory,
+} from "./dispatch-session-turn";
 export type {
   SessionExecutionContext,
   SessionRuntimeMessage,

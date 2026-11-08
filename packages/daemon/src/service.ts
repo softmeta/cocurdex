@@ -56,7 +56,6 @@ import type {
   UpdateSessionTitlePayload,
   WorkspaceRecord,
   WorkspaceWorktreeEnvironment,
-  WorktreeSettings,
 } from "@cocurdex/shared";
 import {
   AGENT_RUN_LIMITS_SETTING_KEY,
@@ -161,7 +160,6 @@ import {
   readNetworkProxySettings,
   saveNetworkProxySettings,
 } from "./network-proxy-settings";
-import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { OutboxService, routineRunAlert } from "./outbox";
 import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
@@ -206,9 +204,10 @@ import {
   applySessionConfiguration,
   collectHandoffItems,
   decideDelivery,
+  dispatchSessionTurn,
   forkProviderThreads,
+  loadDispatchHistory,
   RunCapacity,
-  type RunHandle,
   readSessionActivity,
   resolveForkPoint,
   resolveRepeatedSend,
@@ -261,17 +260,7 @@ import {
   readTextFile,
 } from "./workspace-service";
 import { WorkspaceWatchService } from "./workspace-watch";
-import {
-  createManagedWorktree,
-  listManagedWorktrees,
-  loadWorktreeSettings,
-  removeManagedWorktree,
-  resolveWorktreeRepoRootPath,
-  runWorktreeCleanup,
-  saveWorktreeSettings,
-} from "./worktree-management";
-import { runWorktreeLifecycleScript } from "./worktree-script";
-import { WorktreeSetupRuns, waitForWorktreeSetup } from "./worktree-setup-runs";
+import { WorktreeLifecycle } from "./worktree-lifecycle";
 
 export interface CocurdexDaemonServiceOptions {
   runtimeFingerprint: string;
@@ -367,7 +356,7 @@ export class CocurdexDaemonService {
   readonly hostKeys: HostKeyStore;
   private readonly sessionCommands = new SessionCommandQueue();
   readonly runs: SessionRunCoordinator;
-  private readonly worktreeSetups = new WorktreeSetupRuns();
+  readonly worktrees: WorktreeLifecycle;
   private readonly queuedFollowUps: SessionFollowUpQueue;
   private readonly sessionRuntimeStates = new SessionRuntimeStates();
   private readonly runCapacity: RunCapacity;
@@ -536,6 +525,12 @@ export class CocurdexDaemonService {
       startRuntime: options.autoStartMemory !== false,
     });
     this.scanPolicy = createWorkspaceScanPolicy(this.state);
+    this.worktrees = new WorktreeLifecycle(
+      this.state,
+      this.userDataPath,
+      (workspaceId) => this.getWorktreeEnvironment(workspaceId),
+      () => this.scanPolicy.invalidate(),
+    );
     this.searchService = new DaemonSearchService({
       broadcast: (event) => this.events.emit("daemon.event", event),
       canScanRoot: (rootPath) => this.scanPolicy.canScan(rootPath),
@@ -619,7 +614,7 @@ export class CocurdexDaemonService {
         this.runs.hasActiveRun(sessionId) ||
         this.queuedFollowUps.has(sessionId),
       getMessage: (messageId) => this.state.getMessageById(messageId),
-      createWorktree: (input) => this.createWorktree(input),
+      createWorktree: (input) => this.worktrees.createWorktree(input),
       broadcast: (event) => {
         this.events.emit("daemon.event", event);
         this.events.emit("daemon.event", {
@@ -652,7 +647,7 @@ export class CocurdexDaemonService {
       listRoles: () => this.listAgentRoles(),
       listTemplates: () => this.team.listTemplates(),
       createTeam: (input) => this.team.create(input),
-      createWorktree: (input) => this.createWorktree(input),
+      createWorktree: (input) => this.worktrees.createWorktree(input),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       submitReport: (command, options) =>
         this.submitSessionMessage(command, options),
@@ -710,7 +705,7 @@ export class CocurdexDaemonService {
       getAgentRole: (id) => this.state.getAgentRole(id),
       getSetting: (key) => this.state.getAppSetting(key),
       setSetting: (key, value) => this.state.setAppSetting(key, value),
-      createWorktree: (input) => this.createWorktree(input),
+      createWorktree: (input) => this.worktrees.createWorktree(input),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
       hasActiveTurn: (sessionId) => this.runs.hasActiveRun(sessionId),
@@ -1878,100 +1873,6 @@ export class CocurdexDaemonService {
     return agent.id;
   }
 
-  async runWorktreeSetup(input: {
-    workspaceId: string;
-    worktreePath: string;
-  }): Promise<{ ran: boolean }> {
-    const environment = await this.getWorktreeEnvironment(input.workspaceId);
-    if (!environment.setupScript.trim()) {
-      return { ran: false };
-    }
-    await runWorktreeLifecycleScript({
-      script: environment.setupScript,
-      cwd: input.worktreePath,
-    });
-    return { ran: true };
-  }
-
-  getWorktreeSettings() {
-    return loadWorktreeSettings(this.state, this.userDataPath);
-  }
-
-  saveWorktreeSettings(settings: WorktreeSettings) {
-    return saveWorktreeSettings(this.state, this.userDataPath, settings);
-  }
-
-  listManagedWorktrees() {
-    return listManagedWorktrees({
-      state: this.state,
-      userDataPath: this.userDataPath,
-    });
-  }
-
-  async createWorktree(input: {
-    workspaceId: string;
-    branch?: string;
-    startPoint?: string;
-  }) {
-    this.scanPolicy.invalidate();
-    try {
-      return await createManagedWorktree({
-        state: this.state,
-        userDataPath: this.userDataPath,
-        workspaceId: input.workspaceId,
-        branch: input.branch,
-        startPoint: input.startPoint,
-        startSetup: async (worktreePath) => {
-          const environment = await this.getWorktreeEnvironment(
-            input.workspaceId,
-          );
-          const script = environment.setupScript.trim();
-          if (script) {
-            this.worktreeSetups.start(worktreePath, script, () =>
-              runWorktreeLifecycleScript({ script, cwd: worktreePath }),
-            );
-          }
-        },
-      });
-    } finally {
-      this.scanPolicy.invalidate();
-    }
-  }
-
-  async removeWorktree(input: {
-    workspaceId: string;
-    worktreePath: string;
-    workspaceRootPath?: string;
-  }) {
-    this.scanPolicy.invalidate();
-    try {
-      return await removeManagedWorktree({
-        state: this.state,
-        userDataPath: this.userDataPath,
-        workspaceId: input.workspaceId,
-        worktreePath: input.worktreePath,
-        workspaceRootPath: input.workspaceRootPath,
-        runCleanup: async (worktreePath) => {
-          try {
-            await runWorktreeCleanup({
-              state: this.state,
-              workspaceId: input.workspaceId,
-              worktreePath,
-            });
-          } catch (error) {
-            logDaemonDiagnostic("warn", "worktree.cleanup failed", {
-              error: error instanceof Error ? error.message : String(error),
-              workspaceId: input.workspaceId,
-              worktreePath,
-            });
-          }
-        },
-      });
-    } finally {
-      this.scanPolicy.invalidate();
-    }
-  }
-
   listSessions() {
     return this.state.listSessions();
   }
@@ -2551,7 +2452,7 @@ export class CocurdexDaemonService {
       sessionId,
       workspaceRootPath,
     );
-    await this.releaseSessionWorktree(session, workspace);
+    await this.worktrees.releaseSessionWorktree(session, workspace);
     this.announceSessionsChanged();
   }
 
@@ -3005,7 +2906,18 @@ export class CocurdexDaemonService {
     }
 
     void this.runs.track(
-      this.dispatchSessionMessage(payload, userMessage, run, persistence).then(
+      dispatchSessionTurn({
+        state: this.state,
+        runtime: this.runtime,
+        workspaceChanges: this.workspaceChanges,
+        worktrees: this.worktrees,
+        payload,
+        userMessage,
+        signal: run.signal,
+        persistence,
+        prepareStartContext: (session, message, history, persistence) =>
+          this.prepareStartContext(session, message, history, persistence),
+      }).then(
         (message) => this.runs.settle(run, { kind: "resolved", message }),
         (error: unknown) => {
           const message = errorMessage(error, "Unknown agent runtime error");
@@ -3114,18 +3026,7 @@ export class CocurdexDaemonService {
       queuedMessage,
       this.runs.activeRunId(sessionId),
     );
-    const [messages, queuedInputs] = await Promise.all([
-      this.state.listMessagesBySessionId(sessionId),
-      this.state.listQueuedAgentInputs(sessionId),
-    ]);
-    const queuedMessageIds = new Set(
-      queuedInputs.map((input) => input.messageId),
-    );
-    const history = messages.filter(
-      (historyMessage) =>
-        historyMessage.id === messageId ||
-        !queuedMessageIds.has(historyMessage.id),
-    );
+    const history = await loadDispatchHistory(this.state, sessionId, messageId);
     const persistence = await this.createRuntimePersistence(
       item.payload.session,
     );
@@ -3403,55 +3304,6 @@ export class CocurdexDaemonService {
     };
   }
 
-  private async releaseSessionWorktree(
-    session: SessionRecord,
-    workspace: WorkspaceRecord | undefined,
-  ) {
-    const worktreePath = session.worktreePath?.trim();
-    if (!worktreePath || !workspace) {
-      return;
-    }
-
-    const [activeSessions, archivedSessions] = await Promise.all([
-      this.state.listSessions(),
-      this.state.listArchivedSessions(),
-    ]);
-    const stillBound = [...activeSessions, ...archivedSessions].some(
-      (candidate) => candidate.worktreePath === worktreePath,
-    );
-    if (stillBound) {
-      return;
-    }
-
-    const environment = await this.getWorktreeEnvironment(session.workspaceId);
-    if (environment.cleanupScript.trim()) {
-      try {
-        await runWorktreeLifecycleScript({
-          script: environment.cleanupScript,
-          cwd: worktreePath,
-        });
-      } catch (error) {
-        logDaemonDiagnostic("warn", "worktree.cleanup failed", {
-          error: error instanceof Error ? error.message : String(error),
-          sessionId: session.id,
-          worktreePath,
-        });
-      }
-    }
-
-    const settings = await loadWorktreeSettings(this.state, this.userDataPath);
-    const repoRootPath = await resolveWorktreeRepoRootPath(
-      workspace,
-      worktreePath,
-    );
-    await removeAppManagedWorktree({
-      repoRootPath,
-      worktreePath,
-      userDataPath: this.userDataPath,
-      worktreeRootPath: settings.rootPath,
-    });
-  }
-
   private createUserMessage(payload: SessionRuntimeMessage): MessageRecord {
     return {
       id: payload.messageId,
@@ -3462,79 +3314,6 @@ export class CocurdexDaemonService {
       createdAt: payload.createdAt ?? new Date().toISOString(),
       ...(payload.origin ? { origin: payload.origin } : {}),
     };
-  }
-
-  private async dispatchSessionMessage(
-    payload: SessionRuntimeMessage,
-    userMessage: MessageRecord,
-    run: RunHandle,
-    persistence: RuntimePersistence,
-  ) {
-    const [messages, queuedInputs] = await Promise.all([
-      this.state.listMessagesBySessionId(payload.session.id),
-      this.state.listQueuedAgentInputs(payload.session.id),
-    ]);
-    const queuedMessageIds = new Set(
-      queuedInputs.map((input) => input.messageId),
-    );
-    const history = messages.filter(
-      (message) =>
-        message.id === userMessage.id || !queuedMessageIds.has(message.id),
-    );
-    if (run.signal.aborted) {
-      return null;
-    }
-
-    const worktreePath = payload.session.worktreePath?.trim();
-    if (worktreePath) {
-      await waitForWorktreeSetup({
-        runs: this.worktreeSetups,
-        sessionId: payload.session.id,
-        worktreePath,
-        cancelled: new Promise<void>((resolve) => {
-          run.signal.addEventListener("abort", () => resolve(), { once: true });
-        }),
-        emit: (event) => this.runtime.emitAgentEvent(event),
-      });
-      if (run.signal.aborted) {
-        return null;
-      }
-    }
-
-    if (!isChatSession(payload.session)) {
-      await this.workspaceChanges.beginTurn({
-        sessionId: payload.session.id,
-        userMessageId: userMessage.id,
-        workspaceRootPath: payload.workspaceRootPath,
-      });
-    }
-
-    if (run.signal.aborted) {
-      await this.workspaceChanges.failTurn(payload.session.id, "interrupted");
-      return null;
-    }
-
-    const start = await this.prepareStartContext(
-      payload.session,
-      userMessage,
-      history,
-      persistence,
-    );
-    return this.runtime.sendSessionMessage(
-      {
-        ...payload,
-        content: start.content,
-        attachments: userMessage.attachments,
-      },
-      {
-        ...persistence,
-        history: start.history,
-        contextHandoff: start.contextHandoff,
-        systemSections: start.systemSections,
-        runPolicy: start.runPolicy,
-        postedMessages: start.postedMessages,
-      },
-    );
   }
 
   private async prepareStartContext(

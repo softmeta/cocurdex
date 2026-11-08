@@ -533,17 +533,28 @@ export async function handleDaemonRequest(
       await service.reportSettingValues(request.params.values);
       return null;
     case "workspace.runWorktreeSetup":
-      return service.runWorktreeSetup(request.params);
+      if (context.principal.kind !== "local") {
+        await service.resolveWorkspaceFilePath(request.params.worktreePath);
+      }
+      return service.worktrees.runWorktreeSetup(request.params);
     case "worktree.settings.get":
-      return service.getWorktreeSettings();
+      return service.worktrees.getWorktreeSettings();
     case "worktree.settings.save":
-      return service.saveWorktreeSettings(request.params);
+      return service.worktrees.saveWorktreeSettings(request.params);
     case "worktree.list":
-      return service.listManagedWorktrees();
+      return service.worktrees.listManagedWorktrees();
     case "worktree.create":
-      return service.createWorktree(request.params);
+      return service.worktrees.createWorktree(request.params);
     case "worktree.remove":
-      return service.removeWorktree(request.params);
+      if (context.principal.kind !== "local") {
+        await service.resolveWorkspaceFilePath(request.params.worktreePath);
+        if (request.params.workspaceRootPath) {
+          await service.resolveWorkspaceFilePath(
+            request.params.workspaceRootPath,
+          );
+        }
+      }
+      return service.worktrees.removeWorktree(request.params);
     case "team.get":
       return service.team.get(request.params.leadSessionId);
     case "team.create":
