@@ -193,6 +193,7 @@ jobs:
           set -euo pipefail
           security unlock-keychain -p "${MAC_SIGNING_KEYCHAIN_PASSWORD}" "${CSC_KEYCHAIN}"
           unset CSC_LINK CSC_KEY_PASSWORD
+          pnpm --filter @cocurdex/desktop prepare:electron --cache-for-packaging ${{ matrix.arch }}
           pnpm --filter @cocurdex/desktop \
             dist:mac:${{ matrix.arch }}
         env:
@@ -314,6 +315,7 @@ jobs:
       - name: Build unsigned NSIS installer
         run: |
           unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
+          pnpm --filter @cocurdex/desktop prepare:electron --cache-for-packaging x64
           pnpm --filter @cocurdex/desktop \
             ${{ github.ref_type == 'tag' && 'dist:win:x64:release' || 'dist:win:x64' }}
         env:
@@ -389,6 +391,7 @@ jobs:
 
       - name: Build AppImage and deb
         run: |
+          pnpm --filter @cocurdex/desktop prepare:electron --cache-for-packaging x64
           pnpm --filter @cocurdex/desktop \
             ${{ github.ref_type == 'tag' && 'dist:linux:x64:release' || 'dist:linux:x64' }}
         env:

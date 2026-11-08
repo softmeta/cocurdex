@@ -258,6 +258,10 @@ jobs:
       - name: Install dependencies
         if: env.RUN == 'true'
         run: pnpm install --frozen-lockfile
+      - name: Prepare Electron
+        if: env.RUN == 'true'
+        working-directory: apps/desktop
+        run: pnpm run prepare:electron
       - name: Restore turbo cache
         if: env.RUN == 'true' && runner.os != 'Linux'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
@@ -282,7 +286,6 @@ jobs:
         if: env.RUN == 'true' && runner.os == 'Linux'
         working-directory: apps/desktop
         run: |
-          pnpm exec install-electron
           sandbox="$(node -p "require('node:path').join(require('node:path').dirname(require.resolve('electron')), 'dist', 'chrome-sandbox')")"
           sudo chown root:root "$sandbox"
           sudo chmod 4755 "$sandbox"
@@ -477,9 +480,18 @@ jobs:
           path: .mobile-native/${{ matrix.platform }}
           key: mobile-native-v3-${{ matrix.platform }}-${{ steps.fingerprint.outputs.hash }}
       - name: Install Maestro
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -fsSL "https://get.maestro.mobile.dev" | bash
-          echo "${HOME}/.maestro/bin" >> "${GITHUB_PATH}"
+          if curl -fsSL "https://get.maestro.mobile.dev" | bash && [[ -x "${HOME}/.maestro/bin/maestro" ]]; then
+            echo "${HOME}/.maestro/bin" >> "${GITHUB_PATH}"
+          else
+            maestro_dir="$(mktemp -d "${RUNNER_TEMP}/maestro.XXXXXX")"
+            gh release download "cli-${MAESTRO_VERSION}" --repo mobile-dev-inc/maestro \
+              --pattern maestro.zip --pattern checksums_sha256.txt --dir "${maestro_dir}"
+            (cd "${maestro_dir}" && sha256sum -c checksums_sha256.txt && unzip -q maestro.zip)
+            echo "${maestro_dir}/maestro/bin" >> "${GITHUB_PATH}"
+          fi
       - name: Enable KVM
         if: matrix.platform == 'android'
         run: |

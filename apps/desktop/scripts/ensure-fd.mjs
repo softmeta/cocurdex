@@ -13,6 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { downloadGitHubReleaseAsset } from "./github-release-asset.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const desktopRoot = path.resolve(__dirname, "..");
@@ -124,7 +125,16 @@ async function prepareTarget(target) {
   const archivePath = path.join(tempDir, isZip ? "fd.zip" : "fd.tar.gz");
 
   try {
-    await downloadArchive(entry.url, archivePath);
+    await downloadArchive(entry.url, archivePath).catch((error) => {
+      if (process.env.GITHUB_ACTIONS !== "true") throw error;
+      const filename = path.posix.basename(new URL(entry.url).pathname);
+      return downloadGitHubReleaseAsset(
+        "sharkdp/fd",
+        `v${manifest.version}`,
+        filename,
+        archivePath,
+      );
+    });
     const actualSha = await sha256(archivePath);
     if (actualSha !== entry.sha256) {
       throw new Error(
