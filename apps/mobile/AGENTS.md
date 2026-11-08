@@ -25,6 +25,12 @@ Rules for `apps/mobile`, in addition to the repository root `AGENTS.md`. iOS and
 
 Unit tests for mobile modules live in `tests/unit/mobile` and import them through `@cocurdex/mobile/internal/<path>`. UI flows live in `tests/mobile/flows` as Maestro YAML: locate elements by visible text, accessibility label, or `testID`, and add a flow or extend one for every user-facing change.
 
+## Responsiveness
+
+- Every UI state switch takes effect at once: a mode, tab, segment, filter, or menu choice changes the selected state, title, and screen in the same frame as the tap. Never make the switch wait for data, a screen mount, a network round trip, or a closing animation; commit the new state first and let menus and sheets dismiss over it.
+- Data that arrives later shows its loading state inside the new screen (cached content, a placeholder, or a delayed native indicator for slow IO), never as a delay before the switch. Keep the JS thread free during a switch: render a cheap first frame and defer heavy work.
+- When a change touches a switch path, measure tap-to-switch latency on a device or emulator recording and treat any frame between the tap and the new state as a bug.
+
 ## Visual language
 
 The app looks and behaves like a native iOS app on iPhone and a native Material 3 app on Android, not like the desktop UI in a phone frame. The platform draws controls, navigation, and overlays; Cocurdex supplies content, its palette, and the meaning of each color. Every screen covers light and dark.

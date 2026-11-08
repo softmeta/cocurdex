@@ -32,6 +32,7 @@ export interface AnchoredMenuItem {
   destructive?: boolean;
   selected?: boolean;
   testID?: string;
+  presents?: boolean;
   onPress(): void;
 }
 
@@ -257,17 +258,17 @@ export function useAnchoredMenu(testID?: string) {
     pending.current = null;
     action?.();
   };
-  const choose = (action: () => void) => {
+  const choose = (item: AnchoredMenuItem) => {
     close();
-    if (Platform.OS !== "ios") return action();
-    pending.current = action;
+    if (Platform.OS !== "ios" || !item.presents) return item.onPress();
+    pending.current = item.onPress;
   };
   const request = state
     ? {
         ...state.request,
         items: state.request.items.map((item) => ({
           ...item,
-          onPress: () => choose(item.onPress),
+          onPress: () => choose(item),
         })),
       }
     : null;

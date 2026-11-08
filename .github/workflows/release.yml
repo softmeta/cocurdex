@@ -484,6 +484,7 @@ jobs:
           package_version="$(node -p "require('./apps/desktop/package.json').version")"
           {
             echo "COCURDEX_MOBILE_VERSION=${package_version%%-*}"
+            echo "COCURDEX_MOBILE_RELEASE_VERSION=${package_version}"
             echo "COCURDEX_MOBILE_BUILD_NUMBER=$(git rev-list --count HEAD)"
           } >> "${GITHUB_ENV}"
 
@@ -679,6 +680,7 @@ jobs:
           package_version="$(node -p "require('./apps/desktop/package.json').version")"
           {
             echo "COCURDEX_MOBILE_VERSION=${package_version%%-*}"
+            echo "COCURDEX_MOBILE_RELEASE_VERSION=${package_version}"
             echo "COCURDEX_MOBILE_BUILD_NUMBER=$(git rev-list --count HEAD)"
           } >> "${GITHUB_ENV}"
 

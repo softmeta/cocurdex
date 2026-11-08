@@ -66,6 +66,7 @@ export function useComputerActions() {
         icon: ACTION_ICONS[action],
         group: action === "remove" ? "remove" : "manage",
         destructive: action === "remove",
+        presents: action !== "switch",
         onPress: handlers[action],
       })),
     });

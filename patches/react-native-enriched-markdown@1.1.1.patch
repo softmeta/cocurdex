@@ -1,3 +1,16 @@
+diff --git a/android/consumer-rules.pro b/android/consumer-rules.pro
+index 1969de35f7a95db2f710e5b508b09daeb709d782..d59e10e7b3df17c45c6334e446e3c66926bda3bd 100644
+--- a/android/consumer-rules.pro
++++ b/android/consumer-rules.pro
+@@ -11,7 +11,7 @@
+ -keep class com.swmansion.enriched.markdown.spans.MathInlineSpan { *; }
+ -keep class com.swmansion.enriched.markdown.spans.MathInlinePlaceholderSpan { *; }
+ -keep class com.swmansion.enriched.markdown.spans.MathMeasureHelper { *; }
+--keep class com.swmansion.enriched.markdown.views.MathContainerView { *; }
++-keep class com.swmansion.enriched.markdown.segments.MathContainerView { *; }
+ -keep class com.swmansion.enriched.markdown.renderer.MathInlineRenderer { *; }
+ 
+ # Reflection: Video container loaded via Class.forName when enableVideo=true.
 diff --git a/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdown.kt b/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdown.kt
 index b6b38b4cc1a37eacf53f48f940608ed7ead26f93..a113f6ecec1e4b45446383930fb62a03ff400929 100644
 --- a/android/src/main/java/com/swmansion/enriched/markdown/EnrichedMarkdown.kt
