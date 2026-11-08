@@ -7,7 +7,7 @@ import {
   usePairingRoutes,
   useScopeGate,
 } from "@/hosts";
-import { LaunchReady } from "@/launch";
+import { markLaunchReady } from "@/launch";
 import { SessionModeHeader } from "@/tabs";
 
 export default function AssistantScreen() {
@@ -20,8 +20,13 @@ export default function AssistantScreen() {
     return (
       <>
         <SessionModeHeader title={t("common:screens.assistant")} />
-        <EmptyHosts onScan={() => void openScan()} onPaste={openPaste} />
-        <LaunchReady />
+        <EmptyHosts
+          onScan={() => void openScan()}
+          onPaste={openPaste}
+          onLayoutContent={({ nativeEvent: { width, height } }) => {
+            if (width > 0 && height > 0) markLaunchReady();
+          }}
+        />
       </>
     );
   }
