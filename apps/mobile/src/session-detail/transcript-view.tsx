@@ -258,6 +258,7 @@ function ActivityChildRow({
     return (
       <MarkdownText
         markdown={item.text}
+        reading
         streaming={item.streaming}
         hostId={actions.hostId}
         fileRoot={actions.fileRoot}
@@ -335,6 +336,7 @@ const TranscriptRow = memo(function TranscriptRow({
         ) : null}
         <MarkdownText
           markdown={item.text}
+          reading
           streaming={item.streaming}
           hostId={actions.hostId}
           fileRoot={actions.fileRoot}

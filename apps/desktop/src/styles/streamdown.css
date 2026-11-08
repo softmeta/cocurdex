@@ -2,6 +2,14 @@
 @source "../../node_modules/@streamdown/math/dist/*.js";
 @source "../../node_modules/@streamdown/cjk/dist/*.js";
 
+.chat-reading-prose :is(p, ul, ol, td):not(blockquote *) {
+  color: var(--reading-text);
+}
+
+.chat-reading-prose strong:not(a *, blockquote *) {
+  color: var(--chat-text-primary);
+}
+
 [data-streamdown="code-block"] {
   position: relative;
   gap: 0;

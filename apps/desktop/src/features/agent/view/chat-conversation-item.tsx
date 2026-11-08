@@ -580,7 +580,9 @@ const MessageArticle = memo(function MessageArticle({
             <div ref={contentRef}>
               <MarkdownRenderer
                 className={
-                  message.role === "assistant" ? "space-y-2" : "space-y-1.5"
+                  message.role === "assistant"
+                    ? "chat-reading-prose space-y-2"
+                    : "space-y-1.5"
                 }
                 content={message.content}
                 filePathHandlers={

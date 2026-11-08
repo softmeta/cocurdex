@@ -36,7 +36,8 @@ main{padding:4px 16px 120px}
 #title::placeholder{color:var(--muted-foreground)}
 #meta{display:block;border:0;background:transparent;padding:6px 0 4px;margin:0 0 4px;font:inherit;font-size:calc(var(--font-size)*0.765);line-height:1.4;color:var(--muted-foreground);text-align:left;min-height:32px}
 #meta[hidden]{display:none}
-.prose{outline:0;min-height:50vh;caret-color:var(--tint);word-wrap:break-word;white-space:pre-wrap}
+.prose{outline:0;min-height:50vh;caret-color:var(--tint);color:var(--reading-text,var(--foreground));word-wrap:break-word;white-space:pre-wrap}
+.prose :is(h1,h2,h3,h4,h5,h6,strong):not(a *){color:var(--foreground)}
 .prose>*:first-child{margin-top:6px}
 .prose p{margin:0 0 10px}
 .prose h1{font-size:1.41em;line-height:1.25;font-weight:700;margin:22px 0 8px}
