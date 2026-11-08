@@ -194,7 +194,7 @@ overrides:
 patchedDependencies:
   '@earendil-works/pi-coding-agent@1.5.0': eea185123377d66f00f08016338c464e53cc871fd7637c3bcd217739d28f13ff
   '@expo/ui@58.0.22': d34c48b9f40da1ef83dbf3898e96d6cea1105bd2a6baf392326f0b106583067e
-  react-native-enriched-markdown@1.1.1: 7cede9793ada0b6e22ad5e4d1c227b70976e1cb24e3546cc75d18fa9c5b15482
+  react-native-enriched-markdown@1.1.1: b49f39d878201f7c579d2c9e0c56aee2b695e036c76dd7598ced3082f4a4be00
   react-native-screens@4.30.0: 3eb62b3e69ac0e8dc8bb610ab2179bf53dd27cf5194def8ebeb813fae76e75de
 
 importers:
@@ -648,7 +648,7 @@ importers:
         version: 0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0)
       react-native-enriched-markdown:
         specifier: ^1.1.1
-        version: 1.1.1(patch_hash=7cede9793ada0b6e22ad5e4d1c227b70976e1cb24e3546cc75d18fa9c5b15482)(katex@0.18.10)(react-native@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))(react@19.3.1)
+        version: 1.1.1(patch_hash=b49f39d878201f7c579d2c9e0c56aee2b695e036c76dd7598ced3082f4a4be00)(katex@0.18.10)(react-native@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))(react@19.3.1)
       react-native-gesture-handler:
         specifier: ~3.4.0
         version: 3.4.0(react-native@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))(react@19.3.1)
@@ -17974,7 +17974,7 @@ snapshots:
       react-native-reanimated: 4.7.1(react-native-worklets@0.13.1(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(react-native@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))(react@19.3.1)(supports-color@7.2.0))(react-native@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))(react@19.3.1)
       use-latest-callback: 0.2.6(react@19.3.1)
 
-  react-native-enriched-markdown@1.1.1(patch_hash=7cede9793ada0b6e22ad5e4d1c227b70976e1cb24e3546cc75d18fa9c5b15482)(katex@0.18.10)(react-native@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))(react@19.3.1):
+  react-native-enriched-markdown@1.1.1(patch_hash=b49f39d878201f7c579d2c9e0c56aee2b695e036c76dd7598ced3082f4a4be00)(katex@0.18.10)(react-native@0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0))(react@19.3.1):
     dependencies:
       react: 19.3.1
       react-native: 0.88.1(@babel/core@7.29.7(supports-color@7.2.0))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0))(@types/react@19.3.0)(react@19.3.1)(supports-color@7.2.0)

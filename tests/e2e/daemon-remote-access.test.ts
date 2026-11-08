@@ -208,10 +208,9 @@ describe("remote host access", () => {
     await expect(
       pairHost({ baseUrl, code, hostKey, store }),
     ).rejects.toMatchObject({ reason: "invalid" });
-    await expect(
-      remoteClient(paired).request("session.list", undefined),
-    ).rejects.toMatchObject({ code: "PENDING_APPROVAL" });
+    const held = remoteClient(paired).request("session.list", undefined);
     await approveDevice(daemon, paired);
+    await expect(held).resolves.toEqual([]);
 
     const status = await requestDaemon("host.remoteAccess.get", daemon.options);
     const endpoints = status.addresses.map((address) => address.url);

@@ -148,6 +148,7 @@ describe("HostAccessService", () => {
     expect(service.connectDevice({ deviceId }, KEY_A)).toEqual({
       ok: false,
       reason: "pending",
+      deviceId,
     });
     expect(service.listDevices()[0]).toMatchObject({
       id: deviceId,
@@ -173,6 +174,37 @@ describe("HostAccessService", () => {
       approvalExpiresAt: null,
       safetyCode: codeFor(KEY_A),
     });
+  });
+
+  it("wakes a device waiting for approval as soon as it is decided", async () => {
+    const { service } = await setup();
+    const pair = (key: string) => {
+      const { code } = service.createPairing(
+        { label: "Phone", scopes: ["read"] },
+        local,
+      );
+      const paired = service.pairDevice({ secret: code }, key, null);
+      if (!paired.ok) throw new Error("pairing failed");
+      return paired.result.deviceId;
+    };
+    const approved = pair(KEY_A);
+    const revoked = pair(KEY_B);
+    const settled = new Set<string>();
+    const wait = (deviceId: string) =>
+      service
+        .waitForDeviceDecision(deviceId, new AbortController().signal)
+        .then(() => settled.add(deviceId));
+    const waits = [wait(approved), wait(revoked)];
+
+    const wrong = codeFor(KEY_A) === "000000" ? "111111" : "000000";
+    service.approveDevice(approved, wrong, local);
+    await Promise.resolve();
+    expect(settled).toEqual(new Set());
+
+    service.approveDevice(approved, codeFor(KEY_A), local);
+    service.revokeDevice(revoked, local);
+    await Promise.all(waits);
+    expect(settled).toEqual(new Set([approved, revoked]));
   });
 
   it("refuses and hides a device nobody approved within the window", async () => {
@@ -215,6 +247,7 @@ describe("HostAccessService", () => {
     expect(service.connectDevice({ deviceId }, KEY_A)).toEqual({
       ok: false,
       reason: "pending",
+      deviceId,
     });
     const spaced = `${codeFor(KEY_A).slice(0, 3)} ${codeFor(KEY_A).slice(3)}`;
     expect(service.approveDevice(deviceId, spaced, local)).toMatchObject({

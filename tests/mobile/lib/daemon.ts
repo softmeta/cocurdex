@@ -171,7 +171,7 @@ export async function startPairingDaemon(
     let stopApprover: (() => void) | null = null;
     return {
       hostAddress: baseUrl.host,
-      async createPairingLink() {
+      async createPairingLink(approvalDelayMs = 0) {
         const { code, hostKey } = await requestDaemon(
           "host.pairing.create",
           {
@@ -180,7 +180,12 @@ export async function startPairingDaemon(
           },
           daemon.options,
         );
-        stopApprover ??= startDeviceApprover(daemon.options, hostKey);
+        stopApprover?.();
+        stopApprover = startDeviceApprover(
+          daemon.options,
+          hostKey,
+          approvalDelayMs,
+        );
         return buildHostPairingLink(baseUrl.origin, code, hostKey);
       },
       agentModelName: AGENT_MODEL_NAME,

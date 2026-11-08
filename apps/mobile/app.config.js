@@ -30,11 +30,26 @@ function appVersion(fallback) {
   return raw;
 }
 
+function releaseVersion(version) {
+  const raw = process.env.COCURDEX_MOBILE_RELEASE_VERSION;
+  if (raw === undefined || raw === "") return version;
+  if (raw !== version && !raw.startsWith(`${version}-`)) {
+    throw new Error(`Mobile release version ${raw} must extend ${version}`);
+  }
+  return raw;
+}
+
 module.exports = ({ config }) => {
   const build = buildNumber();
+  const version = appVersion(config.version);
   return {
     ...config,
-    version: appVersion(config.version),
+    version,
+    extra: {
+      ...config.extra,
+      releaseVersion: releaseVersion(version),
+      buildNumber: build,
+    },
     ios: { ...config.ios, buildNumber: String(build) },
     android: { ...config.android, versionCode: build },
   };

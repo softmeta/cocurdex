@@ -26,6 +26,15 @@ import {
 import { useTextSizeLabels } from "./font-size-screen";
 import { LOCALE_ENDONYMS } from "./locale-names";
 
+function appVersionLabel(): string {
+  const config = Constants.expoConfig;
+  const release = config?.extra?.releaseVersion;
+  const build = config?.extra?.buildNumber;
+  const version = typeof release === "string" ? release : config?.version;
+  if (!version) return "";
+  return typeof build === "number" ? `${version} (${build})` : version;
+}
+
 function useAppearanceLabels(): Record<AppearancePreference, string> {
   const { t } = useTranslation("settings");
   return {
@@ -118,11 +127,7 @@ export function SettingsScreen() {
         ) : null}
         <FormSection title={t("about.title")}>
           <FormRow
-            trailing={
-              <FormText tone="muted">
-                {Constants.expoConfig?.version ?? ""}
-              </FormText>
-            }
+            trailing={<FormText tone="muted">{appVersionLabel()}</FormText>}
           >
             {t("about.version")}
           </FormRow>

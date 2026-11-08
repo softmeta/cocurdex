@@ -193,8 +193,10 @@ export default interface Resources {
       switch: "Switch to This Computer";
     };
     approval: {
+      approved: "Paired";
       codeLabel: "Safety Code";
       description: "{{host}} shows an approval request for this phone. Enter this six-digit code there and choose Allow; the phone connects on its own. The request expires after 10 minutes.";
+      rejected: "Pairing expired or was revoked. Pair again from your computer.";
     };
     detail: {
       address: "Address";

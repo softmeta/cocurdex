@@ -313,6 +313,7 @@ export function createHostConnection(options: HostConnectionOptions) {
     request,
     read,
     command,
+    connect: supervisor.connect,
     onEvent(listener: HostEventListener) {
       listeners.add(listener);
       void supervisor.connect();

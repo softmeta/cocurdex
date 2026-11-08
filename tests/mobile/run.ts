@@ -435,7 +435,9 @@ async function main() {
               MODEL_TEST_ASSISTANT: modelTestAssistant?.role.name ?? "",
               MODEL_TEST_ASSISTANT_ID: modelTestAssistant?.id ?? "",
               LAST_ASSISTANT_MODEL: daemon.lastAssistantModel,
-              PAIRING_LINK: await daemon.createPairingLink(),
+              PAIRING_LINK: await daemon.createPairingLink(
+                flow === "pairing" ? 8_000 : 0,
+              ),
               HOST_ADDRESS: daemon.hostAddress,
               LINK_NOTE_TITLE,
               ISSUE_LINK_TEXT: issueLinkText,
