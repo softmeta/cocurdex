@@ -71,7 +71,8 @@ export interface RemoteListenerController {
 
 export type HostDeviceAdmission =
   | { ok: true; accepted: RemoteChannelAccepted }
-  | { ok: false; reason: "rejected" | "pending" };
+  | { ok: false; reason: "rejected" }
+  | { ok: false; reason: "pending"; deviceId: string };
 
 export type HostPairingExchangeOutcome =
   | { ok: true; result: RemoteChannelAccepted }
@@ -205,6 +206,7 @@ export class HostAccessService {
   private readonly approvalAttempts = new Map<string, number>();
   private readonly lastTouched = new Map<string, number>();
   private readonly accessListeners = new Set<(deviceId: string) => void>();
+  private readonly approvalWaiters = new Map<string, Set<() => void>>();
   private readonly options: HostAccessServiceOptions;
   private remoteListener: RemoteListenerController | null = null;
   private relayConnector: RelayController | null = null;
@@ -287,10 +289,9 @@ export class HostAccessService {
       return { ok: false, reason: "rejected" };
     }
     if (!device.approvedAt) {
-      return {
-        ok: false,
-        reason: this.approvalExpiresAt(device) ? "pending" : "rejected",
-      };
+      return this.approvalExpiresAt(device)
+        ? { ok: false, reason: "pending", deviceId }
+        : { ok: false, reason: "rejected" };
     }
     this.activeDevices.set(device.id, device);
     this.touch(device.id);
@@ -340,6 +341,7 @@ export class HostAccessService {
     this.approvalAttempts.delete(deviceId);
     this.audit("device.approved", principalActor(principal), deviceId);
     this.remoteAccessChanged();
+    this.settleApprovalWaiters(deviceId);
     return { ok: true, device };
   }
 
@@ -507,7 +509,33 @@ export class HostAccessService {
 
   private deviceAccessChanged(deviceId: string) {
     this.activeDevices.delete(deviceId);
+    this.settleApprovalWaiters(deviceId);
     this.disconnectDevice(deviceId);
+  }
+
+  waitForDeviceDecision(deviceId: string, signal: AbortSignal) {
+    return new Promise<void>((resolve) => {
+      if (signal.aborted) {
+        resolve();
+        return;
+      }
+      const waiters = this.approvalWaiters.get(deviceId) ?? new Set();
+      this.approvalWaiters.set(deviceId, waiters);
+      const settle = () => {
+        signal.removeEventListener("abort", settle);
+        waiters.delete(settle);
+        if (waiters.size === 0) this.approvalWaiters.delete(deviceId);
+        resolve();
+      };
+      waiters.add(settle);
+      signal.addEventListener("abort", settle, { once: true });
+    });
+  }
+
+  private settleApprovalWaiters(deviceId: string) {
+    for (const settle of [...(this.approvalWaiters.get(deviceId) ?? [])]) {
+      settle();
+    }
   }
 
   disconnectDevice(deviceId: string) {

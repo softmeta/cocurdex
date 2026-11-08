@@ -1,22 +1,54 @@
 import { savedHostSafetyCode } from "@cocurdex/client-runtime";
-import { useRouter } from "expo-router";
-import { useEffect, useMemo } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { hostConnection } from "@/connection";
 import { mobileNoiseCrypto, useSavedHosts } from "@/hosts";
 import { useThemeColors } from "@/theme";
 import { Form, FormSection, ModalCloseButton } from "@/ui";
-import { whenHostOnline } from "./host-reachability";
 
-function useCloseWhenApproved(hostId: string) {
+function ApprovalStatus({ hostId }: { hostId: string }) {
+  const { t } = useTranslation("hosts");
+  const colors = useThemeColors();
   const router = useRouter();
-  useEffect(
-    () =>
-      whenHostOnline(hostId, () => {
+  const connection = hostConnection(hostId);
+  const state = useSyncExternalStore(
+    connection.subscribeState,
+    connection.getState,
+  );
+  useFocusEffect(
+    useCallback(() => {
+      const closeWhenLive = () => {
+        if (connection.getState().status !== "live") return;
+        unsubscribe();
         if (router.canGoBack()) router.back();
         else router.replace("/");
-      }),
-    [hostId, router],
+      };
+      const unsubscribe = connection.subscribeState(closeWhenLive);
+      closeWhenLive();
+      if (connection.getState().status === "idle") void connection.connect();
+      return unsubscribe;
+    }, [connection, router]),
+  );
+  const unavailable = state.waitReason === "offline";
+  const rejected = state.waitReason === "unauthorized";
+  let label: string = t("list.status.pending");
+  if (unavailable) label = t("list.status.offline");
+  if (rejected) label = t("approval.rejected");
+  return (
+    <View style={styles.status}>
+      {!unavailable && !rejected && (
+        <ActivityIndicator color={colors.mutedForeground} />
+      )}
+      <Text
+        accessibilityLiveRegion="polite"
+        style={{ color: colors.mutedForeground }}
+        testID="pairing-approval-status"
+      >
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -32,7 +64,6 @@ export function PairingApprovalScreen({ hostId }: { hostId: string }) {
     () => (host ? savedHostSafetyCode(host, mobileNoiseCrypto) : null),
     [host],
   );
-  useCloseWhenApproved(hostId);
   if (!host || !safetyCode) return <ModalCloseButton />;
   return (
     <>
@@ -50,6 +81,7 @@ export function PairingApprovalScreen({ hostId }: { hostId: string }) {
           >
             {groupDigits(safetyCode)}
           </Text>
+          <ApprovalStatus hostId={hostId} />
         </FormSection>
       </Form>
     </>
@@ -57,6 +89,15 @@ export function PairingApprovalScreen({ hostId }: { hostId: string }) {
 }
 
 const styles = StyleSheet.create({
+  status: {
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
   code: {
     fontSize: 34,
     fontVariant: ["tabular-nums"],

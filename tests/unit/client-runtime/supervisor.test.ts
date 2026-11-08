@@ -254,7 +254,7 @@ describe("connection supervisor retries", () => {
       .mockRejectedValueOnce(pending());
     await supervisor.connect();
     for (const attempts of [2, 3, 4]) {
-      await vi.advanceTimersByTimeAsync(4_999);
+      await vi.advanceTimersByTimeAsync(2_999);
       expect(subscribe).toHaveBeenCalledTimes(attempts - 1);
       await vi.advanceTimersByTimeAsync(1);
       expect(subscribe).toHaveBeenCalledTimes(attempts);
@@ -263,6 +263,22 @@ describe("connection supervisor retries", () => {
       status: "live",
       failures: 0,
     });
+  });
+
+  it("reconnects at once after the host held a pending attempt", async () => {
+    vi.useFakeTimers();
+    const { supervisor } = fixture();
+    subscribe
+      .mockImplementationOnce(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 3_000));
+        throw new DaemonClientError("Waiting for approval", "PENDING_APPROVAL");
+      })
+      .mockImplementationOnce(() => new Promise(() => {}));
+    const first = supervisor.connect();
+    await vi.advanceTimersByTimeAsync(3_000);
+    await first;
+    await vi.advanceTimersByTimeAsync(1);
+    expect(subscribe).toHaveBeenCalledTimes(2);
   });
 
   it("wakes a pending retry immediately on foreground", async () => {
