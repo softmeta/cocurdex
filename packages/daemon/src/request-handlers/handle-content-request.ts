@@ -73,28 +73,28 @@ export async function handleContentRequest(
     case "deck.createDownload":
       return service.decks.createDownload(request.params);
     case "deck.exportFile":
-      await service.assertClientPathAccess(
+      await service.workspaces.assertClientPathAccess(
         context.principal,
         request.params.outputPath,
         "outputFile",
       );
       return service.decks.exportFile(request.params);
     case "deck.importImage":
-      await service.assertClientPathAccess(
+      await service.workspaces.assertClientPathAccess(
         context.principal,
         request.params.path,
         "file",
       );
       return service.decks.importImage(request.params);
     case "deck.import":
-      await service.assertClientPathAccess(
+      await service.workspaces.assertClientPathAccess(
         context.principal,
         request.params.path,
         "file",
       );
       return service.decks.importPptx(request.params);
     case "deck.readPptx":
-      await service.assertClientPathAccess(
+      await service.workspaces.assertClientPathAccess(
         context.principal,
         request.params.path,
         "file",

@@ -48,7 +48,7 @@ async function setup() {
     userDataPath,
   });
   tempDirs.onCleanup(() => service.shutdown());
-  await service.saveWorkspace({
+  await service.workspaces.saveWorkspace({
     id: "workspace-1",
     name: "acme-shop",
     rootPaths: [workspace],
@@ -121,14 +121,14 @@ describe("session.send attachment access", () => {
         },
         { principal: device, remoteAddress: "10.0.0.2" },
       );
-    await expect(service.resolvePdfPath(stored.filePath)).resolves.toBe(
-      stored.filePath,
-    );
+    await expect(
+      service.workspaces.resolvePdfPath(stored.filePath),
+    ).resolves.toBe(stored.filePath);
     await expect(readAnnotations(stored.filePath)).resolves.toEqual({
       bookmarks: [],
       highlights: [],
     });
-    await expect(service.resolvePdfPath(outsidePdf)).rejects.toThrow(
+    await expect(service.workspaces.resolvePdfPath(outsidePdf)).rejects.toThrow(
       /outside every registered workspace/,
     );
     await expect(readAnnotations(outsidePdf)).rejects.toThrow(
@@ -146,9 +146,9 @@ describe("session.send attachment access", () => {
     writeFileSync(outsidePdf, "%PDF-1.7\nprivate", "utf8");
     unlinkSync(stored.filePath);
     symlinkSync(outsidePdf, stored.filePath, "file");
-    await expect(service.resolvePdfPath(stored.filePath)).rejects.toThrow(
-      /outside every registered workspace/,
-    );
+    await expect(
+      service.workspaces.resolvePdfPath(stored.filePath),
+    ).rejects.toThrow(/outside every registered workspace/);
     await expect(
       service.pdfAnnotationsService.loadAnnotations(stored.filePath),
     ).rejects.toThrow(/outside every registered workspace/);
@@ -158,7 +158,7 @@ describe("session.send attachment access", () => {
     const { service, workspace, stored } = await setup();
 
     await expect(
-      service.assertClientAttachmentsAccess(device, [
+      service.workspaces.assertClientAttachmentsAccess(device, [
         stored,
         contextFile(path.join(workspace, "inside.txt")),
         { kind: "context-folder", folderPath: workspace },

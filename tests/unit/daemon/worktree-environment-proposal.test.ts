@@ -55,7 +55,7 @@ async function createService() {
   vi.spyOn(service, "listAgents").mockResolvedValue([
     { ...pi, availability: "available" },
   ]);
-  await service.saveWorkspace(createWorkspace());
+  await service.workspaces.saveWorkspace(createWorkspace());
   await service.saveSessionConfiguration(sessionConfiguration(createSession()));
   return service;
 }
@@ -64,7 +64,7 @@ describe("worktree environment proposals", () => {
   it("stores a proposal without touching the saved scripts", async () => {
     const service = await createService();
 
-    const proposed = await service.proposeWorktreeEnvironment({
+    const proposed = await service.workspaces.proposeWorktreeEnvironment({
       workspaceId: "workspace-1",
       setupScript: "pnpm install",
       cleanupScript: "rm -rf .turbo",
@@ -80,13 +80,13 @@ describe("worktree environment proposals", () => {
 
   it("clears a pending proposal when scripts are saved directly", async () => {
     const service = await createService();
-    await service.proposeWorktreeEnvironment({
+    await service.workspaces.proposeWorktreeEnvironment({
       workspaceId: "workspace-1",
       setupScript: "pnpm install",
       cleanupScript: "",
     });
 
-    const saved = await service.saveWorktreeEnvironment({
+    const saved = await service.workspaces.saveWorktreeEnvironment({
       workspaceId: "workspace-1",
       setupScript: "yarn install",
       cleanupScript: "",
@@ -108,49 +108,49 @@ describe("settings set and pending changes", () => {
   it("queues renderer-owned values and drains them on ack", async () => {
     const service = await createService();
 
-    const result = await service.setSettingValue({
+    const result = await service.settings.setValue({
       key: "app.theme",
       value: "dark",
       workspaceId: "workspace-1",
     });
     expect(result).toEqual({ status: "queued" });
 
-    const pending = await service.listPendingSettingsChanges();
+    const pending = await service.settings.listPendingChanges();
     expect(pending).toHaveLength(1);
     expect(pending[0]).toMatchObject({ key: "app.theme", value: "dark" });
 
-    await service.acknowledgeSettingsChange(pending[0]!.id);
-    expect(await service.listPendingSettingsChanges()).toEqual([]);
+    await service.settings.acknowledgeChange(pending[0]!.id);
+    expect(await service.settings.listPendingChanges()).toEqual([]);
   });
 
   it("rejects invalid values and non-write tiers", async () => {
     const service = await createService();
     await expect(
-      service.setSettingValue({
+      service.settings.setValue({
         key: "app.theme",
         value: "neon",
         workspaceId: "workspace-1",
       }),
     ).rejects.toThrow("app.theme");
     await expect(
-      service.setSettingValue({
+      service.settings.setValue({
         key: "workspace.worktreeEnvironment",
         value: {},
         workspaceId: "workspace-1",
       }),
     ).rejects.toThrow("settings_propose");
-    expect(await service.listPendingSettingsChanges()).toEqual([]);
+    expect(await service.settings.listPendingChanges()).toEqual([]);
   });
 
   it("applies daemon-owned values directly", async () => {
     const service = await createService();
-    const result = await service.setSettingValue({
+    const result = await service.settings.setValue({
       key: "git.commitMessageModel",
       value: null,
       workspaceId: "workspace-1",
     });
     expect(result).toEqual({ status: "applied" });
-    const read = await service.getSettingValue(
+    const read = await service.settings.getValue(
       "git.commitMessageModel",
       "workspace-1",
     );
@@ -159,12 +159,12 @@ describe("settings set and pending changes", () => {
 
   it("mirrors reported renderer values for settings_get", async () => {
     const service = await createService();
-    await service.reportSettingValues({ "app.theme": "dark" });
-    await service.reportSettingValues({ "app.language": "zh-CN" });
+    await service.settings.reportValues({ "app.theme": "dark" });
+    await service.settings.reportValues({ "app.language": "zh-CN" });
 
-    const theme = await service.getSettingValue("app.theme", "workspace-1");
+    const theme = await service.settings.getValue("app.theme", "workspace-1");
     expect(theme.value).toBe("dark");
-    const language = await service.getSettingValue(
+    const language = await service.settings.getValue(
       "app.language",
       "workspace-1",
     );

@@ -52,7 +52,7 @@ async function createService(userDataPath = tempDirs.createSync("sync-pull-")) {
 }
 
 async function seed(service: CocurdexDaemonService) {
-  await service.saveWorkspace({
+  await service.workspaces.saveWorkspace({
     id: "workspace-1",
     name: "acme-shop",
     rootPaths: ["/acme-shop"],

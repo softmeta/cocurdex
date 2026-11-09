@@ -7,7 +7,7 @@ async function limitRuns(
   service: CocurdexDaemonService,
   maxConcurrentRunsPerAgent: number,
 ) {
-  await service.setSettingValue({
+  await service.settings.setValue({
     key: AGENT_RUN_LIMITS_SETTING_KEY,
     value: {
       maxConcurrentRuns: 8,

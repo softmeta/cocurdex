@@ -106,7 +106,7 @@ export async function handleSessionRequest(
         request.params.workspaceRootPath,
       );
     case "session.send":
-      await service.assertClientAttachmentsAccess(
+      await service.workspaces.assertClientAttachmentsAccess(
         context.principal,
         request.params.attachments,
       );

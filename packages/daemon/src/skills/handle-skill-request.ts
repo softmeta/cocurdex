@@ -22,7 +22,7 @@ async function assertSourceAccess(
 ) {
   const parsed = service.skillLibrary.sourceKind(source);
   if (parsed.kind === "local") {
-    await service.assertClientPathAccess(
+    await service.workspaces.assertClientPathAccess(
       context.principal,
       parsed.path,
       "file",

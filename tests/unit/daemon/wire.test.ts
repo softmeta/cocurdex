@@ -258,7 +258,7 @@ describe("startDaemonServer", () => {
         sortOrder: 0,
         updatedAt: timestamp,
       };
-      const save = vi.spyOn(daemon.service, "saveWorkspace");
+      const save = vi.spyOn(daemon.service.workspaces, "saveWorkspace");
       const options = { idempotencyKey: "save-1", userDataPath };
       const first = await requestDaemon(
         "workspace.save",

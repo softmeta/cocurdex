@@ -90,7 +90,7 @@ describe("worktree daemon RPC", () => {
   it("names the branch when the caller omits one", async () => {
     const { service, userDataPath } = await createService();
     const repositoryPath = await createRepository(userDataPath);
-    await service.saveWorkspace(workspaceFor(repositoryPath));
+    await service.workspaces.saveWorkspace(workspaceFor(repositoryPath));
 
     const created = await handleDaemonRequest<"worktree.create">(service, {
       id: "1",
@@ -109,7 +109,7 @@ describe("worktree daemon RPC", () => {
   it("creates, lists, and refuses to remove a bound worktree", async () => {
     const { service, userDataPath } = await createService();
     const repositoryPath = await createRepository(userDataPath);
-    await service.saveWorkspace(workspaceFor(repositoryPath));
+    await service.workspaces.saveWorkspace(workspaceFor(repositoryPath));
 
     const created = await handleDaemonRequest<"worktree.create">(service, {
       id: "1",
@@ -167,7 +167,7 @@ describe("worktree daemon RPC", () => {
   it("removes an unused managed worktree", async () => {
     const { service, userDataPath } = await createService();
     const repositoryPath = await createRepository(userDataPath);
-    await service.saveWorkspace(workspaceFor(repositoryPath));
+    await service.workspaces.saveWorkspace(workspaceFor(repositoryPath));
 
     const created = await handleDaemonRequest<"worktree.create">(service, {
       id: "1",

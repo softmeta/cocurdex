@@ -46,7 +46,7 @@ async function seedSession(service: CocurdexDaemonService) {
     updatedAt: now,
     lastMessageAt: null,
   } satisfies SessionRecord;
-  await service.saveWorkspace(workspace);
+  await service.workspaces.saveWorkspace(workspace);
   await service.state.saveSession(session);
 }
 

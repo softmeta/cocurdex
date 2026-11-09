@@ -35,7 +35,7 @@ async function createService() {
   vi.spyOn(service, "listAgents").mockResolvedValue([
     { ...pi, availability: "available" },
   ]);
-  await service.saveWorkspace({
+  await service.workspaces.saveWorkspace({
     id: "workspace-1",
     name: "Title test",
     rootPaths: ["/tmp/title-test"],

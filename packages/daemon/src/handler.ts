@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import type {
   DaemonMethod,
   DaemonRequest,
@@ -32,6 +33,11 @@ import {
   handleSkillRequest,
   isSkillRequest,
 } from "./skills/handle-skill-request";
+import {
+  listFontFamilies,
+  openDirectoryInFileManager,
+  revealPathInFileManager,
+} from "./system";
 
 export function handleDaemonRequest<M extends DaemonMethod>(
   service: CocurdexDaemonService,
@@ -88,27 +94,29 @@ export async function handleDaemonRequest(
     case "app.bootstrap":
       return service.bootstrap();
     case "network.proxy.test":
-      return service.testNetworkProxy(request.params.settings);
+      return service.settings.testNetworkProxy(request.params.settings);
     case "network.proxy.get":
-      return service.getNetworkProxySettings();
+      return service.settings.getNetworkProxy();
     case "network.proxy.set":
-      return service.setNetworkProxySettings(request.params.settings);
+      return service.settings.setNetworkProxy(request.params.settings);
     case "settings.pendingChanges.list":
-      return service.listPendingSettingsChanges();
+      return service.settings.listPendingChanges();
     case "settings.pendingChanges.ack":
-      await service.acknowledgeSettingsChange(request.params.id);
+      await service.settings.acknowledgeChange(request.params.id);
       return null;
     case "settings.values.report":
-      await service.reportSettingValues(request.params.values);
+      await service.settings.reportValues(request.params.values);
       return null;
     case "system.homeDir":
-      return service.homeDir();
+      return homedir();
     case "system.fontFamilies":
-      return service.listFontFamilies();
+      return listFontFamilies();
     case "system.openDirectory":
-      return service.openDirectoryInFileManager(request.params.path);
+      await openDirectoryInFileManager(request.params.path);
+      return null;
     case "system.revealPath":
-      return service.revealPathInFileManager(request.params.path);
+      await revealPathInFileManager(request.params.path);
+      return null;
     default: {
       const exhaustive: never = request;
       throw new Error(

@@ -50,33 +50,37 @@ export async function handleWorkspaceRequest(
 ): Promise<DaemonResultByMethod[WorkspaceMethod]> {
   switch (request.method) {
     case "workspace.list":
-      return service.listWorkspaces();
+      return service.workspaces.listWorkspaces();
     case "workspace.listEntries":
-      return service.listWorkspaceEntries(request.params.rootPath);
+      return service.workspaces.listWorkspaceEntries(request.params.rootPath);
     case "workspace.listFiles":
-      return service.listWorkspaceFiles(request.params.rootPath);
+      return service.workspaces.listWorkspaceFiles(request.params.rootPath);
     case "workspace.listDirectory":
-      return service.listWorkspaceDirectory(
+      return service.workspaces.listWorkspaceDirectory(
         request.params.rootPath,
         request.params.relativePath,
       );
     case "workspace.save":
-      return service.saveWorkspace(request.params.workspace);
+      return service.workspaces.saveWorkspace(request.params.workspace);
     case "workspace.delete":
-      await service.deleteWorkspace(request.params.workspaceId);
+      await service.workspaces.deleteWorkspace(request.params.workspaceId);
       return null;
     case "workspace.resolveOpenPath":
-      return service.resolveWorkspaceOpenPath(
+      return service.workspaces.resolveWorkspaceOpenPath(
         request.params.path,
         request.params.allowFile,
       );
     case "workspace.worktreeEnvironment.get":
-      return service.getWorktreeEnvironment(request.params.workspaceId);
+      return service.workspaces.getWorktreeEnvironment(
+        request.params.workspaceId,
+      );
     case "workspace.worktreeEnvironment.save":
-      return service.saveWorktreeEnvironment(request.params);
+      return service.workspaces.saveWorktreeEnvironment(request.params);
     case "workspace.runWorktreeSetup":
       if (context.principal.kind !== "local") {
-        await service.resolveWorkspaceFilePath(request.params.worktreePath);
+        await service.workspaces.resolveWorkspaceFilePath(
+          request.params.worktreePath,
+        );
       }
       return service.worktrees.runWorktreeSetup(request.params);
     case "worktree.settings.get":
@@ -89,9 +93,11 @@ export async function handleWorkspaceRequest(
       return service.worktrees.createWorktree(request.params);
     case "worktree.remove":
       if (context.principal.kind !== "local") {
-        await service.resolveWorkspaceFilePath(request.params.worktreePath);
+        await service.workspaces.resolveWorkspaceFilePath(
+          request.params.worktreePath,
+        );
         if (request.params.workspaceRootPath) {
-          await service.resolveWorkspaceFilePath(
+          await service.workspaces.resolveWorkspaceFilePath(
             request.params.workspaceRootPath,
           );
         }
@@ -101,13 +107,13 @@ export async function handleWorkspaceRequest(
       await service.state.saveEditorView(request.params.view);
       return null;
     case "file.readText":
-      return service.readWorkspaceTextFile(request.params.filePath);
+      return service.workspaces.readWorkspaceTextFile(request.params.filePath);
     case "file.exists":
-      return service.workspaceFileExists(request.params.filePath);
+      return service.workspaces.workspaceFileExists(request.params.filePath);
     case "fs.listDirectories":
-      return service.listHostDirectories(request.params.path);
+      return service.workspaces.listHostDirectories(request.params.path);
     case "image.import":
-      await service.assertClientPathAccess(
+      await service.workspaces.assertClientPathAccess(
         context.principal,
         request.params.path,
         "file",
@@ -158,24 +164,24 @@ export async function handleWorkspaceRequest(
     case "git.generateCommitMessage":
       return service.commitMessageService.generate(request.params);
     case "git.listBranches":
-      await service.watchWorkspace(request.params.rootPath);
+      await service.workspaces.watchWorkspace(request.params.rootPath);
       return listGitBranches(request.params.rootPath);
     case "git.checkoutBranch":
       await checkoutGitBranch(request.params.rootPath, request.params.branch);
       return undefined;
     case "git.listWorktrees":
-      await service.watchWorkspace(request.params.rootPath);
+      await service.workspaces.watchWorkspace(request.params.rootPath);
       return listGitWorktrees(request.params.rootPath);
     case "git.listCommits":
-      await service.watchWorkspace(request.params.rootPath);
+      await service.workspaces.watchWorkspace(request.params.rootPath);
       return listGitCommits(request.params.rootPath, {
         limit: request.params.limit,
       });
     case "git.status":
-      await service.watchWorkspace(request.params.rootPath);
+      await service.workspaces.watchWorkspace(request.params.rootPath);
       return getWorkspaceGitStatus(request.params.rootPath);
     case "git.diff":
-      await service.watchWorkspace(request.params.rootPath);
+      await service.workspaces.watchWorkspace(request.params.rootPath);
       return getWorkspaceDiff(request.params.rootPath, request.params.query);
     case "git.stageFiles":
       await stageGitFiles(request.params.rootPath, request.params.filePaths);
@@ -187,7 +193,7 @@ export async function handleWorkspaceRequest(
       await discardGitFiles(request.params.rootPath, request.params.filePaths);
       return undefined;
     case "git.commit":
-      return service.commitWorkspaceChanges(request.params);
+      return service.workspaces.commitWorkspaceChanges(request.params);
     case "git.push":
       return pushGitBranch(request.params.rootPath);
   }

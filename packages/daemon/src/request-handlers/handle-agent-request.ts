@@ -67,9 +67,9 @@ export async function handleAgentRequest(
     case "agent.rateLimits.read":
       return service.readAdapterRateLimits(request.params.agentIds);
     case "agent.runLimits.get":
-      return service.getAgentRunLimits();
+      return service.settings.readAgentRunLimits();
     case "agent.runLimits.set":
-      return service.setAgentRunLimits(request.params.limits);
+      return service.settings.setAgentRunLimits(request.params.limits);
     case "acpRegistry.catalog":
       return service.acpRegistry.listCatalog(request.params);
     case "acpRegistry.install":

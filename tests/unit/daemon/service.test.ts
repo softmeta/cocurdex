@@ -89,7 +89,7 @@ async function createService(existingUserDataPath?: string) {
   vi.spyOn(service, "listAgents").mockResolvedValue([
     { ...pi, availability: "available" },
   ]);
-  await service.saveWorkspace(createWorkspace());
+  await service.workspaces.saveWorkspace(createWorkspace());
   await service.saveSessionConfiguration(sessionConfiguration(createSession()));
   return service;
 }
@@ -102,7 +102,7 @@ describe("CocurdexDaemonService workspace roots", () => {
       const trailing = `${home}${path.sep}`;
       for (const rootPath of [home, trailing]) {
         await expect(
-          service.saveWorkspace({
+          service.workspaces.saveWorkspace({
             ...createWorkspace(),
             id: "workspace-home",
             rootPaths: [rootPath],
@@ -110,7 +110,7 @@ describe("CocurdexDaemonService workspace roots", () => {
         ).rejects.toThrow(/home directory/);
       }
       await expect(
-        service.saveWorkspace({
+        service.workspaces.saveWorkspace({
           ...createWorkspace(),
           id: "workspace-root",
           rootPaths: [path.parse(home).root],
@@ -126,14 +126,14 @@ describe("CocurdexDaemonService workspace roots", () => {
     try {
       const shared = createWorkspace().rootPaths[0];
       await expect(
-        service.saveWorkspace({
+        service.workspaces.saveWorkspace({
           ...createWorkspace(),
           id: "workspace-multi",
           rootPaths: ["/tmp/other-project", shared],
         }),
       ).resolves.toMatchObject({ id: "workspace-multi" });
       await expect(
-        service.saveWorkspace({
+        service.workspaces.saveWorkspace({
           ...createWorkspace(),
           id: "workspace-duplicate",
           rootPaths: [shared],
