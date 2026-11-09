@@ -156,8 +156,8 @@ export function RoutineForm({
   const deliverOptions = [
     {
       value: "inbox",
-      label: t("routines.deliver.inbox"),
-      description: t("routines.deliver.inboxDescription"),
+      label: t("routines.deliver.onFailure"),
+      description: t("routines.deliver.onFailureDescription"),
     },
     {
       value: "push",

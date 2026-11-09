@@ -425,13 +425,13 @@ runScenario("personal-agents", {
         });
         stub.plan = { kind: "stream", chunks: ["Two meetings today."] };
         await daemonRequest(session, "routine.run", { id: routine.id });
-        const inboxName = await translate(session, "personal:inbox.heading");
-        const row = {
+        const source = {
           role: "button",
-          name: /Morning brief/,
-          within: { role: "region", name: inboxName },
+          name: await translate(session, "agent:peerMessage.fromRoutine", {
+            name: "Morning brief",
+          }),
         };
-        await waitForRole(session, row, UI_TIMEOUT_MS);
+        await waitForRole(session, source, UI_TIMEOUT_MS);
         const [run] = await daemonRequest(session, "routine.runs", {
           routineId: routine.id,
         });
@@ -440,13 +440,6 @@ runScenario("personal-agents", {
           "the run used its own thread",
           run,
         );
-        const source = {
-          role: "button",
-          name: await translate(session, "agent:peerMessage.fromRoutine", {
-            name: "Morning brief",
-          }),
-        };
-        await waitForRole(session, source, UI_TIMEOUT_MS);
         const home = await daemonRequest(session, "session.snapshot", {
           sessionId: state.homeSessionId,
         });
@@ -467,7 +460,6 @@ runScenario("personal-agents", {
           "Summarize today",
           UI_TIMEOUT_MS,
         );
-        await waitForNoRole(session, row, UI_TIMEOUT_MS);
         return { routine: routine.id, sessionId: run.sessionId };
       },
     ],

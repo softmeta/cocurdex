@@ -1,10 +1,5 @@
-import {
-  INBOX_FAILURE_KINDS,
-  INBOX_NEEDS_YOU_KINDS,
-  type InboxItemKind,
-} from "@cocurdex/shared";
+import type { InboxItemKind } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
-import type { ThemeColors } from "@/theme";
 
 export function inboxKindLabel(t: TFunction<"assistant">, kind: InboxItemKind) {
   switch (kind) {
@@ -27,10 +22,4 @@ export function inboxKindLabel(t: TFunction<"assistant">, kind: InboxItemKind) {
     case "routine-result":
       return t("inbox.kind.routineResult");
   }
-}
-
-export function inboxKindColor(kind: InboxItemKind): keyof ThemeColors {
-  if (INBOX_NEEDS_YOU_KINDS.includes(kind)) return "chatStatusPendingText";
-  if (INBOX_FAILURE_KINDS.includes(kind)) return "chatStatusFailedText";
-  return "sidebarPrimary";
 }

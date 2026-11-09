@@ -25,7 +25,7 @@ cocurdex persona thread <persona> [--limit <n>] --json
 ```
 
 - Personas always run on Pi; pick a model the user has configured (`cocurdex provider list`).
-- A muted persona (`--mute`) never notifies the desktop or the phone; its threads still reach the inbox.
+- A muted persona (`--mute`) never notifies the desktop or the phone; what needs the user from its threads still shows in the assistant overview and `cocurdex inbox`.
 - `send` posts to the persona's home thread and returns the message id. With `--wait` it returns the reply once the turn settles, and fails with the persona's error when the turn fails. Without `--wait`, read the reply later with `thread`.
 - Instructions describe the job; the soul describes who the persona is to the user. Keep both short and specific, and pass long text with the `-file` flags.
 - Deleting a persona also deletes its role and home thread. Confirm with the user first.
@@ -94,7 +94,7 @@ cocurdex persona work stop <persona> <session-id> --json
 - `catalog` lists the workspaces (never the chat or personal ones), saved agent roles, and team templates that `start` accepts by id or exact name.
 - Without `--role` or `--team`, the session uses the workspace's most recent agent and model. `--role` runs it as that agent role; `--team` makes it lead that team template, with the template's first member as its role. Pass one or the other, not both. `--worktree` works in a new git worktree.
 - The task arrives in the session marked as coming from the persona. Each time the session finishes a turn, its reply is posted into the persona's home thread, and the persona takes a new turn to tell the user what happened.
-- The session runs with the workspace's usual permission mode; approvals and questions reach the user through the inbox, never the persona.
+- The session runs with the workspace's usual permission mode; approvals and questions reach the user through the assistant overview and notifications, never the persona.
 - `send` delivers a follow-up into the session's current turn when its agent supports it, otherwise after it. A persona can only see, message, and stop the sessions it delegated.
 - Inside a persona's thread, the `work` tool group (`work_catalog`, `work_start`, `work_list`, `work_send`, `work_stop`) does the same. A routine can delegate only with `full` access.
 

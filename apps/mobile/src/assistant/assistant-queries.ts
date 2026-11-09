@@ -47,11 +47,6 @@ export function revalidateAssistant(hostId: string) {
   );
 }
 
-export async function readInboxItem(hostId: string, id: string) {
-  await hostConnection(hostId).request("inbox.read", { id });
-  await revalidateAssistant(hostId);
-}
-
 export function greetPersonalAgent(host: SavedHost, id: string) {
   if (!host.scopes.includes("interact")) return;
   void hostConnection(host.hostId)

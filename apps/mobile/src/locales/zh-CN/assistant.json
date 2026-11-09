@@ -49,8 +49,7 @@
       "routineNeedsYou": "需要你处理",
       "routinePaused": "例行任务已暂停",
       "routineResult": "有新结果"
-    },
-    "title": "收件箱"
+    }
   },
   "overview": {
     "description": "协调工作、记住上下文、跟进到底。",

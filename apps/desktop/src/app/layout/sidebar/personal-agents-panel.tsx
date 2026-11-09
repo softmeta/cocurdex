@@ -1,15 +1,13 @@
-import type { InboxItem, PersonalAgentRecord } from "@cocurdex/shared";
+import type { PersonalAgentRecord } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppConfirmDialog } from "@/components/app";
 import { SidebarMenu, TooltipProvider } from "@/components/ui";
-import { useInbox } from "@/features/inbox";
 import { MemoryOnboarding } from "@/features/memory";
 import { personalApi, usePersonalAgents } from "@/features/personal";
 import { sessionsAtom } from "@/features/sessions";
-import { InboxSection } from "./inbox-section";
 import { personalAgentEditIdAtom } from "./personal-agent-edit-store";
 import {
   PersonalAgentRow,
@@ -23,16 +21,13 @@ function notifyFailure(error: unknown) {
 
 export function PersonalAgentsPanel({
   activeSessionId,
-  onOpenInboxItem,
   onSelectSession,
 }: {
   activeSessionId: string | null;
-  onOpenInboxItem(item: InboxItem): void;
   onSelectSession(sessionId: string): void;
 }) {
   const { t } = useTranslation("personal");
   const { agents } = usePersonalAgents();
-  const inbox = useInbox();
   const sessions = useAtomValue(sessionsAtom);
   const setEditId = useSetAtom(personalAgentEditIdAtom);
   const [deleting, setDeleting] = useState<PersonalAgentRecord | null>(null);
@@ -86,11 +81,6 @@ export function PersonalAgentsPanel({
             ))}
           </SidebarMenu>
         </section>
-        <InboxSection
-          activeSessionId={activeSessionId}
-          items={inbox}
-          onOpen={onOpenInboxItem}
-        />
       </SidebarScrollArea>
       <MemoryOnboarding />
       <AppConfirmDialog

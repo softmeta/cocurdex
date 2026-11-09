@@ -84,8 +84,6 @@
     "title": "新建你的第一个助理"
   },
   "inbox": {
-    "heading": "收件箱",
-    "headingCount": "收件箱 · {{total}}",
     "kind": {
       "approval": "等你审批",
       "completed": "已完成",
@@ -160,9 +158,9 @@
     "deleteFailed": "无法删除例行任务",
     "deleteTitle": "删除「{{name}}」？",
     "deliver": {
-      "inbox": "收件箱",
-      "inboxDescription": "结果进收件箱，失败时通知你。",
       "label": "通知",
+      "onFailure": "仅失败时",
+      "onFailureDescription": "结果发到助理对话里，只有失败时通知你。",
       "push": "推送",
       "pushDescription": "每次有结果都推送到手机。",
       "silent": "静默",
