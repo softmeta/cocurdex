@@ -7,23 +7,24 @@ import { validateSessionId } from "@cocurdex/shared";
 import type { DaemonRequestContext } from "../host-access/request-context";
 import type { CocurdexDaemonService } from "../service";
 
+const SESSION_PREFIXES = [
+  "session.",
+  "assistant.session.",
+  "attention.",
+  "permission.",
+  "question.",
+  "planApproval.",
+] as const;
+
 type SessionMethod = Extract<
   DaemonMethod,
-  | `session.${string}`
-  | "permission.resolve"
-  | "question.resolve"
-  | "planApproval.resolve"
+  `${(typeof SESSION_PREFIXES)[number]}${string}`
 >;
 
 export function isSessionRequest(
   request: DaemonRequest,
 ): request is DaemonRequest<SessionMethod> {
-  return (
-    request.method.startsWith("session.") ||
-    request.method === "permission.resolve" ||
-    request.method === "question.resolve" ||
-    request.method === "planApproval.resolve"
-  );
+  return SESSION_PREFIXES.some((prefix) => request.method.startsWith(prefix));
 }
 
 export async function handleSessionRequest(
@@ -160,6 +161,14 @@ export async function handleSessionRequest(
       return service.getTurnChangeDiff(request.params);
     case "session.getToolCallResult":
       return service.getToolCallResult(request.params);
+    case "assistant.session.create":
+      return service.createAssistantSession(request.params.workspaceId);
+    case "assistant.session.getOrCreate":
+      return service.getOrCreateAssistantSession(request.params);
+    case "attention.list":
+      return service.listSessionAttention();
+    case "attention.update":
+      return service.updateSessionAttention(request.params);
     case "permission.resolve":
       return service.resolvePermission(
         request.params.requestId,
