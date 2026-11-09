@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -15,6 +16,7 @@ import {
 export interface RuntimeAxisOption {
   description?: string | null;
   disabled?: boolean;
+  icon?: ReactNode;
   isDefault?: boolean;
   label: string;
   value: string;
