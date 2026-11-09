@@ -60,6 +60,7 @@ interface ProviderModelMenuProps {
   compatibleProviders: CompatibleProviderModel[];
   disabled?: boolean;
   emptyOptionLabel?: string;
+  header?: ReactNode;
   footer?: ReactNode;
   isLoading?: boolean;
   fastModeOptions?: ProviderModelMenuOption[];
@@ -104,6 +105,7 @@ export function ProviderModelMenu({
   compatibleProviders,
   disabled = false,
   emptyOptionLabel,
+  header,
   footer,
   isLoading = false,
   fastModeOptions = [],
@@ -281,13 +283,14 @@ export function ProviderModelMenu({
     );
   }
 
-  if (hasRuntimeOptions || footer) {
+  if (hasRuntimeOptions || header || footer) {
     return (
       <ProviderModelCompoundMenu
         align={align}
         appearance={appearance}
         disabled={disabled}
         inspectOnly={readOnly}
+        header={header}
         footer={footer}
         modelOptions={modelOptions}
         modelValue={value}

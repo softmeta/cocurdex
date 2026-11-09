@@ -32,7 +32,10 @@ import {
   useAdapterStatusLabel,
 } from "./adapter-status-dot";
 import { AgentDetailDialog } from "./agent-detail-dialog";
-import { MissingAdaptersGroup } from "./missing-adapters-group";
+import {
+  DisabledAdaptersGroup,
+  MissingAdaptersGroup,
+} from "./missing-adapters-group";
 
 function rowStatus(
   kind: AdapterStatusKind,
@@ -149,7 +152,7 @@ export function AdapterSettingsPanel() {
   );
   const rateLimitsByAgentRef = useRef(rateLimitsByAgent);
   rateLimitsByAgentRef.current = rateLimitsByAgent;
-  const { installed, missing } = splitAdaptersForSettings(agents);
+  const { installed, disabled, missing } = splitAdaptersForSettings(agents);
   const [registryOpen, setRegistryOpen] = useState(false);
   const [openAgentId, setOpenAgentId] = useState<AgentId | null>(null);
   const openAgent = agents.find((agent) => agent.id === openAgentId) ?? null;
@@ -313,6 +316,11 @@ export function AdapterSettingsPanel() {
         </div>
       </div>
       <SettingsGroup>{installed.map(renderAdapterRow)}</SettingsGroup>
+      {disabled.length > 0 ? (
+        <DisabledAdaptersGroup count={disabled.length}>
+          {disabled.map(renderAdapterRow)}
+        </DisabledAdaptersGroup>
+      ) : null}
       {missing.length > 0 ? (
         <MissingAdaptersGroup count={missing.length}>
           {missing.map(renderAdapterRow)}

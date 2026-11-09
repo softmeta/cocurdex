@@ -46,6 +46,7 @@
       "update": "更新",
       "usage": "用量"
     },
+    "disabledGroup_other": "已禁用（{{count}}）",
     "kind": {
       "builtin": "内置",
       "detecting": "检测中…",

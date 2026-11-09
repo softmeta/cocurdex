@@ -148,31 +148,39 @@ export class AcpRegistryService {
     );
     const next = [...this.installed];
     const newlyAdopted: string[] = [];
-    for (const registryId of LOCAL_CLI_REGISTRY_IDS) {
+    const probeIds = LOCAL_CLI_REGISTRY_IDS.filter((registryId) => {
+      const installed = next.find((agent) => agent.registryId === registryId);
+      if (installed === undefined) {
+        // A removal is explicit: do not adopt the same local CLI again.
+        return !adopted.has(registryId);
+      }
+      // A managed runtime stays in place; listUpdates offers a newer local CLI.
+      return installed.distribution === "local";
+    });
+    const localByRegistryId = new Map(
+      await Promise.all(
+        probeIds.map(
+          async (registryId) =>
+            [registryId, await this.findLocal(registryId)] as const,
+        ),
+      ),
+    );
+    for (const registryId of probeIds) {
+      const local = localByRegistryId.get(registryId) ?? null;
+      if (!local) {
+        continue;
+      }
       const index = next.findIndex((agent) => agent.registryId === registryId);
       const installed = index === -1 ? undefined : next[index];
       if (installed === undefined) {
-        // A removal is explicit: do not adopt the same local CLI again.
-        if (adopted.has(registryId)) {
-          continue;
-        }
-        const local = await this.findLocal(registryId);
-        if (local) {
-          next.push(local);
-          newlyAdopted.push(registryId);
-        }
+        next.push(local);
+        newlyAdopted.push(registryId);
         continue;
       }
-      if (installed.distribution !== "local") {
-        // A managed runtime stays in place; listUpdates offers a newer local CLI.
-        continue;
-      }
-      const local = await this.findLocal(registryId);
       if (
-        local &&
-        (local.command !== installed.command ||
-          local.args.join("\0") !== installed.args.join("\0") ||
-          local.version !== installed.version)
+        local.command !== installed.command ||
+        local.args.join("\0") !== installed.args.join("\0") ||
+        local.version !== installed.version
       ) {
         next[index] = { ...local, installedAt: installed.installedAt };
       }

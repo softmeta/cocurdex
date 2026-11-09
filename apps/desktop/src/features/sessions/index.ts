@@ -30,7 +30,10 @@ export {
   updateAgentRuntimePreferences,
 } from "./agent-runtime-preferences";
 export { AgentSelect } from "./agent-select";
-export { buildAgentSelectOptions } from "./agent-select-options";
+export {
+  buildAgentSelectOptions,
+  visibleAgentSelectOptions,
+} from "./agent-select-options";
 export { applyRuntimeSessionModesAtom } from "./agent-session-modes-sync";
 export { PermissionModeSubmenu } from "./permission-mode-submenu";
 export {

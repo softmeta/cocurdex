@@ -30,10 +30,22 @@ export function sortAdaptersForSettings(
 
 export function splitAdaptersForSettings(agents: readonly AgentDescriptor[]) {
   const sorted = sortAdaptersForSettings(agents);
-  const isMissing = (agent: AgentDescriptor) =>
-    getAdapterStatus(agent).kind === "missing";
+  const installed: AgentDescriptor[] = [];
+  const disabled: AgentDescriptor[] = [];
+  const missing: AgentDescriptor[] = [];
+  for (const agent of sorted) {
+    const kind = getAdapterStatus(agent).kind;
+    if (kind === "disabled") {
+      disabled.push(agent);
+    } else if (kind === "missing") {
+      missing.push(agent);
+    } else {
+      installed.push(agent);
+    }
+  }
   return {
-    installed: sorted.filter((agent) => !isMissing(agent)),
-    missing: sorted.filter(isMissing),
+    installed,
+    disabled,
+    missing,
   };
 }

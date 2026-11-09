@@ -38,6 +38,7 @@ const DEFAULT_VALUE = "";
 export function SessionRuntimeMenu({
   agentType,
   compatibleProviders,
+  header,
   footer,
   label,
   model,
@@ -65,6 +66,7 @@ export function SessionRuntimeMenu({
 }: {
   agentType: AgentId;
   compatibleProviders: CompatibleProviderModel[];
+  header?: ReactNode;
   footer?: ReactNode;
   label: string;
   model: ProviderModelRecord | null;
@@ -161,6 +163,7 @@ export function SessionRuntimeMenu({
     openCodeAgentOptions.length > 1 ||
     openCodeVariantOptions.length > 1;
   const hasMenu =
+    Boolean(header) ||
     Boolean(footer) ||
     mcpServers !== null ||
     sessionConfigOptions.length > 0 ||
@@ -202,6 +205,7 @@ export function SessionRuntimeMenu({
       readOnly={readOnly}
       fastModeOptions={fastModeOptions}
       fastModeValue={fastMode ? "on" : "off"}
+      header={header}
       footer={menuFooter}
       openCodeAgentDefaultValue={openCodeAgentMenuValue}
       openCodeAgentOptions={openCodeAgentOptions}

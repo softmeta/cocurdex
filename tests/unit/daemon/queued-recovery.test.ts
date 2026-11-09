@@ -160,7 +160,10 @@ describe("daemon-owned queue recovery", () => {
       .mockResolvedValue(message);
     const second = await start(root);
     void resumeQueued(root).catch(() => undefined);
-    await vi.waitFor(() => expect(credentials).toHaveBeenCalledOnce());
+    await vi.waitFor(
+      () => expect(credentials).toHaveBeenCalledOnce(),
+      dispatchWait,
+    );
     const closing = second.close();
     await new Promise<void>((resolve) => setImmediate(resolve));
     release();

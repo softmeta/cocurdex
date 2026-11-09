@@ -2390,6 +2390,8 @@ export default interface Resources {
         update: "Update";
         usage: "Usage";
       };
+      disabledGroup_one: "Disabled ({{count}})";
+      disabledGroup_other: "Disabled ({{count}})";
       kind: {
         builtin: "Built-in";
         detecting: "Checking…";

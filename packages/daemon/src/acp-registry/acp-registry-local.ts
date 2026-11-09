@@ -31,14 +31,23 @@ const LOCAL_CLI_AGENTS: Readonly<Record<string, LocalCliAgent>> = {
 
 export const LOCAL_CLI_REGISTRY_IDS = Object.keys(LOCAL_CLI_AGENTS);
 
-export async function findLocalCliAgent(
+const LOCAL_CLI_CACHE_TTL_MS = 5_000;
+
+let cachedWindow: {
+  expiresAt: number;
+  path: string | undefined;
+  pathExt: string | undefined;
+  probes: Map<
+    string,
+    Promise<Omit<AcpRegistryInstalledAgent, "installedAt"> | null>
+  >;
+} | null = null;
+
+async function probeLocalCliAgent(
   registryId: string,
-  lookup: (command: string) => Promise<string | null> = lookupExecutable,
-  now = () => new Date(),
-  readVersion: (
-    command: string,
-  ) => Promise<string | null> = readExecutableVersion,
-): Promise<AcpRegistryInstalledAgent | null> {
+  lookup: (command: string) => Promise<string | null>,
+  readVersion: (command: string) => Promise<string | null>,
+): Promise<Omit<AcpRegistryInstalledAgent, "installedAt"> | null> {
   const known = LOCAL_CLI_AGENTS[registryId];
   const command = known ? await lookup(known.command) : null;
   if (!known || !command) {
@@ -62,6 +71,47 @@ export async function findLocalCliAgent(
     command,
     args: known.args,
     env: {},
-    installedAt: now().toISOString(),
   };
+}
+
+export async function findLocalCliAgent(
+  registryId: string,
+  lookup: (command: string) => Promise<string | null> = lookupExecutable,
+  now = () => new Date(),
+  readVersion: (
+    command: string,
+  ) => Promise<string | null> = readExecutableVersion,
+): Promise<AcpRegistryInstalledAgent | null> {
+  if (lookup !== lookupExecutable || readVersion !== readExecutableVersion) {
+    const probed = await probeLocalCliAgent(registryId, lookup, readVersion);
+    return probed ? { ...probed, installedAt: now().toISOString() } : null;
+  }
+  const time = performance.now();
+  const { PATH: path, PATHEXT: pathExt } = process.env;
+  if (
+    !cachedWindow ||
+    time >= cachedWindow.expiresAt ||
+    path !== cachedWindow.path ||
+    pathExt !== cachedWindow.pathExt
+  ) {
+    cachedWindow = {
+      expiresAt: time + LOCAL_CLI_CACHE_TTL_MS,
+      path,
+      pathExt,
+      probes: new Map(),
+    };
+  }
+  const window = cachedWindow;
+  let pending = window.probes.get(registryId);
+  if (!pending) {
+    pending = probeLocalCliAgent(registryId, lookup, readVersion).catch(
+      (error: unknown) => {
+        window.probes.delete(registryId);
+        throw error;
+      },
+    );
+    window.probes.set(registryId, pending);
+  }
+  const probed = await pending;
+  return probed ? { ...probed, installedAt: now().toISOString() } : null;
 }

@@ -49,6 +49,7 @@ export function ProviderModelCompoundMenu({
   appearance,
   disabled,
   inspectOnly = false,
+  header,
   footer,
   modelOptions,
   modelValue,
@@ -78,6 +79,7 @@ export function ProviderModelCompoundMenu({
   appearance?: AppDropdownTriggerAppearance;
   disabled?: boolean;
   inspectOnly?: boolean;
+  header?: ReactNode;
   footer?: ReactNode;
   modelOptions: AppSearchableSelectOption[];
   modelValue: string;
@@ -166,6 +168,7 @@ export function ProviderModelCompoundMenu({
         </AppDropdownTriggerButton>
       </DropdownMenuTrigger>
       <AppDropdownContent align={align} className="min-w-56" side="bottom">
+        {header}
         <RuntimeAxisSubmenu
           inspectOnly={inspectOnly}
           label={t("modelMenu.triggerLabel")}

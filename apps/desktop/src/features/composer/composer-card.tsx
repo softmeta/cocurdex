@@ -52,6 +52,7 @@ interface ComposerCardProps {
   runtimeControls: boolean;
   footerLeading?: ReactNode;
   footerTrailing?: ReactNode;
+  runtimeMenuHeader?: ReactNode;
   runtimeMenuExtras?: ReactNode;
   modelLeading?: ReactNode;
   sessionId?: string | null;
@@ -83,6 +84,7 @@ export function ComposerCard({
   runtimeControls,
   footerLeading,
   footerTrailing,
+  runtimeMenuHeader,
   runtimeMenuExtras,
   modelLeading,
   sessionId,
@@ -283,6 +285,7 @@ export function ComposerCard({
                 {isAgentMode && runtimeControls ? (
                   <ContextWindowIndicator
                     afterModel={footerTrailing}
+                    header={runtimeMenuHeader}
                     footer={runtimeMenuExtras}
                     modelLeading={modelLeading}
                     isRunning={isRunning}

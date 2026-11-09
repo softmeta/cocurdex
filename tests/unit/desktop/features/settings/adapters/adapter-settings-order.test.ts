@@ -104,7 +104,7 @@ describe("sortAdaptersForSettings", () => {
 });
 
 describe("splitAdaptersForSettings", () => {
-  it("moves only uninstalled adapters into the collapsed group", () => {
+  it("splits active installed adapters from collapsed disabled and missing groups", () => {
     const missingOpencode = descriptor({
       id: "opencode",
       availability: "missing",
@@ -135,7 +135,7 @@ describe("splitAdaptersForSettings", () => {
       installation: { executableName: "grok", executablePath: null },
     });
 
-    const { installed, missing } = splitAdaptersForSettings([
+    const { installed, disabled, missing } = splitAdaptersForSettings([
       disabledGrok,
       missingOpencode,
       descriptor({ id: "pi" }),
@@ -147,8 +147,8 @@ describe("splitAdaptersForSettings", () => {
       "pi",
       "codex",
       "claude-agent",
-      "acp:grok-build",
     ]);
+    expect(disabled.map((agent) => agent.id)).toEqual(["acp:grok-build"]);
     expect(missing.map((agent) => agent.id)).toEqual(["opencode"]);
   });
 });

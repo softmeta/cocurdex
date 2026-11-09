@@ -10,14 +10,13 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib";
 
-export function MissingAdaptersGroup({
+function CollapsedAdaptersGroup({
   children,
-  count,
+  label,
 }: {
   children: ReactNode;
-  count: number;
+  label: string;
 }) {
-  const { t } = useTranslation("settings");
   const [open, setOpen] = useState(false);
 
   return (
@@ -33,12 +32,42 @@ export function MissingAdaptersGroup({
           )}
         />
         <Text size="meta" weight="medium">
-          {t("adapters.notInstalledGroup", { count })}
+          {label}
         </Text>
       </CollapsibleTrigger>
       <CollapsibleContent className="pt-2">
         <SettingsGroup>{children}</SettingsGroup>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+export function DisabledAdaptersGroup({
+  children,
+  count,
+}: {
+  children: ReactNode;
+  count: number;
+}) {
+  const { t } = useTranslation("settings");
+  return (
+    <CollapsedAdaptersGroup label={t("adapters.disabledGroup", { count })}>
+      {children}
+    </CollapsedAdaptersGroup>
+  );
+}
+
+export function MissingAdaptersGroup({
+  children,
+  count,
+}: {
+  children: ReactNode;
+  count: number;
+}) {
+  const { t } = useTranslation("settings");
+  return (
+    <CollapsedAdaptersGroup label={t("adapters.notInstalledGroup", { count })}>
+      {children}
+    </CollapsedAdaptersGroup>
   );
 }
