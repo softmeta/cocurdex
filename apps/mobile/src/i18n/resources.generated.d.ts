@@ -52,7 +52,6 @@ export default interface Resources {
         routinePaused: "Routine paused";
         routineResult: "New result";
       };
-      title: "Inbox";
     };
     overview: {
       description: "Coordinate work, keep context, and follow through.";

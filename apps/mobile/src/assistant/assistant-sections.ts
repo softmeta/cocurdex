@@ -1,16 +1,14 @@
 import type {
   Brief,
   BriefRoutineResult,
-  InboxItem,
   PersonalAgentRecord,
 } from "@cocurdex/shared";
 
 export type AssistantRow =
   | { kind: "result"; key: string; result: BriefRoutineResult }
-  | { kind: "inbox"; key: string; item: InboxItem }
   | { kind: "agent"; key: string; agent: PersonalAgentRecord };
 
-export type AssistantSectionKind = "brief" | "inbox" | "agents";
+export type AssistantSectionKind = "brief" | "agents";
 
 export interface AssistantSection {
   kind: AssistantSectionKind;
@@ -20,11 +18,9 @@ export interface AssistantSection {
 
 export function assistantSections({
   brief,
-  inbox,
   agents,
 }: {
   brief: Brief | null;
-  inbox: readonly InboxItem[];
   agents: readonly PersonalAgentRecord[];
 }): AssistantSection[] {
   const sections: AssistantSection[] = [
@@ -44,15 +40,6 @@ export function assistantSections({
         kind: "result",
         key: `result-${result.runId}`,
         result,
-      })),
-    },
-    {
-      kind: "inbox",
-      key: "inbox",
-      data: inbox.map((item) => ({
-        kind: "inbox",
-        key: `inbox-${item.id}`,
-        item,
       })),
     },
   ];

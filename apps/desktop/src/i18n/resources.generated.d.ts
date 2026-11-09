@@ -1623,8 +1623,6 @@ export default interface Resources {
       title: "Create your first assistant";
     };
     inbox: {
-      heading: "Inbox";
-      headingCount: "Inbox · {{total}}";
       kind: {
         approval: "Needs approval";
         completed: "Done";
@@ -1699,9 +1697,9 @@ export default interface Resources {
       deleteFailed: "Could not delete the routine";
       deleteTitle: "Delete {{name}}?";
       deliver: {
-        inbox: "Inbox";
-        inboxDescription: "Results land in the inbox; failures notify you.";
         label: "Notify";
+        onFailure: "On failure";
+        onFailureDescription: "Results go to the assistant's thread; only failures notify you.";
         push: "Push";
         pushDescription: "Also notifies your phone on every result.";
         silent: "Silent";

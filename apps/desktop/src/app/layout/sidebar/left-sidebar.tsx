@@ -1,4 +1,3 @@
-import type { InboxItem } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { FolderPlus, SquarePen } from "lucide-react";
 import { type ReactNode, startTransition, useOptimistic } from "react";
@@ -6,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppSidebarIconButton } from "@/components/app";
 import { chatSessionsAtom } from "@/features/chat";
-import { inboxApi } from "@/features/inbox";
 import {
   activeSessionIdAtom,
   removeSessionsByWorkspaceAtom,
@@ -24,7 +22,6 @@ import {
 import {
   cn,
   desktopApi,
-  logRendererDiagnostic,
   markSessionSwitch,
   startSessionSwitchLongTaskObserver,
 } from "@/lib";
@@ -146,20 +143,6 @@ export function LeftSidebar({
     onAfterNavigate?.();
   };
 
-  const openInboxItem = (item: InboxItem) => {
-    void inboxApi.read(item.id).catch((error: unknown) =>
-      logRendererDiagnostic("info", "inbox.readFailed", {
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
-    if (!item.sessionId) return;
-    if (item.form === "work" && item.workspaceId) {
-      handleSelectSession(item.workspaceId, item.sessionId);
-      return;
-    }
-    selectFormSession(item.sessionId);
-  };
-
   const isWorkspacesTab = activeTab === "workspaces";
   const addWorkspaceLabel = t("sessions:sidebar.addWorkspace", {
     defaultValue: "Add workspace",
@@ -274,7 +257,6 @@ export function LeftSidebar({
             <div className="flex min-h-0 flex-1 flex-col">
               <PersonalAgentsPanel
                 activeSessionId={optimisticActiveSessionId}
-                onOpenInboxItem={openInboxItem}
                 onSelectSession={selectFormSession}
               />
             </div>

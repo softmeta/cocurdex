@@ -1,8 +1,4 @@
-import type {
-  BriefRoutineResult,
-  InboxItem,
-  PersonalAgentRecord,
-} from "@cocurdex/shared";
+import type { BriefRoutineResult, PersonalAgentRecord } from "@cocurdex/shared";
 import { SymbolView } from "expo-symbols";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,7 +12,6 @@ import {
   useAgeLabel,
   useListTimeLabel,
 } from "@/ui";
-import { inboxKindColor, inboxKindLabel } from "./inbox-kind";
 
 function RowPressable({
   label,
@@ -52,14 +47,9 @@ function RowPressable({
   );
 }
 
-function Dot({ color, label }: { color: string; label?: string }) {
+function Dot({ color }: { color: string }) {
   return (
-    <View
-      accessible={Boolean(label)}
-      accessibilityLabel={label}
-      accessibilityRole={label ? "image" : undefined}
-      style={styles.dotSlot}
-    >
+    <View style={styles.dotSlot}>
       <View style={[styles.dot, { backgroundColor: color }]} />
     </View>
   );
@@ -102,47 +92,6 @@ export function BriefResultRow({
         style={[styles.detail, { color: colors.mutedForeground }]}
       >
         {result.summary}
-      </Text>
-    </RowPressable>
-  );
-}
-
-export function InboxRow({
-  item,
-  onOpen,
-}: {
-  item: InboxItem;
-  onOpen(item: InboxItem): void;
-}) {
-  const { t } = useTranslation("assistant");
-  const colors = useThemeColors();
-  const age = useAgeLabel(item.at);
-  const kind = inboxKindLabel(t, item.kind);
-  const detail = item.detail ? `${kind} · ${item.detail}` : kind;
-  return (
-    <RowPressable
-      label={item.title}
-      onPress={() => onOpen(item)}
-      testID={`inbox-item-${item.id}`}
-      value={[detail, age].join(", ")}
-    >
-      <View style={styles.line}>
-        <Dot color={colors[inboxKindColor(item.kind)]} label={kind} />
-        <Text
-          numberOfLines={1}
-          style={[styles.title, { color: colors.foreground }]}
-        >
-          {item.title}
-        </Text>
-        <Text style={[styles.age, { color: colors.mutedForeground }]}>
-          {age}
-        </Text>
-      </View>
-      <Text
-        numberOfLines={1}
-        style={[styles.detail, { color: colors.mutedForeground }]}
-      >
-        {detail}
       </Text>
     </RowPressable>
   );

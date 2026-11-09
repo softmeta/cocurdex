@@ -1,5 +1,5 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
-import type { InboxItem, PersonalAgentRecord } from "@cocurdex/shared";
+import type { PersonalAgentRecord } from "@cocurdex/shared";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { SectionList, StyleSheet } from "react-native";
@@ -16,14 +16,12 @@ import {
 import { useAgentActions } from "./agent-actions-menu";
 import {
   greetPersonalAgent,
-  readInboxItem,
   revalidateAssistant,
   useBrief,
-  useInbox,
   useLatestReply,
   usePersonalAgents,
 } from "./assistant-queries";
-import { AgentRow, BriefResultRow, InboxRow } from "./assistant-rows";
+import { AgentRow, BriefResultRow } from "./assistant-rows";
 import {
   type AssistantRow,
   type AssistantSection,
@@ -35,7 +33,6 @@ function useSectionTitles(): Record<AssistantSection["kind"], string | null> {
   const { t } = useTranslation("assistant");
   return {
     brief: t("brief.title"),
-    inbox: t("inbox.title"),
     agents: null,
   };
 }
@@ -93,7 +90,6 @@ export function AssistantHome({ host }: { host: SavedHost }) {
   const tabBarInset = useTabBarInset();
   const titles = useSectionTitles();
   const agents = usePersonalAgents(host.hostId);
-  const inbox = useInbox(host.hostId);
   const brief = useBrief(host.hostId);
   const pull = usePullToRefresh(() => revalidateAssistant(host.hostId));
   useAssistantRevalidation(host.hostId);
@@ -103,10 +99,6 @@ export function AssistantHome({ host }: { host: SavedHost }) {
       pathname: "/session/[hostId]/[sessionId]",
       params: { hostId: host.hostId, sessionId },
     });
-  const openItem = (item: InboxItem) => {
-    if (item.sessionId) openSession(item.sessionId);
-    void readInboxItem(host.hostId, item.id).catch(() => undefined);
-  };
   const agentActions = useAgentActions(host, openSession);
 
   if (!agents.data) {
@@ -128,16 +120,12 @@ export function AssistantHome({ host }: { host: SavedHost }) {
 
   const sections = assistantSections({
     brief: brief.data ?? null,
-    inbox: inbox.data ?? [],
     agents: agents.data,
   });
 
   const renderItem = ({ item }: { item: AssistantRow }) => {
     if (item.kind === "result") {
       return <BriefResultRow result={item.result} onOpen={openSession} />;
-    }
-    if (item.kind === "inbox") {
-      return <InboxRow item={item.item} onOpen={openItem} />;
     }
     return (
       <AgentRoster
@@ -152,9 +140,7 @@ export function AssistantHome({ host }: { host: SavedHost }) {
     );
   };
 
-  const settled =
-    (inbox.data !== undefined || inbox.error !== undefined) &&
-    (brief.data !== undefined || brief.error !== undefined);
+  const settled = brief.data !== undefined || brief.error !== undefined;
 
   return (
     <>
@@ -182,7 +168,6 @@ export function AssistantHome({ host }: { host: SavedHost }) {
           return (
             <ListSectionHeader
               title={title}
-              count={section.kind === "inbox" ? section.data.length : undefined}
               testID={`assistant-section-${section.kind}`}
             />
           );
