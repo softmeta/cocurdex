@@ -20,7 +20,7 @@
   "dependencies": {
     "@cocurdex/note-doc": "workspace:*",
     "@cocurdex/shared": "workspace:*",
-    "fast-xml-parser": "^5.11.2",
+    "fast-xml-parser": "^5.12.0",
     "jszip": "^3.10.2",
     "pdfkit": "0.20.2",
     "pptxgenjs": "4.0.1",

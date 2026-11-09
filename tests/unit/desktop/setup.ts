@@ -21,6 +21,31 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
+if (typeof Blob.prototype.stream !== "function") {
+  Blob.prototype.stream = function stream() {
+    return new ReadableStream<Uint8Array<ArrayBuffer>>({
+      start: (controller) => {
+        const readBuffer =
+          typeof this.arrayBuffer === "function"
+            ? this.arrayBuffer()
+            : new Promise<ArrayBuffer>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as ArrayBuffer);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsArrayBuffer(this);
+              });
+        void readBuffer.then(
+          (buffer) => {
+            controller.enqueue(new Uint8Array(buffer));
+            controller.close();
+          },
+          (error) => controller.error(error),
+        );
+      },
+    });
+  };
+}
+
 if (typeof globalThis.PointerEvent === "undefined") {
   globalThis.PointerEvent = class PointerEvent extends MouseEvent {
     pointerId: number;
