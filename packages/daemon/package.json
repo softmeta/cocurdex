@@ -28,7 +28,7 @@
     "@napi-rs/keyring": "^2.1.2",
     "@vscode/ripgrep": "^1.18.0",
     "diff": "^9.0.0",
-    "effect": "4.1.1",
+    "effect": "4.1.2",
     "font-list": "^2.1.0",
     "jsonc-parser": "^3.3.1",
     "node-pty": "^1.1.0",
