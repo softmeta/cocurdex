@@ -50,6 +50,42 @@ function localGrok(registryId: string) {
   );
 }
 
+function antigravityAgent(version = "1.5.3", command = "/usr/local/bin/agy") {
+  return {
+    agentId: "acp:antigravity-acp" as const,
+    registryId: "antigravity-acp",
+    name: "Google Antigravity",
+    version,
+    description: null,
+    distribution: "local" as const,
+    command,
+    args: ["acp"],
+    env: {},
+    installedAt: "2026-11-09T00:00:00.000Z",
+  };
+}
+
+function localAntigravity(registryId: string) {
+  return Promise.resolve(
+    registryId === "antigravity-acp" ? antigravityAgent() : null,
+  );
+}
+
+function managedAntigravity(version = "1.4.5") {
+  return {
+    agentId: "acp:antigravity-acp" as const,
+    registryId: "antigravity-acp",
+    name: "Google Antigravity",
+    version,
+    description: null,
+    distribution: "binary" as const,
+    command: "/managed/agy_acp_server.par",
+    args: [],
+    env: {},
+    installedAt: "2026-10-30T00:00:00.000Z",
+  };
+}
+
 function memorySettings() {
   const values = new Map<string, string>();
   return {
@@ -207,6 +243,102 @@ describe("AcpRegistryService", () => {
     );
     await restarted.ready;
     expect(restarted.listInstalled()).toEqual([]);
+  });
+
+  it("offers the agy CLI as an update for an older managed Antigravity runtime", async () => {
+    const settings = memorySettings();
+    settings.values.set(
+      ACP_REGISTRY_AGENTS_SETTING_KEY,
+      JSON.stringify([managedAntigravity()]),
+    );
+    const catalog = binaryEntry(archiveUrl, archiveSha, "1.4.5");
+    const service = new AcpRegistryService(
+      settings,
+      userDataPath,
+      async () => [
+        {
+          ...catalog,
+          agent: {
+            ...catalog.agent,
+            registryId: "antigravity-acp",
+            name: "Google Antigravity",
+          },
+        },
+      ],
+      localAntigravity,
+    );
+    await service.ready;
+
+    expect(service.listInstalled()).toMatchObject([
+      { distribution: "binary", version: "1.4.5" },
+    ]);
+    expect(await service.listUpdates({ forceRefresh: true })).toEqual([
+      {
+        agentId: "acp:antigravity-acp",
+        registryId: "antigravity-acp",
+        installedVersion: "1.4.5",
+        latestVersion: "1.5.3",
+      },
+    ]);
+
+    const updated = await service.update("acp:antigravity-acp");
+
+    expect(updated).toMatchObject({
+      agentId: "acp:antigravity-acp",
+      distribution: "local",
+      version: "1.5.3",
+      command: "/usr/local/bin/agy",
+      args: ["acp"],
+    });
+    expect(
+      JSON.parse(settings.values.get("acpRegistry.adoptedLocalClis") ?? "[]"),
+    ).toContain("antigravity-acp");
+  });
+
+  it("refreshes the recorded version of an adopted local CLI", async () => {
+    const settings = memorySettings();
+    settings.values.set(
+      ACP_REGISTRY_AGENTS_SETTING_KEY,
+      JSON.stringify([antigravityAgent("1.5.1")]),
+    );
+    settings.values.set(
+      "acpRegistry.adoptedLocalClis",
+      JSON.stringify(["antigravity-acp"]),
+    );
+    const service = new AcpRegistryService(
+      settings,
+      userDataPath,
+      async () => [],
+      localAntigravity,
+    );
+    await service.ready;
+
+    expect(service.listInstalled()).toMatchObject([
+      { distribution: "local", version: "1.5.3" },
+    ]);
+  });
+
+  it("does not silently replace a managed runtime with the local CLI", async () => {
+    const settings = memorySettings();
+    settings.values.set(
+      ACP_REGISTRY_AGENTS_SETTING_KEY,
+      JSON.stringify([managedAntigravity()]),
+    );
+    settings.values.set(
+      "acpRegistry.adoptedLocalClis",
+      JSON.stringify(["antigravity-acp"]),
+    );
+    const service = new AcpRegistryService(
+      settings,
+      userDataPath,
+      async () => [],
+      localAntigravity,
+    );
+    await service.ready;
+
+    expect(service.listInstalled()).toMatchObject([
+      { distribution: "binary", version: "1.4.5" },
+    ]);
   });
 
   it("prefers the local CLI over a download and refuses built-in duplicates", async () => {

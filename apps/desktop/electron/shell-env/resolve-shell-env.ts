@@ -6,6 +6,7 @@ const AGENT_ENV_PREFIXES = [
   "COCURDEX_",
   "PI_",
   "GEMINI_",
+  "AGY_",
   "GOOGLE_",
   "CLAUDE_",
   "ANTHROPIC_",

@@ -1,3 +1,4 @@
+import type { InitializeResponse } from "@agentclientprotocol/sdk/unstable";
 import {
   type AgentAdapter,
   getAgentDescriptor,
@@ -33,12 +34,16 @@ import {
   listGrokBuildProviderModels,
   readGrokBuildRateLimits,
 } from "../grok-build";
+import { antigravitySessionMeta } from "./antigravity-session-meta";
 
 interface AcpAgentAdapterProfile {
   args?: string[];
   authMethodPriority?: () => string[];
   authenticateOnSession?: boolean;
   contextFromUsageUpdates?: boolean;
+  sessionMeta?(
+    initialized: InitializeResponse,
+  ): Record<string, unknown> | undefined;
   createAdapter?(
     launch: AcpLaunch,
     connectionFactory?: AcpConnectionFactory,
@@ -53,6 +58,7 @@ interface AcpAgentAdapterProfile {
 const adapterProfiles: Readonly<Record<string, AcpAgentAdapterProfile>> = {
   "antigravity-acp": {
     contextFromUsageUpdates: true,
+    sessionMeta: antigravitySessionMeta,
   },
   cursor: {
     authMethodPriority: () => ["cursor_login"],
@@ -111,6 +117,7 @@ export function createAcpRegistryAdapter(
     modelProviderId: agentId,
     skipAuthenticate: !profile.authenticateOnSession,
     contextFromUsageUpdates: profile.contextFromUsageUpdates,
+    sessionMeta: profile.sessionMeta,
   };
   return new AcpAgentAdapter(options, connectionFactory);
 }

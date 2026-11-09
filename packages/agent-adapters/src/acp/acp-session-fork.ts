@@ -23,6 +23,7 @@ export async function forkAcpProviderSession(
   },
   connection: AcpConnection,
   initialized: InitializeResponse,
+  sessionMeta?: Record<string, unknown>,
 ): Promise<AgentProviderSessionRecord | null> {
   if (initialized.agentCapabilities?.sessionCapabilities?.fork == null) {
     return null;
@@ -33,6 +34,7 @@ export async function forkAcpProviderSession(
     sessionId: payload.source.providerSessionId,
     cwd: payload.workspaceRootPath,
     mcpServers: [],
+    ...(sessionMeta ? { _meta: sessionMeta } : {}),
   });
   return {
     sessionId: payload.targetSessionId,

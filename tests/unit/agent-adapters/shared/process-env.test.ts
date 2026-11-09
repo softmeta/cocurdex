@@ -10,6 +10,7 @@ describe("sanitizeChildProcessEnv", () => {
       CURSOR_AUTH_TOKEN: "cursor-token",
       WINDSURF_API_KEY: "windsurf-key",
       DEVIN_API_KEY: "devin-key",
+      AGY_LLM_GATEWAY_URL: "https://gateway.example.test",
       UNRELATED_SECRET: "nope",
     });
 
@@ -20,6 +21,7 @@ describe("sanitizeChildProcessEnv", () => {
       CURSOR_AUTH_TOKEN: "cursor-token",
       WINDSURF_API_KEY: "windsurf-key",
       DEVIN_API_KEY: "devin-key",
+      AGY_LLM_GATEWAY_URL: "https://gateway.example.test",
     });
     expect(env.UNRELATED_SECRET).toBeUndefined();
   });

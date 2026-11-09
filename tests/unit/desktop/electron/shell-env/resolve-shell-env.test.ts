@@ -51,6 +51,7 @@ describe("isAgentEnvKey", () => {
     expect(isAgentEnvKey("OPENCODE_CONFIG")).toBe(true);
     expect(isAgentEnvKey("HTTPS_PROXY")).toBe(true);
     expect(isAgentEnvKey("DEEPSEEK_TOKEN")).toBe(true);
+    expect(isAgentEnvKey("AGY_LLM_GATEWAY_URL")).toBe(true);
   });
 
   it("rejects unrelated host vars", () => {
