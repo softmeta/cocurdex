@@ -244,7 +244,6 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const REPORTED_SETTING_VALUES_KEY = "settings.reportedValues";
 const BRIEF_POSTED_SETTING_KEY = "personal.briefPostedAt";
 const BRIEF_LOCALE_SETTING_KEY = "personal.briefLocale";
 
