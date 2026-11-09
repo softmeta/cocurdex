@@ -1,4 +1,5 @@
 import type {
+  AgentId,
   AgentRunLimits,
   CocurdexDaemonEvent,
   CommitMessageModelSelection,
@@ -8,9 +9,11 @@ import type {
 } from "@cocurdex/shared";
 import {
   AGENT_RUN_LIMITS_SETTING_KEY,
+  DISABLED_AGENTS_SETTING_KEY,
   getNetworkProxySettings,
   MEMORY_SETTINGS_KEY,
   parseAgentRunLimits,
+  parseDisabledAgentIds,
   resolveStoredAgentRunLimits,
 } from "@cocurdex/shared";
 import { requireCatalogEntry, WORKTREE_ENVIRONMENT_KEY } from "./agent-tools";
@@ -34,6 +37,7 @@ export interface DaemonSettingsDeps {
   getWorktreeEnvironment(
     workspaceId: string,
   ): Promise<WorkspaceWorktreeEnvironment>;
+  setDisabledAgentIds?(agentIds: readonly AgentId[]): Promise<void>;
   emit: (event: CocurdexDaemonEvent) => void;
 }
 
@@ -148,6 +152,13 @@ export class DaemonSettingsService {
 
   private async readDaemonSetting(key: string): Promise<unknown> {
     if (key === AGENT_RUN_LIMITS_SETTING_KEY) return this.readAgentRunLimits();
+    if (key === DISABLED_AGENTS_SETTING_KEY) {
+      return [
+        ...parseDisabledAgentIds(
+          await this.deps.state.getAppSetting(DISABLED_AGENTS_SETTING_KEY),
+        ),
+      ];
+    }
     if (key === MEMORY_SETTINGS_KEY) return this.deps.memory.getSettings();
     if (key === COMMIT_MESSAGE_MODEL_KEY) {
       return this.deps.commitMessages.getModelSetting();
@@ -158,6 +169,18 @@ export class DaemonSettingsService {
   private async writeDaemonSetting(key: string, value: unknown): Promise<void> {
     if (key === AGENT_RUN_LIMITS_SETTING_KEY) {
       await this.setAgentRunLimits(value as AgentRunLimits);
+      return;
+    }
+    if (key === DISABLED_AGENTS_SETTING_KEY) {
+      const nextIds = value as AgentId[];
+      if (this.deps.setDisabledAgentIds) {
+        await this.deps.setDisabledAgentIds(nextIds);
+      } else {
+        await this.deps.state.setAppSetting(
+          DISABLED_AGENTS_SETTING_KEY,
+          JSON.stringify(nextIds),
+        );
+      }
       return;
     }
     if (key === MEMORY_SETTINGS_KEY) {

@@ -1,8 +1,10 @@
 import {
   applyShellEnv,
+  applyShellEnvAsync,
   isAgentEnvKey,
   mergeEnvPath,
   parseShellEnv,
+  resolveLoginShell,
 } from "@desktop/electron/shell-env/resolve-shell-env";
 import { describe, expect, it, vi } from "vitest";
 
@@ -134,8 +136,53 @@ describe("applyShellEnv", () => {
   it("leaves env untouched when the shell environment cannot be resolved", () => {
     const env: NodeJS.ProcessEnv = { PATH: "/usr/bin:/bin" };
 
-    applyShellEnv({ platform: "darwin", env, resolveEnv: () => null });
+    expect(
+      applyShellEnv({ platform: "darwin", env, resolveEnv: () => null }),
+    ).toBe(false);
 
     expect(env.PATH).toBe("/usr/bin:/bin");
+  });
+});
+
+describe("resolveLoginShell", () => {
+  it("falls back to zsh on macOS and bash on Linux when SHELL is unset", () => {
+    expect(resolveLoginShell("darwin", {})).toBe("/bin/zsh");
+    expect(resolveLoginShell("linux", {})).toBe("/bin/bash");
+    expect(resolveLoginShell("win32", {})).toBeNull();
+  });
+});
+
+describe("applyShellEnvAsync", () => {
+  it("reports whether resolution succeeded and whether env changed", async () => {
+    const env: NodeJS.ProcessEnv = { PATH: "/usr/bin:/bin" };
+
+    await expect(
+      applyShellEnvAsync({
+        platform: "darwin",
+        env,
+        resolveEnv: async () => null,
+      }),
+    ).resolves.toEqual({ resolved: false, changed: false });
+
+    await expect(
+      applyShellEnvAsync({
+        platform: "darwin",
+        env,
+        resolveEnv: async () => ({
+          PATH: "/Users/x/.local/bin:/usr/bin",
+        }),
+      }),
+    ).resolves.toEqual({ resolved: true, changed: true });
+    expect(env.PATH).toBe("/Users/x/.local/bin:/usr/bin:/bin");
+
+    await expect(
+      applyShellEnvAsync({
+        platform: "darwin",
+        env,
+        resolveEnv: async () => ({
+          PATH: "/Users/x/.local/bin:/usr/bin",
+        }),
+      }),
+    ).resolves.toEqual({ resolved: true, changed: false });
   });
 });

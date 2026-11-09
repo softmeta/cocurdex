@@ -5,6 +5,7 @@ import { type EnvMap, resolveNodeGlobalProxyEnv } from "./network-proxy";
 import { isPathWithinRoots as isLexicallyWithinRoots } from "./workspace-roots";
 
 export * from "./logs";
+export * from "./shell-env";
 
 export function isPathWithinRoots(
   candidatePath: string,

@@ -63,4 +63,26 @@ describe("getAdapterStatus", () => {
     expect(getAdapterStatus(agent).kind).toBe("outdated");
     expect(isAgentReadyToStart(agent)).toBe(true);
   });
+
+  it("marks a disabled adapter as disabled and not ready to start while keeping Pi builtin", () => {
+    const disabledCodex = descriptor({
+      id: "codex",
+      enabled: false,
+      availability: "available",
+      installation: {
+        executableName: "codex",
+        executablePath: "/usr/local/bin/codex",
+        version: "0.166.0",
+      },
+    });
+    expect(getAdapterStatus(disabledCodex).kind).toBe("disabled");
+    expect(isAgentReadyToStart(disabledCodex)).toBe(false);
+
+    const piWithDisabledFlag = descriptor({
+      id: "pi",
+      enabled: false,
+    });
+    expect(getAdapterStatus(piWithDisabledFlag).kind).toBe("builtin");
+    expect(isAgentReadyToStart(piWithDisabledFlag)).toBe(true);
+  });
 });

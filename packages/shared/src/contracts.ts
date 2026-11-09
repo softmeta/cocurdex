@@ -225,6 +225,7 @@ export interface AgentDescriptor {
   availability: AgentAvailability;
   capabilities: AgentCapabilities;
   installation?: AgentInstallation | null;
+  enabled?: boolean;
 }
 
 export interface AgentSlashCommand {

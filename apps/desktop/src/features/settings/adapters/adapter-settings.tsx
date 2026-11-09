@@ -16,6 +16,7 @@ import {
   type AdapterStatusKind,
   AgentIcon,
   agentsAtom,
+  bootstrapAgentsAtom,
   detectAgentsAtom,
   getAdapterStatus,
 } from "@/features/sessions";
@@ -109,7 +110,7 @@ function AdapterRow({
             {t("adapters.badge.builtin")}
           </Text>
         ) : null}
-        {status.version ? (
+        {status.version && status.kind !== "disabled" ? (
           <Text className="shrink-0 font-mono" size="meta" tone="muted">
             v{status.version}
           </Text>
@@ -120,7 +121,8 @@ function AdapterRow({
           </Text>
         ) : null}
       </span>
-      {rateLimitsResult?.status === "available" ? (
+      {status.kind !== "disabled" &&
+      rateLimitsResult?.status === "available" ? (
         <AdapterRateLimits
           layout="row"
           rateLimits={rateLimitsResult.rateLimits}
@@ -134,6 +136,7 @@ function AdapterRow({
 export function AdapterSettingsPanel() {
   const { t } = useTranslation("settings");
   const agents = useAtomValue(agentsAtom);
+  const bootstrapAgents = useSetAtom(bootstrapAgentsAtom);
   const detectAgents = useSetAtom(detectAgentsAtom);
   const [refreshing, setRefreshing] = useState(false);
   const [rateLimitsByAgent, setRateLimitsByAgent] = useAtom(
@@ -227,6 +230,33 @@ export function AdapterSettingsPanel() {
     }
   };
 
+  const toggleAgentEnabled = async (agentId: AgentId, enabled: boolean) => {
+    try {
+      const nextAgents = await desktopApi.setAgentEnabled(agentId, enabled);
+      bootstrapAgents(nextAgents);
+      if (!enabled) {
+        setRateLimitsByAgent((current) => {
+          const { [agentId]: _, ...rest } = current;
+          return rest;
+        });
+        setLoadingAgentIds((current) =>
+          current.filter((item) => item !== agentId),
+        );
+        return;
+      }
+      await Promise.all([
+        loadRateLimits(nextAgents, true),
+        reloadUpdates().catch(() => undefined),
+      ]);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("adapters.toast.refreshFailed"),
+      );
+    }
+  };
+
   useMountEffect(() => {
     void loadRateLimits(agents, false);
     const onFocus = () => {
@@ -296,6 +326,7 @@ export function AdapterSettingsPanel() {
           }
         }}
         onRemoved={() => refresh(true)}
+        onToggleEnabled={toggleAgentEnabled}
         onUpdated={async () => {
           await Promise.all([refresh(true), reloadUpdates()]);
         }}

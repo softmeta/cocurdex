@@ -49,6 +49,7 @@ export function visibleAgentSelectOptions(
 ): AgentSelectOption[] {
   return options.filter(
     (option) =>
-      option.statusKind !== "missing" || option.value === selectedAgentId,
+      (option.statusKind !== "missing" && option.statusKind !== "disabled") ||
+      option.value === selectedAgentId,
   );
 }

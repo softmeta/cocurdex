@@ -98,9 +98,9 @@ export function McpAgentsSection({
   const [pending, setPending] = useState<AgentId[] | null>(null);
   const [error, setError] = useState("");
   const assigned = pending ?? mcpServerAgents(config);
-  const available = buildAgentSelectOptions(agents).map(
-    (option) => option.value,
-  );
+  const available = buildAgentSelectOptions(agents)
+    .filter((option) => option.statusKind !== "disabled")
+    .map((option) => option.value);
   const rows = mcpAgentRows(
     available,
     assigned,

@@ -338,6 +338,10 @@ export interface ProductApi {
     workspaceRootPath?: string | null,
   ): Promise<ProductSkillsRemoveResult>;
   listAgents(): Promise<AgentDescriptor[]>;
+  setAgentEnabled(
+    agentId: AgentId,
+    enabled: boolean,
+  ): Promise<AgentDescriptor[]>;
   listAgentRoles(): Promise<AgentRoleRecord[]>;
   saveAgentRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
   deleteAgentRole(id: string): Promise<void>;

@@ -1,1 +1,6 @@
-export { applyShellEnv, resolveShellEnv } from "./resolve-shell-env";
+export {
+  applyShellEnv,
+  applyShellEnvAsync,
+  resolveShellEnv,
+  resolveShellEnvAsync,
+} from "./resolve-shell-env";

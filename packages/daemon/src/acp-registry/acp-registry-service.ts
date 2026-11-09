@@ -105,6 +105,7 @@ export class AcpRegistryService {
     string,
     Promise<AcpRegistryInstalledAgent>
   >();
+  private adoptingLocalClis: Promise<void> | null = null;
 
   constructor(
     private readonly settings: SettingsStore,
@@ -125,7 +126,19 @@ export class AcpRegistryService {
     await this.adoptLocalClis();
   }
 
-  private async adoptLocalClis() {
+  async refreshLocalClis() {
+    await this.ready;
+    await this.adoptLocalClis();
+  }
+
+  private adoptLocalClis() {
+    this.adoptingLocalClis ??= this.runAdoptLocalClis().finally(() => {
+      this.adoptingLocalClis = null;
+    });
+    return this.adoptingLocalClis;
+  }
+
+  private async runAdoptLocalClis() {
     const adopted = new Set(
       parseStringList(
         await this.settings.getAppSetting(
@@ -341,6 +354,9 @@ export class AcpRegistryService {
     options: { forceRefresh?: boolean } = {},
   ): Promise<AcpRegistryAgentUpdate[]> {
     await this.ready;
+    if (options.forceRefresh) {
+      await this.adoptLocalClis();
+    }
     const catalogLatest = new Map(
       (await this.entries(options.forceRefresh ?? false)).map((entry) => [
         entry.agent.registryId,

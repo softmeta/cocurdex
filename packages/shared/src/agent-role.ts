@@ -10,8 +10,7 @@ import {
   type AgentPermissionMode,
   type AgentProviderSnapshot,
   type AgentThinkingLevel,
-  type BuiltInAgentId,
-  isAcpRegistryAgentId,
+  isAgentId,
   type ReasoningEffort,
 } from "./contracts";
 import type {
@@ -46,13 +45,6 @@ export type AgentRoleAvatar =
       face: AgentRoleAvatarFace;
       color: AgentRoleAvatarColor;
     };
-
-const BUILT_IN_AGENT_IDS: readonly BuiltInAgentId[] = [
-  "claude-agent",
-  "codex",
-  "opencode",
-  "pi",
-];
 
 const API_BY_AGENT: Partial<Record<AgentId, AgentProviderSnapshot["api"]>> = {
   "claude-agent": "anthropic-messages",
@@ -103,12 +95,7 @@ export interface SaveAgentRolePayload extends AgentRoleDraft {
   avatar?: AgentRoleAvatar | null;
 }
 
-export function isAgentId(value: string): value is AgentId {
-  return (
-    BUILT_IN_AGENT_IDS.includes(value as BuiltInAgentId) ||
-    isAcpRegistryAgentId(value)
-  );
-}
+export { isAgentId };
 
 export function normalizeAgentRoleName(name: string) {
   return name.trim().slice(0, AGENT_ROLE_NAME_MAX_LENGTH);

@@ -21,6 +21,8 @@ export const daemonProductApi: ProductRequestApi = {
       workspaceRootPath: workspaceRootPath ?? null,
     }),
   listAgents: () => readDaemon("agent.list"),
+  setAgentEnabled: (agentId, enabled) =>
+    rpc("agent.setEnabled", { agentId, enabled }),
   listAgentRoles: () => rpc("agentRole.list"),
   saveAgentRole: (payload) => rpc("agentRole.save", payload),
   deleteAgentRole: async (id) => {

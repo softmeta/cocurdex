@@ -1933,6 +1933,7 @@ export default interface Resources {
       agent: "Agent";
       agentStatus: {
         detecting: "Checking…";
+        disabled: "Disabled";
         error: "Unavailable";
         notInstalled: "Not installed";
         updateRequired: "Update required";
@@ -2376,6 +2377,12 @@ export default interface Resources {
       description: "Pick any of these agent CLIs when starting a session. cocurdex detects the versions installed on this machine; add more from the ACP Registry.";
       detail: {
         builtinNote: "Ships with Cocurdex; nothing to install.";
+        disableCancel: "Cancel";
+        disableConfirm: "Disable";
+        disableConfirmDescription: "Disabling {{name}} stops its running sessions and pauses new sessions, model discovery, and usage checks. Existing session history is kept, and you can re-enable it anytime.";
+        disableConfirmTitle: "Disable {{name}}?";
+        disabledNote: "Temporarily disabled. New sessions, model discovery, and usage checks are paused.";
+        enabled: "Enabled";
         executable: "Executable";
         install: "Install";
         manage: "Manage";
@@ -2386,6 +2393,7 @@ export default interface Resources {
       kind: {
         builtin: "Built-in";
         detecting: "Checking…";
+        disabled: "Disabled";
         error: "Failed";
         missing: "Not installed";
         needsLogin: "Login required";

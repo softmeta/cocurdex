@@ -40,14 +40,19 @@ function resolveAgent(
   { agents, workspaceSessions }: NewSessionContext,
 ) {
   const available = agents.filter(
-    (agent) => agent.availability === "available",
+    (agent) => agent.enabled !== false && agent.availability === "available",
   );
   const pick = (id: AgentId | undefined) =>
     id ? available.find((agent) => agent.id === id) : undefined;
   if (requested) {
     const agent = pick(requested);
-    if (!agent)
+    if (!agent) {
+      const target = agents.find((candidate) => candidate.id === requested);
+      if (target?.enabled === false) {
+        throw new Error(`${target.label} is disabled`);
+      }
       throw new Error(`${requested} is not available on this machine`);
+    }
     return agent;
   }
   const agent = pick(workspaceSessions[0]?.agentType) ?? available[0];

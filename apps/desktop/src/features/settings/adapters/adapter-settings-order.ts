@@ -2,12 +2,13 @@ import type { AgentDescriptor } from "@cocurdex/shared";
 import { type AdapterStatusKind, getAdapterStatus } from "@/features/sessions";
 
 const kindOrder: Record<AdapterStatusKind, number> = {
-  error: 0,
-  missing: 1,
-  outdated: 2,
-  detecting: 3,
-  ready: 4,
-  builtin: 5,
+  builtin: 0,
+  error: 1,
+  missing: 2,
+  outdated: 3,
+  detecting: 4,
+  ready: 5,
+  disabled: 6,
 };
 
 export function sortAdaptersForSettings(

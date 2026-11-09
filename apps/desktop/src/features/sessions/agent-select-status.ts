@@ -17,5 +17,8 @@ export function agentSelectStatusLabel(
   if (kind === "error") {
     return t("composer.agentStatus.error");
   }
+  if (kind === "disabled") {
+    return t("composer.agentStatus.disabled");
+  }
   return null;
 }

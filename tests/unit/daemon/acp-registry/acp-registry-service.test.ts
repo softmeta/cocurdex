@@ -245,6 +245,25 @@ describe("AcpRegistryService", () => {
     expect(restarted.listInstalled()).toEqual([]);
   });
 
+  it("adopts a local CLI installed after daemon startup when refreshed", async () => {
+    const settings = memorySettings();
+    let grokAvailable = false;
+    const service = new AcpRegistryService(
+      settings,
+      userDataPath,
+      async () => [],
+      (registryId) => (grokAvailable ? localGrok(registryId) : noLocalCli()),
+    );
+    await service.ready;
+    expect(service.listInstalled()).toEqual([]);
+
+    grokAvailable = true;
+    await service.refreshLocalClis();
+    expect(service.listInstalled()).toMatchObject([
+      { agentId: "acp:grok-build", command: "/usr/local/bin/grok" },
+    ]);
+  });
+
   it("offers the agy CLI as an update for an older managed Antigravity runtime", async () => {
     const settings = memorySettings();
     settings.values.set(

@@ -2,7 +2,11 @@ import {
   AGENT_RUN_LIMIT_BOUNDS,
   AGENT_RUN_LIMITS_SETTING_KEY,
   type AgentToolCallerContext,
+  canDisableAgent,
+  DISABLED_AGENTS_SETTING_KEY,
+  isAgentId,
   MEMORY_SETTINGS_KEY,
+  normalizeDisabledAgentIds,
   normalizeMemorySettings,
   parseAgentRunLimits,
   type WorkspaceWorktreeEnvironment,
@@ -307,6 +311,36 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
         );
       }
       return limits;
+    },
+  },
+  {
+    key: DISABLED_AGENTS_SETTING_KEY,
+    scope: "global",
+    tier: "write",
+    storage: "daemon",
+    description:
+      "Temporarily disabled agent adapter IDs (for example 'claude-agent', 'codex', 'opencode', or 'acp:cursor'). Disabled adapters are hidden from session selectors and skip CLI, model, session-mode, and usage probes until re-enabled. Built-in 'pi' cannot be disabled.",
+    valueSchema: {
+      type: "array",
+      items: { type: "string" },
+    },
+    validate(value) {
+      if (!Array.isArray(value)) {
+        throw new Error(
+          `Value for '${DISABLED_AGENTS_SETTING_KEY}' must be an array of agent IDs`,
+        );
+      }
+      for (const item of value) {
+        if (typeof item !== "string" || !isAgentId(item)) {
+          throw new Error(
+            `Value for '${DISABLED_AGENTS_SETTING_KEY}' contains invalid agent ID '${String(item)}'`,
+          );
+        }
+        if (!canDisableAgent(item)) {
+          throw new Error("Built-in agent Pi cannot be disabled.");
+        }
+      }
+      return normalizeDisabledAgentIds(value);
     },
   },
   {

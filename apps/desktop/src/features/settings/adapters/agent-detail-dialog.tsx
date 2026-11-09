@@ -1,7 +1,9 @@
 import {
   type AcpRegistryAgentUpdate,
   type AgentDescriptor,
+  type AgentId,
   type AgentRateLimitsReadResult,
+  canDisableAgent,
   isAcpRegistryAgentId,
 } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
@@ -9,6 +11,7 @@ import { Check, Copy, ExternalLink } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { AppConfirmDialog } from "@/components/app";
 import {
   Button,
   Dialog,
@@ -16,6 +19,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Switch,
   Text,
 } from "@/components/ui";
 import {
@@ -91,6 +95,9 @@ function statusDetail(
   }
   if (status.kind === "builtin") {
     return t("adapters.detail.builtinNote");
+  }
+  if (status.kind === "disabled") {
+    return t("adapters.detail.disabledNote");
   }
   return null;
 }
@@ -209,6 +216,7 @@ export function AgentDetailDialog({
   agent,
   onOpenChange,
   onRemoved,
+  onToggleEnabled,
   onUpdated,
   rateLimitsLoading,
   rateLimitsResult,
@@ -218,6 +226,7 @@ export function AgentDetailDialog({
   agent: AgentDescriptor | null;
   onOpenChange(open: boolean): void;
   onRemoved(): Promise<void>;
+  onToggleEnabled(agentId: AgentId, enabled: boolean): Promise<void>;
   onUpdated(): Promise<void>;
   rateLimitsLoading: boolean;
   rateLimitsResult: AgentRateLimitsReadResult | undefined;
@@ -234,6 +243,7 @@ export function AgentDetailDialog({
               onOpenChange(false);
               await onRemoved();
             }}
+            onToggleEnabled={onToggleEnabled}
             onUpdated={onUpdated}
             rateLimitsLoading={rateLimitsLoading}
             rateLimitsResult={rateLimitsResult}
@@ -249,6 +259,7 @@ export function AgentDetailDialog({
 function AgentDetailContent({
   agent,
   onRemoved,
+  onToggleEnabled,
   onUpdated,
   rateLimitsLoading,
   rateLimitsResult,
@@ -257,6 +268,7 @@ function AgentDetailContent({
 }: {
   agent: AgentDescriptor;
   onRemoved(): Promise<void>;
+  onToggleEnabled(agentId: AgentId, enabled: boolean): Promise<void>;
   onUpdated(): Promise<void>;
   rateLimitsLoading: boolean;
   rateLimitsResult: AgentRateLimitsReadResult | undefined;
@@ -264,6 +276,8 @@ function AgentDetailContent({
   update: AcpRegistryAgentUpdate | undefined;
 }) {
   const { t } = useTranslation("settings");
+  const [togglingEnabled, setTogglingEnabled] = useState(false);
+  const [confirmingDisable, setConfirmingDisable] = useState(false);
   const status = getAdapterStatus(agent);
   const statusLabel = useAdapterStatusLabel(status.kind);
   const detail = statusDetail(agent, status, t);
@@ -276,6 +290,25 @@ function AgentDetailContent({
   const canSignIn =
     registryAgentId !== null &&
     (status.kind === "ready" || status.kind === "outdated");
+  const canToggleEnabled =
+    canDisableAgent(agent.id) && status.kind !== "missing";
+
+  const applyToggleEnabled = async (enabled: boolean) => {
+    setTogglingEnabled(true);
+    try {
+      await onToggleEnabled(agent.id, enabled);
+    } finally {
+      setTogglingEnabled(false);
+    }
+  };
+
+  const handleToggleEnabled = (enabled: boolean) => {
+    if (!enabled) {
+      setConfirmingDisable(true);
+      return;
+    }
+    void applyToggleEnabled(true);
+  };
 
   return (
     <>
@@ -285,7 +318,7 @@ function AgentDetailContent({
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex min-w-0 items-baseline gap-2">
               <DialogTitle className="truncate">{agent.label}</DialogTitle>
-              {status.version ? (
+              {status.version && status.kind !== "disabled" ? (
                 <Text className="font-mono" size="meta" tone="muted">
                   v{status.version}
                 </Text>
@@ -304,6 +337,16 @@ function AgentDetailContent({
         </div>
       </DialogHeader>
       <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-start gap-x-4 gap-y-3.5">
+        {canToggleEnabled ? (
+          <DetailField label={t("adapters.detail.enabled")}>
+            <Switch
+              aria-label={t("adapters.detail.enabled")}
+              checked={agent.enabled !== false}
+              disabled={togglingEnabled}
+              onCheckedChange={handleToggleEnabled}
+            />
+          </DetailField>
+        ) : null}
         {executablePath ? (
           <DetailField label={t("adapters.detail.executable")}>
             <ExecutablePath path={executablePath} />
@@ -326,7 +369,7 @@ function AgentDetailContent({
           </DetailField>
         ) : null}
         {needsInstall ? <InstallField status={status} /> : null}
-        {update && !needsInstall ? (
+        {update && !needsInstall && status.kind !== "disabled" ? (
           <DetailField label={t("adapters.detail.update")}>
             <AgentUpdateField
               agentLabel={agent.label}
@@ -345,6 +388,20 @@ function AgentDetailContent({
           </DetailField>
         ) : null}
       </div>
+      <AppConfirmDialog
+        cancelLabel={t("adapters.detail.disableCancel")}
+        confirmLabel={t("adapters.detail.disableConfirm")}
+        description={t("adapters.detail.disableConfirmDescription", {
+          name: agent.label,
+        })}
+        open={confirmingDisable}
+        title={t("adapters.detail.disableConfirmTitle", {
+          name: agent.label,
+        })}
+        variant="destructive"
+        onConfirm={() => void applyToggleEnabled(false)}
+        onOpenChange={setConfirmingDisable}
+      />
     </>
   );
 }

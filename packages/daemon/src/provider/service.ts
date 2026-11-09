@@ -21,11 +21,13 @@ import type {
 } from "@cocurdex/shared";
 import {
   applyProviderModelOverride,
+  DISABLED_AGENTS_SETTING_KEY,
   diffProviderModelOverride,
   filterCompatibleProviderModels,
   getAcpAgentProfile,
   getCompatibleProviderApis,
   isAcpRegistryAgentId,
+  parseDisabledAgentIds,
 } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import type { ProviderCredentials } from "../provider-credentials/service";
@@ -275,10 +277,19 @@ export class DaemonProviderService {
     await this.credentials.logout(providerId);
   }
 
+  private async isAgentDisabled(agentId: AgentId) {
+    return parseDisabledAgentIds(
+      await this.state.getAppSetting?.(DISABLED_AGENTS_SETTING_KEY),
+    ).has(agentId);
+  }
+
   async listCompatibleProviderModels(
     agentId: AgentId,
     options: { forceRefresh?: boolean } = {},
   ) {
+    if (await this.isAgentDisabled(agentId)) {
+      return [];
+    }
     if (agentId === "claude-agent") {
       try {
         return await listClaudeCliProviderModels(undefined, undefined, options);
@@ -361,6 +372,7 @@ export class DaemonProviderService {
     modelId: string,
   ): Promise<AgentProviderModelAxes | null> {
     if (
+      (await this.isAgentDisabled(agentId)) ||
       !isAcpRegistryAgentId(agentId) ||
       !getAcpAgentProfile(agentId).lazyModelAxes
     ) {

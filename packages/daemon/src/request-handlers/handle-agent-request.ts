@@ -54,9 +54,15 @@ export async function handleAgentRequest(
   switch (request.method) {
     case "agent.list":
       return service.listAgents();
+    case "agent.setEnabled":
+      return service.setAgentEnabled(
+        request.params.agentId,
+        request.params.enabled,
+      );
     case "agent.sessionModes.read":
       return service.readAgentSessionModes(request.params.agentId);
     case "agent.login":
+      await service.assertAgentEnabled(request.params.agentId);
       return service.agentAuth.login(request.params);
     case "agent.login.cancel":
       return service.agentAuth.cancelLogin(request.params.agentId);
@@ -79,12 +85,21 @@ export async function handleAgentRequest(
     case "acpRegistry.uninstall":
       return service.uninstallAcpRegistryAgent(request.params.agentId);
     case "acpRegistry.updates":
-      return service.acpRegistry.listUpdates(request.params);
+      return service.listAcpRegistryUpdates(request.params);
     case "acpRegistry.update":
       return service.updateAcpRegistryAgent(request.params.agentId);
     case "codex.account.read":
+      if (await service.isAgentDisabled("codex")) {
+        return {
+          method: null,
+          email: null,
+          planType: null,
+          requiresOpenaiAuth: false,
+        };
+      }
       return readCodexAccount();
     case "codex.login.start":
+      await service.assertAgentEnabled("codex");
       return service.codexLogins.start();
     case "codex.login.wait":
       return service.codexLogins.wait(request.params.loginId);
