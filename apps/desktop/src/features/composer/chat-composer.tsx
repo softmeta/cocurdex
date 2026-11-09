@@ -34,6 +34,7 @@ import { DropdownMenuGroup, DropdownMenuSeparator } from "@/components/ui";
 import { CloudSyncDialog } from "@/features/memory/cloud";
 import { MemoryMenuItem } from "@/features/memory/menu";
 import {
+  AgentIcon,
   AgentSelect,
   agentsAtom,
   buildAgentSelectOptions,
@@ -489,6 +490,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             (option) => ({
               value: option.value,
               label: getAgentDisplayLabel(option.value),
+              icon: <AgentIcon agentId={option.value} />,
               disabled: option.selectable === false,
             }),
           )}
