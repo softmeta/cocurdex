@@ -1,6 +1,17 @@
 import { createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
 
+function githubApiHeaders(extra = {}) {
+  const token =
+    process.env.GH_TOKEN?.trim() || process.env.GITHUB_TOKEN?.trim();
+  return {
+    "User-Agent": "cocurdex-desktop-build",
+    "X-GitHub-Api-Version": "2022-11-28",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  };
+}
+
 export async function downloadGitHubReleaseAsset(
   repository,
   tag,
@@ -8,7 +19,8 @@ export async function downloadGitHubReleaseAsset(
   destination,
 ) {
   const api = `https://api.github.com/repos/${repository}/releases`;
-  const release = await fetch(`${api}/tags/${tag}`, {
+  const release = await fetch(`${api}/tags/${encodeURIComponent(tag)}`, {
+    headers: githubApiHeaders({ Accept: "application/vnd.github+json" }),
     signal: AbortSignal.timeout(30_000),
   });
   if (!release.ok) {
@@ -19,7 +31,7 @@ export async function downloadGitHubReleaseAsset(
   if (!asset) throw new Error(`${repository} ${tag} is missing ${filename}`);
 
   const response = await fetch(`${api}/assets/${asset.id}`, {
-    headers: { Accept: "application/octet-stream" },
+    headers: githubApiHeaders({ Accept: "application/octet-stream" }),
     signal: AbortSignal.timeout(180_000),
   });
   if (!response.ok || !response.body) {

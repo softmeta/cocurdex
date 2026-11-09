@@ -1,7 +1,24 @@
-import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import { runCommand } from "./command";
+
+const GRADLE_WRAPPER_NETWORK_TIMEOUT_MS = 60_000;
+
+interface GitHubReleaseAsset {
+  id: number;
+  name: string;
+  digest?: string | null;
+}
 
 export function emulatorAbi(arch: NodeJS.Architecture) {
   return arch === "arm64" ? "arm64-v8a" : "x86_64";
@@ -47,6 +64,145 @@ export function androidSdk() {
   );
 }
 
+function setWrapperProperty(content: string, key: string, value: string) {
+  const line = `${key}=${value}`;
+  const pattern = new RegExp(`^${key}=.*$`, "m");
+  if (pattern.test(content)) {
+    return content.replace(pattern, line);
+  }
+  return `${content.trimEnd()}\n${line}\n`;
+}
+
+function parseGradleDistribution(propertiesContent: string) {
+  const match = propertiesContent.match(/^distributionUrl=(.+)$/m);
+  if (!match?.[1]) {
+    throw new Error("gradle-wrapper.properties is missing distributionUrl");
+  }
+  const url = match[1].trim().replaceAll("\\:", ":");
+  const filename = path.posix.basename(new URL(url).pathname);
+  const versionMatch = filename.match(
+    /^gradle-([0-9A-Za-z._-]+)-(?:bin|all)\.zip$/,
+  );
+  if (!versionMatch?.[1]) {
+    throw new Error(`Unsupported Gradle distribution archive: ${filename}`);
+  }
+  return { filename, version: versionMatch[1] };
+}
+
+async function sha256File(filePath: string) {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(filePath)) {
+    hash.update(chunk);
+  }
+  return hash.digest("hex");
+}
+
+function githubApiHeaders(env: NodeJS.ProcessEnv, accept: string) {
+  const token = env.GH_TOKEN ?? env.GITHUB_TOKEN;
+  return {
+    Accept: accept,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function downloadGradleFromGitHubRelease(
+  version: string,
+  filename: string,
+  destination: string,
+  env: NodeJS.ProcessEnv,
+) {
+  const api =
+    "https://api.github.com/repos/gradle/gradle-distributions/releases";
+  const release = await fetch(`${api}/tags/v${version}`, {
+    headers: githubApiHeaders(env, "application/vnd.github+json"),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!release.ok) {
+    throw new Error(
+      `Release lookup for gradle/gradle-distributions v${version}: ${release.status}`,
+    );
+  }
+  const { assets } = (await release.json()) as { assets: GitHubReleaseAsset[] };
+  const asset = assets.find(({ name }) => name === filename);
+  if (!asset) {
+    throw new Error(
+      `gradle/gradle-distributions v${version} is missing ${filename}`,
+    );
+  }
+  const expectedSha256 = asset.digest?.startsWith("sha256:")
+    ? asset.digest.slice("sha256:".length)
+    : undefined;
+  if (!expectedSha256) {
+    throw new Error(
+      `gradle/gradle-distributions v${version} ${filename} is missing sha256 digest`,
+    );
+  }
+
+  const response = await fetch(`${api}/assets/${asset.id}`, {
+    headers: githubApiHeaders(env, "application/octet-stream"),
+    signal: AbortSignal.timeout(180_000),
+  });
+  if (!response.ok || !response.body) {
+    throw new Error(`Download for ${filename}: ${response.status}`);
+  }
+  await pipeline(response.body, createWriteStream(destination));
+
+  const actualSha256 = await sha256File(destination);
+  if (actualSha256 !== expectedSha256) {
+    throw new Error(
+      `SHA256 mismatch for ${filename}: expected ${expectedSha256}, got ${actualSha256}`,
+    );
+  }
+  return expectedSha256;
+}
+
+async function prepareGradleWrapper(
+  androidDir: string,
+  gradlew: string,
+  env: NodeJS.ProcessEnv,
+) {
+  const propertiesPath = path.join(
+    androidDir,
+    "gradle/wrapper/gradle-wrapper.properties",
+  );
+  const initialProperties = setWrapperProperty(
+    readFileSync(propertiesPath, "utf8"),
+    "networkTimeout",
+    String(GRADLE_WRAPPER_NETWORK_TIMEOUT_MS),
+  );
+  writeFileSync(propertiesPath, initialProperties, "utf8");
+
+  try {
+    await runCommand(gradlew, ["--version", "--console=plain"], {
+      cwd: androidDir,
+      env,
+      inherit: true,
+    });
+    return undefined;
+  } catch {
+    const { filename, version } = parseGradleDistribution(initialProperties);
+    const localArchive = path.join(androidDir, "gradle/wrapper", filename);
+    const sha256 = await downloadGradleFromGitHubRelease(
+      version,
+      filename,
+      localArchive,
+      env,
+    );
+    const updatedProperties = setWrapperProperty(
+      setWrapperProperty(initialProperties, "distributionUrl", filename),
+      "distributionSha256Sum",
+      sha256,
+    );
+    writeFileSync(propertiesPath, updatedProperties, "utf8");
+    await runCommand(gradlew, ["--version", "--console=plain"], {
+      cwd: androidDir,
+      env,
+      inherit: true,
+    });
+    return localArchive;
+  }
+}
+
 export async function buildAndroidApp(mobileDir: string) {
   const javaHome = androidJavaHome();
   const env = {
@@ -65,17 +221,25 @@ export async function buildAndroidApp(mobileDir: string) {
     ["exec", "expo", "prebuild", "--platform", "android"],
     { cwd: mobileDir, env, inherit: true },
   );
+  const androidDir = path.join(mobileDir, "android");
   const gradlew = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
   const architectures = `-PreactNativeArchitectures=${emulatorAbi(process.arch)}`;
-  await runCommand(
-    gradlew,
-    ["assembleRelease", architectures, "--console=plain"],
-    {
-      cwd: path.join(mobileDir, "android"),
-      env,
-      inherit: true,
-    },
-  );
+  const localArchive = await prepareGradleWrapper(androidDir, gradlew, env);
+  try {
+    await runCommand(
+      gradlew,
+      ["assembleRelease", architectures, "--console=plain"],
+      {
+        cwd: androidDir,
+        env,
+        inherit: true,
+      },
+    );
+  } finally {
+    if (localArchive) {
+      rmSync(localArchive, { force: true });
+    }
+  }
 }
 
 export function androidApkPath(mobileDir: string) {
