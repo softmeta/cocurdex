@@ -10,8 +10,7 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-permissions:
-  contents: write
+permissions: {}
 
 env:
   CI: true
@@ -21,6 +20,8 @@ jobs:
     name: Validate tag and draft release
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
     outputs:
       promoted_from: ${{ steps.validate.outputs.promoted_from }}
     steps:
@@ -89,6 +90,8 @@ jobs:
     needs: prepare
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -108,6 +111,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
@@ -277,6 +281,8 @@ jobs:
     needs: prepare
     runs-on: windows-latest
     timeout-minutes: 90
+    permissions:
+      contents: write
     defaults:
       run:
         shell: bash
@@ -287,6 +293,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
@@ -356,11 +363,14 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
@@ -436,11 +446,14 @@ jobs:
     environment: release
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
@@ -579,6 +592,8 @@ jobs:
     environment: release
     runs-on: macos-26
     timeout-minutes: 90
+    permissions:
+      contents: read
     env:
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       APPLE_API_KEY_ID: ${{ secrets.IOS_ASC_API_KEY_ID }}
@@ -588,6 +603,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
@@ -753,9 +769,13 @@ jobs:
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
@@ -789,6 +809,18 @@ jobs:
           gh release upload "${GITHUB_REF_NAME}" promoted-apks/* \
             --repo "${GITHUB_REPOSITORY}" --clobber
 
+      - name: Upload unified SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern '*.sha256' --dir checksums
+          LC_ALL=C sort -k2 checksums/*.sha256 > checksums/SHA256SUMS
+          gh release upload "${GITHUB_REF_NAME}" checksums/SHA256SUMS \
+            --repo "${GITHUB_REPOSITORY}" --clobber
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -804,4 +836,28 @@ jobs:
               --repo "${GITHUB_REPOSITORY}" \
               --title "Cocurdex ${GITHUB_REF_NAME}" \
               --draft=false
+          fi
+
+  cleanup-draft-release:
+    name: Delete draft release on failure
+    needs:
+      - prepare
+      - macos
+      - windows
+      - linux
+      - publish
+    if: ${{ always() && github.ref_type == 'tag' && needs.prepare.result != 'skipped' && (needs.prepare.result != 'success' || needs.macos.result != 'success' || needs.windows.result != 'success' || needs.linux.result != 'success' || needs.publish.result != 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Delete draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          is_draft="$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft --jq .isDraft 2>/dev/null || true)"
+          if [[ "${is_draft}" == "true" ]]; then
+            gh release delete "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --yes
           fi

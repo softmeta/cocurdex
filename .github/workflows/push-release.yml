@@ -9,21 +9,24 @@ concurrency:
   group: push-release-${{ github.ref }}
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  packages: write
+permissions: {}
 
 jobs:
   release:
     name: Build and publish the push gateway
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
+      packages: write
     defaults:
       run:
         working-directory: services/push
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
