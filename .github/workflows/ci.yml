@@ -156,6 +156,8 @@ jobs:
       - name: Prepare Electron
         if: needs.changes.outputs.run_native == 'true'
         working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: pnpm run prepare:electron
       - name: Restore turbo cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
@@ -265,7 +267,9 @@ jobs:
       - name: Prepare Electron
         if: env.RUN == 'true'
         working-directory: apps/desktop
-        run: pnpm run prepare:electron
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pnpm run prepare:electron && pnpm run prepare:fd
       - name: Restore turbo cache
         if: env.RUN == 'true' && runner.os != 'Linux'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
@@ -285,6 +289,7 @@ jobs:
         if: ${{ !cancelled() && env.RUN == 'true' && runner.os != 'Linux' }}
         run: pnpm exec turbo run test:desktop ${AFFECTED:+--affected}
         env:
+          GH_TOKEN: ${{ github.token }}
           COCURDEX_TEST_ARTIFACTS_DIR: ${{ runner.temp }}/desktop-tests
       - name: Configure Electron sandbox
         if: env.RUN == 'true' && runner.os == 'Linux'
@@ -297,6 +302,7 @@ jobs:
         if: env.RUN == 'true' && runner.os == 'Linux'
         run: xvfb-run -a pnpm exec turbo run test:desktop test:ui check:startup-bundle ${AFFECTED:+--affected} --concurrency 1 --continue
         env:
+          GH_TOKEN: ${{ github.token }}
           COCURDEX_SCENARIO_RENDERER: built
           COCURDEX_TEST_ARTIFACTS_DIR: ${{ runner.temp }}/desktop-tests
       - name: Upload desktop test artifacts
