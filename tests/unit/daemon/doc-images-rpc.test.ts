@@ -35,7 +35,7 @@ async function setup() {
     userDataPath,
   });
   tempDirs.onCleanup(() => service.shutdown());
-  await service.saveWorkspace({
+  await service.workspaces.saveWorkspace({
     id: "workspace-1",
     name: "acme-shop",
     rootPaths: [workspace],

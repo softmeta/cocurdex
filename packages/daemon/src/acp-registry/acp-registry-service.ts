@@ -81,6 +81,21 @@ export function parseInstalledAcpRegistryAgents(
   }
 }
 
+function newestVersion(
+  versions: ReadonlyArray<string | undefined>,
+): string | undefined {
+  let newest: string | undefined;
+  for (const version of versions) {
+    if (!version) {
+      continue;
+    }
+    if (!newest || compareAgentVersions(version, newest) > 0) {
+      newest = version;
+    }
+  }
+  return newest;
+}
+
 export class AcpRegistryService {
   readonly ready: Promise<void>;
   private installed: AcpRegistryInstalledAgent[] = [];
@@ -90,6 +105,7 @@ export class AcpRegistryService {
     string,
     Promise<AcpRegistryInstalledAgent>
   >();
+  private adoptingLocalClis: Promise<void> | null = null;
 
   constructor(
     private readonly settings: SettingsStore,
@@ -110,7 +126,19 @@ export class AcpRegistryService {
     await this.adoptLocalClis();
   }
 
-  private async adoptLocalClis() {
+  async refreshLocalClis() {
+    await this.ready;
+    await this.adoptLocalClis();
+  }
+
+  private adoptLocalClis() {
+    this.adoptingLocalClis ??= this.runAdoptLocalClis().finally(() => {
+      this.adoptingLocalClis = null;
+    });
+    return this.adoptingLocalClis;
+  }
+
+  private async runAdoptLocalClis() {
     const adopted = new Set(
       parseStringList(
         await this.settings.getAppSetting(
@@ -118,24 +146,54 @@ export class AcpRegistryService {
         ),
       ),
     );
-    const candidates = LOCAL_CLI_REGISTRY_IDS.filter(
-      (registryId) =>
-        !adopted.has(registryId) &&
-        !this.installed.some((agent) => agent.registryId === registryId),
-    );
-    const found = (
+    const next = [...this.installed];
+    const newlyAdopted: string[] = [];
+    const probeIds = LOCAL_CLI_REGISTRY_IDS.filter((registryId) => {
+      const installed = next.find((agent) => agent.registryId === registryId);
+      if (installed === undefined) {
+        // A removal is explicit: do not adopt the same local CLI again.
+        return !adopted.has(registryId);
+      }
+      // A managed runtime stays in place; listUpdates offers a newer local CLI.
+      return installed.distribution === "local";
+    });
+    const localByRegistryId = new Map(
       await Promise.all(
-        candidates.map((registryId) => this.findLocal(registryId)),
-      )
-    ).filter((agent): agent is AcpRegistryInstalledAgent => agent !== null);
-    if (found.length === 0) {
-      return;
-    }
-    await this.persist([...this.installed, ...found]);
-    await this.settings.setAppSetting(
-      ACP_REGISTRY_ADOPTED_LOCAL_SETTING_KEY,
-      JSON.stringify([...adopted, ...found.map((agent) => agent.registryId)]),
+        probeIds.map(
+          async (registryId) =>
+            [registryId, await this.findLocal(registryId)] as const,
+        ),
+      ),
     );
+    for (const registryId of probeIds) {
+      const local = localByRegistryId.get(registryId) ?? null;
+      if (!local) {
+        continue;
+      }
+      const index = next.findIndex((agent) => agent.registryId === registryId);
+      const installed = index === -1 ? undefined : next[index];
+      if (installed === undefined) {
+        next.push(local);
+        newlyAdopted.push(registryId);
+        continue;
+      }
+      if (
+        local.command !== installed.command ||
+        local.args.join("\0") !== installed.args.join("\0") ||
+        local.version !== installed.version
+      ) {
+        next[index] = { ...local, installedAt: installed.installedAt };
+      }
+    }
+    if (JSON.stringify(next) !== JSON.stringify(this.installed)) {
+      await this.persist(next);
+    }
+    if (newlyAdopted.length > 0) {
+      await this.settings.setAppSetting(
+        ACP_REGISTRY_ADOPTED_LOCAL_SETTING_KEY,
+        JSON.stringify([...adopted, ...newlyAdopted]),
+      );
+    }
   }
 
   private apply(agents: AcpRegistryInstalledAgent[]) {
@@ -255,10 +313,26 @@ export class AcpRegistryService {
         agent,
       ]);
       await this.removeStaleVersions(agent);
+      if (agent.distribution === "local") {
+        await this.recordLocalAdoption(registryId);
+      }
       return agent;
     })().finally(() => this.installing.delete(registryId));
     this.installing.set(registryId, install);
     return install;
+  }
+
+  private async recordLocalAdoption(registryId: string) {
+    const adopted = parseStringList(
+      await this.settings.getAppSetting(ACP_REGISTRY_ADOPTED_LOCAL_SETTING_KEY),
+    );
+    if (adopted.includes(registryId)) {
+      return;
+    }
+    await this.settings.setAppSetting(
+      ACP_REGISTRY_ADOPTED_LOCAL_SETTING_KEY,
+      JSON.stringify([...adopted, registryId]),
+    );
   }
 
   private async findInstallableEntry(registryId: string) {
@@ -288,30 +362,44 @@ export class AcpRegistryService {
     options: { forceRefresh?: boolean } = {},
   ): Promise<AcpRegistryAgentUpdate[]> {
     await this.ready;
-    const latest = new Map(
+    if (options.forceRefresh) {
+      await this.adoptLocalClis();
+    }
+    const catalogLatest = new Map(
       (await this.entries(options.forceRefresh ?? false)).map((entry) => [
         entry.agent.registryId,
         entry.agent.version,
       ]),
     );
-    return this.installed.flatMap((agent) => {
-      const latestVersion = latest.get(agent.registryId);
-      const updatable =
-        agent.distribution !== "local" &&
-        agent.version !== "" &&
-        latestVersion !== undefined &&
-        compareAgentVersions(latestVersion, agent.version) > 0;
-      return updatable && latestVersion
-        ? [
-            {
-              agentId: agent.agentId,
-              registryId: agent.registryId,
-              installedVersion: agent.version,
-              latestVersion,
-            },
-          ]
-        : [];
-    });
+    const updates = await Promise.all(
+      this.installed.map(
+        async (agent): Promise<AcpRegistryAgentUpdate | null> => {
+          if (agent.distribution === "local" || agent.version === "") {
+            return null;
+          }
+          const local = await this.findLocal(agent.registryId);
+          const latestVersion = newestVersion([
+            catalogLatest.get(agent.registryId),
+            local?.version,
+          ]);
+          if (
+            !latestVersion ||
+            compareAgentVersions(latestVersion, agent.version) <= 0
+          ) {
+            return null;
+          }
+          return {
+            agentId: agent.agentId,
+            registryId: agent.registryId,
+            installedVersion: agent.version,
+            latestVersion,
+          };
+        },
+      ),
+    );
+    return updates.filter(
+      (update): update is AcpRegistryAgentUpdate => update !== null,
+    );
   }
 
   async update(agentId: AcpRegistryAgentId) {
@@ -325,9 +413,17 @@ export class AcpRegistryService {
         `${agent.name} uses a command installed outside Cocurdex; update it with its own installer`,
       );
     }
-    return this.save(agent.registryId, () =>
-      this.installFromCatalog(agent.registryId),
-    );
+    return this.save(agent.registryId, async () => {
+      const local = await this.findLocal(agent.registryId);
+      const catalogVersion = (await this.entries(false)).find(
+        (entry) => entry.agent.registryId === agent.registryId,
+      )?.agent.version;
+      return local?.version &&
+        (!catalogVersion ||
+          compareAgentVersions(local.version, catalogVersion) >= 0)
+        ? local
+        : this.installFromCatalog(agent.registryId);
+    });
   }
 
   async uninstall(agentId: AcpRegistryAgentId) {

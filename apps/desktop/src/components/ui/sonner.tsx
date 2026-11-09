@@ -25,7 +25,7 @@ function Toaster(props: ToasterProps) {
         error: <OctagonXIcon className="size-4 text-destructive" />,
         loading: <Loader2Icon className="size-4 animate-spin" />,
       }}
-      position="bottom-right"
+      position="top-center"
       style={
         {
           "--normal-bg": "var(--popover)",
@@ -40,7 +40,7 @@ function Toaster(props: ToasterProps) {
       theme={theme}
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast app-no-drag",
         },
       }}
       {...props}

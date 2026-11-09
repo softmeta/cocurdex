@@ -330,6 +330,64 @@ describe("AcpAgentAdapter", () => {
     );
   });
 
+  it("sends provider session metadata computed from initialize on new sessions", async () => {
+    const newSession = vi.fn(async () => ({
+      sessionId: "antigravity-session",
+    }));
+    const sessionMeta = vi.fn((initialized: InitializeResponse) =>
+      initialized.agentInfo?.version === "1.4.5"
+        ? { antigravity: { disabledTools: ["run_workflow"] } }
+        : undefined,
+    );
+    const session = new AcpAgentAdapter(
+      {
+        args: [],
+        command: "agy_acp_server",
+        descriptor,
+        sessionMeta,
+      },
+      async () =>
+        createAcpConnection({
+          initialize: async () => ({
+            protocolVersion: 1,
+            agentCapabilities: {},
+            agentInfo: { name: "antigravity-acp", version: "1.4.5" },
+          }),
+          newSession: newSession as AcpConnection["newSession"],
+        }),
+    ).createSession(
+      {
+        session: {
+          id: "meta-session",
+          workspaceId: "workspace-1",
+          title: "Meta",
+          agentType: "acp:grok-build",
+          status: "idle",
+          writeMode: "native-write",
+          sessionModeId: null,
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          lastMessageAt: null,
+        },
+        workspaceRootPath: "/workspace",
+      },
+      () => undefined,
+    );
+
+    await session.sendMessage({ content: "Hi", history: [] });
+
+    expect(sessionMeta).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentInfo: { name: "antigravity-acp", version: "1.4.5" },
+      }),
+    );
+    expect(newSession).toHaveBeenCalledWith({
+      cwd: "/workspace",
+      mcpServers: [],
+      _meta: { antigravity: { disabledTools: ["run_workflow"] } },
+    });
+  });
+
   it("ignores a persisted ACP session marked non-resumable", async () => {
     const resumeSession = vi.fn(async () => ({}));
     const loadSession = vi.fn(async () => ({}));

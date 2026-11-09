@@ -26,7 +26,7 @@ function descriptor(
 }
 
 describe("sortAdaptersForSettings", () => {
-  it("puts missing and outdated adapters ahead of ready ones, then builtin last", () => {
+  it("puts builtin first, then missing and outdated adapters ahead of ready ones, and disabled last", () => {
     const readyCodex = descriptor({
       id: "codex",
       installation: {
@@ -51,9 +51,19 @@ describe("sortAdaptersForSettings", () => {
         version: "1.0.0",
       },
     });
+    const disabledGrok = descriptor({
+      id: "acp:grok-build",
+      enabled: false,
+      availability: "missing",
+      installation: {
+        executableName: "grok",
+        executablePath: null,
+      },
+    });
     const builtinPi = descriptor({ id: "pi" });
 
     const sorted = sortAdaptersForSettings([
+      disabledGrok,
       readyCodex,
       builtinPi,
       missingOpencode,
@@ -61,10 +71,11 @@ describe("sortAdaptersForSettings", () => {
     ]);
 
     expect(sorted.map((agent) => agent.id)).toEqual([
+      "pi",
       "opencode",
       "claude-agent",
       "codex",
-      "pi",
+      "acp:grok-build",
     ]);
   });
 
@@ -93,7 +104,7 @@ describe("sortAdaptersForSettings", () => {
 });
 
 describe("splitAdaptersForSettings", () => {
-  it("moves only uninstalled adapters into the collapsed group", () => {
+  it("splits active installed adapters from collapsed disabled and missing groups", () => {
     const missingOpencode = descriptor({
       id: "opencode",
       availability: "missing",
@@ -117,7 +128,15 @@ describe("splitAdaptersForSettings", () => {
       },
     });
 
-    const { installed, missing } = splitAdaptersForSettings([
+    const disabledGrok = descriptor({
+      id: "acp:grok-build",
+      enabled: false,
+      availability: "missing",
+      installation: { executableName: "grok", executablePath: null },
+    });
+
+    const { installed, disabled, missing } = splitAdaptersForSettings([
+      disabledGrok,
       missingOpencode,
       descriptor({ id: "pi" }),
       failingCodex,
@@ -125,10 +144,11 @@ describe("splitAdaptersForSettings", () => {
     ]);
 
     expect(installed.map((agent) => agent.id)).toEqual([
+      "pi",
       "codex",
       "claude-agent",
-      "pi",
     ]);
+    expect(disabled.map((agent) => agent.id)).toEqual(["acp:grok-build"]);
     expect(missing.map((agent) => agent.id)).toEqual(["opencode"]);
   });
 });

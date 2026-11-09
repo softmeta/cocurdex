@@ -42,6 +42,7 @@ import {
   RuntimeAxisSubmenu,
   SessionModeSubmenu,
   ThinkingLevelSubmenu,
+  visibleAgentSelectOptions,
 } from "@/features/sessions";
 import { cn } from "@/lib";
 import { AttachContextSubmenus } from "./attach-context-submenus";
@@ -484,23 +485,18 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
           label={t("sessions:composer.agent")}
           value={selectedAgent}
           onValueChange={(value) => onSelectAgent?.(value as AgentId)}
-          options={agentOptions
-            .filter(
-              (option) =>
-                option.statusKind !== "missing" ||
-                option.value === selectedAgent,
-            )
-            .map((option) => ({
+          options={visibleAgentSelectOptions(agentOptions, selectedAgent).map(
+            (option) => ({
               value: option.value,
               label: getAgentDisplayLabel(option.value),
               disabled: option.selectable === false,
-            }))}
+            }),
+          )}
         />
       ) : null;
 
     const runtimeMenuExtras = isAgentMode ? (
       <>
-        {inSessionAgentSubmenu}
         <SessionModeSubmenu
           agentType={selectedAgent}
           modeId={sessionModeId}
@@ -595,6 +591,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             footerLeading={footerLeading}
             footerTrailing={footerTrailing}
             initialEditorContent={initialDraft}
+            runtimeMenuHeader={isAgentMode ? inSessionAgentSubmenu : null}
             runtimeMenuExtras={runtimeMenuExtras}
             modelLeading={modelLeading}
             sessionId={sessionId}

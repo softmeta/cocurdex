@@ -57,7 +57,11 @@ export async function discoverInstalledAgentCapabilities(
   return Promise.all(
     agents.map(async (agent) => {
       const executablePath = agent.installation?.executablePath;
-      if (agent.availability !== "available" || !executablePath) {
+      if (
+        agent.enabled === false ||
+        agent.availability !== "available" ||
+        !executablePath
+      ) {
         return agent;
       }
 
@@ -104,7 +108,11 @@ export async function discoverAgentSessionModes(
   const agent = agents.find((candidate) => candidate.id === agentId);
   const executablePath = agent?.installation?.executablePath;
   const version = agent?.installation?.version;
-  if (agent?.availability !== "available" || !executablePath) {
+  if (
+    agent?.enabled === false ||
+    agent?.availability !== "available" ||
+    !executablePath
+  ) {
     return agent?.capabilities.sessionModes ?? [];
   }
 

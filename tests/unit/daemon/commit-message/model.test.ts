@@ -121,4 +121,16 @@ describe("resolveCommitMessageModel", () => {
     });
     expect(database.listProviderConfigs).not.toHaveBeenCalled();
   });
+
+  it("rejects commit message generation when the selected agent is disabled", async () => {
+    const database = {
+      ...state([]),
+      getAppSetting: vi.fn().mockResolvedValue(JSON.stringify(["codex"])),
+    } as unknown as DaemonState;
+
+    await expect(
+      resolveCommitMessageModel(database, { ...selection, agentId: "codex" }),
+    ).rejects.toThrow("No commit message model configured");
+    expect(catalogs.listCodexProviderModels).not.toHaveBeenCalled();
+  });
 });

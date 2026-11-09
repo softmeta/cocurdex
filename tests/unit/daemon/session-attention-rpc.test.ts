@@ -6,22 +6,27 @@ import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterEach, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
+const services: CocurdexDaemonService[] = [];
 
 const now = "2026-08-09T10:00:00.000Z";
 
 afterEach(async () => {
+  for (const service of services.splice(0)) {
+    await service.shutdown();
+  }
   await tempDirs.cleanup();
 });
 
 async function createService(userDataPath?: string) {
   const targetPath =
     userDataPath ?? (await tempDirs.create("cocurdex-attention-rpc-"));
-  if (!userDataPath) {
-  }
-  return new CocurdexDaemonService({
+  const service = new CocurdexDaemonService({
+    autoStartMemory: false,
     runtimeFingerprint: "attention-test",
     userDataPath: targetPath,
   });
+  services.push(service);
+  return service;
 }
 
 async function seedSession(service: CocurdexDaemonService) {
@@ -46,7 +51,7 @@ async function seedSession(service: CocurdexDaemonService) {
     updatedAt: now,
     lastMessageAt: null,
   } satisfies SessionRecord;
-  await service.saveWorkspace(workspace);
+  await service.workspaces.saveWorkspace(workspace);
   await service.state.saveSession(session);
 }
 

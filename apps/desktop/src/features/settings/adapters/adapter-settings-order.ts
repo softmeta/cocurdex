@@ -2,12 +2,13 @@ import type { AgentDescriptor } from "@cocurdex/shared";
 import { type AdapterStatusKind, getAdapterStatus } from "@/features/sessions";
 
 const kindOrder: Record<AdapterStatusKind, number> = {
-  error: 0,
-  missing: 1,
-  outdated: 2,
-  detecting: 3,
-  ready: 4,
-  builtin: 5,
+  builtin: 0,
+  error: 1,
+  missing: 2,
+  outdated: 3,
+  detecting: 4,
+  ready: 5,
+  disabled: 6,
 };
 
 export function sortAdaptersForSettings(
@@ -29,10 +30,22 @@ export function sortAdaptersForSettings(
 
 export function splitAdaptersForSettings(agents: readonly AgentDescriptor[]) {
   const sorted = sortAdaptersForSettings(agents);
-  const isMissing = (agent: AgentDescriptor) =>
-    getAdapterStatus(agent).kind === "missing";
+  const installed: AgentDescriptor[] = [];
+  const disabled: AgentDescriptor[] = [];
+  const missing: AgentDescriptor[] = [];
+  for (const agent of sorted) {
+    const kind = getAdapterStatus(agent).kind;
+    if (kind === "disabled") {
+      disabled.push(agent);
+    } else if (kind === "missing") {
+      missing.push(agent);
+    } else {
+      installed.push(agent);
+    }
+  }
   return {
-    installed: sorted.filter((agent) => !isMissing(agent)),
-    missing: sorted.filter(isMissing),
+    installed,
+    disabled,
+    missing,
   };
 }

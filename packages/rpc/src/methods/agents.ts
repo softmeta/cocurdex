@@ -69,6 +69,7 @@ import type {
 
 export type AgentsRequests = {
   "agent.list": undefined;
+  "agent.setEnabled": { agentId: AgentId; enabled: boolean };
   "agent.sessionModes.read": { agentId: AgentId };
   "agent.login": { agentId: AgentId; methodId?: string };
   "agent.login.cancel": { agentId: AgentId };
@@ -185,6 +186,7 @@ export type AgentsRequests = {
 
 export type AgentsResults = {
   "agent.list": AgentDescriptor[];
+  "agent.setEnabled": AgentDescriptor[];
   "agent.sessionModes.read": AgentSessionMode[];
   "agent.login": null;
   "agent.login.cancel": null;

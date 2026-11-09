@@ -13,7 +13,8 @@ export type AdapterStatusKind =
   | "ready"
   | "outdated"
   | "missing"
-  | "error";
+  | "error"
+  | "disabled";
 
 export interface AdapterStatus {
   kind: AdapterStatusKind;
@@ -41,6 +42,9 @@ export function getAdapterStatus(agent: AgentDescriptor): AdapterStatus {
 
   if (!base.installHint && !isRegistryAgent) {
     return { ...base, kind: "builtin" };
+  }
+  if (agent.enabled === false) {
+    return { ...base, kind: "disabled" };
   }
   if (!agent.installation) {
     return { ...base, kind: "detecting" };

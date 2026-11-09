@@ -90,7 +90,7 @@ async function fixture() {
     },
   );
   const now = new Date().toISOString();
-  await service.saveWorkspace({
+  await service.workspaces.saveWorkspace({
     id: "workspace-1",
     name: "Workspace",
     rootPaths: [root],

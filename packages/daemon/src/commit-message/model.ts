@@ -9,11 +9,13 @@ import {
   type CommitMessageModelSelection,
   type CompatibleProviderModel,
   createProviderSnapshotForModel,
+  DISABLED_AGENTS_SETTING_KEY,
   filterCompatibleProviderModels,
   getCompatibleProviderApis,
   isAcpRegistryAgentId,
   type ProviderConfigRecord,
   type ProviderModelRecord,
+  parseDisabledAgentIds,
   type ResolvedCommitMessageModel,
 } from "@cocurdex/shared";
 import type { DaemonState } from "../state";
@@ -82,6 +84,10 @@ export async function resolveCommitMessageModel(
   selection: CommitMessageModelSelection | null,
 ): Promise<ResolvedCommitMessageModel> {
   if (!selection) throw new Error(NO_MODEL_ERROR);
+  const disabledIds = parseDisabledAgentIds(
+    await state.getAppSetting?.(DISABLED_AGENTS_SETTING_KEY),
+  );
+  if (disabledIds.has(selection.agentId)) throw new Error(NO_MODEL_ERROR);
   let native: CompatibleProviderModel[] = [];
   if (isAcpRegistryAgentId(selection.agentId)) {
     native = await listAcpRegistryProviderModels(selection.agentId);

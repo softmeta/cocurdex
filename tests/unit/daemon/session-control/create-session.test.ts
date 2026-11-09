@@ -378,6 +378,34 @@ describe("resolveNewSession with a role", () => {
       permissionMode: "claude-auto",
     });
   });
+
+  it("falls back to an enabled agent when the workspace's previous agent is disabled, and rejects explicit requests for a disabled agent", async () => {
+    const disabledClaude = {
+      ...agent("claude-agent", ["claude-default"]),
+      enabled: false,
+    };
+    const enabledCodex = agent("codex", ["codex-auto"]);
+
+    const fallbackSession = await resolveNewSession(
+      { workspaceId: "workspace-1" },
+      "new-1",
+      context({
+        agents: [disabledClaude, enabledCodex],
+        workspaceSessions: [previous("claude-agent")],
+      }),
+    );
+    expect(fallbackSession.agentType).toBe("codex");
+
+    await expect(
+      resolveNewSession(
+        { workspaceId: "workspace-1", agentType: "claude-agent" },
+        "new-2",
+        context({
+          agents: [disabledClaude, enabledCodex],
+        }),
+      ),
+    ).rejects.toThrow("claude-agent label is disabled");
+  });
 });
 
 describe("resolveNewSessionDefaults", () => {

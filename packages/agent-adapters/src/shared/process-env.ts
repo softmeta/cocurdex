@@ -1,6 +1,7 @@
 const ALLOWED_ENV_PREFIXES = [
   "PI_",
   "GEMINI_",
+  "AGY_",
   "GOOGLE_",
   "CLAUDE_",
   "ANTHROPIC_",

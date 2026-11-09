@@ -72,6 +72,7 @@
     "agent": "Agent",
     "agentStatus": {
       "detecting": "检测中",
+      "disabled": "已禁用",
       "error": "不可用",
       "notInstalled": "未安装",
       "updateRequired": "需更新"

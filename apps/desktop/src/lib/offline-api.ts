@@ -210,6 +210,7 @@ export const offlineApi: DesktopApi = {
     removedSkills: [],
   }),
   listAgents: async () => fallbackAgents,
+  setAgentEnabled: async () => fallbackAgents,
   listAgentRoles: async () => [],
   saveAgentRole: async (payload) => ({
     id: payload.id ?? "role-dev",

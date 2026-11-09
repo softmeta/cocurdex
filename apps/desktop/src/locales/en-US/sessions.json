@@ -75,6 +75,7 @@
     "agent": "Agent",
     "agentStatus": {
       "detecting": "Checking…",
+      "disabled": "Disabled",
       "error": "Unavailable",
       "notInstalled": "Not installed",
       "updateRequired": "Update required"

@@ -24,6 +24,8 @@ export function useAdapterStatusLabel(kind: AdapterDisplayStatus) {
       return t("adapters.kind.needsLogin");
     case "ready":
       return t("adapters.kind.ready");
+    case "disabled":
+      return t("adapters.kind.disabled");
     case "update-available":
       return t("adapters.kind.updateAvailable");
   }
@@ -37,7 +39,7 @@ export function AdapterStatusDot({ kind }: { kind: AdapterDisplayStatus }) {
         "size-1.5 shrink-0 rounded-full",
         (kind === "ready" || kind === "builtin") && "bg-status-success",
         (kind === "outdated" || kind === "needs-login") && "bg-status-warning",
-        (kind === "detecting" || kind === "missing") &&
+        (kind === "detecting" || kind === "missing" || kind === "disabled") &&
           "bg-muted-foreground/40",
         kind === "error" && "bg-destructive",
         kind === "update-available" && "bg-status-attention",

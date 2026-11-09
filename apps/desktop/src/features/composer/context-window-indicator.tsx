@@ -186,12 +186,14 @@ export function ContextUsageMeter({
 }
 
 export function ContextWindowIndicator({
+  header,
   footer,
   layout = "inline",
   afterModel,
   modelLeading,
   sessionId,
 }: {
+  header?: ReactNode;
   footer?: ReactNode;
   isRunning?: boolean;
   layout?: "inline" | "split";
@@ -428,6 +430,7 @@ export function ContextWindowIndicator({
       label={baseModelLabel}
       model={model}
       modelValue={runtimeModelValue}
+      header={header}
       footer={footer}
       permissionMode={session.permissionMode ?? null}
       providerSnapshot={snapshot ?? null}

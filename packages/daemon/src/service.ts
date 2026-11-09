@@ -1,8 +1,5 @@
 import { EventEmitter } from "node:events";
-import { statSync } from "node:fs";
-import { mkdir, stat } from "node:fs/promises";
 import os, { homedir } from "node:os";
-import path from "node:path";
 import {
   deleteOpenCodeSession,
   readAdapterRateLimits as probeAdapterRateLimits,
@@ -12,6 +9,7 @@ import { loginPiProvider } from "@cocurdex/agent-adapters/provider-auth";
 import {
   AgentSteeringUnavailableError,
   createAgentRegistry,
+  getAgentRuntimeOwnership,
 } from "@cocurdex/agent-core";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type {
@@ -21,21 +19,16 @@ import type {
   AgentId,
   AgentPlanApprovalDecision,
   AgentRoleRecord,
-  AgentRunLimits,
   AgentRuntimeProviderConfig,
   AppBootstrapData,
   ArchiveSessionsResult,
   CocurdexDaemonEvent,
-  CommitMessageModelSelection,
   ContextTransferRecord,
   CreateSessionPayload,
   CreateWorkflowPayload,
   ForkSessionPayload,
   GetToolCallResultInput,
-  GitCommitResult,
-  MemorySettings,
   MessageRecord,
-  NetworkProxySettings,
   QueuedAgentInputRecord,
   RefineSessionTitlePayload,
   RoutineRunRecord,
@@ -54,19 +47,17 @@ import type {
   UpdateSessionAttentionPayload,
   UpdateSessionRuntimePayload,
   UpdateSessionTitlePayload,
-  WorkspaceRecord,
-  WorkspaceWorktreeEnvironment,
 } from "@cocurdex/shared";
 import {
-  AGENT_RUN_LIMITS_SETTING_KEY,
   assertPersonalAgentRuntime,
   buildContextHandoffText,
   buildPolicy,
   CHAT_WORKSPACE_ID,
+  canDisableAgent,
   contextHandoffBudget,
-  emptyWorktreeEnvironment,
-  getNetworkProxySettings,
+  DISABLED_AGENTS_SETTING_KEY,
   type HostPrincipal,
+  isAcpRegistryAgentId,
   isAgentEvent,
   isAgentId,
   isAssistantSessionId,
@@ -79,8 +70,6 @@ import {
   isSessionRuntimeEvent,
   isSupportedLocale,
   isToolCallId,
-  MEMORY_SETTINGS_KEY,
-  type MessageAttachment,
   type MessageOrigin,
   matchSupportedLocale,
   messageAgentLookup,
@@ -88,23 +77,19 @@ import {
   normalizeAgentRoleAvatar,
   normalizeAgentRoleDescription,
   normalizeAgentRoleName,
-  normalizeWorkspaceActions,
   normalizeWorkspaceRootPaths,
   PERSONAL_WORKSPACE_ID,
   PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
-  parseAgentRunLimits,
+  parseDisabledAgentIds,
   primaryWorkspaceRootPath,
   principalHasScope,
   resolveSessionWorkingPath,
   resolveStartContext,
-  resolveStoredAgentRunLimits,
   toolMayMutateWorkspace,
   validateSendSessionCommand,
   validateSessionConfiguration,
   validateSessionId,
-  workspacePathsEqual,
 } from "@cocurdex/shared";
-import { resolveAuthorizedPdfReadPath } from "@cocurdex/shared/node";
 import { AcpRegistryService, AgentAuthService } from "./acp-registry";
 import {
   AgentToolBridge,
@@ -116,8 +101,6 @@ import {
   registerSettingsTools,
   registerTeamTools,
   registerWorkTools,
-  requireCatalogEntry,
-  WORKTREE_ENVIRONMENT_KEY,
 } from "./agent-tools";
 import { registerApplicationTools } from "./agent-tools/groups/applications";
 import {
@@ -130,13 +113,12 @@ import { ApplicationService } from "./application-service";
 import { DaemonAttachmentStore } from "./attachment-store";
 import { DaemonBackgroundService } from "./background";
 import { DaemonCommitMessageService } from "./commit-message";
+import { DaemonSettingsService } from "./daemon-settings";
 import { DaemonDataService } from "./data-service";
 import { DaemonDeckService, DeckAssetStore } from "./decks";
 import { DelegationModule } from "./delegation";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { loadExecutionTree } from "./execution-tree";
-import { listHostDirectories } from "./fs-browse";
-import { commitGitChanges } from "./git";
 import {
   createTrafficMeter,
   HostAccessService,
@@ -154,12 +136,6 @@ import { buildBrief } from "./inbox/build-brief";
 import { buildInbox } from "./inbox/build-inbox";
 import { DaemonMcpService } from "./mcp-service";
 import { MemoryService } from "./memory";
-import { probeNetworkProxy } from "./network-proxy-probe";
-import {
-  assertTestableNetworkProxySettings,
-  readNetworkProxySettings,
-  saveNetworkProxySettings,
-} from "./network-proxy-settings";
 import { OutboxService, routineRunAlert } from "./outbox";
 import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
@@ -197,7 +173,6 @@ import {
 } from "./routines";
 import { SLOW_REQUEST_THRESHOLD_MS } from "./rpc-request-log";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
-import { createWorkspaceScanPolicy } from "./scan-roots";
 import { ScriptRunModule } from "./script-run";
 import { DaemonSearchService } from "./search-service";
 import {
@@ -231,12 +206,7 @@ import { DaemonSkillLibraryService } from "./skills";
 import { DaemonSkillsService } from "./skills-service";
 import { DaemonState } from "./state";
 import { pullSync } from "./sync/sync-pull";
-import {
-  createKeepAwake,
-  listFontFamilies,
-  openDirectoryInFileManager,
-  revealPathInFileManager,
-} from "./system";
+import { createKeepAwake } from "./system";
 import { TeamModule, type TeammateReportCommand } from "./team";
 import { TerminalService } from "./terminal";
 import {
@@ -251,15 +221,7 @@ import {
   createWorkspaceChangeCoordinator,
   type WorkspaceChangeCoordinator,
 } from "./workspace-changes";
-import { resolveWorkspaceOpenPath } from "./workspace-open-path";
-import {
-  fileExists,
-  listWorkspaceDirectory as listWorkspaceDirectoryOnDisk,
-  listWorkspaceEntries as listWorkspaceEntriesOnDisk,
-  listWorkspaceFiles as listWorkspaceFilesOnDisk,
-  readTextFile,
-} from "./workspace-service";
-import { WorkspaceWatchService } from "./workspace-watch";
+import { WorkspaceHost, withMissingRootPaths } from "./workspace-host";
 import { WorktreeLifecycle } from "./worktree-lifecycle";
 
 export interface CocurdexDaemonServiceOptions {
@@ -287,17 +249,8 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const REPORTED_SETTING_VALUES_KEY = "settings.reportedValues";
 const BRIEF_POSTED_SETTING_KEY = "personal.briefPostedAt";
 const BRIEF_LOCALE_SETTING_KEY = "personal.briefLocale";
-
-function isExistingDirectory(directoryPath: string) {
-  try {
-    return statSync(directoryPath).isDirectory();
-  } catch {
-    return false;
-  }
-}
 
 export class CocurdexDaemonService {
   readonly events = new EventEmitter();
@@ -326,7 +279,8 @@ export class CocurdexDaemonService {
   readonly pdfAnnotationsService: DaemonPdfAnnotationsService;
   readonly attachments: DaemonAttachmentStore;
   readonly codexLogins = new CodexLoginSessions();
-  private readonly workspaceWatch: WorkspaceWatchService;
+  readonly workspaces: WorkspaceHost;
+  readonly settings: DaemonSettingsService;
   readonly runtime: AgentRuntimeManager;
   readonly searchService: DaemonSearchService;
   readonly terminals: TerminalService;
@@ -347,7 +301,6 @@ export class CocurdexDaemonService {
   readonly hostAccessReady: Promise<void>;
   readonly workflows: WorkflowModule;
   readonly workspaceChanges: WorkspaceChangeCoordinator;
-  private readonly scanPolicy: ReturnType<typeof createWorkspaceScanPolicy>;
   private readonly runtimeFingerprint: string;
   private readonly socketPath: string;
   private readonly startedAt: string;
@@ -380,7 +333,7 @@ export class CocurdexDaemonService {
       listAddresses: (port) => listHostAddresses(os.networkInterfaces(), port),
       remoteAccessAllowed: isFeatureEnabled(buildPolicy, "remote-access"),
       onRemoteAccessChanged: () => {
-        this.broadcastSettingsChanged();
+        this.settings.announceChanged();
         this.syncKeepAwake();
       },
     });
@@ -523,20 +476,36 @@ export class CocurdexDaemonService {
         this.providerCredentials.forSession(session),
       startRuntime: options.autoStartMemory !== false,
     });
-    this.scanPolicy = createWorkspaceScanPolicy(this.state);
+    this.attachments = new DaemonAttachmentStore(options.userDataPath);
+    this.workspaces = new WorkspaceHost({
+      state: this.state,
+      userDataPath: options.userDataPath,
+      attachments: this.attachments,
+      commitMessages: this.commitMessageService,
+      emit: (event) => this.events.emit("daemon.event", event),
+    });
+    this.settings = new DaemonSettingsService({
+      state: this.state,
+      memory: this.memory,
+      commitMessages: this.commitMessageService,
+      getWorktreeEnvironment: (workspaceId) =>
+        this.workspaces.getWorktreeEnvironment(workspaceId),
+      setDisabledAgentIds: (agentIds) => this.replaceDisabledAgentIds(agentIds),
+      emit: (event) => this.events.emit("daemon.event", event),
+    });
     this.worktrees = new WorktreeLifecycle(
       this.state,
       this.userDataPath,
-      (workspaceId) => this.getWorktreeEnvironment(workspaceId),
-      () => this.scanPolicy.invalidate(),
+      (workspaceId) => this.workspaces.getWorktreeEnvironment(workspaceId),
+      () => this.workspaces.scanPolicy.invalidate(),
     );
     this.searchService = new DaemonSearchService({
       broadcast: (event) => this.events.emit("daemon.event", event),
-      canScanRoot: (rootPath) => this.scanPolicy.canScan(rootPath),
+      canScanRoot: (rootPath) => this.workspaces.scanPolicy.canScan(rootPath),
     });
     this.terminals = new TerminalService({
       emit: (event) => this.events.emit("terminal.event", event),
-      listWorkspaceRootPaths: () => this.listWorkspaceRootPaths(),
+      listWorkspaceRootPaths: () => this.workspaces.listWorkspaceRootPaths(),
     });
     this.mcp = new DaemonMcpService(
       options.userDataPath,
@@ -547,12 +516,8 @@ export class CocurdexDaemonService {
         return workspace?.rootPaths[0] ?? null;
       },
     );
-    this.attachments = new DaemonAttachmentStore(options.userDataPath);
-    this.workspaceWatch = new WorkspaceWatchService((event) =>
-      this.events.emit("daemon.event", event),
-    );
     this.skillsService = new DaemonSkillsService(undefined, (rootPath) =>
-      this.scanPolicy.canScan(rootPath),
+      this.workspaces.scanPolicy.canScan(rootPath),
     );
     this.skillLibrary = new DaemonSkillLibraryService({
       userDataPath: options.userDataPath,
@@ -562,7 +527,7 @@ export class CocurdexDaemonService {
     });
     this.pdfAnnotationsService = new DaemonPdfAnnotationsService(
       options.userDataPath,
-      (filePath) => this.resolvePdfPath(filePath),
+      (filePath) => this.workspaces.resolvePdfPath(filePath),
     );
     this.agentTools = new AgentToolBridge({
       url: options.agentToolsUrl ?? null,
@@ -772,12 +737,12 @@ export class CocurdexDaemonService {
     });
     registerSettingsTools(this.agentTools.registry, {
       getWorktreeEnvironment: (workspaceId) =>
-        this.getWorktreeEnvironment(workspaceId),
+        this.workspaces.getWorktreeEnvironment(workspaceId),
       proposeWorktreeEnvironment: (input) =>
-        this.proposeWorktreeEnvironment(input),
+        this.workspaces.proposeWorktreeEnvironment(input),
       getSettingValue: (key, workspaceId) =>
-        this.getSettingValue(key, workspaceId),
-      setSettingValue: (input) => this.setSettingValue(input),
+        this.settings.getValue(key, workspaceId),
+      setSettingValue: (input) => this.settings.setValue(input),
     });
     this.runs = new SessionRunCoordinator({
       store: this.state,
@@ -789,7 +754,7 @@ export class CocurdexDaemonService {
       createId: () => crypto.randomUUID(),
     });
     this.runCapacity = new RunCapacity({
-      readLimits: () => this.readAgentRunLimits(),
+      readLimits: () => this.settings.readAgentRunLimits(),
       activeAgentTypes: () => this.activeAgentTypes(),
       getSession: (sessionId) => this.state.getSession(sessionId),
       hasActiveRun: (sessionId) => this.runs.hasActiveRun(sessionId),
@@ -808,7 +773,10 @@ export class CocurdexDaemonService {
       onProviderEvent: (event) => this.runs.noteProviderEvent(event),
       userDataPath: options.userDataPath,
       agentTools: this.agentTools,
-      resolveMcpServers: (agentId) => this.mcp.serversForAgent(agentId),
+      resolveMcpServers: async (agentId) =>
+        (await this.isAgentDisabled(agentId))
+          ? []
+          : this.mcp.serversForAgent(agentId),
     });
     this.workspaceChanges = createWorkspaceChangeCoordinator({
       userDataPath: options.userDataPath,
@@ -1132,27 +1100,131 @@ export class CocurdexDaemonService {
     return {
       ...data,
       pausedQueueSessionIds: this.pausedQueueSessionIds(data.queuedAgentInputs),
-      workspaces: data.workspaces.map((workspace) => ({
-        ...workspace,
-        missingRootPaths: workspace.rootPaths.filter(
-          (rootPath) => !isExistingDirectory(rootPath),
-        ),
-      })),
+      workspaces: data.workspaces.map(withMissingRootPaths),
     };
   }
 
+  private async readDisabledAgentIds(): Promise<Set<AgentId>> {
+    return parseDisabledAgentIds(
+      await this.state.getAppSetting(DISABLED_AGENTS_SETTING_KEY),
+    );
+  }
+
+  async isAgentDisabled(agentId: AgentId): Promise<boolean> {
+    if (!canDisableAgent(agentId)) {
+      return false;
+    }
+    return (await this.readDisabledAgentIds()).has(agentId);
+  }
+
+  async assertAgentEnabled(agentId: AgentId): Promise<void> {
+    if (await this.isAgentDisabled(agentId)) {
+      const descriptor = createAgentRegistry()
+        .list()
+        .find((item) => item.id === agentId);
+      throw new Error(`${descriptor?.label ?? agentId} is disabled.`);
+    }
+  }
+
+  async setAgentEnabled(agentId: AgentId, enabled: boolean) {
+    if (!enabled && !canDisableAgent(agentId)) {
+      throw new Error("Built-in agent Pi cannot be disabled.");
+    }
+    const disabledIds = await this.readDisabledAgentIds();
+    if (enabled) {
+      disabledIds.delete(agentId);
+    } else {
+      disabledIds.add(agentId);
+    }
+    await this.replaceDisabledAgentIds([...disabledIds]);
+    return this.listAgents();
+  }
+
+  private async replaceDisabledAgentIds(nextAgentIds: readonly AgentId[]) {
+    const previous = await this.readDisabledAgentIds();
+    const next = new Set(nextAgentIds.filter(canDisableAgent));
+    await this.state.setAppSetting(
+      DISABLED_AGENTS_SETTING_KEY,
+      JSON.stringify([...next]),
+    );
+    const newlyDisabled = [...next].filter((id) => !previous.has(id));
+    for (const agentId of newlyDisabled) {
+      await this.agentAuth.cancelLogin(agentId);
+      await Promise.all(
+        this.runtime
+          .liveSessionIdsForAgent(agentId)
+          .map((sessionId) => this.disposeSessionRuntime(sessionId)),
+      );
+      if (isAcpRegistryAgentId(agentId)) {
+        resetAcpProviderModelsCache(agentId);
+      }
+    }
+    this.events.emit("daemon.event", {
+      type: "data.changed",
+      areas: ["agent", "settings"],
+    });
+  }
+
   private async detectAgents(only?: AgentId) {
-    const descriptors = createAgentRegistry()
-      .list()
-      .filter((descriptor) => !only || descriptor.id === only);
-    const agents = await this.agentInstallationProbes.detect(descriptors);
-    this.state.recordAgentVersions(agents);
-    return agents;
+    await this.acpRegistry.ready;
+    const disabledIds = await this.readDisabledAgentIds();
+    const listDescriptors = () =>
+      createAgentRegistry()
+        .list()
+        .filter((descriptor) => !only || descriptor.id === only);
+    const enabledDescriptors = () =>
+      listDescriptors().filter((descriptor) => !disabledIds.has(descriptor.id));
+    const pathBefore = process.env.PATH;
+    let detectedEnabled = await this.agentInstallationProbes.detect(
+      enabledDescriptors(),
+    );
+    if (process.env.PATH !== pathBefore) {
+      await this.acpRegistry.refreshLocalClis();
+      detectedEnabled = await this.agentInstallationProbes.detect(
+        enabledDescriptors(),
+      );
+    }
+    this.state.recordAgentVersions(detectedEnabled);
+    const detectedById = new Map(
+      detectedEnabled.map((agent) => [agent.id, agent]),
+    );
+    return listDescriptors().map((descriptor): AgentDescriptor => {
+      if (disabledIds.has(descriptor.id)) {
+        const ownership = getAgentRuntimeOwnership(descriptor.id);
+        return {
+          ...descriptor,
+          enabled: false,
+          availability: "missing",
+          installation: {
+            executableName:
+              ownership.kind === "external" ? ownership.executableName : null,
+            executablePath: null,
+            version:
+              ownership.kind === "external"
+                ? (ownership.version ?? null)
+                : null,
+          },
+        };
+      }
+      const detected = detectedById.get(descriptor.id) ?? descriptor;
+      return { ...detected, enabled: true };
+    });
   }
 
   async listAgents(only?: AgentId) {
     const agents = await this.detectAgents(only);
     return this.discoverAgentCapabilities(agents);
+  }
+
+  async listAcpRegistryUpdates(options: { forceRefresh?: boolean } = {}) {
+    if (options.forceRefresh) {
+      this.agentInstallationProbes.invalidate();
+    }
+    const [updates, disabledIds] = await Promise.all([
+      this.acpRegistry.listUpdates(options),
+      this.readDisabledAgentIds(),
+    ]);
+    return updates.filter((update) => !disabledIds.has(update.agentId));
   }
 
   private discoverAgentCapabilities(agents: AgentDescriptor[]) {
@@ -1192,12 +1264,22 @@ export class CocurdexDaemonService {
 
   async uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId) {
     await this.acpRegistry.uninstall(agentId);
+    const disabledIds = await this.readDisabledAgentIds();
+    if (disabledIds.delete(agentId)) {
+      await this.state.setAppSetting(
+        DISABLED_AGENTS_SETTING_KEY,
+        JSON.stringify([...disabledIds]),
+      );
+    }
     this.agentInstallationProbes.invalidate();
     resetAcpProviderModelsCache(agentId);
     return null;
   }
 
   async readAgentSessionModes(agentId: AgentId) {
+    if (await this.isAgentDisabled(agentId)) {
+      return [];
+    }
     const agents = await this.detectAgents(agentId);
     return discoverAgentSessionModes(agents, {
       agentId,
@@ -1205,27 +1287,13 @@ export class CocurdexDaemonService {
     });
   }
 
-  readAdapterRateLimits(agentIds: AgentId[]) {
-    return probeAdapterRateLimits(agentIds);
-  }
-
-  async testNetworkProxy(settings?: NetworkProxySettings) {
-    if (settings) {
-      assertTestableNetworkProxySettings(settings);
-      await saveNetworkProxySettings(this.state, settings);
-      this.broadcastSettingsChanged();
+  async readAdapterRateLimits(agentIds: AgentId[]) {
+    const disabledIds = await this.readDisabledAgentIds();
+    const enabledIds = agentIds.filter((id) => !disabledIds.has(id));
+    if (enabledIds.length === 0) {
+      return {};
     }
-    return probeNetworkProxy(getNetworkProxySettings());
-  }
-
-  getNetworkProxySettings() {
-    return readNetworkProxySettings(this.state);
-  }
-
-  async setNetworkProxySettings(settings: NetworkProxySettings) {
-    const saved = await saveNetworkProxySettings(this.state, settings);
-    this.broadcastSettingsChanged();
-    return saved;
+    return probeAdapterRateLimits(enabledIds);
   }
 
   listSessionAttention() {
@@ -1359,185 +1427,6 @@ export class CocurdexDaemonService {
     });
   }
 
-  async listWorkspaces() {
-    const workspaces = await this.state.listWorkspaces();
-    return workspaces.map((workspace) => ({
-      ...workspace,
-      missingRootPaths: workspace.rootPaths.filter(
-        (rootPath) => !isExistingDirectory(rootPath),
-      ),
-    }));
-  }
-
-  async listWorkspaceEntries(rootPath: string) {
-    if (!(await this.scanPolicy.canScan(rootPath))) {
-      return [];
-    }
-    return listWorkspaceEntriesOnDisk(rootPath);
-  }
-
-  async listWorkspaceFiles(rootPath: string) {
-    if (!(await this.scanPolicy.canScan(rootPath))) {
-      return [];
-    }
-    await this.workspaceWatch.ensure(rootPath);
-    return listWorkspaceFilesOnDisk(rootPath);
-  }
-
-  async listWorkspaceDirectory(rootPath: string, relativePath: string) {
-    if (!(await this.scanPolicy.canScan(rootPath))) {
-      return [];
-    }
-    return listWorkspaceDirectoryOnDisk(rootPath, relativePath);
-  }
-
-  async watchWorkspace(rootPath: string) {
-    if (await this.scanPolicy.canScan(rootPath)) {
-      await this.workspaceWatch.ensure(rootPath);
-    }
-  }
-
-  async deleteWorkspace(workspaceId: string) {
-    await this.state.deleteWorkspace(workspaceId);
-    this.scanPolicy.invalidate();
-  }
-
-  async resolveWorkspaceOpenPath(inputPath: string, allowFile: boolean) {
-    const workspaces = await this.state.listWorkspaces();
-    return resolveWorkspaceOpenPath(
-      inputPath,
-      workspaces.flatMap((workspace) => workspace.rootPaths),
-      { allowFile },
-    );
-  }
-
-  async readWorkspaceTextFile(filePath: string) {
-    if (!(await this.scanPolicy.canAccessFile(filePath))) {
-      throw new Error(
-        `File is outside every registered workspace (path=${filePath})`,
-      );
-    }
-    return readTextFile(filePath);
-  }
-
-  async assertClientPathAccess(
-    principal: HostPrincipal,
-    filePath: string,
-    target: "file" | "outputFile",
-  ) {
-    if (principal.kind === "local") return;
-    const scope = target === "file" ? "files.read" : "files.write";
-    if (!principalHasScope(principal, scope)) {
-      throw new Error(`This device is missing the ${scope} scope`);
-    }
-    const checked =
-      target === "outputFile" ? path.dirname(path.resolve(filePath)) : filePath;
-    const exists =
-      target === "file" ||
-      (await stat(checked).then(
-        (info) => info.isDirectory(),
-        () => false,
-      ));
-    if (exists && (await this.scanPolicy.canAccessFile(checked))) return;
-    throw new Error(
-      `Path is outside every registered workspace (path=${filePath})`,
-    );
-  }
-
-  async assertClientAttachmentsAccess(
-    principal: HostPrincipal,
-    attachments: readonly MessageAttachment[] | undefined,
-  ) {
-    if (principal.kind === "local") return;
-    for (const attachment of attachments ?? []) {
-      if (attachment.kind === "context-item") continue;
-      if (attachment.kind === "image" || attachment.kind === "document") {
-        if (this.attachments.isStoredFile(attachment)) continue;
-        throw new Error(
-          `Attachment is not a stored upload (path=${attachment.filePath})`,
-        );
-      }
-      const filePath =
-        attachment.kind === "context-folder"
-          ? attachment.folderPath
-          : attachment.filePath;
-      await this.assertClientPathAccess(principal, filePath, "file");
-    }
-  }
-
-  async resolveWorkspaceFilePath(filePath: string) {
-    const resolvedPath = path.resolve(filePath);
-    if (!(await this.scanPolicy.canAccessFile(resolvedPath))) {
-      throw new Error(
-        `File is outside every registered workspace (path=${resolvedPath})`,
-      );
-    }
-    return resolvedPath;
-  }
-
-  async workspaceFileExists(filePath: string) {
-    if (!(await this.scanPolicy.canAccessFile(filePath))) {
-      return false;
-    }
-    return fileExists(filePath);
-  }
-
-  async listHostDirectories(directoryPath?: string) {
-    return listHostDirectories(directoryPath);
-  }
-
-  homeDir() {
-    return homedir();
-  }
-
-  listFontFamilies() {
-    return listFontFamilies();
-  }
-
-  async openDirectoryInFileManager(directoryPath: string) {
-    await openDirectoryInFileManager(directoryPath);
-    return null;
-  }
-
-  async revealPathInFileManager(targetPath: string) {
-    await revealPathInFileManager(targetPath);
-    return null;
-  }
-
-  async resolvePdfPath(filePath: string) {
-    const attachmentPath =
-      await this.attachments.resolveStoredDocumentPath(filePath);
-    if (attachmentPath) return attachmentPath;
-    return resolveAuthorizedPdfReadPath(
-      filePath,
-      await this.listWorkspaceRootPaths(),
-    );
-  }
-
-  private async listWorkspaceRootPaths() {
-    const workspaces = await this.state.listWorkspaces();
-    return workspaces.flatMap((workspace) => workspace.rootPaths);
-  }
-
-  async commitWorkspaceChanges(input: {
-    rootPath: string;
-    message: string;
-    includeUnstaged: boolean;
-  }): Promise<GitCommitResult> {
-    const generatedMessage = input.message.trim().length === 0;
-    const message = generatedMessage
-      ? await this.commitMessageService.generate({
-          workspaceRootPath: input.rootPath,
-          includeUnstaged: input.includeUnstaged,
-        })
-      : input.message;
-    const result = await commitGitChanges(input.rootPath, {
-      message,
-      includeUnstaged: input.includeUnstaged,
-    });
-    return { ...result, generatedMessage };
-  }
-
   private async reconcileWorkspaceChanges() {
     try {
       const workspaces = await this.state.listWorkspaces();
@@ -1550,215 +1439,6 @@ export class CocurdexDaemonService {
       });
     }
     await this.state.maintainStorage();
-  }
-
-  async saveWorkspace(workspace: WorkspaceRecord) {
-    const rootPaths = normalizeWorkspaceRootPaths(workspace.rootPaths);
-    if (rootPaths.length === 0) {
-      throw new Error("Workspace requires at least one source folder");
-    }
-    const home = homedir();
-    if (rootPaths.some((rootPath) => workspacePathsEqual(rootPath, home))) {
-      throw new Error(
-        "The home directory cannot be a workspace folder; choose a subfolder",
-      );
-    }
-    if (rootPaths.some((rootPath) => path.parse(rootPath).root === rootPath)) {
-      throw new Error(
-        "A filesystem root cannot be a workspace folder; choose a subfolder",
-      );
-    }
-    const others = (await this.state.listWorkspaces()).filter(
-      (candidate) => candidate.id !== workspace.id,
-    );
-    const primaryRootPath = rootPaths[0];
-    const conflict = others.find((candidate) =>
-      workspacePathsEqual(candidate.rootPaths[0], primaryRootPath),
-    );
-    if (conflict) {
-      throw new Error(
-        `Folder ${primaryRootPath} is already the primary folder of workspace "${conflict.name}"`,
-      );
-    }
-    const normalized = { ...workspace, rootPaths };
-    try {
-      await this.state.saveWorkspace(normalized);
-    } finally {
-      this.scanPolicy.invalidate();
-    }
-    return {
-      ...normalized,
-      missingRootPaths: normalized.rootPaths.filter(
-        (rootPath) => !isExistingDirectory(rootPath),
-      ),
-    };
-  }
-
-  async getWorktreeEnvironment(
-    workspaceId: string,
-  ): Promise<WorkspaceWorktreeEnvironment> {
-    const stored = await this.state.getWorktreeEnvironment(workspaceId);
-    return stored ?? emptyWorktreeEnvironment(workspaceId);
-  }
-
-  async saveWorktreeEnvironment(
-    environment: WorkspaceWorktreeEnvironment,
-  ): Promise<WorkspaceWorktreeEnvironment> {
-    const workspace = (await this.state.listWorkspaces()).find(
-      (candidate) => candidate.id === environment.workspaceId,
-    );
-    if (!workspace) {
-      throw new Error(`Workspace ${environment.workspaceId} not found`);
-    }
-    const next: WorkspaceWorktreeEnvironment = {
-      workspaceId: environment.workspaceId,
-      setupScript: environment.setupScript,
-      cleanupScript: environment.cleanupScript,
-      actions: normalizeWorkspaceActions(environment.actions),
-      updatedAt: new Date().toISOString(),
-      proposal: null,
-    };
-    await this.state.saveWorktreeEnvironment(next);
-    return next;
-  }
-
-  private broadcastWorkspaceChanged() {
-    this.events.emit("daemon.event", {
-      type: "data.changed",
-      areas: ["workspace"],
-    });
-  }
-
-  async proposeWorktreeEnvironment(input: {
-    workspaceId: string;
-    setupScript: string;
-    cleanupScript: string;
-    rationale?: string | null;
-  }): Promise<WorkspaceWorktreeEnvironment> {
-    const workspace = (await this.state.listWorkspaces()).find(
-      (candidate) => candidate.id === input.workspaceId,
-    );
-    if (!workspace) {
-      throw new Error(`Workspace ${input.workspaceId} not found`);
-    }
-    await this.state.saveWorktreeEnvironmentProposal(input.workspaceId, {
-      setupScript: input.setupScript,
-      cleanupScript: input.cleanupScript,
-      rationale: input.rationale?.trim() ? input.rationale.trim() : null,
-      proposedAt: new Date().toISOString(),
-    });
-    this.broadcastWorkspaceChanged();
-    return this.getWorktreeEnvironment(input.workspaceId);
-  }
-
-  private broadcastSettingsChanged() {
-    this.events.emit("daemon.event", {
-      type: "data.changed",
-      areas: ["settings"],
-    });
-  }
-
-  private async readDaemonSetting(key: string): Promise<unknown> {
-    if (key === AGENT_RUN_LIMITS_SETTING_KEY) return this.readAgentRunLimits();
-    if (key === MEMORY_SETTINGS_KEY) {
-      return this.memory.getSettings();
-    }
-    if (key === "git.commitMessageModel") {
-      return this.commitMessageService.getModelSetting();
-    }
-    throw new Error(`Settings key '${key}' is not readable yet`);
-  }
-
-  private async writeDaemonSetting(key: string, value: unknown): Promise<void> {
-    if (key === AGENT_RUN_LIMITS_SETTING_KEY) {
-      await this.setAgentRunLimits(value as AgentRunLimits);
-      return;
-    }
-    if (key === MEMORY_SETTINGS_KEY) {
-      await this.memory.setSettings(value as MemorySettings);
-      return;
-    }
-    if (key === "git.commitMessageModel") {
-      await this.commitMessageService.setModelSetting(
-        value as CommitMessageModelSelection | null,
-      );
-      return;
-    }
-    throw new Error(`Settings key '${key}' is not writable yet`);
-  }
-
-  private async readReportedSettingValues(): Promise<Record<string, unknown>> {
-    try {
-      const raw = await this.state.getAppSetting(REPORTED_SETTING_VALUES_KEY);
-      const parsed = raw ? (JSON.parse(raw) as unknown) : null;
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
-        : {};
-    } catch {
-      return {};
-    }
-  }
-
-  async reportSettingValues(values: Record<string, unknown>) {
-    const mirror = await this.readReportedSettingValues();
-    await this.state.setAppSetting(
-      REPORTED_SETTING_VALUES_KEY,
-      JSON.stringify({ ...mirror, ...values }),
-    );
-  }
-
-  async getSettingValue(key: string, workspaceId: string) {
-    const entry = requireCatalogEntry(key);
-    if (entry.key === WORKTREE_ENVIRONMENT_KEY) {
-      const environment = await this.getWorktreeEnvironment(workspaceId);
-      return {
-        value: {
-          setupScript: environment.setupScript,
-          cleanupScript: environment.cleanupScript,
-        },
-        pending: environment.proposal,
-      };
-    }
-    if (entry.storage === "daemon") {
-      return { value: await this.readDaemonSetting(entry.key), pending: null };
-    }
-    const mirror = await this.readReportedSettingValues();
-    return { value: mirror[entry.key] ?? null, pending: null };
-  }
-
-  async setSettingValue(input: {
-    key: string;
-    value: unknown;
-    workspaceId: string;
-  }): Promise<{ status: "applied" | "queued" }> {
-    const entry = requireCatalogEntry(input.key);
-    if (entry.tier !== "write") {
-      throw new Error(
-        `Settings key '${entry.key}' cannot be set directly (tier=${entry.tier}); use settings_propose`,
-      );
-    }
-    const value = entry.validate ? entry.validate(input.value) : input.value;
-    if (entry.storage === "daemon") {
-      await this.writeDaemonSetting(entry.key, value);
-      this.broadcastSettingsChanged();
-      return { status: "applied" };
-    }
-    await this.state.addPendingSettingsChange({
-      id: crypto.randomUUID(),
-      key: entry.key,
-      value,
-      createdAt: new Date().toISOString(),
-    });
-    this.broadcastSettingsChanged();
-    return { status: "queued" };
-  }
-
-  listPendingSettingsChanges() {
-    return this.state.listPendingSettingsChanges();
-  }
-
-  async acknowledgeSettingsChange(id: string) {
-    await this.state.deletePendingSettingsChange(id);
   }
 
   async getOrCreateAssistantSession(input: { workspaceId: string }) {
@@ -1818,12 +1498,16 @@ export class CocurdexDaemonService {
     if (!workspace) {
       throw new Error(`Workspace ${workspaceId} not found`);
     }
-    const sessions = await this.state.listSessions();
+    const [sessions, disabledIds] = await Promise.all([
+      this.state.listSessions(),
+      this.readDisabledAgentIds(),
+    ]);
     return (
       sessions.find(
         (session) =>
           session.workspaceId === workspaceId &&
-          isAssistantSessionId(session.id),
+          isAssistantSessionId(session.id) &&
+          !disabledIds.has(session.agentType),
       ) ?? null
     );
   }
@@ -1831,10 +1515,16 @@ export class CocurdexDaemonService {
   private async recentSessionAgentType(
     workspaceId: string,
   ): Promise<AgentId | null> {
-    const sessions = await this.state.listSessions();
+    const [sessions, disabledIds] = await Promise.all([
+      this.state.listSessions(),
+      this.readDisabledAgentIds(),
+    ]);
     return (
-      sessions.find((session) => session.workspaceId === workspaceId)
-        ?.agentType ?? null
+      sessions.find(
+        (session) =>
+          session.workspaceId === workspaceId &&
+          !disabledIds.has(session.agentType),
+      )?.agentType ?? null
     );
   }
 
@@ -1855,7 +1545,7 @@ export class CocurdexDaemonService {
 
   private async defaultAssistantAgentId(): Promise<AgentId> {
     const agent = (await this.detectAgents()).find(
-      (item) => item.availability === "available",
+      (item) => item.enabled !== false && item.availability === "available",
     );
     if (!agent) {
       throw new Error("No agent is available on this machine.");
@@ -2282,10 +1972,13 @@ export class CocurdexDaemonService {
   private async configureSession(input: SessionConfiguration) {
     await this.ensureAgentAvailable(input.agentType);
     if (isChatWorkspaceId(input.workspaceId)) {
-      await this.ensureFormWorkspace(CHAT_WORKSPACE_ID, "Chat");
+      await this.workspaces.ensureFormWorkspace(CHAT_WORKSPACE_ID, "Chat");
     }
     if (isPersonalWorkspaceId(input.workspaceId)) {
-      await this.ensureFormWorkspace(PERSONAL_WORKSPACE_ID, "Personal");
+      await this.workspaces.ensureFormWorkspace(
+        PERSONAL_WORKSPACE_ID,
+        "Personal",
+      );
     }
     const workspace = (await this.state.listWorkspaces()).find(
       (item) => item.id === input.workspaceId,
@@ -2309,27 +2002,6 @@ export class CocurdexDaemonService {
     );
     await this.state.saveSession(session);
     return session;
-  }
-
-  private async ensureFormWorkspace(id: string, name: string) {
-    const rootPath = path.join(this.userDataPath, id);
-    await mkdir(rootPath, { recursive: true });
-    const existing = (await this.state.listWorkspaces()).find(
-      (workspace) => workspace.id === id,
-    );
-    if (existing && workspacePathsEqual(existing.rootPaths[0] ?? "", rootPath))
-      return;
-    const now = new Date().toISOString();
-    await this.state.saveWorkspace({
-      id,
-      name,
-      rootPaths: [rootPath],
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-      lastOpenedAt: existing?.lastOpenedAt ?? now,
-      sortOrder: existing?.sortOrder ?? 0,
-    });
-    this.scanPolicy.invalidate();
   }
 
   async getSession(sessionId: string) {
@@ -2673,7 +2345,13 @@ export class CocurdexDaemonService {
     }
   }
 
-  listSessionSlashCommands(agentType: AgentId, workspaceRootPath: string) {
+  async listSessionSlashCommands(
+    agentType: AgentId,
+    workspaceRootPath: string,
+  ) {
+    if (await this.isAgentDisabled(agentType)) {
+      return [];
+    }
     return this.runtime.listSessionSlashCommands(agentType, workspaceRootPath);
   }
 
@@ -2932,27 +2610,6 @@ export class CocurdexDaemonService {
     return this.runs.outcomeOf(sessionId);
   }
 
-  getAgentRunLimits() {
-    return this.readAgentRunLimits();
-  }
-
-  async setAgentRunLimits(value: AgentRunLimits) {
-    const limits = parseAgentRunLimits(value);
-    if (!limits) throw new Error("Agent run limits are out of range");
-    await this.state.setAppSetting(
-      AGENT_RUN_LIMITS_SETTING_KEY,
-      JSON.stringify(limits),
-    );
-    this.broadcastSettingsChanged();
-    return limits;
-  }
-
-  private async readAgentRunLimits() {
-    return resolveStoredAgentRunLimits(
-      await this.state.getAppSetting(AGENT_RUN_LIMITS_SETTING_KEY),
-    );
-  }
-
   private async activeAgentTypes() {
     const sessions = await Promise.all(
       this.runs.activeRuns().map((run) => this.state.getSession(run.sessionId)),
@@ -3173,6 +2830,10 @@ export class CocurdexDaemonService {
     const agents = await this.listAgents(agentId);
     const agent = agents.find((item) => item.id === agentId);
 
+    if (agent?.enabled === false) {
+      throw new Error(`${agent.label} is disabled.`);
+    }
+
     if (agent?.availability === "available") {
       return agent;
     }
@@ -3235,7 +2896,7 @@ export class CocurdexDaemonService {
         this.applications.dispose(),
         Promise.resolve().then(() => this.mcp.dispose()),
         this.terminals.dispose(),
-        Promise.resolve().then(() => this.workspaceWatch.close()),
+        Promise.resolve().then(() => this.workspaces.close()),
       ]);
       await this.runs.drainBackground();
       await this.runtime.flushEvents();

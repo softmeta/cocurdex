@@ -15,7 +15,7 @@ async function createService() {
     runtimeFingerprint: "checkpoint-test",
     userDataPath,
   });
-  await service.saveWorkspace({
+  await service.workspaces.saveWorkspace({
     id: "workspace-1",
     name: "acme-shop",
     rootPaths: [userDataPath],

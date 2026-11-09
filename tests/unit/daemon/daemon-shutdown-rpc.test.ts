@@ -77,10 +77,12 @@ describe("daemon idle shutdown RPC", () => {
     const work = new Promise<[]>((resolve) => {
       finish = () => resolve([]);
     });
-    vi.spyOn(daemon.service, "listWorkspaces").mockImplementation(() => {
-      started();
-      return work;
-    });
+    vi.spyOn(daemon.service.workspaces, "listWorkspaces").mockImplementation(
+      () => {
+        started();
+        return work;
+      },
+    );
     const result = expect(
       requestDaemon("workspace.list", { userDataPath, timeoutMs: 100 }),
     ).rejects.toMatchObject({ code: "TIMEOUT" });

@@ -1,6 +1,7 @@
 import { tmpdir } from "node:os";
 import {
   type ContentBlock,
+  type InitializeResponse,
   type PromptResponse,
   RequestError,
   type SessionConfigOption,
@@ -109,6 +110,9 @@ export interface AcpAgentAdapterOptions {
   };
   planApprovalRequest?: AcpPlanApprovalRequest;
   loadSessionMeta?: Record<string, unknown>;
+  sessionMeta?(
+    initialized: InitializeResponse,
+  ): Record<string, unknown> | undefined;
   setModelMeta?(reasoningEffort: string): Record<string, unknown>;
   steeringRequest?: {
     method: string;
@@ -206,7 +210,12 @@ export class AcpAgentAdapter implements AgentAdapter {
         buildAcpInitializeRequest(this.options.initializeMeta),
       );
       await this.maybeAuthenticate(connection, response.authMethods);
-      const session = await connection.newSession({ cwd, mcpServers: [] });
+      const sessionMeta = this.options.sessionMeta?.(response);
+      const session = await connection.newSession({
+        cwd,
+        mcpServers: [],
+        ...(sessionMeta ? { _meta: sessionMeta } : {}),
+      });
       return (session.modes?.availableModes ?? []).map((mode) => ({
         id: mode.id,
         name: mode.name,
@@ -236,7 +245,12 @@ export class AcpAgentAdapter implements AgentAdapter {
         buildAcpInitializeRequest(this.options.initializeMeta),
       );
       await this.maybeAuthenticate(connection, initialized.authMethods);
-      return await forkAcpProviderSession(payload, connection, initialized);
+      return await forkAcpProviderSession(
+        payload,
+        connection,
+        initialized,
+        this.options.sessionMeta?.(initialized),
+      );
     } finally {
       await connection.close();
     }
@@ -749,6 +763,7 @@ export class AcpAgentAdapter implements AgentAdapter {
             payload,
             response.agentCapabilities?.mcpCapabilities,
           ),
+          sessionMeta: this.options.sessionMeta?.(response),
           history,
           payload,
           suppressUpdates(value) {
@@ -1155,6 +1170,7 @@ export class AcpAgentAdapter implements AgentAdapter {
     connection,
     providerSessionId,
     mcpServers,
+    sessionMeta,
     history,
     payload,
     suppressUpdates,
@@ -1163,6 +1179,7 @@ export class AcpAgentAdapter implements AgentAdapter {
     connection: AcpConnection;
     providerSessionId: string | null | undefined;
     mcpServers: AcpInjectedMcpServer[];
+    sessionMeta: Record<string, unknown> | undefined;
     history: SendAgentMessagePayload["history"];
     payload: CreateAgentSessionPayload;
     suppressUpdates(value: boolean): void;
@@ -1173,6 +1190,7 @@ export class AcpAgentAdapter implements AgentAdapter {
           sessionId: providerSessionId,
           cwd: payload.workspaceRootPath,
           mcpServers,
+          ...(sessionMeta ? { _meta: sessionMeta } : {}),
         });
         logAdapterDiagnostic("info", "[AcpAgentAdapter] session opened", {
           agentId: payload.session.agentType,
@@ -1208,14 +1226,16 @@ export class AcpAgentAdapter implements AgentAdapter {
 
     if (providerSessionId && capabilities.loadSession) {
       suppressUpdates(true);
+      const loadMeta = {
+        ...this.options.loadSessionMeta,
+        ...sessionMeta,
+      };
       try {
         const response = await connection.loadSession({
           sessionId: providerSessionId,
           cwd: payload.workspaceRootPath,
           mcpServers,
-          ...(this.options.loadSessionMeta
-            ? { _meta: this.options.loadSessionMeta }
-            : {}),
+          ...(Object.keys(loadMeta).length > 0 ? { _meta: loadMeta } : {}),
         });
         logAdapterDiagnostic("info", "[AcpAgentAdapter] session opened", {
           agentId: payload.session.agentType,
@@ -1263,6 +1283,7 @@ export class AcpAgentAdapter implements AgentAdapter {
     const response = await connection.newSession({
       cwd: payload.workspaceRootPath,
       mcpServers,
+      ...(sessionMeta ? { _meta: sessionMeta } : {}),
     });
     logAdapterDiagnostic("info", "[AcpAgentAdapter] session opened", {
       agentId: payload.session.agentType,

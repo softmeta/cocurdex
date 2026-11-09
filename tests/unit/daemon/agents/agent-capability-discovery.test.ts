@@ -182,6 +182,19 @@ describe("discoverInstalledAgentCapabilities", () => {
       { id: "fresh", name: "Fresh" },
     ]);
   });
+
+  it("skips capability discovery for disabled agents", async () => {
+    const createAdapter = vi.fn();
+    const disabledAgent = installedAgent({ enabled: false });
+
+    const [discovered] = await discoverInstalledAgentCapabilities(
+      [disabledAgent],
+      { createAdapter },
+    );
+
+    expect(createAdapter).not.toHaveBeenCalled();
+    expect(discovered).toEqual(disabledAgent);
+  });
 });
 
 describe("discoverAgentSessionModes", () => {

@@ -270,6 +270,25 @@ describe("DaemonProviderService", () => {
     });
   });
 
+  it("skips catalog and axes probes when the agent is disabled", async () => {
+    const state = createState({
+      getAppSetting: vi.fn(async () =>
+        JSON.stringify(["claude-agent", "acp:devin"]),
+      ),
+    });
+    const service = new DaemonProviderService(state, createCredentials());
+
+    await expect(
+      service.listCompatibleProviderModels("claude-agent"),
+    ).resolves.toEqual([]);
+    expect(listClaudeCliProviderModelsMock).not.toHaveBeenCalled();
+
+    await expect(
+      service.probeAgentModelAxes("acp:devin", "claude-opus-5-5-medium"),
+    ).resolves.toBeNull();
+    expect(probeAcpRegistryProviderModelAxesMock).not.toHaveBeenCalled();
+  });
+
   it("rejects malformed title model selections", async () => {
     const service = new DaemonProviderService(
       createState(),

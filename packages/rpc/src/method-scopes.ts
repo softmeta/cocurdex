@@ -7,6 +7,7 @@ export const DAEMON_METHOD_SCOPES: Record<DaemonMethod, HostAccessScope> = {
   "app.bootstrap": "read",
   "sync.pull": "read",
   "agent.list": "read",
+  "agent.setEnabled": "host.admin",
   "agent.sessionModes.read": "read",
   "agent.rateLimits.read": "read",
   "agent.auth.read": "read",

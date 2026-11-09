@@ -28,7 +28,7 @@ async function createService(userDataPath?: string) {
     { ...pi, availability: "available" },
   ]);
   if (!userDataPath) {
-    await service.saveWorkspace({
+    await service.workspaces.saveWorkspace({
       id: "workspace-1",
       name: "Runs",
       rootPaths: [root],

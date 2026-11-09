@@ -296,6 +296,9 @@ export const sessionPayloadSchemas = {
       maxDurationMinutes: z.number().int().min(1).nullable(),
     }),
   ),
+  "agent.setEnabled": exact<Payload<"agent.setEnabled">>()(
+    z.object({ agentId: agentIdSchema, enabled: z.boolean() }),
+  ),
   "agent.sessionModes.read": exact<Payload<"agent.sessionModes.read">>()(
     z.object({ agentId: agentIdSchema }),
   ),

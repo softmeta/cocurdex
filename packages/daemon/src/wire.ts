@@ -393,8 +393,9 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
         principal: () =>
           activeService.hostAccess.resolveDevice(remote.deviceId),
         resolveWorkspaceFilePath: (filePath) =>
-          activeService.resolveWorkspaceFilePath(filePath),
-        resolvePdfPath: (filePath) => activeService.resolvePdfPath(filePath),
+          activeService.workspaces.resolveWorkspaceFilePath(filePath),
+        resolvePdfPath: (filePath) =>
+          activeService.workspaces.resolvePdfPath(filePath),
         attachments: activeService.attachments,
         locateDeckAsset: (hash) => activeService.decks.assets.locate(hash),
         redeemDeckDownload: (ticket) =>
@@ -588,7 +589,9 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
     });
     const hostAccess = service.hostAccess;
     agentToolHandler = createAgentToolHttpHandler(service.agentTools);
-    const resolvePdfPath = service.resolvePdfPath.bind(service);
+    const resolvePdfPath = service.workspaces.resolvePdfPath.bind(
+      service.workspaces,
+    );
     pdfHandler = createPdfHttpHandler({
       isAllowedRequest: (request) =>
         isLoopbackHostHeader(request.headers.host) &&
@@ -597,7 +600,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       resolvePdfPath,
     });
     const resolveWorkspaceFilePath =
-      service.resolveWorkspaceFilePath.bind(service);
+      service.workspaces.resolveWorkspaceFilePath.bind(service.workspaces);
     workspaceFileHandler = createWorkspaceFileHttpHandler({
       isAllowedRequest: (request) =>
         isLoopbackHostHeader(request.headers.host) &&
