@@ -19,7 +19,7 @@
     "@cocurdex/test-fixtures": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "@pierre/diffs": "^1.6.4",
-    "@shikijs/monaco": "^3.23.0",
+    "@shikijs/monaco": "^4.6.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "^16.3.0",
     "@tiptap/pm": "^3.32.2",
