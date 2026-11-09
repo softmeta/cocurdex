@@ -328,6 +328,8 @@ jobs:
     permissions:
       actions: write
       contents: read
+    outputs:
+      ready: ${{ steps.upload.outcome == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -372,6 +374,8 @@ jobs:
             while read -r id; do gh cache delete "${id}" --repo "${GITHUB_REPOSITORY}"; done
       - name: Build native app
         if: steps.native.outputs.cache-hit != 'true' && matrix.platform == 'android'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           pnpm --filter @cocurdex/mobile-e2e app -- build --platform android \
             --out "${PWD}/.mobile-native/android"
@@ -402,6 +406,7 @@ jobs:
           fi
           wait "${daemon}"
       - name: Upload mobile app
+        id: upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: mobile-app-${{ matrix.platform }}
@@ -412,7 +417,7 @@ jobs:
   mobile:
     name: Mobile e2e (${{ matrix.platform }}, ${{ matrix.shard }})
     needs: [changes, mobile-prepare]
-    if: needs.changes.outputs.run_mobile == 'true'
+    if: needs.changes.outputs.run_mobile == 'true' && needs.mobile-prepare.outputs.ready == 'true'
     continue-on-error: true
     runs-on: ${{ matrix.os }}
     timeout-minutes: 75
@@ -473,6 +478,8 @@ jobs:
         run: echo "hash=$(node --import tsx app.ts fingerprint --platform ${{ matrix.platform }})" >> "${GITHUB_OUTPUT}"
       - name: Build native app
         if: steps.unpack.outputs.ready != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           pnpm --filter @cocurdex/mobile-e2e app -- build --platform ${{ matrix.platform }} \
             --out "${PWD}/.mobile-native/${{ matrix.platform }}"
@@ -609,12 +616,30 @@ jobs:
   record-mobile:
     name: Record verified mobile fingerprint
     needs: [changes, mobile-prepare, mobile]
-    if: ${{ !cancelled() && github.event_name != 'merge_group' && needs.changes.outputs.mobile_verified != 'true' && contains(fromJSON('["success","skipped"]'), needs.mobile.result) && needs.mobile-prepare.result != 'failure' }}
+    if: ${{ !cancelled() && github.event_name != 'merge_group' && needs.changes.outputs.mobile_verified != 'true' && (needs.changes.outputs.run_mobile != 'true' || needs.mobile-prepare.outputs.ready == 'true') }}
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
     steps:
+      - name: Verify mobile jobs succeeded
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_MOBILE: ${{ needs.changes.outputs.run_mobile }}
+        run: |
+          if [[ "${RUN_MOBILE}" != "true" ]]; then
+            echo "passed=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          passed="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}/jobs?per_page=100" \
+            --jq '([.jobs[] | select(.name | startswith("Mobile "))] | length > 0) and ([.jobs[] | select(.name | startswith("Mobile ")) | .conclusion == "success"] | all)' \
+            || echo false)"
+          echo "passed=${passed}" >> "${GITHUB_OUTPUT}"
       - name: Write marker
+        if: steps.check.outputs.passed == 'true'
         run: echo "${GITHUB_SHA}" > ci-verified.txt
       - name: Save verified fingerprint
+        if: steps.check.outputs.passed == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ${{ needs.changes.outputs.mobile_verified_key }}
