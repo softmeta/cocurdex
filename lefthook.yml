@@ -3,6 +3,9 @@ no_tty: true
 
 pre-commit:
   jobs:
+    - name: lockfile
+      glob: "pnpm-lock.yaml"
+      run: node ./scripts/check-lockfile-commit.mjs
     - name: biome
       glob: "*.{ts,tsx,js,jsx,json,jsonc}"
       run: node node_modules/@biomejs/biome/bin/biome check --write --no-errors-on-unmatched {staged_files}
