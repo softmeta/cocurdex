@@ -61,6 +61,7 @@ function run(args) {
 
 run(["./scripts/generate-oss-licenses.mjs"]);
 run(["./scripts/ensure-fd.mjs"]);
+run(["./scripts/prepare-electron.mjs", "--cache-for-packaging", process.arch]);
 const stageDir = "release/.local-stage";
 const stagedOutDir = `${stageDir}/out`;
 const stagedCliDir = `${stageDir}/cli`;

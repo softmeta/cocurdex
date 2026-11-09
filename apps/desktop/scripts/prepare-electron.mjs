@@ -65,23 +65,25 @@ function downloadFromGitHubApi(arch) {
 }
 
 if (process.argv[2] === "--cache-for-packaging") {
-  const arch = process.argv[3] ?? hostArch;
-  const archive = await downloadArtifact(downloadOptions(arch)).catch(() =>
-    downloadFromGitHubApi(arch),
-  );
-  const cacheRoot = path.dirname(path.dirname(archive));
-  const checksumFile = Object.entries(checksums)
-    .map(([filename, checksum]) => `${checksum} *${filename}\n`)
-    .join("");
-  await writeFile(
-    path.join(cacheRoot, `SHASUMS256.txt-${version}`),
-    checksumFile,
-  );
+  const arches = process.argv.slice(3);
+  for (const arch of arches.length > 0 ? arches : [hostArch]) {
+    const archive = await downloadArtifact(downloadOptions(arch)).catch(() =>
+      downloadFromGitHubApi(arch),
+    );
+    const cacheRoot = path.dirname(path.dirname(archive));
+    const checksumFile = Object.entries(checksums)
+      .map(([filename, checksum]) => `${checksum} *${filename}\n`)
+      .join("");
+    await writeFile(
+      path.join(cacheRoot, `SHASUMS256.txt-${version}`),
+      checksumFile,
+    );
+  }
   process.exit(0);
 }
 
 const status = install();
-if (status === 0 || process.env.GITHUB_ACTIONS !== "true") process.exit(status);
+if (status === 0) process.exit(0);
 
 console.log("Retrying Electron through the GitHub release asset API.");
 await downloadFromGitHubApi(hostArch);

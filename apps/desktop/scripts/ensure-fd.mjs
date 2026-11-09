@@ -125,8 +125,7 @@ async function prepareTarget(target) {
   const archivePath = path.join(tempDir, isZip ? "fd.zip" : "fd.tar.gz");
 
   try {
-    await downloadArchive(entry.url, archivePath).catch((error) => {
-      if (process.env.GITHUB_ACTIONS !== "true") throw error;
+    await downloadArchive(entry.url, archivePath).catch(() => {
       const filename = path.posix.basename(new URL(entry.url).pathname);
       return downloadGitHubReleaseAsset(
         "sharkdp/fd",
