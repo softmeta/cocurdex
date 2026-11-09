@@ -16,7 +16,7 @@
     "@cocurdex/note-doc": "workspace:*",
     "@cocurdex/test-fixtures": "workspace:*",
     "@types/node": "^24.19.2",
-    "i18next": "^26.7.1",
+    "i18next": "^26.7.2",
     "vitest": "^5.1.0",
     "yjs": "^13.6.33"
   }
