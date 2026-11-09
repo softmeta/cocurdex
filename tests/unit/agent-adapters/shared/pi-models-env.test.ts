@@ -9,8 +9,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
 
-// Build a `${NAME}` reference without a literal template-curly string so Biome's
-// noTemplateCurlyInString does not flag these intentional pi config values.
 function braced(name: string): string {
   return `$${"{"}${name}}`;
 }

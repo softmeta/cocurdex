@@ -29,8 +29,6 @@ interface SearchResultsPaneProps {
   rootPath: string | null;
 }
 
-// Fallback row heights for the virtualizer; real heights are measured via
-// `measureElement` once each row mounts.
 const HEADER_ROW_ESTIMATE = 30;
 const MATCH_ROW_ESTIMATE = 26;
 
@@ -172,7 +170,6 @@ export function SearchResultsPane({ rootPath }: SearchResultsPaneProps) {
   const headerIndexes = useMemo(() => getHeaderIndexes(rows), [rows]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  // Index of the header pinned to the top edge; updated by the range extractor.
   const activeStickyIndexRef = useRef(0);
 
   const rangeExtractor = useCallback(

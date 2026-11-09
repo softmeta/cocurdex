@@ -75,11 +75,6 @@ export function ToolCallDetailHeader({
   );
 }
 
-// Body content shared by both the desktop Popover and the narrow-screen Sheet.
-// Renders optional file preview list, structured input entries (or raw JSON
-// fallback), subagent transcript, and raw output. The status header is owned by
-// the surrounding surface (the trigger row for the popover, a dedicated header
-// bar for the sheet), so the body never repeats it.
 export function ToolCallDetailBody({
   toolCall,
   onOpenToolLocation,
@@ -216,8 +211,6 @@ export function ToolCallDetailBody({
             <Terminal className="size-3" />
             {detailLabel}
           </div>
-          {/* Each code panel owns its bounded scroll region, with default scroll
-              chaining so the surrounding chat keeps scrolling at panel edges. */}
           <dl className="flex max-h-[40vh] flex-col gap-1.5 overflow-auto rounded-control bg-chat-code-panel p-3 text-body leading-5">
             {inputEntries.map((entry) => {
               const multiline = isMultilineInputField(entry);

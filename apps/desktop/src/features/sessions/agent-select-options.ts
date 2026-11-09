@@ -10,7 +10,7 @@ import {
   isAdapterSelectable,
 } from "./adapter-status";
 import { agentOptions } from "./agent-options";
-import { getAgentDisplayLabel } from "./session-store";
+import { getAgentDisplayLabel } from "./session-agent-state";
 
 export interface AgentSelectOption {
   label: ReactNode;

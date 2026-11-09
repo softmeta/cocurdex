@@ -19,6 +19,7 @@ import {
 import type { FixedWindowRateLimiter } from "./rate-limiter";
 
 const HANDSHAKE_TIMEOUT_MS = 10_000;
+const PENDING_APPROVAL_HOLD_MS = 3_000;
 
 export interface SecureRemoteChannel {
   deviceId: string;
@@ -33,7 +34,11 @@ export interface SecureRemoteChannel {
 export interface SecureRemoteSocketOptions {
   hostAccess: Pick<
     HostAccessService,
-    "identity" | "pairDevice" | "connectDevice" | "remoteEndpoints"
+    | "identity"
+    | "pairDevice"
+    | "connectDevice"
+    | "waitForDeviceDecision"
+    | "remoteEndpoints"
   >;
   hostKeys(): KeyPair;
   crypto?: Parameters<typeof acceptChannelHello>[0]["crypto"];
@@ -98,7 +103,26 @@ export function acceptSecureRemoteSocket(
     if (hostId !== options.hostAccess.identity().hostId) {
       return { ok: false, reason: "rejected" };
     }
+    const admission = options.hostAccess.connectDevice(payload, publicKey);
+    if (admission.ok || admission.reason !== "pending") return admission;
+    await holdUntilDecision(admission.deviceId);
+    if (socket.readyState !== socket.OPEN) {
+      return { ok: false, reason: "rejected" };
+    }
     return options.hostAccess.connectDevice(payload, publicKey);
+  };
+
+  const holdUntilDecision = async (deviceId: string) => {
+    const hold = new AbortController();
+    const release = () => hold.abort();
+    const timer = setTimeout(release, PENDING_APPROVAL_HOLD_MS);
+    socket.once("close", release);
+    try {
+      await options.hostAccess.waitForDeviceDecision(deviceId, hold.signal);
+    } finally {
+      clearTimeout(timer);
+      socket.off("close", release);
+    }
   };
 
   const handshake = async (hello: Uint8Array) => {

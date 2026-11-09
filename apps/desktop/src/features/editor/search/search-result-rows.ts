@@ -1,8 +1,5 @@
 import type { WorkspaceSearchMatch } from "@/lib/types";
 
-// Flat row model for the virtualized results list. The grouped
-// header/children tree is flattened into a single array so the virtualizer
-// can index every visible line uniformly.
 export type SearchResultRow =
   | {
       kind: "header";
@@ -25,7 +22,6 @@ function getRelativePath(rootPath: string | null, filePath: string) {
   return filePath.slice(rootPath.length).replace(/^[/\\]/, "");
 }
 
-// Build the flat row list. Collapsed files contribute only their header.
 export function buildSearchResultRows(
   entries: [string, WorkspaceSearchMatch[]][],
   rootPath: string | null,
@@ -53,8 +49,6 @@ export function buildSearchResultRows(
   return rows;
 }
 
-// Indexes of every header row, used by the sticky range extractor to keep the
-// current file header pinned to the top of the viewport.
 export function getHeaderIndexes(rows: SearchResultRow[]): number[] {
   const indexes: number[] = [];
   rows.forEach((row, index) => {

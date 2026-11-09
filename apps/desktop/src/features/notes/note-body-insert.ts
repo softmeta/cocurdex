@@ -7,12 +7,6 @@ import { applySavedNoteRecord, waitForNoteSaves } from "./note-save-store";
 import { notesApi } from "./notes-api";
 import { activeNoteAtom, createNoteAtom, loadNotesAtom } from "./notes-store";
 
-// Registered by the mounted TipTap note body so other features (e.g. PDF
-// selection → note) can append Markdown without going through IPC and racing
-// the open editor's dirty buffer.
-//
-// IMPORTANT: never `set(atom, handlerFn)` — Jotai treats a function value as an
-// updater. Always `set(atom, () => handlerFn)` (or set null).
 export type NoteBodyInsertHandler = (markdown: string) => boolean;
 
 export const noteBodyInsertHandlerAtom = atom<NoteBodyInsertHandler | null>(
@@ -24,8 +18,6 @@ interface PendingNoteBodyInsert {
   resolve: (ok: boolean) => void;
 }
 
-// When the note body is not mounted yet, stash markdown here; TipTap onCreate
-// flushes it once the insert handler is registered (user opens Notes later).
 export const pendingNoteBodyInsertAtom = atom<PendingNoteBodyInsert | null>(
   null,
 );
@@ -88,8 +80,6 @@ export type InsertMarkdownIntoNoteResult =
   | "failed"
   | "no-root";
 
-// Insert Markdown into the active file note. If none is open, create one.
-// Does not switch the right-panel tab — the user stays on PDF (or wherever).
 export const insertMarkdownIntoActiveNoteAtom = atom(
   null,
   async (
@@ -102,7 +92,6 @@ export const insertMarkdownIntoActiveNoteAtom = atom(
       return "failed";
     }
 
-    // Prefer the live TipTap body when Notes has been opened (keep-alive).
     const handler = get(noteBodyInsertHandlerAtom);
     const activeNote = get(activeNoteAtom);
     if (handler && activeNote && activeNote.kind !== "folder") {
@@ -111,7 +100,6 @@ export const insertMarkdownIntoActiveNoteAtom = atom(
       }
     }
 
-    // Cold start: NotesView may never have mounted.
     if (get(activeNoteAtom) === null) {
       await set(loadNotesAtom);
     }
@@ -130,8 +118,6 @@ export const insertMarkdownIntoActiveNoteAtom = atom(
       created = true;
     }
 
-    // TipTap may have mounted for this note after createNote in the same tick
-    // only if Notes is already keep-alive — try handler once more.
     const liveHandler = get(noteBodyInsertHandlerAtom);
     if (liveHandler) {
       if (liveHandler(markdown)) {

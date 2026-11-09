@@ -1,19 +1,17 @@
 import {
   type ProviderApi,
-  type ProviderConfigRecord,
   type ProviderModelCapability,
-  type ProviderModelRecord,
   providerApis,
 } from "../contracts";
-
-// Pi `~/.pi/agent/models.json` shape (coding-agent docs/models.md).
-// Supports the full file `{ "providers": { ... } }` or a bare providers map.
+import type {
+  ProviderConfigRecord,
+  ProviderModelRecord,
+} from "../provider-contracts";
 
 const SUPPORTED_APIS = new Set<string>(providerApis);
 const DEFAULT_CONTEXT_WINDOW = 128_000;
 const DEFAULT_MAX_TOKENS = 16_384;
 
-/** Stable codes so the UI can translate; pure parse stays locale-free. */
 export type ProviderImportWarningCode =
   | "envApiKey"
   | "commandApiKey"
@@ -28,7 +26,6 @@ export interface ProviderImportWarning {
 export interface ParsedProviderImport {
   provider: ProviderConfigRecord;
   models: ProviderModelRecord[];
-  /** Literal API key only; `$ENV` / `!command` values are left null with a warning. */
   apiKey: string | null;
   warnings: ProviderImportWarning[];
 }
@@ -49,7 +46,6 @@ function isProviderApi(value: unknown): value is ProviderApi {
   return typeof value === "string" && SUPPORTED_APIS.has(value);
 }
 
-/** Strip `//` line comments and trailing commas, leaving string literals intact. */
 export function stripJsonComments(input: string): string {
   return input
     .replace(/"(?:\\.|[^"\\])*"?|\/\/[^\n]*/g, (match) =>
@@ -83,11 +79,6 @@ function modelCapabilities(
   return capabilities;
 }
 
-/**
- * Pi config values: `!command`, `$ENV` / `${ENV}`, or a literal key.
- * Desktop import only persists literals — env/command refs need the user to
- * paste a real key (we do not shell out from a pasted blob).
- */
 export function resolveImportApiKey(value: string | undefined): {
   apiKey: string | null;
   warningCode?: Extract<
@@ -136,7 +127,6 @@ function extractProvidersMap(
     return { providers: parsed.providers };
   }
 
-  // Bare providers map: { "ollama": { "baseUrl": "...", "models": [...] } }
   const keys = Object.keys(parsed);
   if (
     keys.length > 0 &&
@@ -218,7 +208,6 @@ function parseModel(
       api: modelApiRaw,
       enabled: true,
       source: "manual",
-      // Only store per-model baseUrl when it differs from the provider default.
       baseUrl: baseUrl && baseUrl !== providerBaseUrl ? baseUrl : null,
       contextLimit,
       outputLimit,
@@ -287,7 +276,6 @@ function parseProviderEntry(
     warnings.push({ code: apiKeyWarningCode, providerId });
   }
 
-  // authHeader is handled by the runtime API-key path; nothing to persist.
   if (raw.authHeader === true && !apiKey && !apiKeyWarningCode) {
     warnings.push({ code: "authHeaderNoKey", providerId });
   }
@@ -295,7 +283,6 @@ function parseProviderEntry(
   const models: ProviderModelRecord[] = [];
   if (hasModels) {
     if (!providerApi) {
-      // Models may each declare api; only require provider.api when a model omits it.
       const needsProviderApi = (raw.models as unknown[]).some((modelDef) => {
         if (!isRecord(modelDef)) {
           return true;

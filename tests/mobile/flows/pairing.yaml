@@ -76,6 +76,13 @@ appId: dev.cocurdex.mobile
             id: "pairing-link"
           timeout: 30000
 - extendedWaitUntil:
+    visible:
+      id: pairing-approval-status
+    timeout: 5000
+- assertVisible:
+    id: pairing-approval-code
+- takeScreenshot: pairing-approval
+- extendedWaitUntil:
     visible: ${MODEL_TEST_ASSISTANT}
     timeout: 60000
 - assertNotVisible: ${LINK_PLACEHOLDER}

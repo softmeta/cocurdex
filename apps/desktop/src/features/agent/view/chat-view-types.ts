@@ -40,12 +40,8 @@ export interface ChatViewProps {
   messages: MessageRecord[];
   permissionRequests?: AgentPermissionRequestRecord[];
   questions?: AgentQuestionRequestRecord[];
-  // Only the parked approval is threaded down: like a permission request it
-  // renders docked above the composer, never inside the scrollable transcript.
   pendingPlanApproval?: AgentPlanApprovalRecord | null;
   toolCalls?: AgentToolCallRecord[];
-  // Live ACP task list (todo_write). Docked above the composer with the
-  // approval/permission cards — not inlined in the message stream.
   plan?: SessionPlan | null;
   attachment?: MessageAttachment;
   composerContextChips?: ReactNode;

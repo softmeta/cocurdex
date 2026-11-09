@@ -9,8 +9,6 @@ interface PdfSelectionAnchorProps {
   children: ReactNode;
 }
 
-// Measures the bubble after mount and clamps it inside the viewport so edge
-// selections do not clip the toolbar (right edge swatches, bottom overflow).
 export function PdfSelectionAnchor({
   anchor,
   children,
@@ -32,8 +30,6 @@ export function PdfSelectionAnchor({
     [anchor],
   );
 
-  // Initial coords are a best-effort below-start; the callback ref corrects
-  // before paint when width/height are known.
   const initial = placeFixedBubble(
     anchor,
     { width: 0, height: 0 },

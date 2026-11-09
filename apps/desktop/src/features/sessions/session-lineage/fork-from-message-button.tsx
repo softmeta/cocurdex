@@ -5,7 +5,7 @@ import { GitFork } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui";
-import { sessionsAtom } from "../session-store";
+import { sessionsAtom } from "../session-navigation-state";
 import { useForkSession } from "./use-session-lineage-actions";
 
 export function ForkFromMessageButton({

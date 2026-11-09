@@ -49,9 +49,6 @@ export function ProviderDetailsSection({
   const apiKeyId = useId();
   const hasStoredApiKey = Boolean(draftProvider.apiKeySecretId);
   const isPresetProvider = presetProviderIds.has(draftProvider.id);
-  // The provider id is the primary key: models and the API key secret are
-  // keyed by it, so renaming an existing provider would orphan them. The id
-  // is only editable while creating a new provider.
   const isIdLocked = isPresetProvider || Boolean(selectedProvider);
 
   return (

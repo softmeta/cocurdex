@@ -204,9 +204,7 @@ export function parseRsrsJson(stdout: string): Record<string, unknown> {
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         return parsed as Record<string, unknown>;
       }
-    } catch {
-      // Try the next candidate.
-    }
+    } catch {}
   }
   throw commandError("rsrs returned output that is not valid JSON", "bad_json");
 }
@@ -271,9 +269,7 @@ export async function resolveRsrsExecutable(
       if (result.code === 0 || parseVersion(result.stdout)) {
         return configured;
       }
-    } catch {
-      // Fall through to the native binary or PATH.
-    }
+    } catch {}
   }
   const nativeName = process.platform === "win32" ? "rsrs.exe" : "rsrs";
   const nativePath = path.join(homedir(), ".rsrs", "bin", nativeName);
@@ -289,9 +285,7 @@ export async function resolveRsrsExecutable(
     if (result.code === 0 || parseVersion(result.stdout)) {
       return { command: "rsrs", source: "path" };
     }
-  } catch {
-    // Not installed or not on PATH.
-  }
+  } catch {}
   return null;
 }
 

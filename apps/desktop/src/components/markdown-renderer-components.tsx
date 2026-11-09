@@ -36,8 +36,6 @@ interface MarkdownElementNode {
   tagName?: string;
 }
 
-// Derive a github-slugger-compatible id from a heading's text so in-document
-// TOC anchors (which the assistant emits using the same slug rule) can target it.
 function headingId(node: unknown): string | undefined {
   const slug = slugifyHeading(extractNodeText(node));
   return slug || undefined;
@@ -65,10 +63,6 @@ function canOpenInSystemBrowser(href: string | undefined): href is string {
   );
 }
 
-// Block code (```lang ... ```) and Mermaid blocks are rendered by Streamdown's
-// built-in CodeBlock (syntax highlighting) and MermaidBlock. We only
-// customize the surrounding markdown elements (headings, lists, tables, inline
-// code, etc.) so the chat surface tone tokens still apply.
 const linkToneClassNames: Record<MarkdownRendererTone, string> = {
   assistant: "text-chat-link hover:text-chat-link-hover",
   user: "text-chat-link hover:text-chat-fg",
@@ -311,9 +305,6 @@ export function createMarkdownComponents(
       className?: string;
       href?: string;
     }) {
-      // Workspace-relative file links rewritten before render
-      // (`https://cocurdex.workspace/open?path=...`). Same chip UI as bare
-      // `path` tokens — open via filePathHandlers, never the OS browser.
       const workspaceFile = options?.filePath
         ? parseWorkspaceFileHref(href)
         : null;
@@ -329,10 +320,6 @@ export function createMarkdownComponents(
         );
       }
 
-      // Harden rewrites in-document `#section` links to absolute URLs, so a
-      // bare `startsWith("#")` check misses them and they leak out as external
-      // `target="_blank"` links that never scroll. Resolve same-document anchors
-      // explicitly and navigate them programmatically instead.
       const anchorTarget = resolveAnchorTarget(href);
       const isAnchorLink = anchorTarget !== null;
       const handleAnchorClick = (event: MouseEvent<HTMLAnchorElement>) => {
@@ -389,9 +376,6 @@ export function createMarkdownComponents(
         />
       );
     },
-    // Inline code only — block code (```...```) is intercepted by Streamdown's
-    // built-in CodeBlock before reaching this slot, so styling here is for the
-    // single-backtick path.
     inlineCode({
       className: codeClassName,
       children,

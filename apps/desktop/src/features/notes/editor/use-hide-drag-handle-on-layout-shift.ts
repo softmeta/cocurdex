@@ -1,15 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import { type RefObject, useEffect, useRef } from "react";
 
-/**
- * Tiptap DragHandle only repositions when the hovered *node* changes (not when
- * the same node moves in the viewport). Sidebar / panel resizes shift the
- * editor while the handle keeps its previous absolute left/top.
- *
- * Observe the editor chrome for size changes and clear the handle via the
- * plugin's `hideDragHandle` meta so the next mousemove re-targets and
- * repositions. ResizeObserver is the external layout system being synced.
- */
 export function useHideDragHandleOnLayoutShift(
   editor: Editor | null,
 ): RefObject<HTMLDivElement | null> {

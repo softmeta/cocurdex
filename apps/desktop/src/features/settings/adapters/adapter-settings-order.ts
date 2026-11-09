@@ -1,7 +1,6 @@
 import type { AgentDescriptor } from "@cocurdex/shared";
 import { type AdapterStatusKind, getAdapterStatus } from "@/features/sessions";
 
-/** 需要用户处理的状态靠前；同优先级保持传入顺序。 */
 const kindOrder: Record<AdapterStatusKind, number> = {
   error: 0,
   missing: 1,

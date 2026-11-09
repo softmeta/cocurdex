@@ -42,8 +42,6 @@ export function createSqliteWorkspaceRepository(
         );
     },
     async delete(workspaceId) {
-      // Sessions, their child rows and workflow runs are removed by the
-      // ON DELETE CASCADE chain declared in the schema.
       database.prepare("DELETE FROM workspaces WHERE id = ?").run(workspaceId);
     },
   };

@@ -7,10 +7,6 @@ import { isShortcutId, type ShortcutId, shortcutIds } from "./shortcut-catalog";
 
 export const SHORTCUT_OVERRIDES_STORAGE_KEY = "cocurdex.shortcuts.overrides";
 
-/**
- * Partial map of user overrides. Missing key → catalog default.
- * Explicit `null` → action unbound (no key fires it).
- */
 export type ShortcutOverrides = Partial<
   Record<ShortcutId, ShortcutCombo | null>
 >;
@@ -79,7 +75,6 @@ export const shortcutOverridesAtom = atom(
   },
 );
 
-/** True while the settings recorder is capturing a key chord. */
 export const shortcutRecordingIdAtom = atom<ShortcutId | null>(null);
 
 export function setShortcutOverride(
@@ -106,7 +101,6 @@ export function resetAllShortcutOverrides(): ShortcutOverrides {
   return {};
 }
 
-/** Known ids used when pruning stale stored keys after catalog changes. */
 export function pruneShortcutOverrides(
   overrides: ShortcutOverrides,
 ): ShortcutOverrides {

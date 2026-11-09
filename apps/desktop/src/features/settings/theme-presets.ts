@@ -1,15 +1,3 @@
-/**
- * Named UI color presets. Each preset defines independent light and dark
- * token maps for the shadcn core variables in theme-preset.css.
- *
- * "cocurdex" is the product default: it clears inline overrides so the CSS in
- * theme-preset.css + theme-tokens.css remains the single source of truth
- * (including the dark sidebar sink and chat-canvas ramps).
- *
- * Other packs follow popular editor/product palettes (same names Codex ships)
- * mapped onto our token set — aesthetic approximations, not full ports.
- */
-
 export const themePresetIds = [
   "cocurdex",
   "absolutely",
@@ -33,7 +21,6 @@ export type ThemePresetId = (typeof themePresetIds)[number];
 
 export const DEFAULT_THEME_PRESET_ID: ThemePresetId = "cocurdex";
 
-/** Core shadcn tokens each non-default preset must supply for light and dark. */
 export const themeTokenKeys = [
   "background",
   "foreground",
@@ -76,39 +63,26 @@ export type ResolvedTheme = "light" | "dark";
 
 export interface ThemePresetMeta {
   id: ThemePresetId;
-  /** Proper-noun label shown in the picker (not translated). */
   label: string;
-  /** Accent swatches for light / dark so the dropdown previews both modes. */
   swatch: Record<ResolvedTheme, string>;
 }
 
 type ThemePresetDefinition = ThemePresetMeta & {
-  /** Absent for cocurdex — CSS owns the tokens. */
   tokens?: Record<ResolvedTheme, ThemeTokenMap>;
 };
 
-/** Compact seed for building a full shadcn token map. */
 interface PaletteSeed {
   background: string;
   foreground: string;
-  /** Raised surface (cards / popovers). Defaults to background. */
   card?: string;
   primary: string;
-  /** Text on primary; defaults to background. */
   primaryForeground?: string;
-  /** Soft fill (secondary / muted / accent hover). */
   muted?: string;
   mutedForeground: string;
   destructive: string;
-  /**
-   * Solid border for light themes. Dark themes default to a translucent
-   * foreground mix when omitted.
-   */
   border?: string;
-  /** Sunk nav plane; defaults to card. */
   sidebar?: string;
   charts?: [string, string, string, string, string];
-  /** When true, borders use translucent foreground (typical dark UI). */
   translucentBorders?: boolean;
 }
 
@@ -167,9 +141,6 @@ function pack(seed: PaletteSeed): ThemeTokenMap {
   };
 }
 
-// --- Community / product palettes (light + dark) ---
-
-// Catppuccin Latte / Mocha — https://catppuccin.com/palette/
 const catppuccin = {
   light: pack({
     background: "#eff1f5",
@@ -199,7 +170,6 @@ const catppuccin = {
   }),
 } as const;
 
-// GitHub / Primer.
 const github = {
   light: pack({
     background: "#ffffff",
@@ -229,7 +199,6 @@ const github = {
   }),
 } as const;
 
-// Gruvbox medium (morhetz).
 const gruvbox = {
   light: pack({
     background: "#fbf1c7",
@@ -259,7 +228,6 @@ const gruvbox = {
   }),
 } as const;
 
-// Everforest medium (sainnhe).
 const everforest = {
   light: pack({
     background: "#fdf6e3",
@@ -289,7 +257,6 @@ const everforest = {
   }),
 } as const;
 
-// Atom One Light / One Dark.
 const one = {
   light: pack({
     background: "#fafafa",
@@ -319,7 +286,6 @@ const one = {
   }),
 } as const;
 
-// Rosé Pine Dawn / Main — https://rosepinetheme.com/
 const rosePine = {
   light: pack({
     background: "#faf4ed",
@@ -349,7 +315,6 @@ const rosePine = {
   }),
 } as const;
 
-// Solarized (Ethan Schoonover).
 const solarized = {
   light: pack({
     background: "#fdf6e3",
@@ -379,7 +344,6 @@ const solarized = {
   }),
 } as const;
 
-// Linear product-inspired (indigo brand).
 const linear = {
   light: pack({
     background: "#ffffff",
@@ -409,7 +373,6 @@ const linear = {
   }),
 } as const;
 
-// Notion product-inspired (warm gray + blue).
 const notion = {
   light: pack({
     background: "#ffffff",
@@ -439,7 +402,6 @@ const notion = {
   }),
 } as const;
 
-// Raycast product-inspired (red brand on dark-first UI).
 const raycast = {
   light: pack({
     background: "#ffffff",
@@ -469,7 +431,6 @@ const raycast = {
   }),
 } as const;
 
-// Vercel product-inspired (black / white, blue accent).
 const vercel = {
   light: pack({
     background: "#ffffff",
@@ -499,7 +460,6 @@ const vercel = {
   }),
 } as const;
 
-// VS Code default-ish (Light+ / Dark+).
 const vscodePlus = {
   light: pack({
     background: "#ffffff",
@@ -529,7 +489,6 @@ const vscodePlus = {
   }),
 } as const;
 
-// Xcode light / dark system-adjacent blues.
 const xcode = {
   light: pack({
     background: "#ffffff",
@@ -559,7 +518,6 @@ const xcode = {
   }),
 } as const;
 
-// "Absolutely" — warm amber accent, clean neutral shells (Codex built-in vibe).
 const absolutely = {
   light: pack({
     background: "#fbfaf8",
@@ -589,7 +547,6 @@ const absolutely = {
   }),
 } as const;
 
-// "Proof" — mint / editorial green accent (Codex built-in vibe).
 const proof = {
   light: pack({
     background: "#f8faf9",
@@ -619,10 +576,6 @@ const proof = {
   }),
 } as const;
 
-/**
- * Cocurdex brand teal used only for picker swatches. Actual colors live in CSS.
- * Mirrors theme-preset.css --primary (light / dark oklch).
- */
 const cocurdexSwatch = {
   light: "oklch(0.511 0.096 186.391)",
   dark: "oklch(0.437 0.078 188.216)",
@@ -765,10 +718,6 @@ export function listThemePresets(): ThemePresetMeta[] {
   }));
 }
 
-/**
- * Apply the active preset for the resolved light/dark appearance.
- * Call whenever the preset changes or the resolved theme flips.
- */
 export function applyThemePreset(
   presetId: ThemePresetId,
   resolvedTheme: ResolvedTheme,
@@ -782,8 +731,6 @@ export function applyThemePreset(
 
   root.dataset.themePreset = preset.id;
 
-  // Default product theme: drop inline overrides so CSS cascade owns tokens
-  // (including theme-tokens.css dark surface ramps).
   if (preset.id === "cocurdex" || !preset.tokens) {
     for (const key of themeTokenKeys) {
       root.style.removeProperty(`--${key}`);

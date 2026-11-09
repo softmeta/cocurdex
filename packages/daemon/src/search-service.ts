@@ -40,13 +40,8 @@ function getProcessResourcesPath() {
   return (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
 }
 
-// The bundled daemon.cjs sits at <resources>/cli/daemon.cjs, one level below
-// the resources directory that also holds app.asar.unpacked and vendor/.
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
-// Resolve lazily: in the packaged bundle this require runs from
-// resources/cli, where the platform package only exists inside
-// app.asar.unpacked — a top-level import would throw before the daemon starts.
 function resolveBundledRipgrepPath(executable: string) {
   try {
     const require = createRequire(import.meta.url);
@@ -59,9 +54,6 @@ function resolveBundledRipgrepPath(executable: string) {
   }
 }
 
-// Resolution order: explicit env override, then the packaged desktop layout
-// (app.asar.unpacked next to resources/cli/daemon.cjs), then the workspace
-// node_modules copy used in development.
 async function resolveRipgrepPath(): Promise<string> {
   const executable = process.platform === "win32" ? "rg.exe" : "rg";
   const platformPkgDir = `@vscode/ripgrep-${process.platform}-${process.arch}`;
@@ -86,9 +78,7 @@ async function resolveRipgrepPath(): Promise<string> {
     try {
       await access(candidate, constants.X_OK);
       return candidate;
-    } catch {
-      // Try the next candidate.
-    }
+    } catch {}
   }
 
   throw new Error("ripgrep binary not found");
@@ -104,10 +94,6 @@ function truncateErrorMessage(message: string) {
 
 const GLOB_MAGIC = /[*?{}[\]]/;
 
-// Expand a single user-typed pattern into ripgrep glob patterns, mirroring how
-// VS Code treats include/exclude entries. A bare segment with no glob magic
-// (e.g. ".claude" or "src") should match that name anywhere in the tree and
-// everything beneath it, so we emit both the directory tree and basename forms.
 function expandGlobPattern(pattern: string): string[] {
   if (GLOB_MAGIC.test(pattern) || pattern.includes("/")) {
     return [pattern];

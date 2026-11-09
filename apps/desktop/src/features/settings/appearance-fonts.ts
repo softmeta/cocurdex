@@ -1,21 +1,9 @@
-/**
- * Font options for Appearance pickers.
- *
- * Preferred source: OS-installed families via desktopApi.listFontFamilies().
- * Empty `value` means product default (SYSTEM_UI_FONT / SYSTEM_MONO_FONT in
- * app-shell-preferences). On IPC failure the curated fallbacks below are used.
- */
-
 export interface AppearanceFontOption {
-  /** Stable id for React keys. */
   id: string;
-  /** Human label (proper font names stay untranslated). */
   label: string;
-  /** CSS font-family value written to appearance settings; "" = system default. */
   value: string;
 }
 
-/** Quote a family name for safe use in CSS font-family lists. */
 export function toCssFontFamilyValue(familyName: string): string {
   const trimmed = familyName.trim();
   if (!trimmed) {
@@ -24,7 +12,6 @@ export function toCssFontFamilyValue(familyName: string): string {
   return `"${trimmed.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-/** UI fallback when OS enumeration is unavailable. */
 export const fallbackUiFontOptions: AppearanceFontOption[] = [
   { id: "system", label: "System", value: "" },
   {
@@ -65,7 +52,6 @@ export const fallbackUiFontOptions: AppearanceFontOption[] = [
   },
 ];
 
-/** Code fallback when OS enumeration is unavailable. */
 export const fallbackCodeFontOptions: AppearanceFontOption[] = [
   { id: "system", label: "System", value: "" },
   {
@@ -120,15 +106,9 @@ export const fallbackCodeFontOptions: AppearanceFontOption[] = [
   },
 ];
 
-/** @deprecated Use fallbackUiFontOptions — kept for any external imports. */
 export const uiFontOptions = fallbackUiFontOptions;
-/** @deprecated Use fallbackCodeFontOptions */
 export const codeFontOptions = fallbackCodeFontOptions;
 
-/**
- * Build picker options from OS family names.
- * System default is always first; legacy custom values stay visible.
- */
 export function buildSystemFontOptions(
   families: string[],
   systemLabel: string,
@@ -163,10 +143,6 @@ export function buildSystemFontOptions(
   return options;
 }
 
-/**
- * Build the option list for a picker. Prefer system families when present;
- * otherwise use the curated fallback. Always keeps a custom current value.
- */
 export function fontOptionsForValue(
   fallbackOptions: AppearanceFontOption[],
   value: string,

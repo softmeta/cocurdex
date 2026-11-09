@@ -44,12 +44,9 @@ import {
 } from "./git-changes-tree-sync";
 import { TREE_STYLE, TREES_UNSAFE_CSS } from "./tree-style";
 
-// How the leading file index lays out its rows: nested folders, or one flat
-// column of the changed files.
 type FileIndexView = "tree" | "list";
 
 interface GitChangesTreeProps extends GitChangesDiffStackProps {
-  // Display name for the synthetic top-level folder (workspace root).
   workspaceName: string;
   showTreePanel: boolean;
   stagedState: GitFileStagedState;
@@ -69,9 +66,6 @@ interface GitChangesTreeProps extends GitChangesDiffStackProps {
   onTreePanelVisibleChange: (visible: boolean) => void;
 }
 
-// The tree is an index beside the shared diff stack: picking a row scrolls the
-// stack to that file, and scrolling the stack moves the tree's focus along, so
-// the two never drift apart.
 export function GitChangesTree({
   entries,
   workspaceName,
@@ -104,7 +98,6 @@ export function GitChangesTree({
   );
   const stats = useMemo(() => computeDiffStats(entries), [entries]);
 
-  // A reveal target must not stay hidden behind the tree's own search filter.
   if (reveal && reveal.token !== appliedRevealToken) {
     setAppliedRevealToken(reveal.token);
     if (searchQuery.length > 0) {
@@ -112,8 +105,6 @@ export function GitChangesTree({
     }
   }
 
-  // Picking a file is an explicit jump, not just a selection write: the reveal
-  // is what makes the stack scroll to the file and open it.
   const handlePickFile = useCallback(
     (relative: string) => {
       if (relative === selectedPath) return;
@@ -124,12 +115,8 @@ export function GitChangesTree({
 
   const handleSelectionChange = useCallback(
     (selectedPaths: readonly string[]) => {
-      // Selecting a row on the diff stack's behalf is not the reader picking a
-      // file: turning that echo into a reveal would drag the stack back to a
-      // file the reader has already scrolled past.
       if (programmaticSelectionRef.current) return;
       const next = selectedPaths[0];
-      // Directory rows end with "/"; only files map to a diff.
       if (!next || next.endsWith("/")) return;
       const relative = fromGitTreePath(workspaceName, next);
       if (!relative) return;
@@ -142,8 +129,6 @@ export function GitChangesTree({
     paths: [],
     initialExpansion: "open",
     flattenEmptyDirectories: true,
-    // Filter via model.setSearch from the external input (hide-non-matches).
-    // Keep Pierre's built-in search chrome off so we own layout and i18n.
     fileTreeSearchMode: "hide-non-matches",
     onSelectionChange: handleSelectionChange,
     unsafeCSS: TREES_UNSAFE_CSS,
@@ -158,7 +143,6 @@ export function GitChangesTree({
   );
 
   return (
-    // Draggable split between the file index and the diffs it points at.
     <ResizablePanelGroup className="min-h-0 flex-1" orientation="horizontal">
       {showTreePanel ? (
         <>
@@ -168,9 +152,6 @@ export function GitChangesTree({
             maxSize="50%"
             minSize="15%"
           >
-            {/* Top padding separates the tree chrome from the scope/filter
-                toolbar above; the search field, the layout toggle, and the rows
-                share the same horizontal inset. */}
             <div className="flex min-h-0 flex-1 flex-col px-2 pt-2">
               <div className="flex shrink-0 items-center gap-1">
                 <div className="relative min-w-0 flex-1">
@@ -202,7 +183,6 @@ export function GitChangesTree({
                     )
                   }
                 >
-                  {/* The glyph previews the layout the click switches to. */}
                   {fileIndexView === "tree" ? (
                     <List className="size-3.5" />
                   ) : (

@@ -26,28 +26,14 @@ import {
   gitSelectedPathAtom,
 } from "./git-changes-store";
 
-// The pinned row owns the top edge of the scrollport. Cards sit in rows whose gap
-// is below the card (`pb-2`), so a row whose top is within that empty band of
-// the edge is the pinned one — plus a pixel for the fractional offsets a scroll
-// can land on.
 const ROW_GAP_PX = 8;
 const PINNED_ROW_TOLERANCE_PX = ROW_GAP_PX + 1;
 
-// A reveal scrolls to where its target is *estimated* to be; the rows between the
-// reader and the target get measured as they mount, which moves the target. The
-// scroll is re-applied while that settles so the jump ends on the real position.
 const REVEAL_CORRECTION_INTERVAL_MS = 50;
 const REVEAL_CORRECTION_ATTEMPTS = 8;
 
-// Rows kept mounted past the viewport. They double as the pre-mount band: on
-// settle they open ahead of the reader, so each one may carry a mounted pierre
-// diff — this stays deliberately small.
 const OVERSCAN = 2;
 
-// Scrolling itself stays free of diff work: mounting a pierre diff is heavy
-// enough to drop frames. The check therefore runs once the reader pauses — the
-// files they stopped on open under a stationary viewport instead of fighting
-// the scroll.
 const SCROLL_SETTLE_MS = 140;
 
 export interface GitChangesDiffStackProps {
@@ -56,8 +42,6 @@ export interface GitChangesDiffStackProps {
   wrap: boolean;
   expandUnchanged: boolean;
   folded: ReadonlySet<string>;
-  // A pending "jump to this file" request. The stack is its only consumer:
-  // it unfolds the file, scrolls to it and clears the request.
   reveal: GitFileReveal | null;
   actionsEnabled: boolean;
   onFold: (path: string) => void;
@@ -75,10 +59,6 @@ function samePaths(current: ReadonlySet<string>, next: string[]): boolean {
   );
 }
 
-// Scroll position is an external system, and only rows near the viewport are
-// mounted, so scrolling to a file goes through the virtualizer instead of a row
-// ref. A request stays pending until its file reaches the loaded entry list:
-// a review can arrive before the scope's diff has finished loading.
 function useRevealScroll(
   virtualizer: Virtualizer<HTMLDivElement, HTMLDivElement>,
   scrollElementRef: RefObject<HTMLDivElement | null>,
@@ -95,8 +75,6 @@ function useRevealScroll(
     if (reveal === null || resolvedTokenRef.current === reveal.token) return;
     const index = entries.findIndex((entry) => entry.path === reveal.path);
     if (index < 0) {
-      // The list is loaded and the file is not in it: drop the request instead
-      // of replaying it on the next scope.
       if (entries.length > 0) {
         resolvedTokenRef.current = reveal.token;
         consumeReveal(reveal.token);
@@ -111,12 +89,8 @@ function useRevealScroll(
     consumeReveal(reveal.token);
     const top = viewport.scrollTop;
     const bottom = top + viewport.clientHeight;
-    // Fully visible or covering the whole viewport: the reader is already on
-    // it either way.
     if (item.start >= top && item.end <= bottom) return;
     if (item.start < top && item.end > bottom) return;
-    // A file taller than the viewport always lands on its header: aligning to
-    // its end would drop the reader at the far edge of the diff they asked for.
     const tallerThanViewport = item.end - item.start > viewport.clientHeight;
     const align =
       tallerThanViewport || item.start < top || item.start >= bottom
@@ -185,16 +159,9 @@ interface MountWindowOptions {
   setSelectedPath: (update: (previous: string | null) => string | null) => void;
   onFold: (path: string) => void;
   onUnfold: (path: string) => void;
-  // Set while a reveal is re-aligning the scroll: the row at the top edge is
-  // then mid-correction and must not steal the selection from the reveal.
   correctingIndexRef: RefObject<number | null>;
 }
 
-// Which rows may render a diff follows the viewport, not the change set: the
-// rows the virtualizer has mounted right now are the ones the reader can read,
-// and a row that leaves the band returns to its placeholder. A deferred row
-// already holds the height it will have once open, so mounting and unmounting
-// leave the rows around it where they are.
 function useMountWindow({
   virtualizer,
   scrollElementRef,
@@ -209,9 +176,6 @@ function useMountWindow({
   const [mounted, setMounted] = useState<ReadonlySet<string>>(new Set());
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // The row holding the top edge of the viewport is the one pinned under the
-  // stack's sticky header, so it is the file the reader is on: the file index
-  // beside the stack selects it and follows the reader through this.
   const followReader = useCallback(() => {
     const viewport = scrollElementRef.current;
     if (!viewport) return;
@@ -238,7 +202,6 @@ function useMountWindow({
       if (path === undefined || folded.has(path)) continue;
       band.push(path);
     }
-    // Mounting a diff is heavy, so the update yields to scrolling input.
     startTransition(() => {
       setMounted((previous) =>
         samePaths(previous, band) ? previous : new Set(band),
@@ -260,9 +223,6 @@ function useMountWindow({
   );
 
   const virtualItems = virtualizer.getVirtualItems();
-  // Rows that mount while the reader is stationary — first paint, a diff
-  // reload, an option toggle — become real diffs right away; rows passing by
-  // mid-scroll stay deferred until the scroll settles, which the timer covers.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the mounted band is read from the virtualizer at run time; this render's items are the trigger for re-checking it
   useEffect(() => {
     if (virtualizer.isScrolling) return;
@@ -292,9 +252,6 @@ function useMountWindow({
   return { mounted, followReader, scheduleSettle, toggleRow };
 }
 
-// Every changed file stacked in one scrolling column: only the rows near the
-// viewport are mounted, so a whole change set can be read by scrolling. The
-// file index optionally sits beside it.
 export function GitChangesDiffStack({
   entries,
   diffStyle,
@@ -315,8 +272,6 @@ export function GitChangesDiffStack({
   const consumeReveal = useSetAtom(consumeGitRevealAtom);
   const scrollElementRef = useRef<HTMLDivElement | null>(null);
 
-  // Memoized because the virtualizer's measurement memo keys on their
-  // identity: inline closures would rebuild every row's geometry per render.
   const estimateSize = useCallback(
     (index: number) => {
       const entry = entries[index];
@@ -329,10 +284,6 @@ export function GitChangesDiffStack({
     },
     [entries, folded, expandUnchanged, diffStyle],
   );
-  // Fold state, the display options that change a diff's height, and the diff
-  // itself are part of the identity: toggling any of them drops the cached
-  // measurement, so a row never keeps reserving a height its content no longer
-  // has — a stale size would shift the list under the reader as it re-mounts.
   const getItemKey = useCallback(
     (index: number) => {
       const entry = entries[index];
@@ -354,10 +305,6 @@ export function GitChangesDiffStack({
     getScrollElement: () => scrollElementRef.current,
     overscan: OVERSCAN,
   });
-  // TanStack's default size-change anchoring is the right one here: it
-  // compensates a first measurement above the fold, and skips the
-  // "scrolling up" cascade for re-measurements. Overriding it re-introduced
-  // jumps while the reader scrolled backward.
 
   const correctingIndexRef = useRevealScroll(
     virtualizer,
@@ -379,8 +326,6 @@ export function GitChangesDiffStack({
   });
 
   const handleScroll = useCallback(() => {
-    // Selection follows the pinned file immediately; the expensive mounting
-    // waits for the reader to stop.
     followReader();
     scheduleSettle(SCROLL_SETTLE_MS);
   }, [followReader, scheduleSettle]);
@@ -411,26 +356,17 @@ export function GitChangesDiffStack({
             : mounted.has(entry.path)
               ? "open"
               : "deferred";
-          // Every row carries the body height it will have once open — a
-          // deferred row as a placeholder, an open row until pierre paints it —
-          // so the stack's geometry is right before the real diff mounts.
           const reservedHeight = Math.max(
             estimateSize(item.index) - CARD_CHROME_HEIGHT,
             0,
           );
           return (
-            // Absolute offset rather than a transform: a transformed ancestor
-            // becomes the containing block for its sticky descendants and the
-            // header would stop pinning to the scrollport.
             <div
               className={cn(
                 "absolute inset-x-0 pb-2",
                 item.index === 0 && "pt-2",
               )}
               data-index={item.index}
-              // The path, not item.key: the virtualizer's key carries fold and
-              // display state for cache invalidation, but remounting the card
-              // on a fold toggle would drop the chevron's keyboard focus.
               key={entry.path}
               ref={virtualizer.measureElement}
               style={{ top: item.start }}

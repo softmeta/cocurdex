@@ -12,11 +12,11 @@ import { loginPiProvider } from "@cocurdex/agent-adapters/provider-auth";
 import {
   AgentSteeringUnavailableError,
   createAgentRegistry,
-  detectAgentInstallations,
 } from "@cocurdex/agent-core";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type {
   AcpRegistryAgentId,
+  AgentDescriptor,
   AgentEvent,
   AgentId,
   AgentPlanApprovalDecision,
@@ -56,7 +56,6 @@ import type {
   UpdateSessionTitlePayload,
   WorkspaceRecord,
   WorkspaceWorktreeEnvironment,
-  WorktreeSettings,
 } from "@cocurdex/shared";
 import {
   AGENT_RUN_LIMITS_SETTING_KEY,
@@ -122,6 +121,7 @@ import {
 } from "./agent-tools";
 import { registerApplicationTools } from "./agent-tools/groups/applications";
 import {
+  createAgentInstallationProbes,
   discoverAgentSessionModes,
   discoverInstalledAgentCapabilities,
 } from "./agents";
@@ -160,7 +160,6 @@ import {
   readNetworkProxySettings,
   saveNetworkProxySettings,
 } from "./network-proxy-settings";
-import { removeAppManagedWorktree } from "./orchestration-workspace";
 import { OutboxService, routineRunAlert } from "./outbox";
 import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
@@ -205,15 +204,17 @@ import {
   applySessionConfiguration,
   collectHandoffItems,
   decideDelivery,
+  dispatchSessionTurn,
   forkProviderThreads,
+  loadDispatchHistory,
   RunCapacity,
-  type RunHandle,
   readSessionActivity,
   resolveForkPoint,
   resolveRepeatedSend,
   type SessionActivityReader,
   SessionCommandQueue,
   type SessionExecutionContext,
+  SessionFollowUpQueue,
   SessionRunCoordinator,
   type SessionRuntimeMessage,
   type SessionTurnOutcome,
@@ -259,17 +260,7 @@ import {
   readTextFile,
 } from "./workspace-service";
 import { WorkspaceWatchService } from "./workspace-watch";
-import {
-  createManagedWorktree,
-  listManagedWorktrees,
-  loadWorktreeSettings,
-  removeManagedWorktree,
-  resolveWorktreeRepoRootPath,
-  runWorktreeCleanup,
-  saveWorktreeSettings,
-} from "./worktree-management";
-import { runWorktreeLifecycleScript } from "./worktree-script";
-import { WorktreeSetupRuns, waitForWorktreeSetup } from "./worktree-setup-runs";
+import { WorktreeLifecycle } from "./worktree-lifecycle";
 
 export interface CocurdexDaemonServiceOptions {
   runtimeFingerprint: string;
@@ -291,15 +282,10 @@ export interface CocurdexDaemonStatus {
   startedAt: string;
 }
 
-interface QueuedFollowUp {
-  payload: SessionRuntimeMessage & { messageId: string };
-}
-
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-/** How often checkpoint retention runs on a daemon that never restarts. */
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const REPORTED_SETTING_VALUES_KEY = "settings.reportedValues";
 const BRIEF_POSTED_SETTING_KEY = "personal.briefPostedAt";
@@ -315,6 +301,7 @@ function isExistingDirectory(directoryPath: string) {
 
 export class CocurdexDaemonService {
   readonly events = new EventEmitter();
+  private readonly agentInstallationProbes = createAgentInstallationProbes();
   readonly agentTools: AgentToolBridge;
   readonly peerMessaging: PeerMessagingService;
   readonly team: TeamModule;
@@ -368,8 +355,8 @@ export class CocurdexDaemonService {
   readonly hostKeys: HostKeyStore;
   private readonly sessionCommands = new SessionCommandQueue();
   readonly runs: SessionRunCoordinator;
-  private readonly worktreeSetups = new WorktreeSetupRuns();
-  private readonly queuedFollowUps = new Map<string, QueuedFollowUp[]>();
+  readonly worktrees: WorktreeLifecycle;
+  private readonly queuedFollowUps: SessionFollowUpQueue;
   private readonly sessionRuntimeStates = new SessionRuntimeStates();
   private readonly runCapacity: RunCapacity;
   private readonly workflowWorkerScheduler: WorkflowWorkerScheduler;
@@ -382,6 +369,7 @@ export class CocurdexDaemonService {
     this.startedAt = options.startedAt ?? new Date().toISOString();
     this.userDataPath = options.userDataPath;
     this.state = new DaemonState(options.userDataPath);
+    this.queuedFollowUps = new SessionFollowUpQueue(this.state);
     this.hostKeys = createHostKeyStore(options.userDataPath);
     this.hostAccess = new HostAccessService({
       localToken: options.localToken ?? crypto.randomUUID(),
@@ -536,6 +524,12 @@ export class CocurdexDaemonService {
       startRuntime: options.autoStartMemory !== false,
     });
     this.scanPolicy = createWorkspaceScanPolicy(this.state);
+    this.worktrees = new WorktreeLifecycle(
+      this.state,
+      this.userDataPath,
+      (workspaceId) => this.getWorktreeEnvironment(workspaceId),
+      () => this.scanPolicy.invalidate(),
+    );
     this.searchService = new DaemonSearchService({
       broadcast: (event) => this.events.emit("daemon.event", event),
       canScanRoot: (rootPath) => this.scanPolicy.canScan(rootPath),
@@ -619,7 +613,7 @@ export class CocurdexDaemonService {
         this.runs.hasActiveRun(sessionId) ||
         this.queuedFollowUps.has(sessionId),
       getMessage: (messageId) => this.state.getMessageById(messageId),
-      createWorktree: (input) => this.createWorktree(input),
+      createWorktree: (input) => this.worktrees.createWorktree(input),
       broadcast: (event) => {
         this.events.emit("daemon.event", event);
         this.events.emit("daemon.event", {
@@ -652,7 +646,7 @@ export class CocurdexDaemonService {
       listRoles: () => this.listAgentRoles(),
       listTemplates: () => this.team.listTemplates(),
       createTeam: (input) => this.team.create(input),
-      createWorktree: (input) => this.createWorktree(input),
+      createWorktree: (input) => this.worktrees.createWorktree(input),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       submitReport: (command, options) =>
         this.submitSessionMessage(command, options),
@@ -710,7 +704,7 @@ export class CocurdexDaemonService {
       getAgentRole: (id) => this.state.getAgentRole(id),
       getSetting: (key) => this.state.getAppSetting(key),
       setSetting: (key, value) => this.state.setAppSetting(key, value),
-      createWorktree: (input) => this.createWorktree(input),
+      createWorktree: (input) => this.worktrees.createWorktree(input),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
       hasActiveTurn: (sessionId) => this.runs.hasActiveRun(sessionId),
@@ -829,8 +823,6 @@ export class CocurdexDaemonService {
       },
     });
     void this.reconcileWorkspaceChanges();
-    // Retention only runs inside reconcile, so a long-lived daemon would never
-    // expire checkpoints without this heartbeat.
     this.checkpointReconcileTimer = setInterval(
       () => void this.reconcileWorkspaceChanges(),
       CHECKPOINT_RECONCILE_INTERVAL_MS,
@@ -892,8 +884,6 @@ export class CocurdexDaemonService {
             logDaemonDiagnostic("warn", "outbox.alertFailed", { error }),
           );
       }
-      // Only a terminal error ends the turn; a mid-turn "error" event can be
-      // followed by more tool calls whose changes still belong to this turn.
       if (event.type === "state.changed" && event.status === "error") {
         await this.workspaceChanges.failTurn(event.sessionId, "failed");
       }
@@ -1032,7 +1022,7 @@ export class CocurdexDaemonService {
     }
     return this.sessionCommands.run(sessionId, async () => {
       await this.stopSessionTurn(sessionId);
-      this.queuedFollowUps.delete(sessionId);
+      this.queuedFollowUps.forget(sessionId);
       return this.state.archiveSession(sessionId);
     });
   }
@@ -1112,10 +1102,7 @@ export class CocurdexDaemonService {
   getActiveWork() {
     return {
       agentTurns: this.runs.activeWorkCount,
-      queuedInputs: [...this.queuedFollowUps.values()].reduce(
-        (count, inputs) => count + inputs.length,
-        0,
-      ),
+      queuedInputs: this.queuedFollowUps.size,
       workflowActive: this.workflowWorkerScheduler.isActive,
       workspaceSearches: this.searchService.activeCount,
     };
@@ -1154,12 +1141,21 @@ export class CocurdexDaemonService {
     };
   }
 
-  async listAgents(only?: AgentId) {
+  private async detectAgents(only?: AgentId) {
     const descriptors = createAgentRegistry()
       .list()
       .filter((descriptor) => !only || descriptor.id === only);
-    const agents = await detectAgentInstallations(descriptors);
+    const agents = await this.agentInstallationProbes.detect(descriptors);
     this.state.recordAgentVersions(agents);
+    return agents;
+  }
+
+  async listAgents(only?: AgentId) {
+    const agents = await this.detectAgents(only);
+    return this.discoverAgentCapabilities(agents);
+  }
+
+  private discoverAgentCapabilities(agents: AgentDescriptor[]) {
     return discoverInstalledAgentCapabilities(agents, {
       cache: this.state.agentCapabilityCache,
     });
@@ -1167,6 +1163,7 @@ export class CocurdexDaemonService {
 
   installAcpRegistryAgent(registryId: string) {
     return this.acpRegistry.install(registryId).then((agent) => {
+      this.agentInstallationProbes.invalidate();
       resetAcpProviderModelsCache(agent.agentId);
       return agent;
     });
@@ -1180,6 +1177,7 @@ export class CocurdexDaemonService {
     return this.acpRegistry
       .installCommand(params.registryId, params.command, params.args)
       .then((agent) => {
+        this.agentInstallationProbes.invalidate();
         resetAcpProviderModelsCache(agent.agentId);
         return agent;
       });
@@ -1187,19 +1185,20 @@ export class CocurdexDaemonService {
 
   async updateAcpRegistryAgent(agentId: AcpRegistryAgentId) {
     const agent = await this.acpRegistry.update(agentId);
+    this.agentInstallationProbes.invalidate();
     resetAcpProviderModelsCache(agent.agentId);
     return agent;
   }
 
   async uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId) {
     await this.acpRegistry.uninstall(agentId);
+    this.agentInstallationProbes.invalidate();
     resetAcpProviderModelsCache(agentId);
     return null;
   }
 
   async readAgentSessionModes(agentId: AgentId) {
-    const agents = await detectAgentInstallations(createAgentRegistry().list());
-    this.state.recordAgentVersions(agents);
+    const agents = await this.detectAgents(agentId);
     return discoverAgentSessionModes(agents, {
       agentId,
       cache: this.state.agentCapabilityCache,
@@ -1412,8 +1411,6 @@ export class CocurdexDaemonService {
     );
   }
 
-  // file.* RPCs are reachable by any daemon client, so reads are confined to
-  // registered workspace/worktree roots instead of trusting request paths.
   async readWorkspaceTextFile(filePath: string) {
     if (!(await this.scanPolicy.canAccessFile(filePath))) {
       throw new Error(
@@ -1485,9 +1482,6 @@ export class CocurdexDaemonService {
     return fileExists(filePath);
   }
 
-  // Directory browsing for picking a workspace root is intentionally not
-  // confined to scan roots: the whole point is choosing a new root. It lists
-  // directory names only and is still gated by the daemon token.
   async listHostDirectories(directoryPath?: string) {
     return listHostDirectories(directoryPath);
   }
@@ -1860,107 +1854,13 @@ export class CocurdexDaemonService {
   }
 
   private async defaultAssistantAgentId(): Promise<AgentId> {
-    const agent = (await this.listAgents()).find(
+    const agent = (await this.detectAgents()).find(
       (item) => item.availability === "available",
     );
     if (!agent) {
       throw new Error("No agent is available on this machine.");
     }
     return agent.id;
-  }
-
-  async runWorktreeSetup(input: {
-    workspaceId: string;
-    worktreePath: string;
-  }): Promise<{ ran: boolean }> {
-    const environment = await this.getWorktreeEnvironment(input.workspaceId);
-    if (!environment.setupScript.trim()) {
-      return { ran: false };
-    }
-    await runWorktreeLifecycleScript({
-      script: environment.setupScript,
-      cwd: input.worktreePath,
-    });
-    return { ran: true };
-  }
-
-  getWorktreeSettings() {
-    return loadWorktreeSettings(this.state, this.userDataPath);
-  }
-
-  saveWorktreeSettings(settings: WorktreeSettings) {
-    return saveWorktreeSettings(this.state, this.userDataPath, settings);
-  }
-
-  listManagedWorktrees() {
-    return listManagedWorktrees({
-      state: this.state,
-      userDataPath: this.userDataPath,
-    });
-  }
-
-  async createWorktree(input: {
-    workspaceId: string;
-    branch?: string;
-    startPoint?: string;
-  }) {
-    this.scanPolicy.invalidate();
-    try {
-      return await createManagedWorktree({
-        state: this.state,
-        userDataPath: this.userDataPath,
-        workspaceId: input.workspaceId,
-        branch: input.branch,
-        startPoint: input.startPoint,
-        startSetup: async (worktreePath) => {
-          const environment = await this.getWorktreeEnvironment(
-            input.workspaceId,
-          );
-          const script = environment.setupScript.trim();
-          if (script) {
-            this.worktreeSetups.start(worktreePath, script, () =>
-              runWorktreeLifecycleScript({ script, cwd: worktreePath }),
-            );
-          }
-        },
-      });
-    } finally {
-      this.scanPolicy.invalidate();
-    }
-  }
-
-  async removeWorktree(input: {
-    workspaceId: string;
-    worktreePath: string;
-    workspaceRootPath?: string;
-  }) {
-    this.scanPolicy.invalidate();
-    try {
-      return await removeManagedWorktree({
-        state: this.state,
-        userDataPath: this.userDataPath,
-        workspaceId: input.workspaceId,
-        worktreePath: input.worktreePath,
-        workspaceRootPath: input.workspaceRootPath,
-        runCleanup: async (worktreePath) => {
-          try {
-            await runWorktreeCleanup({
-              state: this.state,
-              workspaceId: input.workspaceId,
-              worktreePath,
-            });
-          } catch (error) {
-            logDaemonDiagnostic("warn", "worktree.cleanup failed", {
-              error: error instanceof Error ? error.message : String(error),
-              workspaceId: input.workspaceId,
-              worktreePath,
-            });
-          }
-        },
-      });
-    } finally {
-      this.scanPolicy.invalidate();
-    }
   }
 
   listSessions() {
@@ -1971,8 +1871,6 @@ export class CocurdexDaemonService {
     return this.runtime.getPendingInteractions();
   }
 
-  // Journal seq provider bound by the wire layer so resync snapshots can
-  // report the position their reads are consistent with.
   private readEventSeq: () => number = () => 0;
 
   bindEventSeqProvider(provider: () => number) {
@@ -2300,7 +2198,11 @@ export class CocurdexDaemonService {
     const { workspaceId } = input;
     return {
       role,
-      agents: await this.listAgents(),
+      agents: await this.detectAgents(input.agentType ?? role?.agentId),
+      discoverCapabilities: async (agent) => {
+        const [discovered] = await this.discoverAgentCapabilities([agent]);
+        return discovered ?? agent;
+      },
       workspaceSessions: sessions
         .filter((session) => session.workspaceId === workspaceId)
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
@@ -2538,7 +2440,7 @@ export class CocurdexDaemonService {
       sessionId,
       workspaceRootPath,
     );
-    await this.releaseSessionWorktree(session, workspace);
+    await this.worktrees.releaseSessionWorktree(session, workspace);
     this.announceSessionsChanged();
   }
 
@@ -2722,8 +2624,6 @@ export class CocurdexDaemonService {
     return session;
   }
 
-  // Only replaces a title the user has not changed since the request was
-  // made: expectedTitle guards against overwriting a manual rename.
   async refineSessionTitle(
     payload: RefineSessionTitlePayload,
   ): Promise<SessionRecord | null> {
@@ -2935,7 +2835,7 @@ export class CocurdexDaemonService {
 
     if (decision.kind === "queue" || heldForCapacity) {
       await this.ensureAgentAvailable(payload.session.agentType);
-      if (!hold) await this.loadQueuedFollowUps(sessionId);
+      if (!hold) await this.queuedFollowUps.load(sessionId);
       payload = await this.refreshSessionWorkingPath(payload);
       const createdMessage = this.createUserMessage(payload);
       const userMessage = await this.state.saveQueuedUserMessage(
@@ -2948,19 +2848,14 @@ export class CocurdexDaemonService {
           createdAt: createdMessage.createdAt,
         },
       );
-      const loaded = this.queuedFollowUps.get(sessionId);
-      if (loaded || !hold) {
-        const queued = loaded ?? [];
-        queued.push({
-          payload: {
-            ...payload,
-            messageId: userMessage.id,
-            createdAt: userMessage.createdAt,
-            delivery: "start-new-run",
-          },
-        });
-        this.queuedFollowUps.set(sessionId, queued);
-      }
+      this.queuedFollowUps.append(
+        {
+          ...payload,
+          messageId: userMessage.id,
+          createdAt: userMessage.createdAt,
+        },
+        { onlyIfLoaded: hold },
+      );
       if (heldForCapacity) this.runCapacity.hold(sessionId);
       this.announceSessionsChanged();
       return userMessage;
@@ -2997,7 +2892,18 @@ export class CocurdexDaemonService {
     }
 
     void this.runs.track(
-      this.dispatchSessionMessage(payload, userMessage, run, persistence).then(
+      dispatchSessionTurn({
+        state: this.state,
+        runtime: this.runtime,
+        workspaceChanges: this.workspaceChanges,
+        worktrees: this.worktrees,
+        payload,
+        userMessage,
+        signal: run.signal,
+        persistence,
+        prepareStartContext: (session, message, history, persistence) =>
+          this.prepareStartContext(session, message, history, persistence),
+      }).then(
         (message) => this.runs.settle(run, { kind: "resolved", message }),
         (error: unknown) => {
           const message = errorMessage(error, "Unknown agent runtime error");
@@ -3071,104 +2977,20 @@ export class CocurdexDaemonService {
 
   private async restoreQueuedSession(sessionId: string) {
     if (this.runs.hasActiveRun(sessionId) || this.stopping) return false;
-    if (!(await this.loadQueuedFollowUps(sessionId))) return false;
+    if (!(await this.queuedFollowUps.load(sessionId))) return false;
     return this.dispatchNextQueuedInput(sessionId);
   }
 
-  private async loadQueuedFollowUps(sessionId: string) {
-    const loaded = this.queuedFollowUps.get(sessionId);
-    if (loaded) return loaded;
-
-    const [session, inputs, messages] = await Promise.all([
-      this.state.getSession(sessionId),
-      this.state.listQueuedAgentInputs(sessionId),
-      this.state.listMessagesBySessionId(sessionId),
-    ]);
-    if (!session || session.archivedAt || inputs.length === 0) return;
-
-    const messageById = new Map(
-      messages.map((message) => [message.id, message]),
-    );
-    const queued = inputs.flatMap((input): QueuedFollowUp[] => {
-      const message = messageById.get(input.messageId);
-      if (!message) return [];
-      return [
-        {
-          payload: {
-            session,
-            workspaceRootPath: input.workspaceRootPath,
-            messageId: message.id,
-            createdAt: message.createdAt,
-            content: message.content,
-            attachments: message.attachments,
-            thinkingLevel: input.thinkingLevel,
-            delivery: "start-new-run",
-          },
-        },
-      ];
-    });
-    if (queued.length === 0) return;
-
-    this.queuedFollowUps.set(sessionId, queued);
-    return queued;
-  }
-
-  async updateQueuedAgentInput(
+  updateQueuedAgentInput(
     sessionId: string,
     messageId: string,
     content: string,
   ) {
-    const trimmedContent = content.trim();
-    const queued = await this.loadQueuedFollowUps(sessionId);
-    const index = queued?.findIndex(
-      (item) => item.payload.messageId === messageId,
-    );
-    if (!queued || index == null || index < 0) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
-
-    const message = await this.state.getMessageById(messageId);
-    if (
-      !message ||
-      message.sessionId !== sessionId ||
-      message.role !== "user"
-    ) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
-
-    // An image-only queued message has no text, so emptiness is only invalid
-    // when the message carries no attachments either.
-    if (!trimmedContent && message.attachments.length === 0) {
-      throw new Error("Queued message cannot be empty");
-    }
-
-    const updatedMessage = { ...message, content: trimmedContent };
-    await this.state.updateQueuedUserMessage(updatedMessage);
-    queued[index] = {
-      ...queued[index],
-      payload: { ...queued[index].payload, content: trimmedContent },
-    };
-    return updatedMessage;
+    return this.queuedFollowUps.update(sessionId, messageId, content);
   }
 
-  async deleteQueuedAgentInput(sessionId: string, messageId: string) {
-    const queued = await this.loadQueuedFollowUps(sessionId);
-    if (!queued) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
-    const nextQueued = queued.filter(
-      (item) => item.payload.messageId !== messageId,
-    );
-    if (nextQueued.length === queued.length) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
-
-    await this.state.deleteQueuedUserMessage(messageId);
-    if (nextQueued.length === 0) {
-      this.queuedFollowUps.delete(sessionId);
-    } else {
-      this.queuedFollowUps.set(sessionId, nextQueued);
-    }
+  deleteQueuedAgentInput(sessionId: string, messageId: string) {
+    return this.queuedFollowUps.delete(sessionId, messageId);
   }
 
   async steerQueuedAgentInput(sessionId: string, messageId: string) {
@@ -3176,23 +2998,8 @@ export class CocurdexDaemonService {
       return this.sendQueuedAgentInputNow(sessionId, messageId);
     }
 
-    const queued = await this.loadQueuedFollowUps(sessionId);
-    const index = queued?.findIndex(
-      (item) => item.payload.messageId === messageId,
-    );
-    const item = index == null || index < 0 ? undefined : queued?.[index];
-    if (!queued || !item || index == null || index < 0) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
-
-    const queuedMessage = await this.state.getMessageById(messageId);
-    if (
-      !queuedMessage ||
-      queuedMessage.sessionId !== sessionId ||
-      queuedMessage.role !== "user"
-    ) {
-      throw new Error(`Queued message ${messageId} was not found`);
-    }
+    const { item, message: queuedMessage } =
+      await this.queuedFollowUps.requireInput(sessionId, messageId);
 
     const agent = await this.ensureAgentAvailable(
       item.payload.session.agentType,
@@ -3205,18 +3012,7 @@ export class CocurdexDaemonService {
       queuedMessage,
       this.runs.activeRunId(sessionId),
     );
-    const [messages, queuedInputs] = await Promise.all([
-      this.state.listMessagesBySessionId(sessionId),
-      this.state.listQueuedAgentInputs(sessionId),
-    ]);
-    const queuedMessageIds = new Set(
-      queuedInputs.map((input) => input.messageId),
-    );
-    const history = messages.filter(
-      (historyMessage) =>
-        historyMessage.id === messageId ||
-        !queuedMessageIds.has(historyMessage.id),
-    );
+    const history = await loadDispatchHistory(this.state, sessionId, messageId);
     const persistence = await this.createRuntimePersistence(
       item.payload.session,
     );
@@ -3237,10 +3033,7 @@ export class CocurdexDaemonService {
     );
 
     await this.state.deleteQueuedAgentInput(messageId);
-    queued.splice(index, 1);
-    if (queued.length === 0) {
-      this.queuedFollowUps.delete(sessionId);
-    }
+    this.queuedFollowUps.remove(sessionId, messageId);
     this.runtime.emitAgentEvent({
       type: "message.completed",
       sessionId,
@@ -3252,22 +3045,10 @@ export class CocurdexDaemonService {
   async sendQueuedAgentInputNow(sessionId: string, messageId: string) {
     validateSessionId(sessionId);
     return this.sessionCommands.run(sessionId, async () => {
-      const queued = await this.loadQueuedFollowUps(sessionId);
-      const index = queued?.findIndex(
-        (item) => item.payload.messageId === messageId,
+      const { message } = await this.queuedFollowUps.requireInput(
+        sessionId,
+        messageId,
       );
-      if (!queued || index == null || index < 0) {
-        throw new Error(`Queued message ${messageId} was not found`);
-      }
-
-      const message = await this.state.getMessageById(messageId);
-      if (
-        !message ||
-        message.sessionId !== sessionId ||
-        message.role !== "user"
-      ) {
-        throw new Error(`Queued message ${messageId} was not found`);
-      }
 
       if (this.runs.hasActiveRun(sessionId)) {
         throw new Error(
@@ -3275,9 +3056,7 @@ export class CocurdexDaemonService {
         );
       }
 
-      const [item] = queued.splice(index, 1);
-      queued.unshift(item);
-      this.queuedFollowUps.set(sessionId, queued);
+      this.queuedFollowUps.promote(sessionId, messageId);
 
       const dispatched = await this.dispatchNextQueuedInput(sessionId);
       if (!dispatched) {
@@ -3297,15 +3076,8 @@ export class CocurdexDaemonService {
     if (this.stopping) return false;
     if (this.runs.hasActiveRun(sessionId)) return false;
 
-    const queued = this.queuedFollowUps.get(sessionId);
-    const next = queued?.shift();
-    if (!next) {
-      this.queuedFollowUps.delete(sessionId);
-      return false;
-    }
-    if (!queued || queued.length === 0) {
-      this.queuedFollowUps.delete(sessionId);
-    }
+    const next = this.queuedFollowUps.take(sessionId);
+    if (!next) return false;
 
     try {
       const userMessage = await this.acceptSessionMessage(
@@ -3352,7 +3124,6 @@ export class CocurdexDaemonService {
     );
   }
 
-  /** User-facing stop: abandon the current turn, keep the agent session usable. */
   async stopSession(sessionId: string) {
     validateSessionId(sessionId);
     await this.team.onLeadStopped(sessionId);
@@ -3369,7 +3140,7 @@ export class CocurdexDaemonService {
       for (const input of inputs) {
         await this.state.deleteQueuedUserMessage(input.messageId);
       }
-      this.queuedFollowUps.delete(sessionId);
+      this.queuedFollowUps.forget(sessionId);
       if (inputs.length > 0) {
         this.events.emit("daemon.event", {
           type: "data.changed",
@@ -3390,7 +3161,7 @@ export class CocurdexDaemonService {
   private async disposeSessionRuntime(sessionId: string) {
     this.runCapacity.release(sessionId, new Error("Session was closed"));
     const stopped = this.runs.stop(sessionId);
-    this.queuedFollowUps.delete(sessionId);
+    this.queuedFollowUps.forget(sessionId);
     await Promise.all([stopped, this.runtime.disposeSessionRuntime(sessionId)]);
   }
 
@@ -3518,55 +3289,6 @@ export class CocurdexDaemonService {
     };
   }
 
-  private async releaseSessionWorktree(
-    session: SessionRecord,
-    workspace: WorkspaceRecord | undefined,
-  ) {
-    const worktreePath = session.worktreePath?.trim();
-    if (!worktreePath || !workspace) {
-      return;
-    }
-
-    const [activeSessions, archivedSessions] = await Promise.all([
-      this.state.listSessions(),
-      this.state.listArchivedSessions(),
-    ]);
-    const stillBound = [...activeSessions, ...archivedSessions].some(
-      (candidate) => candidate.worktreePath === worktreePath,
-    );
-    if (stillBound) {
-      return;
-    }
-
-    const environment = await this.getWorktreeEnvironment(session.workspaceId);
-    if (environment.cleanupScript.trim()) {
-      try {
-        await runWorktreeLifecycleScript({
-          script: environment.cleanupScript,
-          cwd: worktreePath,
-        });
-      } catch (error) {
-        logDaemonDiagnostic("warn", "worktree.cleanup failed", {
-          error: error instanceof Error ? error.message : String(error),
-          sessionId: session.id,
-          worktreePath,
-        });
-      }
-    }
-
-    const settings = await loadWorktreeSettings(this.state, this.userDataPath);
-    const repoRootPath = await resolveWorktreeRepoRootPath(
-      workspace,
-      worktreePath,
-    );
-    await removeAppManagedWorktree({
-      repoRootPath,
-      worktreePath,
-      userDataPath: this.userDataPath,
-      worktreeRootPath: settings.rootPath,
-    });
-  }
-
   private createUserMessage(payload: SessionRuntimeMessage): MessageRecord {
     return {
       id: payload.messageId,
@@ -3577,79 +3299,6 @@ export class CocurdexDaemonService {
       createdAt: payload.createdAt ?? new Date().toISOString(),
       ...(payload.origin ? { origin: payload.origin } : {}),
     };
-  }
-
-  private async dispatchSessionMessage(
-    payload: SessionRuntimeMessage,
-    userMessage: MessageRecord,
-    run: RunHandle,
-    persistence: RuntimePersistence,
-  ) {
-    const [messages, queuedInputs] = await Promise.all([
-      this.state.listMessagesBySessionId(payload.session.id),
-      this.state.listQueuedAgentInputs(payload.session.id),
-    ]);
-    const queuedMessageIds = new Set(
-      queuedInputs.map((input) => input.messageId),
-    );
-    const history = messages.filter(
-      (message) =>
-        message.id === userMessage.id || !queuedMessageIds.has(message.id),
-    );
-    if (run.signal.aborted) {
-      return null;
-    }
-
-    const worktreePath = payload.session.worktreePath?.trim();
-    if (worktreePath) {
-      await waitForWorktreeSetup({
-        runs: this.worktreeSetups,
-        sessionId: payload.session.id,
-        worktreePath,
-        cancelled: new Promise<void>((resolve) => {
-          run.signal.addEventListener("abort", () => resolve(), { once: true });
-        }),
-        emit: (event) => this.runtime.emitAgentEvent(event),
-      });
-      if (run.signal.aborted) {
-        return null;
-      }
-    }
-
-    if (!isChatSession(payload.session)) {
-      await this.workspaceChanges.beginTurn({
-        sessionId: payload.session.id,
-        userMessageId: userMessage.id,
-        workspaceRootPath: payload.workspaceRootPath,
-      });
-    }
-
-    if (run.signal.aborted) {
-      await this.workspaceChanges.failTurn(payload.session.id, "interrupted");
-      return null;
-    }
-
-    const start = await this.prepareStartContext(
-      payload.session,
-      userMessage,
-      history,
-      persistence,
-    );
-    return this.runtime.sendSessionMessage(
-      {
-        ...payload,
-        content: start.content,
-        attachments: userMessage.attachments,
-      },
-      {
-        ...persistence,
-        history: start.history,
-        contextHandoff: start.contextHandoff,
-        systemSections: start.systemSections,
-        runPolicy: start.runPolicy,
-        postedMessages: start.postedMessages,
-      },
-    );
   }
 
   private async prepareStartContext(
@@ -3886,21 +3535,14 @@ export class CocurdexDaemonService {
       thinkingLevel: payload.thinkingLevel,
       createdAt: userMessage.createdAt,
     });
-    const queued = this.queuedFollowUps.get(payload.session.id) ?? [];
-    queued.push({
-      payload: {
+    this.queuedFollowUps.append(
+      {
         ...payload,
         messageId: userMessage.id,
         createdAt: userMessage.createdAt,
-        delivery: "start-new-run",
       },
-    });
-    queued.sort((left, right) =>
-      (left.payload.createdAt ?? "").localeCompare(
-        right.payload.createdAt ?? "",
-      ),
+      { chronological: true },
     );
-    this.queuedFollowUps.set(payload.session.id, queued);
     this.events.emit("daemon.event", {
       type: "data.changed",
       areas: ["agent"],

@@ -1,21 +1,4 @@
 #!/usr/bin/env node
-/*
- * Theme parity lint.
- *
- * The desktop app switches themes by mirroring the resolved theme to
- * `<html data-theme="dark">`, backed by paired preset variable blocks in
- * apps/desktop/src/styles/theme-preset.css:
- *
- *   :root  — light theme
- *   [data-theme="dark"]  — dark theme overrides
- *
- * Every variable defined in one block must be defined in the other so that
- * switching themes does not leave a variable resolving to the wrong color or
- * undefined. This script parses both blocks and reports variables that exist
- * in one but not the other.
- *
- * Run with `pnpm lint:theme-parity` from the repo root.
- */
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,19 +9,11 @@ const THEME_FILE = resolve(
   "apps/desktop/src/styles/theme-preset.css",
 );
 
-/*
- * A small allow-list for variables that are intentionally one-theme-only
- * (e.g. dark theme uses a token that the light theme doesn't need because the
- * light look-and-feel composes differently). Add a brief justification.
- */
 const ALLOW_DARK_ONLY = new Set([
-  // Dark-mode selection bubble has its own color treatment; light theme reuses
-  // the regular bubble surface instead.
   "--editor-selection-bubble-border",
   "--editor-selection-bubble-bg",
   "--editor-selection-bubble-fg",
   "--editor-selection-bubble-kbd",
-  // File-tree active icon color only meaningful in the dark gold-on-dark look.
   "--editor-file-icon-active",
 ]);
 const ALLOW_LIGHT_ONLY = new Set();
@@ -46,8 +21,6 @@ const DARK_SELECTOR = '[data-theme="dark"]';
 
 function parseBlocks(source) {
   const blocks = [];
-  // Match `:root` or `[data-theme="dark"]` followed by `{ ... }`. CSS variable blocks are
-  // flat (no nesting in this file), so a non-greedy match is sufficient.
   const blockPattern = /(:root|\[data-theme="dark"\])\s*\{([^}]*)\}/g;
   for (
     let match = blockPattern.exec(source);

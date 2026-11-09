@@ -763,8 +763,6 @@ describe("createPiSdkAdapter", () => {
     });
 
     expect(message.content).toBe("recovered");
-    // onProviderSessionUpdate is wired as type:"error" in the test harness;
-    // assert no turn-level error event was emitted for the recovered turn.
     expect(
       events.some(
         (event) => event.type === "error" && event.message === "transient 429",
@@ -829,8 +827,6 @@ describe("createPiSdkAdapter", () => {
     expect(new Set(completed.map((event) => event.message.id)).size).toBe(2);
     expect(finalMessage.content).toBe("turn two");
 
-    // The turn-one message must be completed before its tool call starts,
-    // and turn two must only complete after the tool call finished.
     const firstCompletedIndex = events.findIndex(
       (event) => event.type === "message.completed",
     );

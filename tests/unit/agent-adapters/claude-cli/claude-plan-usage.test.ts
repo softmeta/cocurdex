@@ -12,7 +12,6 @@ describe("mapClaudePlanUsage", () => {
         updatedAt,
       ),
     ).toBeNull();
-    // Available but empty: an API-key session must not render a quota section.
     expect(
       mapClaudePlanUsage(
         { rate_limits_available: true, rate_limits: {} },

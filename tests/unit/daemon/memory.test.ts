@@ -111,6 +111,16 @@ describe("memory settings", () => {
 });
 
 describe("memory secret redaction", () => {
+  it("redacts each complete key block and preserves a trailing unmatched marker", () => {
+    const begin = "-----BEGIN PRIVATE KEY-----";
+    const end = "-----END PRIVATE KEY-----";
+    expect(
+      redactMemorySecrets(
+        `${begin}\n${begin}\nsecret\n${end} and ${begin}x${end}\n${begin}`,
+      ),
+    ).toBe(`[redacted] and [redacted]\n${begin}`);
+  });
+
   it("removes common credentials before automatic capture", () => {
     const text = [
       "key sk-abcdefghijklmnopqrstuvwx",

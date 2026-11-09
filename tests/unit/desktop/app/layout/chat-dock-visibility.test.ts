@@ -69,8 +69,6 @@ describe("nextChatDockVisibilityOnToggle", () => {
   });
 
   it("restores the FAB after a one-shot hide from the close icon", () => {
-    // Prefer restoring the launcher over jumping straight into open chat
-    // (which would keep float/pinned layout and look like a surprise pin).
     expect(nextChatDockVisibilityOnToggle("hidden", false)).toBe("collapsed");
   });
 

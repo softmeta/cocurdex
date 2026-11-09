@@ -4,10 +4,6 @@ import type {
   AgentContextBreakdownRecord,
 } from "@cocurdex/shared";
 
-// The Claude Agent SDK's `getContextUsage()` response, narrowed to the fields
-// Cocurdex renders. Declared structurally rather than imported so the mapper
-// stays testable and survives optional fields disappearing between SDK
-// releases — every section below is already optional upstream.
 export interface ClaudeContextUsageResponse {
   categories?: { name: string; tokens: number }[];
   totalTokens?: number;
@@ -58,12 +54,6 @@ function toGroup(
   };
 }
 
-/**
- * Map the SDK's context-usage response into the transport record.
- *
- * Returns `null` when the response carries no window totals — an agent that
- * cannot report its context composition should not push an empty panel.
- */
 export function mapClaudeContextBreakdown(
   response: ClaudeContextUsageResponse | null | undefined,
   updatedAt: string,
@@ -132,7 +122,6 @@ export function mapClaudeContextBreakdown(
         tokens: section.tokens,
       })),
     ),
-    // Slash commands are reported as counts only — no per-command rows.
     toGroup("slashCommands", [], {
       tokens: response.slashCommands?.tokens ?? 0,
       summary: response.slashCommands

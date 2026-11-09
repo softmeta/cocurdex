@@ -14,7 +14,6 @@ export function turnChangeSetLookupKey(changeSet: TurnChangeSet) {
 export const turnChangeSetsByMessageAtom = atom<Record<string, TurnChangeSet>>(
   {},
 );
-/** Undo outcomes survive card remounts (collapse, scroll, session switch). */
 export const undoResultsByChangeSetAtom = atom<
   Record<string, UndoTurnChangesResult>
 >({});
@@ -26,8 +25,6 @@ export const loadTurnChangeSetsAtom = atom(
     set,
     input: { sessionId: string; changeSets: Record<string, TurnChangeSet> },
   ) => {
-    // Replace this session's entries instead of merging: the map is global and
-    // would otherwise keep growing with every session ever opened.
     const next = Object.fromEntries(
       Object.entries(get(turnChangeSetsByMessageAtom)).filter(
         ([, changeSet]) => changeSet.sessionId !== input.sessionId,
@@ -45,7 +42,6 @@ export const applyTurnChangesEventAtom = atom(
     }
     const changeSet = event.changeSet;
     const key = turnChangeSetLookupKey(changeSet);
-    // In-progress sets are not rendered, so there is nothing to store yet.
     if (changeSet.status === "collecting" || !key) {
       return;
     }
@@ -53,8 +49,6 @@ export const applyTurnChangesEventAtom = atom(
     if (changeSet.messageId && changeSet.userMessageId) {
       delete next[changeSet.userMessageId];
     }
-    // A discarded turn (nothing changed) arrives with no files: drop the row
-    // instead of keeping a placeholder every message would have to render.
     if (changeSet.files.length === 0) {
       delete next[key];
     }
@@ -62,10 +56,6 @@ export const applyTurnChangesEventAtom = atom(
   },
 );
 
-/**
- * Subscribes to one message's change set only — reading the whole map would
- * re-render every message in the transcript on each update.
- */
 export function useTurnChangeSet(messageId: string) {
   const changeSetAtom = useMemo(
     () =>

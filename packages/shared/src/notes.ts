@@ -8,7 +8,6 @@ export function isNoteConflictError(error: unknown): boolean {
   );
 }
 
-/** Lightweight tree projection. Note bodies are loaded separately. */
 export interface NoteSummary {
   id: string;
   parentId: string | null;

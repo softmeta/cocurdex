@@ -125,6 +125,7 @@ export function useAgentActions(
         icon: ACTION_ICONS[action],
         group: action === "delete" ? "remove" : "organize",
         destructive: action === "delete",
+        presents: action === "edit" || action === "delete",
         onPress: agentHandlers[action],
       })),
     });

@@ -3,9 +3,6 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Textarea } from "@/components/ui";
 
-// Free-text revision notes for a parked plan. Submitting with an empty body is
-// deliberate and supported: the agent then asks the user what to change, so the
-// UI does not need to invent a placeholder message.
 export function PlanApprovalFeedback({
   disabled,
   onCancel,

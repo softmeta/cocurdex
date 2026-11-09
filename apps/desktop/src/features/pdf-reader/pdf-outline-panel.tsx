@@ -151,8 +151,6 @@ interface OutlineItemProps {
   onSelectPage(pageNumber: number): void;
 }
 
-// Per-level indent + base inset. Applied once on the row so parent/leaf text
-// share the same start edge; the chevron column is always reserved below.
 const OUTLINE_INDENT_PER_DEPTH_PX = 12;
 const OUTLINE_BASE_INSET_PX = 4;
 function OutlineItem({
@@ -172,8 +170,6 @@ function OutlineItem({
     locateActive && isActive,
   );
 
-  // Indent the whole row (chevron + label) once. Leaf nodes keep an empty
-  // chevron-sized spacer so their title lines up with expandable siblings.
   const rowStyle = {
     paddingInlineStart: `${depth * OUTLINE_INDENT_PER_DEPTH_PX + OUTLINE_BASE_INSET_PX}px`,
   };
@@ -244,8 +240,6 @@ interface LabelProps {
   onSelectPage(pageNumber: number): void;
 }
 
-// Linked entries render as a button that jumps to the page; unresolved entries
-// render as plain, non-interactive text.
 function Label({ node, isActive, onSelectPage }: LabelProps) {
   const className = cn(
     "block w-full truncate rounded-control py-1 ps-0.5 pe-2 text-start",

@@ -15,8 +15,6 @@ function getSystemPrefersDark() {
 export function useSystemPrefersDark(
   onChange?: (prefersDark: boolean) => void,
 ) {
-  // Memoize so `useSyncExternalStore` doesn't tear down and re-add the
-  // matchMedia listener on every render. Caller must pass a stable `onChange`.
   const subscribe = useCallback(
     (notify: () => void) => {
       if (
@@ -47,8 +45,6 @@ export function useSystemLocale(
   enabled: boolean,
   onChange?: (locale: SupportedLocale) => void,
 ) {
-  // Memoize so the `languagechange` listener isn't re-added every render.
-  // Caller must pass a stable `onChange`.
   const subscribe = useCallback(
     (notify: () => void) => {
       if (!enabled || typeof window === "undefined") {

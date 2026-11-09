@@ -16,10 +16,6 @@ import {
   sortWorkspacesBySortOrder,
 } from "./workspace-order";
 
-// Stamp the moment a workspace becomes active and persist it. "Opening" a
-// workspace is an event (select / add / bootstrap-restore), so the IPC write
-// lives in those write atoms rather than in a render effect that mirrors the
-// active-workspace object.
 function persistWorkspaceOpened(workspace: WorkspaceRecord) {
   void desktopApi.saveWorkspace(workspace).catch((error) => {
     console.error("[workspaces] saveWorkspace failed", error);
@@ -40,10 +36,6 @@ export function withoutChatWorkspace(workspaces: WorkspaceRecord[]) {
   return workspaces.filter((workspace) => !isFormWorkspaceId(workspace.id));
 }
 export const activeWorkspaceIdAtom = atom<string | null>(null);
-// The most recent workspace the user actually selected. Unlike
-// activeWorkspaceId, it is NOT cleared when the user drops to chat mode (picks
-// "No workspace"), so the top-level "new session" entry can re-enter that
-// workspace by default. Stays null only for users who have never had a workspace.
 export const lastSelectedWorkspaceIdAtom = atom<string | null>(null);
 export const COLLAPSED_WORKSPACE_IDS_STORAGE_KEY =
   "cocurdex.sidebar.collapsed-workspace-ids";
@@ -165,17 +157,10 @@ export const addWorkspaceAtom = atom(
 
 export type OpenWorkspaceByPathResult = {
   workspace: WorkspaceRecord;
-  /** True when active workspace changed (caller should clear foreign session UI). */
   didSwitchWorkspace: boolean;
   reusedUnderDifferentName: boolean;
 };
 
-/**
- * Open a workspace by absolute directory path (CLI `cocurdex .` / folder dialog).
- * Reuses the workspace whose primary folder is that path; otherwise creates one,
- * even when another workspace lists the path as a secondary folder.
- * Always activates the workspace and expands its session list in the sidebar.
- */
 export const openWorkspaceByPathAtom = atom(
   null,
   (get, set, rootPath: string): OpenWorkspaceByPathResult => {

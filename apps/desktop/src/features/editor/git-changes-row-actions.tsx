@@ -19,9 +19,6 @@ interface GitChangeRowActionsProps {
   onDiscard: (path: string) => void;
 }
 
-// Trailing controls for a changed-file header: a stage checkbox (always shown,
-// since it doubles as the staged-state indicator) and a hover-revealed discard
-// button guarded by a confirmation dialog.
 export function GitChangeRowActions({
   path,
   stagedState,

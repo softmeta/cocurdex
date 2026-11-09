@@ -19,7 +19,6 @@ export interface AppUpdateState {
   currentVersion: string;
   dismissedVersion: string | null;
   downloadPercent: number | null;
-  errorMessage: string | null;
   releaseNotesUrl: string | null;
   status: AppUpdateStatus;
 }
@@ -36,7 +35,7 @@ export type AppUpdateEvent =
       version: string;
     }
   | { channel: AppUpdateChannel; type: "set-channel" }
-  | { message: string; type: "error" }
+  | { type: "error" }
   | { type: "checking" }
   | { type: "dismiss" }
   | { type: "not-available" }
@@ -55,7 +54,6 @@ export function createInitialAppUpdateState(input: {
     currentVersion: input.currentVersion,
     dismissedVersion: null,
     downloadPercent: null,
-    errorMessage: null,
     releaseNotesUrl: null,
     status: input.packaged ? "idle" : "unsupported",
   };
@@ -80,10 +78,7 @@ export function appUpdateEventForError(error: unknown): AppUpdateEvent {
   if (errorCode(error) === UNPUBLISHED_RELEASE_ERROR_CODE) {
     return { type: "not-available" };
   }
-  return {
-    type: "error",
-    message: error instanceof Error ? error.message : String(error),
-  };
+  return { type: "error" };
 }
 
 export function githubReleaseNotesUrl(version: string): string {
@@ -112,7 +107,6 @@ export function reduceAppUpdateState(
       channel: event.channel,
       dismissedVersion: null,
       downloadPercent: null,
-      errorMessage: null,
       releaseNotesUrl: null,
       status: state.status === "unsupported" ? "unsupported" : "idle",
     };
@@ -130,7 +124,6 @@ export function reduceAppUpdateState(
       return {
         ...state,
         downloadPercent: null,
-        errorMessage: null,
         status: "checking",
       };
     case "available":
@@ -141,7 +134,6 @@ export function reduceAppUpdateState(
         ...state,
         availableVersion: event.version,
         downloadPercent: 0,
-        errorMessage: null,
         releaseNotesUrl: event.releaseNotesUrl,
         status: "downloading",
       };
@@ -167,7 +159,6 @@ export function reduceAppUpdateState(
         ...state,
         availableVersion: event.version,
         downloadPercent: null,
-        errorMessage: null,
         releaseNotesUrl: event.releaseNotesUrl,
         status: "ready",
       };
@@ -179,7 +170,6 @@ export function reduceAppUpdateState(
         ...state,
         availableVersion: null,
         downloadPercent: null,
-        errorMessage: null,
         releaseNotesUrl: null,
         status: "idle",
       };
@@ -190,7 +180,6 @@ export function reduceAppUpdateState(
       return {
         ...state,
         downloadPercent: null,
-        errorMessage: event.message,
         status: "error",
       };
     case "dismiss":

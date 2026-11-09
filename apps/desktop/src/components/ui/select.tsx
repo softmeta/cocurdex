@@ -32,13 +32,10 @@ function SelectTrigger({
   className,
   size = "default",
   children,
-  // When `render` swaps the host (e.g. AppDropdownTriggerButton), skip the
-  // form-field chrome so the custom trigger owns layout and borders.
   showIcon = true,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
   size?: "sm" | "default";
-  /** Built-in chevron; set false when the custom `render` host draws its own. */
   showIcon?: boolean;
 }) {
   const hasCustomRender = props.render != null;
@@ -67,11 +64,6 @@ function SelectTrigger({
 }
 
 type SelectContentProps = React.ComponentProps<typeof SelectPrimitive.Popup> & {
-  /**
-   * Radix-style position prop. `popper` (default) anchors to the trigger edge
-   * (`alignItemWithTrigger={false}`). `item-aligned` lines the selected item
-   * up with the trigger.
-   */
   position?: "item-aligned" | "popper";
   align?: React.ComponentProps<typeof SelectPrimitive.Positioner>["align"];
   side?: React.ComponentProps<typeof SelectPrimitive.Positioner>["side"];
@@ -103,9 +95,6 @@ function SelectContent({
           data-slot="select-content"
           data-align-trigger={alignItemWithTrigger}
           className={cn(
-            // `w-max` is required (not just auto): in item-aligned mode the
-            // Positioner goes fixed inset-0, so an auto-width popup would
-            // stretch to the full viewport.
             "relative z-50 max-h-(--available-height) w-max origin-(--transform-origin) overflow-x-hidden overflow-y-auto duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 rounded-card bg-popover text-popover-foreground shadow-menu ring-1 ring-menu-ring min-w-(--anchor-width) max-w-[min(var(--popup-max-width,420px),calc(100vw-2rem))]",
             !alignItemWithTrigger &&
               "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 rtl:data-[side=left]:translate-x-1 data-[side=right]:translate-x-1 rtl:data-[side=right]:-translate-x-1 data-[side=top]:-translate-y-1",
@@ -144,8 +133,6 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        // Base UI ItemText is a div (not a span). Give it flex so icon +
-        // label + trailing stay on one row; do not rely on *:[span] hacks.
         "relative flex w-full cursor-default items-center gap-1.5 rounded-md py-1 pe-8 ps-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
@@ -166,7 +153,6 @@ function SelectItem({
   );
 }
 
-// Base UI's Select has no Separator primitive — render a plain divider.
 function SelectSeparator({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div

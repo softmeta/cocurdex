@@ -1,10 +1,5 @@
 import type { AgentThinkingLevel } from "@cocurdex/shared";
 
-// `session/new` reports the model catalog in a field the ACP TypeScript SDK
-// does not type yet (models + per-model `_meta`). Grok Build carries context
-// window and the selectable reasoning efforts there, so we read the shape
-// defensively.
-/** One reasoning level exactly as the agent describes it. */
 export interface AcpReasoningEffort {
   value: string;
   label: string | null;
@@ -18,7 +13,6 @@ export interface AcpSessionModel {
   contextWindow: number | null;
   defaultReasoningEffort: string | null;
   reasoningEfforts: AcpReasoningEffort[];
-  /** Session "speed" axis values (Devin's `standard`/`fast`), per model. */
   defaultSpeed: string | null;
   speedOptions: AcpReasoningEffort[];
 }
@@ -48,9 +42,6 @@ function readEffortEntry(
   }
 
   seen.add(value);
-  // Label and description are the agent's own copy; keep them so the picker
-  // can show its vocabulary instead of ours. Config-option choices spell the
-  // label `name` while model metadata spells it `label`.
   return [
     {
       value,
@@ -100,10 +91,6 @@ function readModel(entry: unknown): AcpSessionModel | null {
   };
 }
 
-// The same model-state shape reaches us from two places: `session/new` puts it
-// on `models`, while `initialize` reports the bundled snapshot under
-// `_meta.modelState`. Grok's live catalog is `x.ai/models/list`, not this
-// initialize field.
 function readModelStateField(response: unknown): unknown {
   if (typeof response !== "object" || response === null) {
     return null;
@@ -149,9 +136,6 @@ function isModelConfigOption(record: Record<string, unknown>) {
   return id === "model" || category === "model";
 }
 
-// Agents that keep effort or speed off the model metadata expose each as a
-// session config option instead (Devin's `thought_level`, `speed`). The keys
-// normalize the id/category spellings agents use for those axes.
 const EFFORT_CONFIG_OPTION_KEYS = new Set([
   "effort",
   "reasoning",
@@ -200,7 +184,6 @@ function readEffortConfigOptions(raw: unknown): AcpReasoningEffort[] {
   if (!Array.isArray(raw)) {
     return [];
   }
-  // Config options may nest their choices under a `group` entry's options.
   const entries = raw.flatMap((entry) => {
     if (typeof entry !== "object" || entry === null) {
       return [];
@@ -263,8 +246,6 @@ export function isBaselineAcpSpeedValue(value: string): boolean {
   return BASELINE_SPEED_VALUES.has(normalizeConfigKey(value));
 }
 
-// The value a speed option rests at when nothing is selected — Devin's
-// "standard". Everything else becomes a named tier in the picker.
 export function baselineAcpSpeedValue(
   config: AcpSessionSelectConfig,
 ): string | null {
@@ -281,9 +262,6 @@ function readModelStateFromConfigOptions(
   if (!Array.isArray(configOptions)) {
     return null;
   }
-  // Session-scoped effort/speed options describe only the session's current
-  // model — Devin adds and removes them as the model changes, so they must
-  // not be merged onto every advertised model.
   const effort = readAcpSessionEffortConfig(response);
   const speed = readAcpSessionSpeedConfig(response);
   for (const option of configOptions) {
@@ -367,9 +345,6 @@ export function readAcpSessionModelState(
   return null;
 }
 
-// Only apply a requested model when the agent advertised it in its own ACP
-// catalog. This keeps the adapter from forwarding a stale or foreign provider
-// selection to a third-party runtime.
 export function resolveAcpModelId(
   state: AcpSessionModelState | null,
   requestedModelId: string | null | undefined,
@@ -383,15 +358,10 @@ export function resolveAcpModelId(
     : null;
 }
 
-// Cocurdex's neutral "off" maps to the agent's explicit "none" effort; every
-// other level shares the agent vocabulary (minimal/low/medium/high/xhigh).
 export function toAcpReasoningEffort(level: AgentThinkingLevel): string {
   return level === "off" ? "none" : level;
 }
 
-// Returns the effort to send for `modelId`, or null when the model does not
-// advertise it — sending an unsupported effort is silently dropped by the agent
-// and would leave our UI claiming a level that never applied.
 export function resolveAcpReasoningEffort(
   state: AcpSessionModelState | null,
   modelId: string | null,

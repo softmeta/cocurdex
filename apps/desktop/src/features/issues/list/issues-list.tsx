@@ -39,7 +39,6 @@ export function IssuesList({
   onUpdateCardFields,
 }: IssuesListProps) {
   const { t } = useTranslation("issues");
-  // Collapsed groups only; open by default like Linear.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const titleOf = useGroupColumnTitle();
@@ -59,7 +58,6 @@ export function IssuesList({
 
   return (
     <ScrollArea className="min-h-0 flex-1">
-      {/* Match board canvas inset and sidebar row rhythm. */}
       <div className="flex flex-col gap-3 px-4 py-3">
         {visible.map((column) => {
           const issues = issuesByColumn.get(column.id) ?? [];
@@ -124,8 +122,6 @@ export function IssuesList({
                 </TitlebarIconButton>
               </div>
 
-              {/* Skip empty content: open panels still had padding and caused a
-                  height jump when collapsing groups with 0 issues. */}
               {issues.length > 0 ? (
                 <CollapsibleContent>
                   <div className="mt-0.5 flex flex-col gap-0.5 ps-2">

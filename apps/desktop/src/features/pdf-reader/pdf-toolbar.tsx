@@ -33,7 +33,6 @@ interface PdfToolbarProps {
   scale: number;
   canZoomIn: boolean;
   canZoomOut: boolean;
-  // Whether the document exposes an outline; the toggle is hidden otherwise.
   hasOutline: boolean;
   isOutlineOpen: boolean;
   isMarksOpen: boolean;

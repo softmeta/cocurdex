@@ -8,8 +8,6 @@ import {
 import { TitlebarIconButton } from "./titlebar-icon-button";
 import { useChatDockViewportWidth } from "./use-chat-dock-viewport";
 
-// Pin + close (size-6 each, gap-1), the overlay offset, and a gap to the
-// trailing pane-header controls. Detaching lives in the session menu.
 export const CHAT_DOCK_ACTIONS_INSET = 60;
 
 export function ChatDockActions({

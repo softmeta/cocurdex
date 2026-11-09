@@ -7,7 +7,6 @@ import {
   UnsafeWorkspacePathError,
 } from "./path-safety";
 
-/** Mode used when restoring a file that does not currently exist. */
 export const DEFAULT_RESTORED_FILE_MODE = 0o644;
 
 export async function writeFileAtomically(
@@ -104,10 +103,6 @@ export async function removeWorkspaceFile(
 }
 
 async function replaceFile(tempPath: string, targetPath: string) {
-  // libuv maps rename to the platform replacement primitive. If Windows
-  // refuses replacement because another process has the target open, fail
-  // without first moving the original out of the way; recovery can then run
-  // against an intact workspace.
   await rename(tempPath, targetPath);
 }
 

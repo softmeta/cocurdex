@@ -26,8 +26,6 @@ interface ActiveReasoningMessage {
   lastSummaryIndex: number;
 }
 
-// Deltas that arrive without an item id share one slot: nothing else can tell
-// them apart, so they stay in the single stream the old behaviour assumed.
 const ANONYMOUS_ASSISTANT_ITEM_ID = "";
 
 interface CodexTurnStreamOptions {
@@ -36,17 +34,11 @@ interface CodexTurnStreamOptions {
   transformToolCall?(toolCall: AgentToolCallRecord): AgentToolCallRecord | null;
 }
 
-// Per-turn streaming state for one Codex session: the in-flight assistant
-// message, reasoning summaries (keyed by reasoning item id), and tool calls
-// that receive incremental output deltas.
 export function createCodexTurnStream({
   sessionId,
   onEvent,
   transformToolCall = (toolCall) => toolCall,
 }: CodexTurnStreamOptions) {
-  // Assistant messages usually complete on `turn/item/completed`, well before
-  // the turn ends, so the turn summary tracks the last one completed rather
-  // than whatever is still streaming at `finishTurn`.
   let lastCompletedAssistantMessageId: string | null = null;
   let lastUsage: AgentUsageRecord | null = null;
   let latestContextTokens: number | null = null;
@@ -56,8 +48,6 @@ export function createCodexTurnStream({
     emit: onEvent,
   });
   const activeToolCalls = new Map<string, AgentToolCallRecord>();
-  // Keyed by item id like the reasoning summaries: a turn can stream more than
-  // one assistant message, and a single active slot would splice them together.
   const activeAssistantMessages = new Map<string, ActiveAssistantMessage>();
   const activeReasoningMessages = new Map<string, ActiveReasoningMessage>();
 
@@ -76,8 +66,6 @@ export function createCodexTurnStream({
         ? activeAssistantMessages.get(ANONYMOUS_ASSISTANT_ITEM_ID)
         : undefined;
     if (anonymous) {
-      // Deltas streamed before the item id was known belong to this item.
-      // Re-key them instead of leaving a duplicate to flush at turn end.
       activeAssistantMessages.delete(ANONYMOUS_ASSISTANT_ITEM_ID);
       activeAssistantMessages.set(itemId, anonymous);
       return anonymous;
@@ -167,9 +155,6 @@ export function createCodexTurnStream({
     });
   }
 
-  // item/reasoning/summaryTextDelta params:
-  // { threadId, turnId, itemId, delta, summaryIndex }. A turn may carry
-  // multiple summary sections; separate them with a blank line.
   function handleReasoningSummaryDelta(params: unknown) {
     if (
       !isRecord(params) ||
@@ -211,8 +196,6 @@ export function createCodexTurnStream({
     });
   }
 
-  // item/commandExecution/outputDelta and item/fileChange/outputDelta both
-  // carry { threadId, turnId, itemId, delta }.
   function handleToolOutputDelta(params: unknown) {
     if (
       !isRecord(params) ||
@@ -238,9 +221,6 @@ export function createCodexTurnStream({
     onEvent({ type: "tool.started", sessionId, toolCall: updated });
   }
 
-  // `total` is cumulative for the thread, while `last` is the latest response
-  // delta and the active context snapshot. Cocurdex accumulates deltas itself,
-  // so forwarding `total` would double-count earlier responses.
   function handleTokenUsage(params: unknown) {
     if (!isRecord(params) || !isRecord(params.tokenUsage)) {
       return;
@@ -275,8 +255,6 @@ export function createCodexTurnStream({
         ? { contextWindowSize: modelContextWindow }
         : {}),
     };
-    // Kept so the turn summary can report the last usage snapshot alongside
-    // the turn duration.
     lastUsage = usage;
     latestContextTokens = usage.contextTokensUsed ?? latestContextTokens;
     onEvent({
@@ -292,8 +270,6 @@ export function createCodexTurnStream({
       ensureAssistantMessage(item.id);
 
       if (isCompleted) {
-        // The completed item carries the authoritative text, which may differ
-        // from the concatenated deltas (trailing edits, dropped chunks).
         completeAssistantMessage(item.id, item.text);
       }
       return;
@@ -347,10 +323,6 @@ export function createCodexTurnStream({
     });
   }
 
-  // Flushes in-flight messages at turn boundaries so the next turn streams
-  // into fresh records.
-  // Returns what the caller needs to report the finished turn: the assistant
-  // message the stats attach to, plus the last usage snapshot of the turn.
   function finishTurn(): {
     messageId: string | null;
     usage: AgentUsageRecord | null;

@@ -3,7 +3,6 @@ import type { PdfHighlight, PdfHighlightColor } from "./pdf-annotations";
 export const PDF_HIGHLIGHT_LAYER_CLASS = "pdf-highlight-layer";
 export const PDF_HIGHLIGHT_RECT_CLASS = "pdf-highlight-rect";
 
-// Shared fill colors for page overlays and the selection toolbar swatches.
 export const PDF_HIGHLIGHT_COLOR_CSS: Record<PdfHighlightColor, string> = {
   yellow: "rgba(250, 204, 21, 0.45)",
   green: "rgba(74, 222, 128, 0.45)",
@@ -11,7 +10,6 @@ export const PDF_HIGHLIGHT_COLOR_CSS: Record<PdfHighlightColor, string> = {
   pink: "rgba(244, 114, 182, 0.45)",
 };
 
-// Solid swatch chips (toolbar / marks list) — slightly more opaque for contrast.
 export const PDF_HIGHLIGHT_SWATCH_CSS: Record<PdfHighlightColor, string> = {
   yellow: "rgb(250, 204, 21)",
   green: "rgb(74, 222, 128)",
@@ -46,7 +44,6 @@ function paintPageHighlights(
       const rect = document.createElement("div");
       rect.className = PDF_HIGHLIGHT_RECT_CLASS;
       rect.dataset.highlightId = highlight.id;
-      // Round to avoid float noise in inline styles (e.g. 9.999…%).
       rect.style.left = `${roundPercent(quad.x1 * 100)}%`;
       rect.style.top = `${roundPercent(quad.y1 * 100)}%`;
       rect.style.width = `${roundPercent((quad.x2 - quad.x1) * 100)}%`;
@@ -56,9 +53,6 @@ function paintPageHighlights(
     }
   }
 
-  // Paint above the text layer so DOM hit-testing (temporary pointer-events)
-  // samples the visible highlight. Default CSS keeps pointer-events: none so
-  // left-drag text selection is unaffected.
   pageElement.appendChild(layer);
 }
 
@@ -71,8 +65,6 @@ function findPageElement(
   );
 }
 
-// pdf.js drops unknown page children when it re-renders a page, so repaint
-// just that page from its `pagerendered` event.
 export function paintPdfPageHighlights(
   viewerRoot: HTMLElement | null | undefined,
   pageNumber: number,
@@ -88,8 +80,6 @@ export function paintPdfPageHighlights(
   );
 }
 
-// Repaint after the highlight list changes, touching only pages that have or
-// had highlights instead of every page in the document.
 export function paintPdfHighlights(
   viewerRoot: HTMLElement | null | undefined,
   highlights: readonly PdfHighlight[],

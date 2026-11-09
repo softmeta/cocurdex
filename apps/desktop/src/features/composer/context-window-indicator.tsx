@@ -63,8 +63,6 @@ function formatModelLabel(modelName: string, providerName?: string | null) {
     : modelName;
 }
 
-// The ring warns on context pressure only; plan quota stays neutral so it never
-// turns the footer into a spend alarm.
 function getContextRingToneClassName(percent: number | null) {
   if (percent == null) {
     return "text-chat-fg-secondary";
@@ -78,10 +76,6 @@ function getContextRingToneClassName(percent: number | null) {
   return "text-chat-fg-secondary";
 }
 
-// Presentational meter shared by agent mode (ContextWindowIndicator) and chat
-// mode (ConversationContextMeter): an optional model label plus a context
-// usage ring against contextLimit. `modelLabel` is omitted when the caller
-// already renders the model separately (e.g. an interactive picker).
 export function ContextUsageMeter({
   modelLabel,
   used,
@@ -97,12 +91,8 @@ export function ContextUsageMeter({
   contextLimit: number | null;
   contextUnavailable?: boolean;
   rateLimits?: AgentRateLimitsRecord;
-  // Reported only by agents that can see how the window is spent (Claude
-  // Agent); the panel drops the composition sections without it.
   breakdown?: AgentContextBreakdownRecord;
   layout?: "inline" | "split";
-  // Left-cluster content immediately after the model label in split layout
-  // (e.g. the active git branch). Must stay left of the context ring.
   afterModel?: ReactNode;
 }) {
   const { t } = useTranslation("agent");
@@ -122,12 +112,6 @@ export function ContextUsageMeter({
   const hasUsageContent = Boolean(
     rateLimits || (usageLabel && (percent != null || contextUnavailable)),
   );
-  // The ring is the only footer affordance for context, quota and composition,
-  // so it also renders when usage is unknown (value 0) as long as quota exists.
-  // The ring opens the usage panel for every agent — window meter always, plan
-  // quota and window composition when the agent reports them. The panel must
-  // open from a real PopoverTrigger: opening it from a plain onClick would let
-  // Base UI read the same press as `outside-press` and close it again.
   const usageContent = hasUsageContent ? (
     <Popover>
       <PopoverTrigger asChild>
@@ -201,10 +185,6 @@ export function ContextUsageMeter({
   );
 }
 
-// Shows the active session's model label, token usage, and context usage ring
-// against the configured contextLimit. Renders nothing when there is no
-// active session — agents that don't emit usage simply show the model name
-// with "—" for tokens until the first `usage.updated` arrives.
 export function ContextWindowIndicator({
   footer,
   layout = "inline",
@@ -323,9 +303,7 @@ export function ContextWindowIndicator({
     }
 
     void loadProviderModelOptions(providerModelCache, session.agentType).catch(
-      () => {
-        // Keep the snapshot/settings fallback when discovery is unavailable.
-      },
+      () => {},
     );
   });
   void providerModelCacheVersion;
@@ -343,12 +321,6 @@ export function ContextWindowIndicator({
     ? `${snapshot.providerId}::${snapshot.modelId}`
     : "";
 
-  // Fall back to the agent label so the footer always reflects what is in
-  // play — sessions created before the providerSnapshot field was wired (or
-  // sessions using Claude Code's default CLI auth without an explicit
-  // provider pick) have a null snapshot but are still meaningful to show.
-  // Single-provider adapter catalogs hide the provider name; multi-provider
-  // ones (OpenCode) keep it so "anthropic / opus" stays readable.
   const ownsModelCatalog =
     isAcpRegistryAgentId(session.agentType) ||
     session.agentType === "claude-agent" ||
@@ -398,7 +370,6 @@ export function ContextWindowIndicator({
         snapshot?.thinkingLevel,
       )
     : null;
-  // Agents that name their own levels (Grok Build) win over our level names.
   const reportedEffortLabel = snapshot?.supportedReasoningEfforts?.find(
     (option) => option.reasoningEffort === explicitEffort,
   )?.label;
@@ -434,9 +405,6 @@ export function ContextWindowIndicator({
     const mode = modes.find((option) => option.id === currentModeId);
     return mode ? sessionModeLabel(session.agentType, mode) : currentModeId;
   })();
-  // Match new-session trigger chips: mode, thinking and permission.
-  // ProviderModelCompoundMenu owns the other active axes, so the model label
-  // below must remain model-only to avoid rendering any value twice.
   const menuTriggerValues: string[] = [];
   if (sessionModeChip) {
     menuTriggerValues.push(sessionModeChip);
@@ -500,9 +468,6 @@ export function ContextWindowIndicator({
     />
   );
   const modelLabel = runtimeMenu;
-  // Grok (and similar ACP agents) are not in the global provider-models table
-  // — their catalog is probed per-agent. Prefer that table when present, then
-  // the session snapshot's modelContextWindow, then any agent-reported size.
   const contextLimit =
     model?.contextLimit ??
     snapshot?.modelContextWindow ??

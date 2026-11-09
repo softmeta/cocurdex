@@ -78,8 +78,6 @@ export interface CollabAgentToolCallItem extends ThreadItemBase {
   >;
 }
 
-// webSearch items carry no status; the lifecycle phase (item/started vs
-// item/completed) is the only progress signal.
 export interface WebSearchItem extends ThreadItemBase {
   type: "webSearch";
   query: string;
@@ -163,9 +161,6 @@ export function createSandboxPolicy(
   payload: CreateAgentSessionPayload,
   permissionMode = payload.session.permissionMode,
 ) {
-  // Codex's own "Full Access" preset is danger-full-access, not a sandboxed
-  // workspace: it may edit files outside the workspace and reach the network.
-  // See codex-rs/utils/approval-presets/src/lib.rs.
   if (permissionMode === "codex-full-access") {
     return { type: "dangerFullAccess" };
   }

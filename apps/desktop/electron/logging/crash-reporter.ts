@@ -2,8 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { crashReporter } from "electron";
 
-// Minimal surface of Electron's crashReporter we depend on, so the starter can
-// be unit-tested without booting Electron.
 export interface CrashReporterApi {
   start(options: Electron.CrashReporterStartOptions): void;
 }
@@ -24,9 +22,6 @@ export interface ProcessGoneSummary {
   fatal: boolean;
 }
 
-// Reasons that indicate the process died unexpectedly and a native minidump is
-// worth investigating. `clean-exit`, `killed` and `memory-eviction` are routine
-// lifecycle events (intentional shutdown / OS memory reclaim), not crashes.
 const FATAL_REASONS = new Set<ProcessGoneReason>([
   "abnormal-exit",
   "crashed",
@@ -46,11 +41,6 @@ export function summarizeProcessGone(details: {
   };
 }
 
-// Start native crash capture as early as possible so renderer/GPU/utility and
-// main-process crashes — including ones that bypass the V8 `uncaughtException`
-// handler, such as the intermittent crash on toggling DevTools — leave a
-// minidump under `app.getPath("crashDumps")`. Reports stay on disk;
-// uploadToServer is disabled because there is no collection endpoint.
 export function startCrashReporter(
   api: CrashReporterApi = crashReporter,
 ): void {
@@ -84,9 +74,7 @@ async function listDumpsIn(directory: string, depth = 0) {
           id: entry.name.replace(/\.dmp$/, ""),
           modifiedAt: stats.mtime.toISOString(),
         });
-      } catch {
-        // Skip dumps that vanish mid-scan.
-      }
+      } catch {}
     } else if (entry.isDirectory() && depth === 0) {
       dumps.push(
         ...(await listDumpsIn(path.join(directory, entry.name), depth + 1)),
@@ -96,8 +84,6 @@ async function listDumpsIn(directory: string, depth = 0) {
   return dumps;
 }
 
-// Inventory only: dump files themselves stay out of diagnostics exports because
-// minidumps contain raw process memory.
 export async function listCrashDumps(
   directory: string,
 ): Promise<CrashDumpDescriptor[]> {

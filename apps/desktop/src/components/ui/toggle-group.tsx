@@ -55,8 +55,6 @@ function ToggleGroup({
   onValueChange,
   ...props
 }: ToggleGroupProps) {
-  // Base UI ToggleGroup is always array-based. Translate the radix-style
-  // `type="single"` API by wrapping/unwrapping the value at the boundary.
   const isSingle = type === "single";
   const wrappedValue =
     value === undefined

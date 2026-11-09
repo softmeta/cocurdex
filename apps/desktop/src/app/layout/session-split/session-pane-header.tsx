@@ -19,7 +19,6 @@ interface SessionPaneHeaderProps {
   paneId: string;
   sessionId?: string | null;
   title: string;
-  /** Chrome owned by the surrounding shell, rendered inside this row. */
   leading?: ReactNode;
   trailing?: ReactNode;
   className?: string;

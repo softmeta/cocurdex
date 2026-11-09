@@ -4,7 +4,6 @@ import { cn } from "@/lib";
 interface AppGitBranchLabelProps {
   branch: string | null | undefined;
   className?: string;
-  /** When set, the label becomes a button (e.g. open the git panel). */
   onClick?(): void;
   "aria-label"?: string;
 }

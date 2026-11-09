@@ -7,16 +7,12 @@ export interface DaemonEventJournalEntry {
 
 export interface DaemonEventJournalReplay {
   entries: DaemonEventJournalEntry[];
-  // True when the requested position cannot be satisfied from the retained
-  // window: the client is behind the oldest retained entry or ahead of this
-  // journal's sequence entirely. Callers must resync authoritative state.
   hasGap: boolean;
 }
 
 export interface DaemonEventJournal {
   record(event: CocurdexDaemonEvent): DaemonEventJournalEntry;
   entriesAfter(afterSeq: number | undefined): DaemonEventJournalReplay;
-  // Latest assigned sequence number; 0 before any event is journaled.
   currentSeq(): number;
 }
 

@@ -92,7 +92,6 @@ describe("discoverInstalledAgentCapabilities", () => {
       { id: "claude-default", risk: "normal" },
       { id: "claude-auto", risk: "elevated" },
     ]);
-    // Versions are normalized to a bare semver so the settings UI can compare them.
     expect(discovered?.installation?.version).toBe("2.1.220");
   });
 

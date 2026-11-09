@@ -5,7 +5,6 @@ import type {
   DaemonResultByMethod,
 } from "@cocurdex/rpc";
 import type { ProviderAuthMethod } from "@cocurdex/shared";
-import { validateSessionId } from "@cocurdex/shared";
 import { importDocImage, locateDocImage } from "./doc-images";
 import {
   checkoutGitBranch,
@@ -27,6 +26,7 @@ import {
 } from "./host-access";
 import { parseDaemonRequest } from "./payloads";
 import type { CocurdexDaemonService } from "./service";
+import { handleSessionRequest, isSessionRequest } from "./session-control";
 import {
   handleSkillRequest,
   isSkillRequest,
@@ -73,6 +73,9 @@ export async function handleDaemonRequest(
     return handleSkillRequest(service, request, context);
   }
   await service.acpRegistry.ready;
+  if (isSessionRequest(request)) {
+    return handleSessionRequest(service, request, context);
+  }
   switch (request.method) {
     case "daemon.status":
       return service.status();
@@ -530,59 +533,28 @@ export async function handleDaemonRequest(
       await service.reportSettingValues(request.params.values);
       return null;
     case "workspace.runWorktreeSetup":
-      return service.runWorktreeSetup(request.params);
+      if (context.principal.kind !== "local") {
+        await service.resolveWorkspaceFilePath(request.params.worktreePath);
+      }
+      return service.worktrees.runWorktreeSetup(request.params);
     case "worktree.settings.get":
-      return service.getWorktreeSettings();
+      return service.worktrees.getWorktreeSettings();
     case "worktree.settings.save":
-      return service.saveWorktreeSettings(request.params);
+      return service.worktrees.saveWorktreeSettings(request.params);
     case "worktree.list":
-      return service.listManagedWorktrees();
+      return service.worktrees.listManagedWorktrees();
     case "worktree.create":
-      return service.createWorktree(request.params);
+      return service.worktrees.createWorktree(request.params);
     case "worktree.remove":
-      return service.removeWorktree(request.params);
-    case "session.list":
-      return service.listSessions();
-    case "session.snapshot":
-      return service.getSessionSnapshot(request.params.sessionId);
-    case "session.executionTree":
-      return service.getSessionExecutionTree(
-        request.params.sessionId,
-        request.params.maxDepth,
-      );
-    case "session.fork":
-      return service.forkSession(request.params);
-    case "session.switchAgent":
-      return service.switchSessionAgent(
-        request.params.sessionId,
-        request.params.agentType,
-      );
-    case "session.contextTransfers":
-      return service.listContextTransfers(request.params.sessionId);
-    case "session.resolveNew":
-      return service.resolveNewSessionDefaults(request.params);
-    case "session.create":
-      return service.createSession(request.params);
-    case "session.configure":
-      return service.saveSessionConfiguration(
-        request.params,
-        context.principal,
-      );
-    case "session.get":
-      return service.getSession(request.params.sessionId);
-    case "session.lastMessage":
-      return service.getLatestSessionReply(request.params.sessionId);
-    case "session.runtimeState":
-      return service.getSessionRuntimeState(request.params.sessionId);
-    case "session.listPeers":
-      return service.peerMessaging.listPeers(request.params.sessionId);
-    case "session.sendPeerMessage":
-      return service.peerMessaging.send(request.params);
-    case "session.setPeerInbound":
-      return service.setSessionPeerInbound(
-        request.params.sessionId,
-        request.params.policy,
-      );
+      if (context.principal.kind !== "local") {
+        await service.resolveWorkspaceFilePath(request.params.worktreePath);
+        if (request.params.workspaceRootPath) {
+          await service.resolveWorkspaceFilePath(
+            request.params.workspaceRootPath,
+          );
+        }
+      }
+      return service.worktrees.removeWorktree(request.params);
     case "team.get":
       return service.team.get(request.params.leadSessionId);
     case "team.create":
@@ -718,92 +690,6 @@ export async function handleDaemonRequest(
     case "codex.logout":
       await logoutCodex();
       return null;
-    case "session.archive":
-      return service.archiveSession(request.params.sessionId);
-    case "session.restore":
-      return service.restoreSession(request.params.sessionId);
-    case "session.archiveMany":
-      return service.archiveSessions(request.params.sessionIds);
-    case "session.restoreMany":
-      return service.restoreSessions(request.params.sessionIds);
-    case "session.listArchived":
-      return service.state.listArchivedSessions();
-    case "session.delete":
-      await service.deleteSession(request.params.sessionId);
-      return null;
-    case "session.updateTitle":
-      return service.updateSessionTitle(request.params);
-    case "session.setPinned":
-      return service.setSessionPinned(request.params);
-    case "session.refineTitle":
-      return service.refineSessionTitle(request.params);
-    case "session.listMessages":
-      validateSessionId(request.params.sessionId);
-      return service.state.listSessionMessages(request.params.sessionId);
-    case "session.listToolCalls":
-      validateSessionId(request.params.sessionId);
-      return service.state.listToolCallSummaries(request.params.sessionId);
-    case "session.listSlashCommands":
-      return service.listSessionSlashCommands(
-        request.params.agentType,
-        request.params.workspaceRootPath,
-      );
-    case "session.send":
-      await service.assertClientAttachmentsAccess(
-        context.principal,
-        request.params.attachments,
-      );
-      return service.sendSessionMessage(request.params);
-    case "session.resumeQueued":
-      return service.resumeQueuedSession(request.params.sessionId);
-    case "session.updateQueued":
-      return service.updateQueuedAgentInput(
-        request.params.sessionId,
-        request.params.messageId,
-        request.params.content,
-      );
-    case "session.deleteQueued":
-      await service.deleteQueuedAgentInput(
-        request.params.sessionId,
-        request.params.messageId,
-      );
-      return null;
-    case "session.steerQueued":
-      return service.steerQueuedAgentInput(
-        request.params.sessionId,
-        request.params.messageId,
-      );
-    case "session.sendQueuedNow":
-      return service.sendQueuedAgentInputNow(
-        request.params.sessionId,
-        request.params.messageId,
-      );
-    case "session.setConfig":
-      return service.setSessionRuntimeConfigOption(
-        request.params.sessionId,
-        request.params.configId,
-        request.params.value,
-      );
-    case "session.setMode":
-      await service.setSessionRuntimeMode(
-        request.params.sessionId,
-        request.params.modeId,
-      );
-      return null;
-    case "session.updateRuntime":
-      return service.updateSessionRuntime(request.params, context.principal);
-    case "session.stop":
-      return service.stopSession(request.params.sessionId);
-    case "session.undoTurnChanges":
-      return service.undoTurnChanges(request.params);
-    case "session.getTurnChangeFile":
-      return service.getTurnChangeFile(request.params);
-    case "session.listTurnChangeSets":
-      return service.listTurnChangeSets(request.params.sessionId);
-    case "session.getTurnChangeDiff":
-      return service.getTurnChangeDiff(request.params);
-    case "session.getToolCallResult":
-      return service.getToolCallResult(request.params);
     case "workflow.list":
       return service.listWorkflowRuns();
     case "workflow.get":
@@ -827,21 +713,6 @@ export async function handleDaemonRequest(
       return service.decideWorkflowGate(request.params);
     case "workflow.cancel":
       return service.cancelWorkflow(request.params.workflowRunId);
-    case "permission.resolve":
-      return service.resolvePermission(
-        request.params.requestId,
-        request.params.optionId,
-      );
-    case "question.resolve":
-      return service.resolveQuestion(
-        request.params.questionId,
-        request.params.answer,
-      );
-    case "planApproval.resolve":
-      return service.resolvePlanApproval(
-        request.params.approvalId,
-        request.params.decision,
-      );
     case "provider.listConfigs":
       return service.providerService.listProviderConfigs();
     case "agent.runLimits.get":

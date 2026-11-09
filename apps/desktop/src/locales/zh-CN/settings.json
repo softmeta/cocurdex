@@ -1511,7 +1511,7 @@
       "checking": "正在检查更新…",
       "downloading": "正在下载版本 {{version}}…",
       "downloadingWithPercent": "正在下载版本 {{version}}… {{percent}}%",
-      "error": "检查更新失败。{{message}}",
+      "error": "检查更新失败，请稍后重试。",
       "ready": "版本 {{version}} 已下载，重启后生效。",
       "unsupported": "此版本已关闭自动更新。",
       "upToDate": "已是最新版本。"

@@ -11,16 +11,12 @@ function clampPage(value: number, totalPages: number): number {
   return Math.min(totalPages, Math.max(1, value));
 }
 
-// Editable page indicator: current page is an input; total is static label.
-// The input is uncontrolled and keyed on `currentPage`, so scrolling remounts it
-// with the new page while in-progress typing is never clobbered by a scroll update.
 export function PdfPageJumpInput({
   currentPage,
   totalPages,
   onGoToPage,
 }: PdfPageJumpInputProps) {
   const { t } = useTranslation("editor");
-  // Size the editable field to the widest page number the document can show.
   const pageFieldCh = Math.max(String(totalPages).length, 1);
 
   const commit = (raw: string, input: HTMLInputElement) => {
@@ -30,7 +26,6 @@ export function PdfPageJumpInput({
       input.value = String(clamped);
       onGoToPage(clamped);
     } else {
-      // Reject non-numeric input by restoring the current page.
       input.value = String(currentPage);
     }
   };

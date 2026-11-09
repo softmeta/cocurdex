@@ -368,7 +368,6 @@ describe("GrokBuildAdapter steering", () => {
       (event) => events.push(event),
     );
 
-    // A turn that never ends: the catalog only moves because Grok pushed.
     const turn = session.sendMessage({ content: "Start", history: [] });
     await vi.waitFor(() => expect(mcpListCalls).toBe(1));
     notifyExt?.("x.ai/mcp/server_status");

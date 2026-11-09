@@ -3,20 +3,6 @@ import type * as React from "react";
 
 import { cn } from "@/lib";
 
-/*
- * Typography primitive.
- *
- * Use this for semantic body / label / heading text instead of authoring
- * ad-hoc font-size + color combinations. The `size` variant maps to the
- * project's named text scale defined in theme-tailwind.css. The `tone`
- * variant covers the most common foreground tokens.
- *
- *   <Text size="meta" tone="muted">Last edited 5m ago</Text>
- *   <Text size="title" weight="semibold" as="h2">Settings</Text>
- *
- * Reach for raw className only when a one-off color or layout truly does not
- * fit the scale — keep those rare so the typography stays coherent.
- */
 const textVariants = cva("", {
   variants: {
     size: {

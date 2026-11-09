@@ -179,9 +179,6 @@ export async function generateAgentCommitMessage(params: {
       completedResponse ||
       (message.role === "assistant" ? message.content : "");
     if (!response) {
-      // Some adapters, notably Codex app-server, return the accepted user
-      // message as soon as the turn starts. The assistant response arrives on
-      // the event stream later, so keep the ephemeral runtime alive for it.
       report("waitingForResponse", {
         eventCounts: JSON.stringify(Object.fromEntries(eventCounts)),
       });

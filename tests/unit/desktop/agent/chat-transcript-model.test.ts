@@ -7,8 +7,6 @@ const NO_QUESTIONS: never[] = [];
 
 let sessionCounter = 0;
 
-// The transcript cache is module-level; a fresh session id per test isolates
-// cache entries between tests.
 function nextSessionId() {
   sessionCounter += 1;
   return `session-${sessionCounter}`;
@@ -60,7 +58,6 @@ describe("getCachedTranscriptModel", () => {
       NO_QUESTIONS,
     );
 
-    // Reasoning and response both grew in the same flush (two new refs).
     const grownReasoning = { ...reasoning, content: "thinking more" };
     const grownResponse = { ...response, content: "partial answer" };
     const second = getCachedTranscriptModel(
@@ -70,7 +67,6 @@ describe("getCachedTranscriptModel", () => {
       NO_QUESTIONS,
     );
 
-    // Untouched groups keep their identity so memoized rows skip rendering.
     expect(second.timelineGroups[0]).toBe(first.timelineGroups[0]);
     expect(second.timelineGroups[1]).toBe(first.timelineGroups[1]);
     expect(second.timelineGroups[2]).toBe(first.timelineGroups[2]);

@@ -48,8 +48,6 @@ import {
 } from "../chat-display";
 import { PermissionCard } from "../permission";
 import { QuestionCard } from "../question";
-// Deep imports (not the tool-call barrel): the barrel pulls in the subagent
-// detail view, which renders this component.
 import { ToolCallGroup, ToolCallItem } from "../tool-call/tool-call-ui";
 import type { ToolCallPreviewLocation } from "../tool-call/tool-call-utils";
 import { ActivityLiveLabel } from "./chat-activity";
@@ -534,9 +532,6 @@ const MessageArticle = memo(function MessageArticle({
   const filePathHandlers = useMessageFilePathHandlers();
   const isSystem = message.role === "system";
   const isReasoning = isReasoningMessage(message);
-  // Being the latest message only means nothing came after it — the turn may
-  // have ended (or died) there. Reasoning is still live only while the session
-  // is running, same gate the assistant body below uses.
   const isReasoningStreaming = isRunning && isStreamingLatest;
   const activityDisplay = useActivityDisplay();
   const presentation = useChatPresentation();
@@ -585,7 +580,9 @@ const MessageArticle = memo(function MessageArticle({
             <div ref={contentRef}>
               <MarkdownRenderer
                 className={
-                  message.role === "assistant" ? "space-y-2" : "space-y-1.5"
+                  message.role === "assistant"
+                    ? "chat-reading-prose space-y-2"
+                    : "space-y-1.5"
                 }
                 content={message.content}
                 filePathHandlers={
@@ -647,10 +644,6 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   promptVariant = "chat",
   runStartedAt,
 }: {
-  // History conversation items don't render a live activity label (only the latest
-  // conversation does, gated by isLatestConversation && isRunning). Marking
-  // this optional lets the parent skip passing the unstable activity object,
-  // which would otherwise defeat React.memo on every streaming token.
   activity?: ActivityState | null;
   conversationGroup: ConversationGroup;
   isLatestConversation: boolean;

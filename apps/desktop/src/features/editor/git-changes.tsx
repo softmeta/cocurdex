@@ -86,19 +86,11 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   >(null);
   const [diffStyle, setDiffStyle] = useState<GitDiffStyle>("unified");
   const [wrap, setWrap] = useState(false);
-  // When on, pierre paints every unchanged line so the diff is read as a full
-  // file with changes highlighted (not just hunks + expandable gaps).
   const [expandUnchanged, setExpandUnchanged] = useState(false);
-  // Per-file collapse state, keyed by file path. A file is collapsed when its
-  // path is present in the set; a collapse is explicit intent and survives
-  // reloads and viewport-driven mounting.
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
-  // The file index is collapsible so the diffs can take the full panel width.
   const [treePanelVisible, setTreePanelVisible] = useState(true);
   const reveal = useAtomValue(gitRevealAtom);
 
-  // Build full-file diffs so pierre owns every line and can expand unchanged
-  // context on demand (a partial patch leaves separators inert).
   const entries = useMemo(() => buildEntries(fileChanges), [fileChanges]);
   const stagedState = useMemo(() => computeStagedState(entries), [entries]);
   const turnLabels = useMemo(() => {
@@ -121,8 +113,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const actionsEnabled = isMutableScope(activeScope);
   const currentBranch = branches.find((branch) => branch.current)?.name ?? null;
 
-  // Header chevron toggle: a folded file opens, an open file shuts, and a file
-  // the stack has not mounted yet just opens.
   const handleFoldFile = useCallback((path: string) => {
     setFolded((prev) => (prev.has(path) ? prev : new Set(prev).add(path)));
   }, []);
@@ -139,9 +129,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const resolvedTheme = useResolvedTheme();
   const diffThemeType = resolvedTheme === "light" ? "light" : "dark";
 
-  // Monotonic sequence guarding against out-of-order responses when watcher
-  // notifications, manual refreshes, and post-mutation reloads overlap: only
-  // the most recently issued request may apply its result.
   const diffRequestSeqRef = useRef(0);
   const loadingDiffCountRef = useRef(0);
   const branchRequestSeqRef = useRef(0);
@@ -150,8 +137,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
   const scopeRef = useRef(activeScope);
   scopeRef.current = activeScope;
 
-  // Sync: pull the current changes for the active workspace from the main
-  // process. Each entry carries the full old/new contents for expandable diffs.
   const loadDiff = useCallback(
     async (path: string, options: { showLoading?: boolean } = {}) => {
       const showLoading = options.showLoading ?? true;
@@ -190,7 +175,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
           } else {
             setTurnEmptyReason(null);
           }
-          // Read state survives a reload for files still in the list.
           setFolded(
             (prev) =>
               new Set(
@@ -235,8 +219,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
         setDiffStatus(result.status);
         setTurnEmptyReason(null);
         setFileChanges(changes);
-        // Preserve read state across reloads: files already in the list keep
-        // whatever the user set.
         setFolded(
           (prev) =>
             new Set(
@@ -260,7 +242,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     [],
   );
 
-  // Sync: pull local + remote refs for the branch compare selectors.
   const loadBranches = useCallback(async (path: string) => {
     const seq = ++branchRequestSeqRef.current;
     try {
@@ -336,8 +317,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     void loadBranches(rootPath);
   }, [rootPath, loadDiff, loadBranches]);
 
-  // Apply a new scope and reload the diff in the same turn. Updating scopeRef
-  // first keeps loadDiff's query in sync without waiting for a re-render.
   const applyScope = useCallback(
     (next: GitDiffScope) => {
       scopeRef.current = next;
@@ -346,11 +325,6 @@ export function GitChanges({ onOpenFile }: GitChangesProps) {
     [setScope],
   );
 
-  // Run a batched stage / unstage / discard over the given paths in a single
-  // git invocation, then re-sync so staged state (and the diffs, after a
-  // discard) reflect the new git state. Single-row actions pass one path; the
-  // toolbar's "all" actions pass many — both pay one git spawn, not one per
-  // file (which is what made "stage all" feel laggy).
   const runFileMutation = useCallback(
     async (
       action: (rootPath: string, filePaths: string[]) => Promise<void>,

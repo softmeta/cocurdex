@@ -11,8 +11,6 @@ function agentSupportsSlashCommands(agentType: AgentId | undefined) {
   return agentType !== undefined;
 }
 
-// Returns the query after the slash while the current text ends with a bare
-// slash token (`/rev`), i.e. before any argument is typed.
 export function extractSlashQuery(text: string): string | null {
   const match = /(^|\s)\/([^\s]*)$/.exec(text);
   return match ? match[2] : null;
@@ -32,8 +30,6 @@ export function useSlashCommands({
   editorRef,
 }: UseSlashCommandsOptions) {
   const menuRef = useRef<HTMLDivElement>(null);
-  // Cache is keyed by agent + workspace because agents use different skill
-  // roots and invocation syntax.
   const cacheKey = JSON.stringify([agentType ?? "", workspaceRootPath ?? ""]);
   const [cache, setCache] = useState<{
     key: string;
@@ -45,8 +41,6 @@ export function useSlashCommands({
   const [query, setQuery] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
 
-  // Fetch commands lazily the first time the user opens the menu for a given
-  // agent + workspace, driven from the composer's change event (no effect).
   const fetchCommands = useCallback(async () => {
     if (commands) {
       return commands;

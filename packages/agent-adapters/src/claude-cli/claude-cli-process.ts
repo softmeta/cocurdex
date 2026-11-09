@@ -3,8 +3,6 @@ import { isAgentPermissionModeSupportedForModel } from "@cocurdex/shared";
 import { getClaudePermissionMode } from "../claude-shared";
 import { buildChildProcessEnv } from "../shared";
 
-// Preserve Claude's Anthropic, Bedrock, Vertex, and Foundry auth while keeping
-// credentials for unrelated agent runtimes out of the spawned process.
 const CLAUDE_BLOCKED_ENV_PREFIXES = [
   "CODEX_",
   "GEMINI_",

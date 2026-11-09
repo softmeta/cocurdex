@@ -22,22 +22,11 @@ export const GROK_BUILD_PROVIDER_ID = "acp:grok-build";
 export const GROK_BUILD_DEFAULT_MODEL_ID = "grok-4.6";
 export const GROK_BUILD_MODELS_LIST_METHOD = "x.ai/models/list";
 
-// Grok Build owns its own model catalog. `initialize` only returns the bundled
-// snapshot (historically a single model). The live remote catalog — currently
-// grok-4.6 plus grok-4.5 — is served by `x.ai/models/list`, which waits for
-// the first fetch. Official `grok models` does initialize + that extension
-// (see xai-grok-shell cli_models.rs). We do the same on a short-lived ACP
-// process and never call `session/new`, which would persist under
-// ~/.grok/sessions.
-
 function toCompatibleModel(
   model: AcpSessionModel,
   defaultModelId: string | null,
   now: string,
 ): CompatibleProviderModel {
-  // Grok owns this ladder: forward every level it advertises, with its own
-  // description. `none` is Cocurdex's "off" and is handled by the thinking
-  // level axis, so it is not a picker entry here.
   const supportedReasoningEfforts = model.reasoningEfforts.flatMap((effort) =>
     isReasoningEffort(effort.value)
       ? [
@@ -65,7 +54,6 @@ function toCompatibleModel(
       providerId: GROK_BUILD_PROVIDER_ID,
       modelId: model.modelId,
       name: model.name ?? model.modelId,
-      // Grok Build's default models speak the Responses API shape.
       api: "openai-responses",
       enabled: true,
       source: "api",
@@ -86,8 +74,6 @@ function toCompatibleModel(
   };
 }
 
-// Used when the probe fails (Grok missing, unauthenticated, or hanging) so the
-// picker still has something selectable.
 function fallbackModels(now: string): CompatibleProviderModel[] {
   return [
     toCompatibleModel(
@@ -115,8 +101,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// `x.ai/models/list` wraps SessionModelState in ExtMethodResult `{ result }`.
-// The ACP SDK may also surface the state at the top level.
 export function readGrokBuildListedModelState(
   value: unknown,
 ): AcpSessionModelState | null {
@@ -194,8 +178,6 @@ async function probeGrokBuildModelsIn(
   }
 }
 
-// Probing spawns a Grok process, so the catalog is resolved once per app run:
-// Grok's model list changes on release cadence, not within a session.
 let cachedCatalog: CompatibleProviderModel[] | null = null;
 let inFlightProbe: Promise<CompatibleProviderModel[] | null> | null = null;
 

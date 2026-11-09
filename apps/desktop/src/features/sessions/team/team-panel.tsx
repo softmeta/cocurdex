@@ -15,11 +15,8 @@ import { AppConfirmDialog } from "@/components";
 import { Button, IconButton, Text } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import { AgentIconLabel } from "../agent-icon";
-import {
-  getAgentDisplayLabel,
-  selectSessionAtom,
-  sessionsAtom,
-} from "../session-store";
+import { getAgentDisplayLabel } from "../session-agent-state";
+import { selectSessionAtom, sessionsAtom } from "../session-navigation-state";
 import { TeamMemberPeek } from "./team-member-peek";
 import { dismissedTeamIdsAtom, dismissTeamAtom } from "./team-panel-store";
 

@@ -27,10 +27,7 @@ export interface GitCommitActionResult {
 
 interface GitChangesCommitPopoverProps {
   currentBranch: string | null;
-  // Unfiltered working-tree has changes. Disables opening when idle; never
-  // force-closes the popover while an action is still loading.
   hasChanges: boolean;
-  // External loading (diff refresh / stage). Does not close an in-flight popover.
   parentBusy?: boolean;
   onAction: (
     action: GitCommitAction,
@@ -60,12 +57,8 @@ export function GitChangesCommitPopover({
 
   const actionPending = activeAction !== null;
   const inFlight = actionPending || isGenerating;
-  // Local flight owns loading for commit/push; parentBusy only blocks starting
-  // something new while idle (e.g. diff refresh).
   const busy = inFlight || parentBusy;
   const trimmedMessage = message.trim();
-  // Empty message is allowed when a commit-message model is configured in
-  // Settings → Git; the main process runs a one-shot generation (no session).
   const canCommit = !busy && hasChanges;
   const canPush = !busy;
 
@@ -79,13 +72,10 @@ export function GitChangesCommitPopover({
       if (result.committed) {
         setMessage("");
       }
-      // Close only after full success (commit, push, or both). Keep open on
-      // partial failure so the user can retry with the loading spinner gone.
       if (result.completed) {
         setOpen(false);
       }
     } catch {
-      // Parent already toasted; keep the popover open so the user can retry.
     } finally {
       setActiveAction(null);
     }
@@ -103,14 +93,11 @@ export function GitChangesCommitPopover({
     }
   };
 
-  // Stay open for the whole loading flight even after the worktree goes clean
-  // (parent reloads diff before onAction resolves). Idle + clean → closed.
   const popoverOpen = open && (inFlight || hasChanges);
 
   return (
     <Popover
       onOpenChange={(next) => {
-        // Block dismiss (outside click / escape / trigger) while loading.
         if (inFlight) {
           return;
         }
@@ -127,9 +114,6 @@ export function GitChangesCommitPopover({
           <IconButton
             aria-label={t("git.commitOrPush")}
             className="app-no-drag text-editor-fg-subtle hover:text-editor-fg data-[state=open]:text-editor-fg"
-            // Never disable the trigger while open: a disabled anchor
-            // can drop the popover mid-flight when parentBusy flips on
-            // action start.
             disabled={!open && (!hasChanges || parentBusy)}
             size="sm"
           >

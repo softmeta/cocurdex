@@ -24,16 +24,8 @@ interface GitChangeFileDiffProps {
   entry: GitChangeEntry;
   diffStyle: GitDiffStyle;
   wrap: boolean;
-  // When true, pierre renders the entire file (unchanged lines included)
-  // instead of collapsible hunk gaps.
   expandUnchanged: boolean;
-  // Open rows carry a pierre diff; folded rows are shut by the reader; deferred
-  // rows hold their estimated height until they reach the viewport.
   state: GitChangeRowState;
-  // Height this row's diff body occupies when open, estimated ahead of pierre
-  // rendering it. A deferred row renders it as a placeholder, and an open row
-  // holds it until pierre reports its first paint, so stack positions never
-  // drift before the real diff takes over.
   reservedHeight?: number;
   diffThemeType: "light" | "dark";
   onToggle: () => void;
@@ -41,11 +33,7 @@ interface GitChangeFileDiffProps {
   onStage: (path: string) => void;
   onUnstage: (path: string) => void;
   onDiscard: (path: string) => void;
-  // Pin the header to the top of the scrolling pane so the file name stays
-  // visible while reading a long diff. Each row is its own card, so a pinned
-  // header is pushed out by the card below it.
   stickyHeader?: boolean;
-  // Hide stage/discard when reviewing a commit or branch compare.
   actionsEnabled?: boolean;
 }
 
@@ -53,9 +41,6 @@ export type GitChangeRowState = "open" | "folded" | "deferred";
 
 type PierreDiffOptions = ComponentProps<typeof PierreFileDiff>["options"];
 
-// Deferred and not-yet-painted rows reserve the height of the diff that belongs
-// there. A few muted bars say "content lands here" instead of leaving the reader
-// with a blank band scrolling past.
 const DEFERRED_BAR_WIDTHS = ["w-3/4", "w-1/2", "w-2/3"] as const;
 const DEFERRED_BAR_SPACING = 56;
 
@@ -76,10 +61,6 @@ function DeferredDiffBody({ height }: { height: number }) {
   );
 }
 
-// Pierre paints a diff synchronously only once its highlighter holds the diff's
-// language and themes; a body rendered before that stays empty forever, because
-// the later async highlight result never repaints it. Loading what a row needs
-// before mounting it is what turns the placeholder into a diff.
 function useDiffHighlighterReady(language: SupportedLanguages): boolean {
   const [ready, setReady] = useState(
     () =>
@@ -105,11 +86,6 @@ function useDiffHighlighterReady(language: SupportedLanguages): boolean {
   return ready;
 }
 
-// Pierre gives an unpainted body no height at all. A row that shrank to its
-// header would pull every file below it up the stack — the reader sees a
-// mid-list file open and the files above it "collapsed". The reserved height
-// therefore holds until the body itself reports a height; the real diff then
-// takes over at the size it was reserved for.
 function PendingDiffBody({
   diff,
   language,
@@ -161,8 +137,6 @@ function PendingDiffBody({
   );
 }
 
-// Render a single changed file: a binary placeholder row when there is no
-// textual diff, otherwise pierre's expandable file diff with our custom header.
 export function GitChangeFileDiff({
   entry,
   diffStyle,
@@ -196,23 +170,11 @@ export function GitChangeFileDiff({
 
   const { diff } = entry;
 
-  // The header is always rendered by us in light DOM (never via pierre's
-  // `renderCustomHeader`), so it stays mounted across collapse/expand. Pierre's
-  // `<diffs-container>` only mounts for an open row and renders the code body
-  // alone (`disableFileHeader`), so the header never disappears while the body
-  // fills in below it.
   const diffOptions: PierreDiffOptions = {
     collapsed: false,
     diffStyle,
-    // Let us own the header in light DOM (see above); pierre renders only the
-    // code body.
     disableFileHeader: true,
-    // Full-file mode keeps every unchanged line visible so reviewers get
-    // surrounding context without clicking hunk expand controls.
     expandUnchanged,
-    // Reveal context in 20-line chunks so larger gaps render separate up/down
-    // expand controls (Cursor-style) instead of one button. No effect while
-    // expandUnchanged is true.
     expansionLineCount: 20,
     hunkSeparators: "line-info-basic",
     overflow: wrap ? "wrap" : "scroll",
@@ -222,16 +184,8 @@ export function GitChangeFileDiff({
   };
 
   return (
-    // One changed file is one card; the stack spaces consecutive cards apart.
-    // `clip` rather than `hidden`: clipping keeps the diff body off the card's
-    // rounded corners, and — unlike `hidden` — does not create a scroll
-    // container, so the header band still sticks to the outer scrollport.
     <div className="overflow-clip rounded-card border border-editor-border">
       <div className="group min-w-full text-body leading-5">
-        {/* Sticky lives on a wrapper, not the header row: the row's rounded
-            corners would otherwise let the scrolled diff show through behind
-            it. The band carries the card's top spacing — padding on an ancestor
-            of the sticky box would leave a transparent strip above it. */}
         <div
           className={cn(
             "rounded-t-card pt-2 transition-colors hover:bg-editor-tab-hover-bg",
@@ -269,8 +223,6 @@ export function GitChangeFileDiff({
   );
 }
 
-// Placeholder row for a change without a renderable diff: git flagged it
-// binary, it exceeds the size cap, or the diff parser rejected it.
 function OmittedFileRow({
   path,
   reason,

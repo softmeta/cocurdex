@@ -7,8 +7,6 @@
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.08);
 }
 
-/* App-side highlights: percentage boxes over the page. pointer-events stay off
-   so text selection is unaffected; right-click hit-tests stored quads instead. */
 .pdfViewer .page .pdf-highlight-layer {
   position: absolute;
   inset: 0;

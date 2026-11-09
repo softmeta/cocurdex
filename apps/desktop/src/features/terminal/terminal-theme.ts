@@ -15,9 +15,6 @@ function isDark(): boolean {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-// ANSI 16-color palette designed for dark terminal backgrounds (≈ #0c0c10).
-// Colors match a Tokyo Night-inspired palette — vivid enough to stand out on
-// near-black but not so saturated they cause eye strain.
 const DARK_ANSI: Partial<ITheme> = {
   black: "#1a1b26",
   red: "#f7768e",
@@ -37,9 +34,6 @@ const DARK_ANSI: Partial<ITheme> = {
   brightWhite: "#c0caf5",
 };
 
-// ANSI 16-color palette designed for light terminal backgrounds (≈ #f7f8fa).
-// Every color maintains at least 4.5:1 contrast against the near-white surface
-// so ls/grep color output remains readable without theme-switching gymnastics.
 const LIGHT_ANSI: Partial<ITheme> = {
   black: "#374151",
   red: "#dc2626",
@@ -56,8 +50,6 @@ const LIGHT_ANSI: Partial<ITheme> = {
   brightBlue: "#3b82f6",
   brightMagenta: "#8b5cf6",
   brightCyan: "#06b6d4",
-  // brightWhite maps to the "default text" color in many tools (e.g. bold ls);
-  // use a near-black so it stays readable on the light surface.
   brightWhite: "#1f2937",
 };
 
@@ -65,10 +57,6 @@ export function buildTerminalTheme(): ITheme {
   const dark = isDark();
   const ansi = dark ? DARK_ANSI : LIGHT_ANSI;
 
-  // xterm's scrollbar is a custom DOM element painted by the renderer, not a
-  // native scrollbar, so its colors come from theme options rather than CSS.
-  // Mirror the rgba values exported by --scrollbar-thumb / --scrollbar-thumb-hover
-  // in theme-tokens.css so the terminal scrollbar tracks the rest of the app.
   const sliderBackground = dark
     ? "rgba(255, 255, 255, 0.08)"
     : "rgba(15, 23, 42, 0.15)";
@@ -88,9 +76,6 @@ export function buildTerminalTheme(): ITheme {
     scrollbarSliderBackground: sliderBackground,
     scrollbarSliderHoverBackground: sliderHoverBackground,
     scrollbarSliderActiveBackground: sliderHoverBackground,
-    // We don't render any overview-ruler decorations, so the default white
-    // divider between the content area and the ruler region just looks like
-    // a stray vertical hairline next to the scrollbar. Hide it.
     overviewRulerBorder: "transparent",
     ...ansi,
   };

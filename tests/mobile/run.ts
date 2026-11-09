@@ -174,6 +174,7 @@ function flowLabels(locale: SupportedLocale) {
     NEW_ISSUE_SUBMIT: issues.create.submit,
     RENAME_COMPUTER_SAVE: hosts.rename.save,
     NEW_NOTE_ACTION: notes.create.open,
+    NOTE_BODY_PLACEHOLDER: notes.editor.bodyPlaceholder,
     DEFAULT_NOTE_TITLE: "Untitled",
     ARCHIVE_ACTION: sessions.actions.archive,
     SESSION_CONFIG_CLOSE: sessions.sessionConfig.close,
@@ -435,7 +436,9 @@ async function main() {
               MODEL_TEST_ASSISTANT: modelTestAssistant?.role.name ?? "",
               MODEL_TEST_ASSISTANT_ID: modelTestAssistant?.id ?? "",
               LAST_ASSISTANT_MODEL: daemon.lastAssistantModel,
-              PAIRING_LINK: await daemon.createPairingLink(),
+              PAIRING_LINK: await daemon.createPairingLink(
+                flow === "pairing" ? 8_000 : 0,
+              ),
               HOST_ADDRESS: daemon.hostAddress,
               LINK_NOTE_TITLE,
               ISSUE_LINK_TEXT: issueLinkText,

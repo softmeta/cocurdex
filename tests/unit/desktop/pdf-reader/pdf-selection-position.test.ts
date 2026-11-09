@@ -21,7 +21,6 @@ describe("placeFixedBubble", () => {
       bubble,
       viewport,
     );
-    // 1000 - 280 - 8 padding
     expect(result.left).toBe(712);
     expect(result.top).toBe(228);
   });
@@ -41,7 +40,6 @@ describe("placeFixedBubble", () => {
       bubble,
       viewport,
     );
-    // above = 760 - 8 - 36 = 716
     expect(result).toEqual({ left: 100, top: 716 });
   });
 
@@ -52,7 +50,6 @@ describe("placeFixedBubble", () => {
       tallBubble,
       { width: 400, height: 200 },
     );
-    // max(8, 200 - 900 - 8) = 8
     expect(result.top).toBe(8);
     expect(result.left).toBe(50);
   });

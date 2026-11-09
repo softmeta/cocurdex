@@ -16,7 +16,6 @@ import { PDF_HIGHLIGHT_SWATCH_CSS } from "./pdf-highlight-layer";
 interface PdfTextSelectionToolbarProps {
   mode: "text";
   canHighlight: boolean;
-  // Last used color — shown with a stronger ring so the next pick is obvious.
   preferredColor: PdfHighlightColor;
   onAddToChat(): void;
   onAddToNote(): void;

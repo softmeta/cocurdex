@@ -20,21 +20,13 @@ const execFileAsync = promisify(execFile);
 export const CLI_COMMAND_NAME = "cocurdex";
 
 export type CliPathStatus = {
-  /** Bundled launcher exists and can be installed. */
   available: boolean;
-  /** A command named cocurdex exists at the install path. */
   installed: boolean;
-  /** Install path points at this app's bundled launcher. */
   pointsToCurrentApp: boolean;
-  /** Directory used for user-local CLI installs. */
   binDir: string;
-  /** Full path where the command is / will be installed. */
   installPath: string;
-  /** Absolute path to the bundled launcher, or null if missing. */
   sourcePath: string | null;
-  /** Whether binDir appears in the current process PATH. */
   binDirOnPath: boolean;
-  /** Shell hint when binDir is not on PATH. */
   pathHint: string | null;
   error: string | null;
 };
@@ -104,11 +96,6 @@ export function buildPathHint(
   return `Add this line to your shell profile (${profile}):\nexport PATH="${binDir}:$PATH"`;
 }
 
-/**
- * Resolve the bundled launcher path.
- * Packaged: process.resourcesPath/cli/<launcher>
- * Dev: <desktopRoot>/resources/cli/<launcher>
- */
 export function resolveBundledCliLauncherPath(options: {
   platform: CliPathPlatform;
   isPackaged: boolean;
@@ -238,8 +225,6 @@ export async function installCliOnPath(options: {
     });
     await rename(tempPath, installPath);
   } else if (options.platform === "win32") {
-    // Small shim so updates to the app path only require reinstall when the
-    // install location moves; the shim calls the absolute packaged launcher.
     const shim = `@echo off\r\n"${options.sourcePath}" %*\r\n`;
     const tempPath = `${installPath}.${process.pid}.tmp`;
     await writeFile(tempPath, shim, "utf8");
@@ -271,7 +256,6 @@ export async function uninstallCliFromPath(options: {
   const env = options.env ?? process.env;
   const installPath = getCliInstallPath(options.platform, home, env);
 
-  // Only remove our install: correct symlink, or a shim we wrote on Windows.
   if (await pathExists(installPath)) {
     const installedText = await readTextIfPresent(installPath);
     if (installedText !== null && isAppImageCliLauncher(installedText)) {
@@ -311,7 +295,6 @@ export async function ensureWindowsUserPathContains(
     return;
   }
 
-  // Use PowerShell so we don't hit setx's 1024-char truncation trap.
   const script = `
 $bin = $env:COCURDEX_BIN_DIR
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
@@ -351,9 +334,7 @@ function normalizePathForCompare(
 async function removePathIfPresent(targetPath: string): Promise<void> {
   try {
     await rm(targetPath, { force: true });
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 async function windowsInstallPointsToSource(

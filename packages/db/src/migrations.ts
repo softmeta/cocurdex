@@ -32,7 +32,6 @@ import { ensureSyncTracking } from "./sync/sync-tracking";
 import { createTeamSchemaSql } from "./team/schema";
 import { ensureTimelineSequence } from "./timeline-sequence";
 
-/** ASCII "COCU" marks databases owned by the current Cocurdex baseline. */
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
 export const CURRENT_SCHEMA_VERSION = 45;
@@ -718,8 +717,6 @@ export function initializeDatabase(database: DatabaseSync): void {
   }
   database.exec(createSchemaSql());
   addHostDevicePublicKeys(database);
-  // Additive: existing same-version DBs keep CREATE TABLE IF NOT EXISTS,
-  // so the permission axis has to be patched onto the live sessions table.
   if (!hasColumn(database, "sessions", "permission_mode")) {
     database.exec("ALTER TABLE sessions ADD COLUMN permission_mode TEXT");
   }

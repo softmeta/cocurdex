@@ -75,7 +75,6 @@ describe("PanScrollbar", () => {
       fireEvent.pointerDown(track, { clientX: 250, pointerId: 1 });
       fireEvent.pointerMove(track, { clientX: 500, pointerId: 1 });
     });
-    // Pointer moved 250px on the track at scale 0.5 -> 500px of scroll.
     expect(viewport.scrollLeft).toBe(500);
     act(() => {
       fireEvent.pointerUp(track, { pointerId: 1 });

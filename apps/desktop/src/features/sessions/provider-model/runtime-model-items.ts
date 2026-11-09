@@ -13,8 +13,6 @@ import {
 } from "./provider-model-cache";
 import { getProviderModelSelectionValue } from "./provider-model-selection";
 
-// Builds the in-session model list from the adapter cache, app-managed
-// provider table (Pi only), and the session snapshot.
 export function getRuntimeModelItems(
   agentType: AgentId,
   providerModels: ProviderModelRecord[],
@@ -25,9 +23,6 @@ export function getRuntimeModelItems(
     providerConfigs.map((provider) => [provider.id, provider]),
   );
   const adapterOwnedCatalog = usesAdapterOwnedModelCatalog(agentType);
-  // Adapter-owned agents must not inherit global provider-table rows. Their
-  // picker source of truth is the same discovery cache the new-session card
-  // uses, plus the live session snapshot.
   const fallbackItems = adapterOwnedCatalog
     ? []
     : providerModels.flatMap((model): CompatibleProviderModel[] => {

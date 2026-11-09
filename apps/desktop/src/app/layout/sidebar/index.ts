@@ -1,4 +1,3 @@
-// Shared titlebar chrome helpers (component re-exported via sidebar-frame).
 export { titlebarIconButtonClassName } from "../titlebar-icon-button";
 export { LeftSidebar } from "./left-sidebar";
 export {

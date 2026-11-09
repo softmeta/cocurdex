@@ -66,10 +66,6 @@ function permissionModeForAgent(
   );
 }
 
-// Owns agent/collaboration/permission/provider/workspace/branch state for
-// the new-session card. The actual composer (editor, mentions, image
-// attachments, paste/drag handling) is delegated to ChatComposer, so this
-// hook intentionally stays out of editor concerns.
 export function useNewSessionCard({
   workspaceName,
   agents = defaultAgentDescriptors,
@@ -87,9 +83,6 @@ export function useNewSessionCard({
   const [initialRuntimePreferences] = useState(() =>
     getAgentRuntimePreferences(initialAgentType),
   );
-  // Prefer the parent-owned last-selected agent (persisted to localStorage so
-  // it survives remounts and restarts). Local state only backs uncontrolled
-  // usage when `agentType` is omitted. Default is built-in cocurdex (`pi`).
   const [uncontrolledAgent, setUncontrolledAgent] = useState<AgentId>(
     () => agentType ?? "pi",
   );
@@ -129,8 +122,6 @@ export function useNewSessionCard({
     () => initialRuntimePreferences.openCodeVariant ?? "",
   );
 
-  // Bumped whenever provider settings change, so the load effect below refetches
-  // instead of keeping the pre-edit provider list.
   const providerModelCacheVersion = useSyncExternalStore(
     subscribeProviderModelCache,
     getProviderModelCacheVersion,
@@ -242,8 +233,6 @@ export function useNewSessionCard({
           baseUrl: selectedCompatibleProvider.provider.baseUrl,
           modelBaseUrl: selectedCompatibleProvider.model.baseUrl ?? undefined,
           headersJson: selectedCompatibleProvider.provider.headersJson ?? null,
-          // Pi-native provider/model metadata. Coalesced to undefined so the
-          // snapshot stays minimal for runtimes that don't populate them.
           providerCompatJson:
             selectedCompatibleProvider.provider.compatJson ?? undefined,
           modelCapabilities: selectedCompatibleProvider.model.capabilities,
@@ -297,8 +286,6 @@ export function useNewSessionCard({
           }),
         )
       : [];
-  // No "inherit" row on this axis: an unset session runs at the model's own
-  // default effort, so that level is what the menu preselects.
   const codexReasoningDefaultValue =
     selectedCompatibleProvider?.model.defaultReasoningEffort ?? "";
 
@@ -364,8 +351,6 @@ export function useNewSessionCard({
 
   useEffect(() => {
     let cancelled = false;
-    // providerModelCacheVersion is consumed here so the effect re-runs when
-    // provider settings are edited and the cache is invalidated.
     void providerModelCacheVersion;
     const cachedEntry = getCachedProviderModelEntry(
       providerModelCache,
@@ -419,9 +404,6 @@ export function useNewSessionCard({
     };
   }, [applyCatalogResult, effectiveSelectedAgent, providerModelCacheVersion]);
 
-  // ACP agents only reveal their mode list once a session is opened, so the
-  // list is asked for the first time an agent without one is selected. The
-  // daemon caches the answer; later cards read it straight off the descriptor.
   useEffect(() => {
     const agent = agents.find((item) => item.id === effectiveSelectedAgent);
     if (
@@ -506,8 +488,6 @@ export function useNewSessionCard({
     updateAgentRuntimePreferences(effectiveSelectedAgent, {
       openCodeAgent: value || null,
     });
-    // OpenCode's agent list doubles as its mode axis, so picking "plan" has to
-    // start the session in plan mode.
     handleSelectSessionMode(value === "plan" ? PLAN_MODE_ID : "default");
   };
 
@@ -548,8 +528,6 @@ export function useNewSessionCard({
     }
     setUncontrolledAgent(nextAgent);
     setSelectedPermissionMode(permissionModeForAgent(nextAgent, agents));
-    // Parent (lastSelectedAgentAtom) persists to localStorage so the choice
-    // is restored the next time this card opens, including after restart.
     onSelectAgent?.(nextAgent);
   };
 
@@ -683,8 +661,6 @@ export function useNewSessionCard({
     codexReasoningDefaultValue,
     serviceTierOptions,
     thinkingLevelOptions,
-    // Raw preference, not the resolved level: "reset" is only meaningful when
-    // the user actually overrode the agent default.
     thinkingLevelOverride:
       rawSelectedThinkingLevel === "default" ? "" : rawSelectedThinkingLevel,
     openCodeAgentOptions:

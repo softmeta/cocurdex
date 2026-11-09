@@ -44,7 +44,6 @@ ${changeSummary}
 </change_summary>`;
 }
 
-// Cap high enough for thinking models and a concise bullet-list body.
 const COMMIT_MESSAGE_MAX_TOKENS = 512;
 const MAX_SUBJECT_LENGTH = 72;
 
@@ -71,22 +70,22 @@ function buildPiCommitModel(
 }
 
 export function normalizeGeneratedCommitMessage(raw: string): string | null {
-  const lines = raw.split(/\r?\n/).map((line) =>
-    line
-      .trim()
-      .replace(/^```(?:\w+)?\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim(),
-  );
+  const lines = raw.split(/\r?\n/).map((line) => {
+    const text = line.trim().replace(/^```(?:\w+)?\s*/i, "");
+    return text.endsWith("```") ? text.slice(0, -3).trimEnd() : text;
+  });
   const titleIndex = lines.findIndex((line) => line.length > 0);
   if (titleIndex < 0) {
     return null;
   }
 
-  const rawTitle = lines[titleIndex]
-    ?.replace(/^["'`]+|["'`]+$/g, "")
-    .replace(/\.+$/, "")
-    .trim();
+  const quotedTitle = (lines[titleIndex] ?? "").replace(/^["'`]+/, "");
+  let titleEnd = quotedTitle.length;
+  while (titleEnd > 0 && /["'`]/.test(quotedTitle.charAt(titleEnd - 1))) {
+    titleEnd -= 1;
+  }
+  while (quotedTitle.charAt(titleEnd - 1) === ".") titleEnd -= 1;
+  const rawTitle = quotedTitle.slice(0, titleEnd).trim();
   if (!rawTitle) {
     return null;
   }
@@ -112,8 +111,6 @@ export function normalizeGeneratedCommitMessage(raw: string): string | null {
   return `${title}\n\n${bodyItems.map((item) => `- ${item}`).join("\n")}`;
 }
 
-// Single-shot Conventional Commits subject via the pi ai layer. No session is
-// created. Returns null when the model produced no usable subject.
 export async function generatePiCommitMessage(params: {
   provider: ProviderConfigRecord;
   model: ProviderModelRecord;

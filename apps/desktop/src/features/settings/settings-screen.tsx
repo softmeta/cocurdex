@@ -421,11 +421,6 @@ export function SettingsScreen({
         )}
       </section>
 
-      {/*
-        Mirror app-shell left titlebar: same TITLEBAR_HEIGHT, leading
-        reserve, and gap-1 size-6 pills so controls do not jump when leaving
-        settings.
-      */}
       <div
         className="absolute top-0 start-0 z-[100] flex items-center"
         style={{

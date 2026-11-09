@@ -51,9 +51,7 @@ afterEach(async () => {
   for (const processGroup of processGroups.splice(0)) {
     try {
       process.kill(-processGroup, "SIGKILL");
-    } catch {
-      // The process group was already removed by the owner.
-    }
+    } catch {}
   }
   await tempDirs.cleanup();
 });

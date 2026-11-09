@@ -36,11 +36,6 @@ function getAttachmentPath(attachment: ContextAttachment) {
     : attachment.filePath;
 }
 
-// The composer serializes each mention pill inline as `@relative/path`, so the
-// message body records where the user put it. Pair those markers back with the
-// attachments (in document order) to render pills at their original position.
-// Attachments without a marker — older messages, agent-added context — fall
-// back to leading pills so nothing is dropped.
 export function splitContentByMentions(
   content: string,
   attachments: ContextAttachment[],

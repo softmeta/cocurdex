@@ -56,7 +56,6 @@ export type ProductSkillsIoOptions = {
   home?: string;
   sourceRoot?: string;
   packVersion?: string;
-  /** Force copy into .claude/skills instead of symlink (tests / Windows). */
   preferClaudeCopy?: boolean;
 };
 
@@ -176,7 +175,6 @@ export async function getProductSkillsStatus(
   const marker = await readMarker(agentsSkillsDir);
   const present = await listPresentProductSkills(agentsSkillsDir);
   const managed = marker !== null;
-  // Same-named product skills without a managed marker are treated as foreign.
   const conflictSkills = managed ? [] : present;
 
   const installedVersion = marker?.packVersion ?? null;
@@ -238,9 +236,7 @@ async function linkOrCopyClaudeSkill(
       );
       await symlink(relativeTarget, claudeSkillDir, "dir");
       return "symlink";
-    } catch {
-      // Fall through to copy (common on Windows without privilege).
-    }
+    } catch {}
   }
 
   await cp(agentsSkillDir, claudeSkillDir, { recursive: true });

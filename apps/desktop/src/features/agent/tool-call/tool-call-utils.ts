@@ -16,8 +16,6 @@ import { i18n } from "@/i18n";
 import { getContextCompactionLabel } from "./context-compaction-label";
 import { getCommandDescription } from "./tool-call-command-description";
 
-// Lives here (not in tool-call-ui) so the util layer stays a leaf: the UI
-// imports utils, never the other way around.
 export type ToolCallPreviewLocation = {
   filePath: string;
   startLine?: number | null;
@@ -256,9 +254,6 @@ export function getToolCallStatusClasses(status: ToolCallDisplayStatus) {
   return "text-chat-status-running-fg";
 }
 
-// Second precision. Activity runs are bursts of calls seconds apart, so minute
-// precision rounded a 40-second run into a misleadingly wide "12:40 – 12:41"
-// range; seconds keep the endpoints honest.
 function formatToolTime(value: string) {
   return new Date(value).toLocaleTimeString([], {
     hour: "2-digit",
@@ -427,10 +422,6 @@ export type ToolCallInputEntry = {
   mono: boolean;
 };
 
-// Field names that should render in mono — paths, URLs, commands, patterns.
-// Both snake_case and camelCase variants are included to cover every Claude
-// Code tool: Bash/Read/Write/Edit/Glob/Grep/WebFetch/NotebookEdit/
-// ReadMcpResource/etc.
 const MONO_FIELD_KEYS = new Set([
   "cell_id",
   "cellId",
@@ -453,10 +444,6 @@ const MONO_FIELD_KEYS = new Set([
   "url",
 ]);
 
-// Long-form or code-like fields that should render full-width below the label
-// instead of inline next to it. Covers Write/Edit/NotebookEdit/WebFetch/Agent
-// payloads, shell commands (which read as a code line, not a key/value pair),
-// and any value that already contains a newline.
 const MULTILINE_FIELD_KEYS = new Set([
   "cmd",
   "command",
@@ -470,8 +457,6 @@ const MULTILINE_FIELD_KEYS = new Set([
   "prompt",
 ]);
 
-// Render an array of TodoWrite items as a compact checklist. Returns null when
-// the value does not match the expected `{ content, status }` shape.
 function formatTodosArray(value: unknown[]): string | null {
   if (value.length === 0) {
     return null;
@@ -516,13 +501,10 @@ function stringifyEntryValue(value: unknown): string {
     return "null";
   }
   if (Array.isArray(value)) {
-    // TodoWrite: render as a checklist when items match the expected shape.
     const todos = formatTodosArray(value);
     if (todos) {
       return todos;
     }
-    // WebSearch.allowed_domains / blocked_domains and similar plain string
-    // arrays: render comma-separated for readability.
     if (value.every((item) => typeof item === "string")) {
       return (value as string[]).join(", ");
     }

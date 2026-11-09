@@ -88,8 +88,6 @@ describe("createDaemonReceiptStore", () => {
       });
 
       const first = store.execute("m:k5", run);
-      // The operation is still running well past the retention window; a
-      // duplicate must coalesce instead of starting a second execution.
       vi.advanceTimersByTime(60_000);
       const second = store.execute("m:k5", run);
       release();
@@ -99,7 +97,6 @@ describe("createDaemonReceiptStore", () => {
       expect(secondResult.replayed).toBe(true);
       expect(firstResult.outcome).toEqual(secondResult.outcome);
 
-      // Retention counts from settlement, not from request start.
       vi.advanceTimersByTime(999);
       expect((await store.execute("m:k5", run)).replayed).toBe(true);
       expect(run).toHaveBeenCalledTimes(1);
@@ -125,7 +122,6 @@ describe("createDaemonReceiptStore", () => {
     await store.execute("m:b", instant);
     await store.execute("m:c", instant);
 
-    // Settled receipts a and b were evicted; the in-flight receipt survives.
     const duplicate = store.execute("m:in-flight", running);
     release();
     await Promise.all([first, duplicate]);
@@ -146,7 +142,6 @@ describe("createDaemonReceiptStore", () => {
       });
     });
 
-    // Every receipt is in-flight when inserted, so nothing is evictable yet.
     const pending = [
       store.execute("m:k1", run),
       store.execute("m:k2", run),
@@ -156,7 +151,6 @@ describe("createDaemonReceiptStore", () => {
     for (const release of releases) release();
     await Promise.all(pending);
 
-    // Once settled, capacity enforcement drops all but the two newest.
     expect((await store.execute("m:k1", run)).replayed).toBe(false);
     expect((await store.execute("m:k3", run)).replayed).toBe(true);
   });

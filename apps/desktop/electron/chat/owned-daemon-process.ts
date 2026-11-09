@@ -3,11 +3,6 @@ import { createInterface } from "node:readline";
 import { withoutNodeEnvProxyFlag } from "@cocurdex/shared";
 import { terminateProcessTree } from "../process";
 
-// Must outlast the daemon's own teardown: each live agent session cancels its
-// turn and then waits for the agent process to exit on its own, so that the
-// agent can reap the tool commands it spawned into detached process groups.
-// Timing out here escalates to SIGKILL on the daemon's process group, which
-// skips that handshake and leaks those commands as orphans.
 const SHUTDOWN_TIMEOUT_MS = 12_000;
 
 export interface OwnedDaemonProcess {

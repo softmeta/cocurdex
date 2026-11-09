@@ -136,8 +136,6 @@ export class AgentRuntimeManager {
   >();
   private readonly pendingQuestions = new Map<string, PendingQuestion>();
   private readonly sessionRuntimes = new Map<string, SessionRuntime>();
-  // Latest plan each session's agent pushed. Plans are not persisted, so this
-  // cache is what resync snapshots serve after a replay gap.
   private readonly sessionPlans = new Map<
     string,
     AgentPlanUpdatedEvent["plan"]
@@ -145,8 +143,6 @@ export class AgentRuntimeManager {
   private persistAgentEventHandler: AgentEventPersistenceHandler | null = null;
   private readonly activeRunId: (sessionId: string) => string | null;
   private readonly onProviderEvent: (event: AgentEvent) => void;
-  // Serialize persistence so events are written in emission order. Without
-  // this queue, async writes can interleave and the DB sees out-of-order rows.
   private persistQueue: Promise<void> = Promise.resolve();
 
   private readonly userDataPath?: string;
@@ -244,13 +240,6 @@ export class AgentRuntimeManager {
     );
   }
 
-  // Runs read behind every queued event persistence. An event's broadcast —
-  // and therefore its journal sequence — is scheduled only after its
-  // persistence resolves, so a journal seq captured inside this read is a
-  // consistent boundary: journaled events at or below it are already
-  // reflected in whatever the read observes. Coalesced deltas are flushed
-  // first: their persistence may have finished while their journal record is
-  // still pending, and they must be journaled before the boundary is read.
   withEventPersistence<T>(read: () => Promise<T>): Promise<T> {
     const job = this.persistQueue.then(
       () => {
@@ -312,11 +301,6 @@ export class AgentRuntimeManager {
   requestAgentPermission(
     request: AgentPermissionRequestPayload,
   ): Promise<AgentPermissionResolution> {
-    // The assistant session exists to operate the app, so its calls to
-    // Cocurdex's own agent tools skip the per-call approval card — the tool
-    // catalog already gates availability, and mutating tools carry their own
-    // confirm flow (e.g. settings_propose). Approval stays for every other
-    // session and every non-Cocurdex tool.
     if (
       isAssistantSessionId(request.sessionId) &&
       agentToolNameFromPermissionTitle(request.title) !== null
@@ -355,9 +339,6 @@ export class AgentRuntimeManager {
     request: AgentPlanApprovalRequestPayload,
   ): Promise<AgentPlanApprovalDecision> {
     const record = this.createPlanApprovalRecord(request);
-    // A second approval for the same session means the agent re-parked a newer
-    // plan. Retire the older one as "cancelled" so its promise never dangles
-    // and the agent stays in plan mode for the new one.
     this.stalePendingPlanApprovalsForSession(record.sessionId);
 
     return new Promise((resolve) => {
@@ -508,8 +489,6 @@ export class AgentRuntimeManager {
       );
 
     if (existingRuntime && runtimeReusable) {
-      // Replace the session reference instead of mutating it: callers and the
-      // UI may hold onto the old object and rely on referential immutability.
       const updated: SessionRuntime = {
         ...existingRuntime,
         session: { ...existingRuntime.session, ...payload.session },
@@ -658,8 +637,6 @@ export class AgentRuntimeManager {
         history: options.history,
         thinkingLevel: payload.thinkingLevel,
         sessionModeId: payload.session.sessionModeId,
-        // Read off the incoming session, not the runtime's captured copy, so a
-        // mid-session permission switch reaches the adapter.
         permissionMode: payload.session.permissionMode,
         providerSnapshot: payload.session.providerSnapshot,
         providerConfig: options.providerConfig,
@@ -725,12 +702,6 @@ export class AgentRuntimeManager {
     }
   }
 
-  /**
-   * Cancel the in-flight turn and leave the adapter session alive. Agents treat
-   * their stop signal as "abandon this turn", not "end the conversation", so
-   * disposing here would cost a full process respawn and provider session
-   * reload on the very next message.
-   */
   async cancelSessionTurn(sessionId: string) {
     const turnTracker = this.clearPendingSessionWork(sessionId);
     if (turnTracker) {
@@ -746,7 +717,6 @@ export class AgentRuntimeManager {
     return true;
   }
 
-  /** Tear the runtime down for good: session deletion, orchestration cancel, shutdown. */
   async disposeSessionRuntime(sessionId: string) {
     this.clearPendingSessionWork(sessionId);
     const sessionRuntime = this.sessionRuntimes.get(sessionId);
@@ -904,8 +874,6 @@ export class AgentRuntimeManager {
       .map((pending) => pending.approval.id);
 
     for (const approvalId of approvalIds) {
-      // Stopping the turn must not leave the agent waiting in plan mode, so
-      // the parked approval answers "abandoned" rather than going unanswered.
       this.resolvePendingPlanApproval(
         approvalId,
         { outcome: "abandoned" },

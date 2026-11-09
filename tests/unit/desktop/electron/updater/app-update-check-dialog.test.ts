@@ -9,7 +9,7 @@ const copy = {
     checking: "Checking for updates…",
     downloading: "Downloading version {{version}}…",
     downloadingWithPercent: "Downloading version {{version}}… {{percent}}%",
-    error: "Could not check for updates. {{message}}",
+    error: "Could not check for updates. Try again later.",
     ready: "Version {{version}} is downloaded and ready to install.",
     unsupported: "Automatic updates are available in the packaged app.",
     upToDate: "You're up to date.",
@@ -20,7 +20,6 @@ function packagedState(
   status: "checking" | "downloading" | "error" | "idle" | "ready",
   extras: {
     availableVersion?: string | null;
-    errorMessage?: string | null;
   } = {},
 ) {
   return {
@@ -29,7 +28,6 @@ function packagedState(
       packaged: true,
     }),
     availableVersion: extras.availableVersion ?? null,
-    errorMessage: extras.errorMessage ?? null,
     status,
   };
 }
@@ -86,14 +84,9 @@ describe("describeAppUpdateCheckDialog", () => {
   });
 
   it("keeps error and idle copy for the same dialog path", () => {
-    expect(
-      describeAppUpdateCheckDialog(
-        packagedState("error", { errorMessage: "offline" }),
-        copy,
-      ),
-    ).toEqual({
+    expect(describeAppUpdateCheckDialog(packagedState("error"), copy)).toEqual({
       kind: "message",
-      message: "Could not check for updates. offline",
+      message: "Could not check for updates. Try again later.",
       type: "warning",
     });
     expect(describeAppUpdateCheckDialog(packagedState("idle"), copy)).toEqual({

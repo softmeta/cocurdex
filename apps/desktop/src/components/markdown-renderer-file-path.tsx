@@ -16,9 +16,6 @@ import {
   type MarkdownRendererTone,
 } from "./markdown-renderer-styles";
 
-// Shared across streaming re-renders. Stale entries keep their last-good value
-// while a mounted chip refreshes them, and transient probe failures stay
-// retryable instead of becoming permanent negative results.
 const existenceCache = createMarkdownFileExistenceCache();
 
 function probeExistence(
@@ -52,17 +49,9 @@ interface MarkdownFilePathCodeProps {
   tone: MarkdownRendererTone;
   className?: string;
   children?: ReactNode;
-  // "code": styled inline-code chip (backtick tokens). "text": a path detected
-  // inside plain prose — it must read as ordinary text, so a missing/unresolved
-  // path renders with no chip styling at all, and a confirmed one is just a
-  // colored, clickable inline link.
   variant?: "code" | "text";
 }
 
-// A token that denotes a file path. Existence is verified eagerly once it
-// mounts so a confirmed path shows its link color by default; only a
-// confirmed-existing path renders the clickable affordance, so misdetected
-// tokens degrade to plain text (prose) or plain inline code.
 export function MarkdownFilePathCode({
   candidate,
   handlers,
@@ -145,10 +134,6 @@ export function MarkdownFilePathCode({
   );
 }
 
-// Flatten streamdown link children (often a nested <code> chip) to plain text
-// so we can re-render with a single MarkdownFilePathCode — avoids double chip
-// nesting and keeps GitHub-style [`path`](path) visually identical to bare
-// `path` tokens.
 function extractRenderableText(node: ReactNode): string {
   if (node == null || typeof node === "boolean") {
     return "";
@@ -166,10 +151,6 @@ function extractRenderableText(node: ReactNode): string {
   return "";
 }
 
-// Markdown `[label](workspace-path)` links rewritten to the private
-// https://cocurdex.workspace/... form. Reuse the same chip as inline-code
-// paths. Open target comes from the href (candidate); only path-looking
-// spans inside the label are clickable — prose like "附近" / "起" stays plain.
 export function MarkdownWorkspaceFileLink({
   candidate,
   handlers,
@@ -206,9 +187,6 @@ export function MarkdownWorkspaceFileLink({
           return <span key={key}>{part.text}</span>;
         }
 
-        // Open the real workspace path from the href; prefer the location from
-        // the label when the model put it there (`headless.rs:846`,
-        // `service.ts:1544-1572`).
         const openCandidate: FilePathCandidate = {
           path: candidate.path,
           startLine: part.startLine ?? candidate.startLine,

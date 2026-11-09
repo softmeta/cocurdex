@@ -175,7 +175,6 @@ export function useAppShellResize({
         onDragEnd: (finalWidth) => {
           dragCleanupRef.current = null;
           setRightPanelResizing(false);
-          // Persist the column the user just finished resizing.
           if (target === "left") {
             persistLeftWidth(finalWidth);
           } else {

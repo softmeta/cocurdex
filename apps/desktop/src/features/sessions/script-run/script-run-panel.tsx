@@ -16,7 +16,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Text } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
-import { selectSessionAtom } from "../session-store";
+import { selectSessionAtom } from "../session-navigation-state";
 import { useScriptRuns } from "./use-script-runs";
 
 function AgentStatusIcon({

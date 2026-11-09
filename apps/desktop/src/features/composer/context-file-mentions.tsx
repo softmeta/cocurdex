@@ -10,9 +10,6 @@ import { MenuRowSidecar } from "./menu-row-sidecar";
 import { useHighlightedMenuRow } from "./use-highlighted-menu-row";
 
 interface ContextFileMentionMenuProps {
-  // Position of the active `@` glyph relative to the editor. When present the
-  // menu anchors to the caret's line; otherwise it falls back to the editor's
-  // leading edge.
   anchor?: MentionAnchor | null;
   files: WorkspaceFileEntry[];
   highlightedIndex: number;

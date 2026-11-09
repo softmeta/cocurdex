@@ -181,12 +181,6 @@ interface ActiveMessageRecord {
   kind: MessageKind;
 }
 
-// List slash commands from disk without booting a full agent session, so the
-// composer can offer completions before the first message is sent. Extensions
-// are skipped because loading them runs user code and needs the trust flow.
-//
-// Beyond pi's own `.pi/skills`, we also surface skills from project and global
-// `.agents/skills` directories (the cross-tool AGENTS convention).
 async function listPiSlashCommands(
   payload: ListSlashCommandsPayload,
 ): Promise<AgentSlashCommand[]> {
@@ -264,8 +258,6 @@ async function registerRuntimeProvider(
     await modelRuntime.removeRuntimeApiKey(providerConfig.providerId);
   }
 
-  // ponytail: Pi's ProviderConfigInput has no provider-level compat slot, so
-  // provider compat is applied as the model compat fallback.
   const compat =
     parseJsonObject(providerConfig.modelCompatJson) ??
     parseJsonObject(providerConfig.providerCompatJson);
@@ -273,10 +265,6 @@ async function registerRuntimeProvider(
   const resolvedBaseUrl =
     providerConfig.modelBaseUrl || providerConfig.baseUrl || undefined;
 
-  // Endpoint the pi SDK will actually hit. The api-appended path differs per
-  // api (openai -> /chat/completions, anthropic -> /v1/messages), so logging
-  // the resolved baseUrl here is the fastest way to catch mismatches like a
-  // gateway model silently hanging on a wrong path.
   logAdapterDiagnostic("info", "pi: registering provider model", {
     providerId: providerConfig.providerId,
     modelId: providerConfig.modelId,
@@ -296,9 +284,6 @@ async function registerRuntimeProvider(
         id: providerConfig.modelId,
         name: providerConfig.modelName || providerConfig.modelId,
         api,
-        // Prefer the per-model endpoint; provider baseUrl is only a fallback.
-        // Gateways serve anthropic-messages and openai-completions at different
-        // paths, so a flat provider baseUrl would break one of them.
         baseUrl: resolvedBaseUrl,
         reasoning:
           providerConfig.supportsReasoning ??
@@ -429,10 +414,6 @@ export function createPiSdkAdapter(
       let lastUserMessageId: string | null = null;
       let completedMessage: MessageRecord | null = null;
       let responseMessageId = "";
-      // Pi reports provider failures (429, quota, auth) on the assistant
-      // message via stopReason/errorMessage and still resolves session.prompt().
-      // Track the latest failed turn so we can surface it after prompt returns
-      // instead of treating an empty turn as success.
       let lastTurnError: string | null = null;
       let stopRequested = false;
       const compaction = createContextCompactionTracker({
@@ -659,11 +640,6 @@ export function createPiSdkAdapter(
         }
       }
 
-      // Pi emits one assistant message per turn; its tool calls execute after
-      // that message ends. Completing active messages here closes the current
-      // turn's MessageRecords so the next turn streams into fresh ids —
-      // otherwise every turn's text would append into a single record and the
-      // timeline would lose the text/tool-call interleaving.
       function handleMessageEnd(event: Record<string, unknown>) {
         const message = getRecord(event.message);
         if (getString(message?.role) !== "assistant") return;
@@ -689,7 +665,6 @@ export function createPiSdkAdapter(
             errorMessage: lastTurnError,
           });
         } else {
-          // A later successful assistant message clears a prior retry failure.
           lastTurnError = null;
         }
 
@@ -707,8 +682,6 @@ export function createPiSdkAdapter(
 
       function handlePiEvent(event: Record<string, unknown>) {
         const eventType = getString(event.type) ?? "unknown";
-        // High-signal event breadcrumb for silent-failure investigation. Full
-        // payloads stay out of default logs; COCURDEX_DIAGNOSTICS=1 enables this.
         if (
           eventType === "message_end" ||
           eventType === "agent_end" ||
@@ -751,9 +724,6 @@ export function createPiSdkAdapter(
             break;
           case "agent_end":
             completeMessages();
-            // Do not clear lastTurnError here: Pi may still be retrying inside
-            // prompt(). A later successful assistant message_end clears it;
-            // a terminal failure keeps it for surface after prompt() resolves.
             if (piSession) {
               const state = getProviderState(piSession);
               payload.onProviderSessionUpdate?.({
@@ -1031,9 +1001,6 @@ export function createPiSdkAdapter(
                 : undefined,
             );
             const message = finalizeMessage();
-            // Provider errors are delivered as assistant stopReason, not throws.
-            // Surface them as Cocurdex error events so the UI and agent-runtime
-            // logs (agent.eventEmitted with type=error) both record the failure.
             if (lastTurnError) {
               const errorMessage = lastTurnError;
               lastTurnError = null;
@@ -1053,8 +1020,6 @@ export function createPiSdkAdapter(
             const message =
               error instanceof Error ? error.message : "Pi SDK turn failed";
             lastTurnError = null;
-            // emitError only surfaces the message; log the full shape so opaque
-            // failures (network, wrong endpoint, empty stream) are debuggable.
             logAdapterDiagnostic("info", "pi: turn failed", {
               sessionId,
               messageId: lastUserMessageId,
@@ -1089,7 +1054,6 @@ export function createPiSdkAdapter(
         },
         stop() {
           stopRequested = true;
-          // Abort the turn only — the session stays alive for the next prompt.
           void piSession?.abort();
         },
         dispose() {

@@ -16,11 +16,6 @@ export interface WorkspaceFolderDropHandlers {
   onDrop(event: ReactDragEvent): void;
 }
 
-/**
- * Window-level OS folder drag-and-drop. Dropping a directory (or a file from
- * inside one) opens that path as a workspace — same outcome as the
- * "Open Folder" picker and CLI `cocurdex .`.
- */
 export function useWorkspaceFolderDrop(
   onOpenPath: (rootPath: string) => void,
 ): {
@@ -28,8 +23,6 @@ export function useWorkspaceFolderDrop(
   dropHandlers: WorkspaceFolderDropHandlers;
 } {
   const [isDraggingFolder, setIsDraggingFolder] = useState(false);
-  // Nested dragenter/leave fire for every child; depth tracks whether the
-  // pointer is still inside the drop surface.
   const dragDepthRef = useRef(0);
   const onOpenPathRef = useRef(onOpenPath);
   onOpenPathRef.current = onOpenPath;
@@ -70,9 +63,6 @@ export function useWorkspaceFolderDrop(
       return;
     }
 
-    // Always claim the drop when files are present so Chromium does not
-    // navigate the window to a file:// URL. Image drops that nested surfaces
-    // already handled via stopPropagation never reach here.
     event.preventDefault();
 
     const files = Array.from(event.dataTransfer.files);

@@ -47,7 +47,6 @@ export function createFilesystemCheckpointAdapter(
     getTurnWorkspaceChangesRoot(userDataPath),
     "manifests",
   );
-  // Last capture per workspace, used as a stat cache by walkWorkspace.
   const lastEntries = new Map<string, Map<string, ManifestEntry>>();
 
   async function writeManifest(manifest: FilesystemManifest) {
@@ -72,9 +71,7 @@ export function createFilesystemCheckpointAdapter(
       }
       try {
         manifests.push(await readManifest(name.slice(0, -".json".length)));
-      } catch {
-        // Skip unreadable manifests; reconcile will delete orphans later.
-      }
+      } catch {}
     }
     return manifests;
   }
@@ -211,9 +208,7 @@ export function createFilesystemCheckpointAdapter(
               keep.add(file.hash);
             }
           }
-        } catch {
-          // Missing manifests are already gone.
-        }
+        } catch {}
       }
       return keep;
     },

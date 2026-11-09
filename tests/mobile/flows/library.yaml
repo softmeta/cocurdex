@@ -131,7 +131,16 @@ appId: dev.cocurdex.mobile
       id: note-format-bold
     timeout: 30000
 - inputText: ${NEW_NOTE_TITLE}
-- pressKey: Enter
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${NOTE_BODY_PLACEHOLDER}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - pressKey: Enter
 - inputText: ${NEW_NOTE_BODY}
 - tapOn:
     id: note-format-bold

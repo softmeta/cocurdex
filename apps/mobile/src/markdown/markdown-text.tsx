@@ -39,44 +39,46 @@ const INLINE_CODE_TINT_ALPHA = "1f";
 function markdownStyle(
   colors: ThemeColors,
   syntaxColors: SyntaxColors,
-  { text, code }: { text: number; code: number },
+  { text, code, reading }: { text: number; code: number; reading: boolean },
 ): MarkdownStyle {
   const textSize = (size: number) => scaledSize(size, text);
   const codeSize = (size: number) => scaledSize(size, code);
   const block = {
     fontSize: textSize(BODY_SIZE),
     lineHeight: textSize(BODY_LINE_HEIGHT),
-    color: colors.foreground,
+    color: reading ? colors.readingText : colors.foreground,
     marginBottom: space.sm,
   };
+  const heading = { ...block, color: colors.foreground };
   return {
     paragraph: block,
+    strong: reading ? { color: colors.foreground } : undefined,
     list: {
       ...block,
       bulletColor: colors.mutedForeground,
       markerColor: colors.mutedForeground,
     },
     h1: {
-      ...block,
+      ...heading,
       fontSize: textSize(22),
       lineHeight: textSize(28),
       fontWeight: "600",
     },
     h2: {
-      ...block,
+      ...heading,
       fontSize: textSize(19),
       lineHeight: textSize(26),
       fontWeight: "600",
     },
     h3: {
-      ...block,
+      ...heading,
       fontSize: textSize(17),
       lineHeight: textSize(24),
       fontWeight: "500",
     },
-    h4: { ...block, fontWeight: "600" },
+    h4: { ...heading, fontWeight: "600" },
     h5: {
-      ...block,
+      ...heading,
       fontSize: textSize(15),
       lineHeight: textSize(22),
       fontWeight: "600",
@@ -131,7 +133,7 @@ function markdownStyle(
     },
     table: {
       fontSize: textSize(14),
-      color: colors.foreground,
+      color: block.color,
       borderColor: colors.chatBorder,
       headerBackgroundColor: colors.muted,
       headerTextColor: colors.foreground,
@@ -283,12 +285,14 @@ function SegmentView({
 
 export function MarkdownText({
   markdown,
+  reading = false,
   streaming = false,
   hostId,
   fileRoot,
   testID,
 }: {
   markdown: string;
+  reading?: boolean;
   streaming?: boolean;
   hostId?: string;
   fileRoot?: string | null;
@@ -303,8 +307,8 @@ export function MarkdownText({
   const text = useTextScale();
   const code = useCodeScale();
   const style = useMemo(
-    () => markdownStyle(colors, syntaxColors, { text, code }),
-    [colors, syntaxColors, text, code],
+    () => markdownStyle(colors, syntaxColors, { text, code, reading }),
+    [colors, syntaxColors, text, code, reading],
   );
   const blocks = useMemo(
     () =>

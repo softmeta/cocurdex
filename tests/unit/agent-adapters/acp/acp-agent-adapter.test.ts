@@ -587,7 +587,6 @@ describe("AcpAgentAdapter", () => {
     );
 
     await session.sendMessage({ content: "one", attachments: [], history: [] });
-    // Same mode again must not re-notify.
     await session.sendMessage({
       content: "two",
       attachments: [],
@@ -1299,7 +1298,6 @@ describe("AcpAgentAdapter", () => {
       thinkingLevel: "max",
       providerSnapshot,
     });
-    // A second send at the same level must not re-apply the option.
     await session.sendMessage({
       content: "Keep going",
       history: [],
@@ -1401,8 +1399,6 @@ describe("AcpAgentAdapter", () => {
         { value: "claude-opus-5-5-medium", name: "Claude Opus 5.5 Medium" },
       ],
     });
-    // Devin only attaches `speed` once the session runs a model that
-    // supports it, so the option shows up in the model switch response.
     const setSessionConfigOption = vi.fn(
       async (request: SetSessionConfigOptionRequest) => ({
         configOptions: [
@@ -1497,7 +1493,6 @@ describe("AcpAgentAdapter", () => {
       configId: "speed",
       value: "fast",
     });
-    // The second send re-applies nothing: model and speed already match.
     expect(setSessionConfigOption).toHaveBeenCalledTimes(2);
   });
 
@@ -1562,8 +1557,6 @@ describe("AcpAgentAdapter", () => {
       () => {},
     );
 
-    // A loaded session already on fast with no explicit tier selection falls
-    // back to the baseline the picker displays (standard).
     await session.sendMessage({
       content: "Build it",
       history: [],

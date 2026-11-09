@@ -117,7 +117,6 @@ describe("rightPanelResolvedActiveViewAtom reveal", () => {
 
     store.set(closePdfAtom, "/workspace/paper.pdf");
     expect(store.get(openPdfsAtom)).toEqual([]);
-    // Unhandled pdf reveal must not pin the empty "No PDF open" surface.
     expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("notes");
   });
 

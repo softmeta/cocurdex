@@ -391,7 +391,6 @@ export interface MemoryInstallResult {
 }
 
 const SECRET_PATTERNS: ReadonlyArray<RegExp> = [
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
   /\bsk-[A-Za-z0-9_-]{20,}\b/g,
   /\bgh[pousr]_[A-Za-z0-9]{20,}\b/g,
   /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g,
@@ -400,8 +399,28 @@ const SECRET_PATTERNS: ReadonlyArray<RegExp> = [
   /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g,
 ];
 
+function redactPrivateKeys(text: string) {
+  const chunks: string[] = [];
+  let cursor = 0;
+  let opening: { index: number; end: number } | undefined;
+  for (const marker of text.matchAll(
+    /-----(BEGIN|END) [A-Z ]*PRIVATE KEY(?=-----)/g,
+  )) {
+    if (marker.index < cursor) continue;
+    const end = marker.index + marker[0].length + 5;
+    if (marker[1] === "BEGIN") {
+      opening ??= { index: marker.index, end };
+    } else if (opening && marker.index >= opening.end) {
+      chunks.push(text.slice(cursor, opening.index), "[redacted]");
+      cursor = end;
+      opening = undefined;
+    }
+  }
+  return chunks.length === 0 ? text : chunks.join("") + text.slice(cursor);
+}
+
 export function redactMemorySecrets(text: string) {
-  let result = text;
+  let result = redactPrivateKeys(text);
   for (const pattern of SECRET_PATTERNS) {
     result = result.replace(pattern, "[redacted]");
   }

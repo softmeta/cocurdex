@@ -35,8 +35,6 @@ export interface ActiveTurn {
   before: HostCheckpoint | null;
   changeSet: TurnChangeSet;
   claim: WorkspaceTurnClaim;
-  // A turn can only touch the workspace through a tool call. Turns that ran
-  // none (plain chat) skip the "after" capture and leave no change set behind.
   touchedWorkspace?: boolean;
   finalized?: boolean;
 }

@@ -113,7 +113,6 @@ describe("editor store", () => {
 
     store.set(openFileAtom, "/ws-a/file-a.ts");
     store.set(saveEditorDraftForWorkspaceAtom, "workspace-a");
-    // Simulate switching to an empty workspace draft before opening B's files.
     store.set(restoreEditorDraftForWorkspaceAtom, "workspace-b");
     expect(store.get(openFilesAtom)).toEqual([]);
 
@@ -144,7 +143,6 @@ describe("editor store", () => {
   it("cross-workspace draft handoff saves owner then restores target", () => {
     const store = createStore();
 
-    // Simulate app-shell: open files on A, snapshot A, clear into B's draft.
     store.set(openFileAtom, "/ws-a/a.ts");
     store.set(openFileAtom, "/ws-a/b.ts");
     store.set(saveEditorDraftForWorkspaceAtom, "workspace-a");
@@ -167,7 +165,6 @@ describe("editor store", () => {
     store.set(openFileAtom, "/ws-a/draft.ts");
     store.set(saveEditorDraftForWorkspaceAtom, "workspace-a");
 
-    // Clear into a session-only view (openFile appends; snapshot the session alone).
     store.set(restoreEditorDraftForWorkspaceAtom, "workspace-empty");
     store.set(openFileAtom, "/ws-a/session.ts");
     store.set(saveEditorViewSnapshotAtom, "session-1");
@@ -179,7 +176,6 @@ describe("editor store", () => {
     expect(store.get(openFilesAtom)).toEqual(["/ws-a/session.ts"]);
     expect(store.get(activeFileAtom)).toBe("/ws-a/session.ts");
 
-    // null session is a no-op at the session atom; draft restore is separate.
     store.set(openFileAtom, "/ws-a/after.ts");
     store.set(restoreEditorViewForSessionAtom, null);
     expect(store.get(openFilesAtom)).toEqual([

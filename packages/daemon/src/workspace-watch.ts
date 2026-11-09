@@ -3,8 +3,6 @@ import path from "node:path";
 import type { WorkspaceWatchDaemonEvent } from "@cocurdex/shared";
 import { resolveGitRepositoryPaths } from "./git/git-client";
 
-// Coalesce fs event bursts (build output, git checkout, pnpm install) into a
-// single notification; clients re-list the workspace on each.
 const DEBOUNCE_MS = 300;
 
 interface WatcherGroup {
@@ -12,9 +10,6 @@ interface WatcherGroup {
   watchers: Set<FSWatcher>;
 }
 
-// macOS reports a `change` event carrying the watched root's own basename
-// alongside every descendant event; it is redundant (the descendant event
-// still arrives) and would defeat the `.git` classification, so drop it.
 function isRedundantRootEvent(rootPath: string, filename: string | null) {
   return filename != null && filename === path.basename(rootPath);
 }
@@ -23,9 +18,6 @@ function isGitInternalPath(filename: string) {
   return filename === ".git" || filename.startsWith(`.git${path.sep}`);
 }
 
-// Git internals churn constantly (index locks, packed objects, hooks), so only
-// metadata that changes visible git state notifies clients. Transient `*.lock`
-// files are excluded because the real file's own event follows.
 export function isGitStateMetadataPath(filename: string): boolean {
   const normalizedPath = filename.replaceAll("\\", "/");
   if (normalizedPath.endsWith(".lock")) {
@@ -50,10 +42,6 @@ export class WorkspaceWatchService {
     private readonly broadcast: (event: WorkspaceWatchDaemonEvent) => void,
   ) {}
 
-  // Idempotent. A repository uses one watcher for workspace files plus
-  // watchers for its worktree-specific git directory and shared refs
-  // directory; the latter two differ for linked worktrees. Watching is a
-  // progressive enhancement, so failures are swallowed.
   async ensure(rootPath: string): Promise<void> {
     if (this.closed) {
       return;

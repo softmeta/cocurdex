@@ -76,8 +76,6 @@ export class DaemonProviderService {
     if (config?.apiKeySecretId) {
       await this.credentials.setApiKey(providerId, null);
     }
-    // Cascade: models belong to the config; stale rows would resurface if
-    // the same provider id is re-created later.
     await this.state.deleteProviderModelsByProvider(providerId);
     await this.state.deleteProviderConfig(providerId);
   }
@@ -221,9 +219,6 @@ export class DaemonProviderService {
     providerId: string,
     modelId: string,
   ) {
-    // Built-in (pi) provider models live only in the runtime cache, never in
-    // the providerModels table, so validate against the full configured list
-    // (persisted + built-in) instead of a DB-only lookup.
     const model = modelId
       ? (await listConfiguredProviderModels(this.state)).find(
           (item) => item.providerId === providerId && item.modelId === modelId,
@@ -327,10 +322,6 @@ export class DaemonProviderService {
       return provider ? [{ provider, model }] : [];
     });
 
-    // Only treat a provider as "has explicit models" if it has at least one
-    // enabled model whose api is compatible with this agent. Providers
-    // whose models are ALL incompatible still get a synthetic default so they
-    // remain visible in the model picker for every agent.
     const compatibleApis = new Set(getCompatibleProviderApis(agentId));
     const providersWithCompatibleModels = new Set(
       models
@@ -365,9 +356,6 @@ export class DaemonProviderService {
     return [...codexModels, ...compatibleItems];
   }
 
-  // Axes an agent only exposes inside a live session (Devin's per-model
-  // `thought_level`/`speed`) are probed per picked model. Best effort: a
-  // failed probe just leaves the picker's axes hidden.
   async probeAgentModelAxes(
     agentId: AgentId,
     modelId: string,

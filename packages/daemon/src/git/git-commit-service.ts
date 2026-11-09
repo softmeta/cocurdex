@@ -2,18 +2,10 @@ import type { GitCommitResult, GitPushResult } from "@cocurdex/shared";
 import { createGitClient } from "./git-client";
 
 export interface CommitGitChangesOptions {
-  // Empty / whitespace-only → one-shot model generation from staged name-status
-  // after optional includeUnstaged staging. Never creates a chat session.
-  // Blank message requires a configured model that succeeds.
   message: string;
-  // When true, stage the entire worktree (`git add -A`) before committing so
-  // unstaged and untracked changes land in the same commit as the index.
   includeUnstaged: boolean;
 }
 
-// Commit staged changes (optionally after staging the whole worktree). When
-// the message is blank, require a one-shot model completion. Surfaces failures
-// as thrown Errors so the renderer can toast them.
 export async function commitGitChanges(
   rootPath: string,
   options: CommitGitChangesOptions,
@@ -24,9 +16,6 @@ export async function commitGitChanges(
     throw new Error("Commit message is required");
   }
 
-  // Keep model generation outside the real-index transaction. The temporary
-  // index above lets the model see all changes without widening the window in
-  // which a failure would require restoring the user's partial staging.
   const originalIndexTree = options.includeUnstaged
     ? (await git.raw(["write-tree"])).trim()
     : null;
@@ -39,8 +28,6 @@ export async function commitGitChanges(
     const result = await git.commit(message);
     const commitHash = result.commit.trim();
     if (commitHash.length === 0) {
-      // simple-git returns an empty commit hash when git reports nothing to
-      // commit (or when a hook aborted without a new object).
       throw new Error("Nothing to commit");
     }
 
@@ -60,8 +47,6 @@ export async function commitGitChanges(
   }
 }
 
-// Push the current branch to its upstream remote, or set upstream on `origin`
-// when no tracking branch is configured yet.
 export async function pushGitBranch(rootPath: string): Promise<GitPushResult> {
   const git = createGitClient(rootPath);
   const status = await git.status();
@@ -72,7 +57,6 @@ export async function pushGitBranch(rootPath: string): Promise<GitPushResult> {
 
   const tracking = status.tracking?.trim() ?? "";
   if (tracking.length > 0) {
-    // Tracking form is "remote/branch" — push through the configured upstream.
     await git.push();
     const remote = tracking.includes("/")
       ? (tracking.split("/")[0] ?? "origin")

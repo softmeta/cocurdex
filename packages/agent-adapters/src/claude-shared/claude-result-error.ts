@@ -1,8 +1,5 @@
 import type { ClaudeStreamMessage } from "./claude-message-mapper";
 
-// The Agent SDK and `claude -p --output-format stream-json` speak the same
-// message protocol, so both adapters share this terminal-result error check.
-
 export interface ClaudeResultError {
   message: string;
   authenticationFailure: boolean;
@@ -36,8 +33,6 @@ export function getClaudeResultError(
     return null;
   }
 
-  // Error-subtype results carry detail in `errors: string[]` instead of
-  // `result`; prefer whichever is present.
   const errorsText = Array.isArray(result.errors)
     ? result.errors.filter((entry) => typeof entry === "string").join("\n")
     : "";

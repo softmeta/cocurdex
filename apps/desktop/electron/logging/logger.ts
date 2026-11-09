@@ -33,7 +33,6 @@ const LOG_FILE_NAME = "main.log";
 const FILE_TRANSPORT_MAX_SIZE = 5 * 1024 * 1024;
 const DEFAULT_RETENTION_DAYS = 7;
 const MAIN_LOG_MAX_ARCHIVES = 10;
-// Secondary bound on per-session files; day-based retention stays primary.
 const SESSION_LOG_MAX_FILES = 200;
 const SESSION_LOG_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -121,8 +120,6 @@ function writeLog(
 
   logger[normalizedLevel](entry);
 
-  // Fan events that carry a sessionId out to a dedicated per-session file so a
-  // single agent run can be inspected or shared without the shared main.log.
   const sessionId = extractSessionId(entry.details);
   if (sessionId) {
     sessionLogs?.write(
@@ -194,7 +191,6 @@ function archiveMainLog(oldLogFilePath: string) {
   } catch (error) {
     originalConsole.error("logging.archiveFailed", error);
   }
-  // Drop archives that have aged out of the retention window.
   void pruneLogFiles(logDirectory, {
     retentionDays,
     maxFiles: MAIN_LOG_MAX_ARCHIVES,
@@ -207,11 +203,7 @@ export function configureLogging(paths: {
   diagnosticsPreferencesPath: string;
   logDirectory: string;
   sessionLogDirectory: string;
-  // Human-readable main log output is only for local development. Packaged
-  // logs stay JSONL so diagnostics tooling can parse them consistently.
   pretty?: boolean;
-  // Verbose (debug) file logging in dev or when diagnostics are explicitly
-  // requested; production builds default to info to bound size and exposure.
   verbose: boolean;
   retentionDays?: number;
 }) {
@@ -286,7 +278,6 @@ export function configureLogging(paths: {
       ),
   });
 
-  // Reclaim space from previous runs on startup; failures must not block boot.
   void pruneLogFiles(logDirectory, {
     retentionDays,
     maxFiles: MAIN_LOG_MAX_ARCHIVES,
@@ -319,7 +310,6 @@ export function setDiagnosticsVerbose(enabled: boolean) {
       });
     }
   }
-  // Picked up by the next daemon spawn (env inherits process.env).
   if (enabled || envDiagnosticsRequested) {
     process.env.COCURDEX_DIAGNOSTICS = "1";
   } else {
@@ -332,7 +322,6 @@ export function daemonDiagnosticsLogLevel() {
   return verbosePreference || envDiagnosticsRequested ? "debug" : "info";
 }
 
-// Flush and release per-session file streams during app shutdown.
 export async function shutdownLogging(): Promise<void> {
   await sessionLogs?.closeAll();
 }

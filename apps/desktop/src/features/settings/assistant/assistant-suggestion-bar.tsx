@@ -51,9 +51,6 @@ const SECTION_SUGGESTIONS: Partial<
   worktrees: ["worktree", "explore"],
 };
 
-// Sits above the chat dock content on the settings screen. Offers section-aware
-// prompts while the assistant session is fresh, plus a way to start a new
-// assistant session instead of continuing the current one.
 export function AssistantSuggestionBar({
   section,
 }: {

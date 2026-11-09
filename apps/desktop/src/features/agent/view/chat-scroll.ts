@@ -8,8 +8,6 @@ import {
 const SCROLL_BOTTOM_THRESHOLD = STICK_TO_BOTTOM_THRESHOLD;
 const SCROLL_RESUME_BOTTOM_THRESHOLD = STICK_TO_BOTTOM_RESUME_THRESHOLD;
 
-// A prompt is treated as the active section once its header rises to within
-// this distance of the viewport top. Mirrors the side-navigation activation.
 export const STICKY_ACTIVE_TOP_OFFSET = 80;
 
 type StickyConversationAnchor = {
@@ -18,8 +16,6 @@ type StickyConversationAnchor = {
 
 export type StickyUserMessageCandidate = {
   id: string;
-  // Top of the prompt header relative to the scroll viewport top, in pixels.
-  // Negative means the header has scrolled above the visible area.
   relativeTop: number;
 };
 

@@ -108,8 +108,6 @@ export async function probeTitleModel(
       signal: controller.signal,
     });
     const latencyMs = Date.now() - startedAt;
-    // Empty title still means the provider accepted the request and returned —
-    // connectivity is fine; the model just produced no usable text.
     return { ok: true, latencyMs, title, error: null };
   } catch (error) {
     const latencyMs = Date.now() - startedAt;

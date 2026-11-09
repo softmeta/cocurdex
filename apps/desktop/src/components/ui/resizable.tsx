@@ -24,8 +24,6 @@ function ResizablePanel({ ...props }: ResizablePrimitive.PanelProps) {
   return <ResizablePrimitive.Panel data-slot="resizable-panel" {...props} />;
 }
 
-// Match ResizeSeparator chrome: 1px track, ~7px hit target, hover brighten.
-// Library still owns pointer events; only the visual/hit chrome is aligned.
 function ResizableHandle({
   withHandle,
   className,

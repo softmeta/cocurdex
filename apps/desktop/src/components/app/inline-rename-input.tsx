@@ -19,9 +19,6 @@ export function AppInlineRenameInput({
   const skipCommitRef = useRef(false);
   const committingRef = useRef(false);
   const didFocusRef = useRef(false);
-  // Keep the callback identity stable. An inline callback ref is recreated on
-  // every keystroke re-render; React then re-attaches it and re-runs select(),
-  // which wipes the caret and makes continuous typing impossible.
   const setInputRef = useCallback((node: HTMLInputElement | null) => {
     inputRef.current = node;
     if (!node || didFocusRef.current) {

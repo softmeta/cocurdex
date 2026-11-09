@@ -6,7 +6,6 @@ export interface NotificationSettings {
 export const NOTIFICATION_SETTINGS_STORAGE_KEY =
   "agents.desktop.notification-settings";
 
-// System notifications default on, completion sound off — mirrors Cursor.
 export const defaultNotificationSettings: NotificationSettings = {
   systemNotifications: true,
   completionSound: false,

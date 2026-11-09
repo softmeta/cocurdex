@@ -1,8 +1,3 @@
-/**
- * Bundle @cocurdex/cli into resources/cli/cli.mjs for packaged installs.
- * Launcher scripts (cocurdex / cocurdex.cmd) stay checked-in next to the bundle
- * and invoke Electron with ELECTRON_RUN_AS_NODE=1 (VS Code-style).
- */
 import {
   chmod,
   copyFile,
@@ -64,8 +59,6 @@ const cliVersion =
     ? desktopPackageJson.version
     : "0.0.0";
 
-// electron-builder drops node_modules from extraResources, so the bundled
-// daemon resolves the QuickJS wasm beside itself instead of as a package.
 const quickjsWasmBesideDaemon = {
   name: "cocurdex-quickjs-wasm-beside-daemon",
   transform(code) {
@@ -76,8 +69,6 @@ const quickjsWasmBesideDaemon = {
 };
 
 const alias = {
-  // Subpath exports must be listed before the package root alias, otherwise
-  // Vite resolves `@cocurdex/daemon/paths` as `index.ts/paths`.
   "@cocurdex/daemon/background-launch": path.join(
     repoRoot,
     "packages/daemon/src/background/launch-args.ts",
@@ -131,7 +122,6 @@ await build({
   logLevel: "warn",
   resolve: { alias },
   define: {
-    // Packaged cli.mjs has no package.json beside it — inline the version.
     __COCURDEX_CLI_VERSION__: JSON.stringify(cliVersion),
     ...buildPolicyDefine(),
   },
@@ -156,7 +146,6 @@ await build({
     },
   },
   ssr: {
-    // Bundle workspace packages so the shipped CLI has no monorepo deps.
     noExternal: true,
   },
 });
@@ -200,11 +189,6 @@ await build({
       output: {
         entryFileNames: "daemon.cjs",
         keepNames: true,
-        // Node 24 exposes enumerable EventEmitter methods on `node:stream`'s
-        // prototype. Rollup's live-binding namespace helper reads
-        // getOwnPropertyDescriptor and throws on those inherited names
-        // (`reading 'get'`), so the bundled daemon exits before it can
-        // publish daemon.json. Node builtins do not mutate exports after load.
         externalLiveBindings: false,
         codeSplitting: false,
       },
@@ -216,7 +200,6 @@ await build({
   },
 });
 
-// pi-codemode starts its sandbox from `./worker.js` beside the bundled daemon.
 await build({
   configFile: false,
   publicDir: false,
@@ -253,9 +236,7 @@ if (outDir !== committedCliDir) {
 const posixLauncher = path.join(outDir, "cocurdex");
 try {
   await chmod(posixLauncher, 0o755);
-} catch {
-  // Launcher may be missing only if someone deleted the committed wrapper.
-}
+} catch {}
 
 console.info(`[build-cli] wrote ${path.join(outDir, "cli.mjs")}`);
 console.info(`[build-cli] wrote ${path.join(outDir, "daemon.cjs")}`);

@@ -11,9 +11,6 @@ interface CodeTextareaProps {
   value: string;
 }
 
-// A textarea with syntax highlighting drawn underneath it. The two layers sit
-// in one grid cell, so the scroll container is the wrapper and both scroll
-// together; the textarea is on top and owns the caret, selection, and input.
 export function CodeTextarea({
   "aria-label": ariaLabel,
   className,
@@ -40,8 +37,6 @@ export function CodeTextarea({
           )}
         >
           {tokenLines.map((line, lineIndex) => (
-            // Tokens carry their own newlines in the inline flow, so lines are
-            // joined with an explicit one to match the textarea's wrapping.
             // biome-ignore lint/suspicious/noArrayIndexKey: the layers are a pure render of `value`; lines never reorder or keep state
             <Fragment key={lineIndex}>
               {lineIndex > 0 ? "\n" : null}

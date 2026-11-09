@@ -205,8 +205,6 @@ export function createSqliteSessionRepository(
       return this.getById(sessionId);
     },
     async delete(sessionId) {
-      // Child sessions, messages, tool calls and the rest of the session-owned
-      // rows are removed by the ON DELETE CASCADE chain declared in the schema.
       database.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
     },
   };

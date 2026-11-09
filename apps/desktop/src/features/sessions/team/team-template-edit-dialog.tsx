@@ -39,7 +39,7 @@ import {
   subscribeAgentRoles,
 } from "../agent-role";
 import { AgentRoleAvatarPicker } from "../agent-role/agent-role-avatar-picker";
-import { agentsAtom } from "../session-store";
+import { agentsAtom } from "../session-agent-state";
 import { TeamMemberRow } from "./team-member-row";
 import { saveTeamTemplateRecord } from "./team-template-store";
 

@@ -3,7 +3,8 @@ import { useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { desktopApi } from "@/lib";
-import { selectSessionAtom, upsertSessionAtom } from "../session-store";
+import { selectSessionAtom } from "../session-navigation-state";
+import { upsertSessionAtom } from "../session-store";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);

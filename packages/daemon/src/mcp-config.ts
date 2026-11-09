@@ -214,9 +214,6 @@ export class DaemonMcpConfigService {
     });
   }
 
-  // Multiple daemon clients can save concurrently; a shared temp path would
-  // let one rename consume another call's file, so each write gets a unique
-  // temp name and saves run in request order.
   private enqueue<T>(task: () => Promise<T>): Promise<T> {
     const run = this.saveChain.then(task);
     this.saveChain = run.then(

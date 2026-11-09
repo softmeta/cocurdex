@@ -55,7 +55,6 @@ describe("appendMarkdownToEditor", () => {
   it("returns false when setContent reports success but content is missing", () => {
     const editor = mockEditor({
       existingMarkdown: "keep",
-      // Simulate a silent no-op: setContent "succeeds" but markdown unchanged.
       afterMarkdown: "keep",
     });
     expect(appendMarkdownToEditor(editor, "brand new text")).toBe(false);

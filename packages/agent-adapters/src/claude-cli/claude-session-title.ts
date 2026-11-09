@@ -1,7 +1,3 @@
-// Claude Agent SDK 的 `summary` 会按 customTitle → lastPrompt →
-// summaryHint → firstPrompt 回退。SDK 会话通常写不出 ai-title，
-// 直接用 summary 就会把用户原文当成会话标题。
-
 interface ClaudeNativeSessionTitleInfo {
   customTitle?: string;
   firstPrompt?: string;

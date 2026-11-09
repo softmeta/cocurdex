@@ -64,7 +64,7 @@ function errorOf(error: unknown) {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-const PENDING_APPROVAL_RETRY_MS = 5_000;
+const PENDING_APPROVAL_RETRY_MS = 3_000;
 
 function errorCode(error: Error) {
   return (error as { code?: unknown }).code;
@@ -91,6 +91,7 @@ export function createConnectionSupervisor(
     lastSeq: null,
   };
   let generation = 0;
+  let attemptStartedAt = 0;
   let subscription: DaemonEventSubscription | null = null;
   let pending: Promise<void> | null = null;
   let controller: AbortController | null = null;
@@ -154,7 +155,7 @@ export function createConnectionSupervisor(
     }
     const pendingApproval = errorCode(error) === "PENDING_APPROVAL";
     const delay = pendingApproval
-      ? PENDING_APPROVAL_RETRY_MS
+      ? Math.max(0, attemptStartedAt + PENDING_APPROVAL_RETRY_MS - now())
       : backoffDelay(failures, policy);
     retryTimer = setTimeout(() => {
       retryTimer = null;
@@ -197,6 +198,7 @@ export function createConnectionSupervisor(
     if (retryTimer) clearTimeout(retryTimer);
     retryTimer = null;
     const attemptGeneration = ++generation;
+    attemptStartedAt = now();
     const attemptController = new AbortController();
     controller = attemptController;
     update({ status: "connecting", retryAt: null, waitReason: null });

@@ -65,8 +65,6 @@ describe("filesystem checkpoint adapter", () => {
   });
 
   it("still sees a same-size edit across three cached captures", async () => {
-    // Captures reuse the previous manifest as a stat cache; a stale entry
-    // would hide an edit that keeps the file size.
     const workspace = await createWorkspace();
     const userData = await tempDirs.create("cocurdex-fs-store-");
     const adapter = createFilesystemCheckpointAdapter(

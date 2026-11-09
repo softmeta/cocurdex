@@ -92,9 +92,7 @@ const TAB_REGISTRY: Record<RightPanelView, TabDef> = {
 };
 
 const DRAG_THRESHOLD_PX = 3;
-// Drag step matches shared titlebar icon metrics (size-6 + gap-1).
 const TAB_STEP_PX = TITLEBAR_ICON_BUTTON_SIZE + TITLEBAR_ICON_BUTTON_GAP;
-/** Fixed title chrome height — same as OS titlebar / center spacer / pinned chat. */
 export const VIEW_SWITCHER_ROW_HEIGHT_PX = TITLEBAR_HEIGHT;
 export const VIEW_SWITCHER_ROW_OUTER_HEIGHT_PX =
   VIEW_SWITCHER_ROW_HEIGHT_PX + 1;
@@ -262,7 +260,6 @@ export function ViewSwitcherTabs({
         commitOrder(state.order);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
-        // Defer clearing so the trailing click is swallowed
         window.setTimeout(() => {
           isDraggingRef.current = false;
         }, 0);
@@ -286,10 +283,8 @@ export function ViewSwitcherTabs({
   const tabClassName = (id: RightPanelView) => {
     const isActive = activeView === id;
     return cn(
-      // Shared titlebar pill shell (same as left/right chrome icons).
       "app-no-drag cursor-default",
       titlebarIconButtonClassName({ active: isActive }),
-      // Kill Base UI toggle pressed/muted defaults that fight our active paint.
       "data-pressed:bg-transparent data-pressed:text-editor-fg-subtle",
       "aria-pressed:bg-transparent aria-pressed:text-editor-fg-subtle",
       isActive &&
@@ -299,13 +294,6 @@ export function ViewSwitcherTabs({
 
   return (
     <TooltipProvider>
-      {/*
-        Full-width row so border-b runs edge to edge. Do NOT put app-drag on
-        the whole row: Electron's -webkit-app-region:drag on a full-width
-        band (even with pe-* padding) steals clicks from the absolute
-        titlebar maximize / panel toggles that sit in that corner.
-        Split into: tabs (drag) | middle filler (drag) | toggle reserve (no-drag).
-      */}
       <div
         className="relative z-40 box-content flex w-full shrink-0 items-center border-b border-editor-border"
         data-testid="editor-panel-view-switcher"
@@ -328,8 +316,6 @@ export function ViewSwitcherTabs({
           </>
         ) : null}
         <ToggleGroup
-          // Non-zero spacing avoids the connected segmented styles (rounded-none
-          // flush first/last) so each tab stays an independent pill with inset.
           spacing={1}
           className="app-drag flex h-full w-fit items-center rounded-none px-2"
           type="single"

@@ -3,7 +3,6 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** Product skill directories shipped with Cocurdex (namespaced cocurdex-*). */
 export const PRODUCT_SKILL_NAMES = [
   "cocurdex-deck",
   "cocurdex-decide",
@@ -31,7 +30,6 @@ export type ManagedSkillsMarker = {
   installedAt: string;
 };
 
-/** Directory containing each product skill folder next to this package. */
 export function getDefaultSkillsSourceRoot(): string {
   const here = path.dirname(fileURLToPath(import.meta.url));
   return path.resolve(here, "../skills");

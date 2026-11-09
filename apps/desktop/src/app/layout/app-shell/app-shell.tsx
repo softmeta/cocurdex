@@ -99,8 +99,6 @@ export function AppShell() {
     useState<NotificationSettings>(getStoredNotificationSettings);
   const themeModeRef = useRef(themeMode);
   const languageModeRef = useRef(languageMode);
-  // Stable callbacks (refs + module-level sync fns only) so the hooks don't
-  // re-subscribe their matchMedia / languagechange listeners every render.
   const handleSystemPrefersDark = useCallback((nextPrefersDark: boolean) => {
     if (themeModeRef.current === "system") {
       syncThemeMode("system", nextPrefersDark);
@@ -120,22 +118,15 @@ export function AppShell() {
     handleSystemLocale,
   );
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
-  // Preferred chat layout (center | float | pinned). Restored on startup and
-  // kept in sync when the user maximises, pins, or changes Settings.
   const [chatLayoutMode, setChatLayoutMode] = useState(getStoredChatLayoutMode);
   const isRightPanelMaximized = isEditorFullscreenLayout(chatLayoutMode);
   const isChatDockPinned = isPinnedChatLayout(chatLayoutMode);
   const [isRightPanelOpen, setIsRightPanelOpen] = useAtom(editorPanelOpenAtom);
-  // Floating/pinned dock surface: open | collapsed (FAB) | hidden.
-  // Restore the last surface across restarts (including collapsed FAB / fully
-  // hidden). Layout mode alone must not force the dock open on cold start.
   const [chatDockVisibility, setChatDockVisibility] =
     useState<ChatDockVisibility>(getStoredChatDockVisibility);
   const [hideFabWhenClosed, setHideFabWhenClosed] = useState(
     getStoredHideFabWhenClosed,
   );
-  // Restore editor panel when a fullscreen chat layout was saved last session.
-  // Do not touch chatDockVisibility — open/collapsed/hidden is already restored.
   useMountEffect(() => {
     if (isEditorFullscreenLayout(getStoredChatLayoutMode())) {
       setIsRightPanelOpen(true);
@@ -229,8 +220,6 @@ export function AppShell() {
         return;
       }
       setIsRightPanelOpen(true);
-      // Maximize/pin keep a collapsed FAB; settings open the dock so the
-      // chosen layout is visible. See shouldOpenDockWhenApplyingLayout.
       if (shouldOpenDockWhenApplyingLayout(mode, source)) {
         setChatDockVisibility("open");
         persistChatDockVisibility("open");
@@ -242,7 +231,6 @@ export function AppShell() {
   const toggleRightPanel = () => {
     if (isRightPanelOpen) {
       setIsRightPanelOpen(false);
-      // Leaving global mode behind so reopening starts in the split layout.
       applyChatLayoutMode("center", "panel-close");
       return;
     }
@@ -255,8 +243,6 @@ export function AppShell() {
       applyChatLayoutMode("center", "maximize");
       return;
     }
-    // Restore the last float/pinned choice from before the last center exit.
-    // Do not force the dock open — keep a collapsed FAB if the user closed it.
     applyChatLayoutMode(getStoredLastDockLayout(), "maximize");
   };
 
@@ -342,9 +328,6 @@ export function AppShell() {
     applyChatLayoutMode(pinned ? "pinned" : "float", "pin");
   };
 
-  // Optional section: gear icon reopens the last section; empty states pass
-  // "providers" (etc.) to land on the right pane. Guard with typeof so a
-  // React click event is never treated as a section id (onClick={openSettings}).
   const openSettings = (section?: SettingsSectionId) => {
     setIsSearchOpen(false);
     if (typeof section === "string") {
@@ -354,8 +337,6 @@ export function AppShell() {
     setActiveScreen("settings");
   };
 
-  // Menus (e.g. provider model empty state) call openSettings() without
-  // prop drilling through the composer tree.
   const openSettingsRef = useRef(openSettings);
   openSettingsRef.current = openSettings;
   useMountEffect(() =>

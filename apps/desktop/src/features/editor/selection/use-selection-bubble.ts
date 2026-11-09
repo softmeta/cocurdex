@@ -42,7 +42,6 @@ export function useSelectionBubble() {
     selectionBubbleTimerRef.current = null;
   }, []);
 
-  // Sync: window mouseup to finalize pointer selection
   useMountEffect(() => {
     const handleWindowMouseUp = () => {
       if (!isPointerSelectingRef.current) {
@@ -59,7 +58,6 @@ export function useSelectionBubble() {
     };
   });
 
-  // Cleanup timer on unmount
   useMountEffect(() => clearSelectionBubbleTimer);
 
   const syncSelectionUi = useCallback(() => {

@@ -21,17 +21,8 @@ Rules:
 - Use the same language as the user's message.
 - Reply with the title only, nothing else.`;
 
-// Generous cap: a 6-word title needs a fraction of this, but a model whose
-// thinking cannot be disabled may spend tokens reasoning first. Truncation
-// then yields empty text -> null -> the caller keeps its fallback title.
 const TITLE_MAX_TOKENS = 512;
 
-// Rebuild a pi Model from Cocurdex provider records. Records sourced from the
-// pi catalog round-trip reasoning/thinkingLevelMap/compat, so pi's per-vendor
-// thinking handling applies unchanged — with no reasoning requested it sends
-// the right "disable thinking" parameter per provider (deepseek/zai/qwen/...).
-// Manually configured models lack compat and fall back to pi's URL-based
-// auto-detection.
 const OPENCODE_SESSION_HEADER = "x-opencode-session";
 const OPENCODE_PROVIDER_IDS = new Set(["opencode", "opencode-go"]);
 
@@ -82,7 +73,6 @@ function normalizeTitle(raw: string): string | null {
     return null;
   }
 
-  // Slice by code points, not UTF-16 units, so an emoji is never cut in half.
   const chars = [...trimmed];
   return chars.length > 64 ? `${chars.slice(0, 60).join("")}…` : trimmed;
 }
@@ -129,8 +119,6 @@ export async function generatePiText(params: {
   );
 }
 
-// Single-shot title synthesis through the pi ai layer. Returns null when the
-// model produced no usable text; the caller keeps its fallback title.
 export async function generatePiConversationTitle(params: {
   provider: ProviderConfigRecord;
   model: ProviderModelRecord;

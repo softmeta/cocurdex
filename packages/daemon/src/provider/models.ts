@@ -245,9 +245,7 @@ export async function fetchProviderModels(
 
       return { models, error: null };
     }
-  } catch {
-    // Fall back to the generic /models endpoint below.
-  }
+  } catch {}
 
   try {
     const apiKey = await readApiKey(config.id);

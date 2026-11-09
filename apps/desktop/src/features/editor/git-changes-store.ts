@@ -8,10 +8,6 @@ export interface GitFileReveal {
 
 export const gitSelectedPathAtom = atom<string | null>(null);
 
-// A reveal is a one-shot request — "scroll to this file and open it" — mailed
-// to the diff stack, which is the only consumer. The token comes from its own
-// counter rather than from the current request, so consuming a request cannot
-// let the next one reuse a token the stack has already applied.
 export const gitRevealAtom = atom<GitFileReveal | null>(null);
 
 const gitRevealTokenAtom = atom(0);

@@ -14,13 +14,6 @@ const statusIcon: Record<
   pending: Circle,
 };
 
-// Live agent task list (ACP plan / Grok `todo_write`). Rendered in the
-// composer dock so it stays visible while the transcript scrolls — not as a
-// mid-stream message card (that buried the list under tool output).
-//
-// Two distinct affordances: collapsing keeps the header row (and progress)
-// docked so the user can reopen the list any time, dismissing hides the panel
-// entirely until the agent pushes the next plan update.
 export function PlanPanel({
   plan,
   isRunning = false,
@@ -56,15 +49,11 @@ export function PlanPanel({
         })
       : null;
 
-  // Opaque raised surface, same as the other dock cards: the panel floats over
-  // the tail of the transcript, so a translucent fill bleeds text through.
   return (
     <section
       aria-label={t("plan.label")}
       className={cn(
         "w-full rounded-panel border border-chat-border bg-chat-surface-raised px-3 text-chat-fg shadow-chat-soft",
-        // Collapsed is a thin status strip: it covers the tail of the
-        // transcript, so it gives back every pixel it does not need.
         collapsed ? "py-1" : "py-2.5",
       )}
     >
@@ -97,9 +86,6 @@ export function PlanPanel({
           )}
           <span className="flex shrink-0 items-center gap-1.5 text-meta tabular-nums text-chat-fg-muted">
             {progressLabel}
-            {/* The panel is docked at the bottom, so the list grows upward:
-                up means "opens", down means "closes". Vertical rotation keeps
-                the icon direction-neutral in RTL. */}
             <ChevronDown
               className={cn(
                 "size-3.5 shrink-0 transition-transform",
@@ -138,7 +124,6 @@ function PlanBody({
           {plan.explanation}
         </p>
       ) : null}
-      {/* Cap height so a long todo list does not shove the composer off-screen. */}
       <ol className="max-h-40 space-y-1 overflow-y-auto overscroll-contain">
         {plan.steps.map((step, index) => {
           const status = resolvePlanStepStatus(step.status, isRunning);

@@ -399,7 +399,6 @@ describe("permission mode helpers", () => {
     ]);
     expect(store.get(lastSelectedAgentAtom)).toBe("acp:grok-build");
 
-    // A later set (e.g. user switches back to built-in cocurdex) overwrites.
     store.set(lastSelectedAgentAtom, "pi");
     expect(window.localStorage.getItem(storageKey)).toBe("pi");
     expect(store.get(lastSelectedAgentAtom)).toBe("pi");
@@ -465,7 +464,6 @@ describe("permission mode helpers", () => {
       supportsPermissionMode(agents, session.agentType, session.permissionMode),
     ).toBe(true);
     expect(getSessionPermissionMode(agents, session)).toBe("codex-auto");
-    // Unknown ids normalize to Codex everywhere, so the mode axis follows.
     expect(supportsPlanMode(agents, session.agentType)).toBe(true);
   });
 

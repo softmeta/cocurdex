@@ -3,9 +3,6 @@ import { type AgentEvent, CODEX_DEFAULT_MODEL_ID } from "@cocurdex/shared";
 import { describe, expect, it, vi } from "vitest";
 
 interface FakeLeaseOptions {
-  // sendMessage only resolves once Codex reports turn/completed, so tests that
-  // drive a full turn need the notification; tests that inspect an in-flight
-  // turn (steer, stop) keep it running instead.
   autoCompleteTurns?: boolean;
 }
 
@@ -324,7 +321,6 @@ describe("createCodexAdapter", () => {
       () => {},
     );
 
-    // Not awaited: the turn stays in flight, which is what steering targets.
     void session.sendMessage({ content: "Start", history: [] });
     await vi.waitFor(() => expect(client.startTurn).toHaveBeenCalledOnce());
     await session.sendMessage({
@@ -535,9 +531,6 @@ describe("createCodexAdapter", () => {
     );
   });
 
-  // The daemon treats a resolved sendMessage as "turn finished" and only then
-  // dispatches the next queued follow-up, so resolving at turn/start would send
-  // queued input into a still-running turn.
   it("keeps sendMessage pending until Codex reports turn/completed", async () => {
     const client = {
       startThread: vi.fn(async () => ({ thread: { id: "thread-pending" } })),

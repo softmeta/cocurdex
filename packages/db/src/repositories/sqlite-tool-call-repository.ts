@@ -4,9 +4,6 @@ import { parseJson, type SqliteRow } from "../sqlite-types";
 import { allocateTimelineSeq } from "../timeline-sequence";
 import type { ToolCallRepository } from "./tool-call-repository";
 
-// Columns required to render the tool-call trigger row and group header. Notably
-// excludes the result columns — those fields are fetched lazily when the user
-// opens the detail popover/sheet (see getResultById).
 const SUMMARY_COLUMNS =
   "id, session_id, title, kind, status, subagent_json, raw_input_json, locations_json, started_at, updated_at, seq, run_id";
 

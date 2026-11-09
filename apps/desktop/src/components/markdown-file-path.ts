@@ -12,24 +12,13 @@ export interface ResolvedFilePath {
   endLine?: number;
 }
 
-// Wiring supplied by the chat surface so the generic markdown renderer stays
-// decoupled from the editor store and workspace state.
 export interface MarkdownFilePathHandlers {
-  // Resolve a parsed candidate to an absolute path (e.g. against the active
-  // workspace root). Returns null when no workspace context is available.
   resolve(candidate: FilePathCandidate): ResolvedFilePath | null;
-  // Cheap existence probe; the candidate only becomes clickable when true.
   checkExists(absolutePath: string): Promise<boolean>;
-  // Open the resolved file in the editor panel, optionally revealing a line.
   open(target: ResolvedFilePath): void;
-  // Localized tooltip label for the clickable affordance.
   openLabel?: string;
 }
 
-// Split a markdown link label into path-looking spans and plain prose so only
-// the path becomes a clickable chip. Models often write
-// [`headless.rs:846` 附近](real/path) or [`file.rs:10` 起](...) — the Chinese
-// annotation must not ride along as part of the link.
 export type WorkspaceLinkLabelPart =
   | { kind: "text"; text: string }
   | {
@@ -50,8 +39,6 @@ export function splitWorkspaceLinkLabel(
 
   const matches = scanFilePathCandidates(trimmed);
   if (matches.length === 0) {
-    // No path token in the label — treat the whole label as the chip text
-    // (open target still comes from the href candidate).
     return [{ kind: "path", text: trimmed }];
   }
 
@@ -79,9 +66,6 @@ export function splitWorkspaceLinkLabel(
   return parts;
 }
 
-// Extract a plain string from inline-code children. Inline code is almost always
-// a single text node; bail out (null) for anything that mixes in elements so the
-// caller falls back to default rendering.
 export function extractInlineCodeText(children: ReactNode): string | null {
   if (typeof children === "string") {
     return children;
@@ -105,13 +89,6 @@ export function extractInlineCodeText(children: ReactNode): string | null {
   return null;
 }
 
-// Private https host used to smuggle workspace-relative file links past
-// Streamdown's rehype-harden layer. Bare relative hrefs like
-// `crates/foo/bar.md` fail harden's URL parse (it only accepts `/`, `./`,
-// `../` as relative, and always blocks `file:`), so they render as
-// `label [blocked]`. We rewrite those links to this origin before render,
-// then the markdown `a` component resolves them through filePathHandlers
-// and opens the editor — never the system browser.
 export const WORKSPACE_FILE_LINK_HOST = "cocurdex.workspace";
 const WORKSPACE_FILE_LINK_ORIGIN = `https://${WORKSPACE_FILE_LINK_HOST}`;
 
@@ -182,8 +159,6 @@ export function parseWorkspaceFileHref(
   return candidate;
 }
 
-// Hrefs that already go through the normal external / anchor path — leave them
-// alone so we never rewrite real web links or in-document hashes.
 function isReservedMarkdownHref(href: string): boolean {
   return (
     href.startsWith("#") ||
@@ -199,9 +174,6 @@ function isReservedMarkdownHref(href: string): boolean {
   );
 }
 
-// Match `[label](href)` / `[label](<href>)` / `[label](href "title")`.
-// Labels often wrap the path in backticks: [`path`](path). Captures keep the
-// original label (including backticks) so we only rewrite the href.
 const MARKDOWN_LINK =
   /\[([^\]]*)]\(\s*(<?)([^>\s)]+)(>?)(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/g;
 
@@ -226,23 +198,16 @@ function rewriteLinksInProse(segment: string): string {
       }
 
       const nextHref = buildWorkspaceFileHref(candidate);
-      // Drop angle brackets: the rewritten https URL never needs them, and
-      // leaving `<>` around a long query string confuses some parsers.
       return `[${label}](${nextHref}${title ?? ""})`;
     },
   );
 }
 
-// Rewrite assistant markdown so workspace-relative file links survive
-// rehype-harden and can open in the editor. Only call when filePathHandlers
-// are wired — otherwise the rewritten https://cocurdex.workspace/... URLs
-// would be dead ends.
 export function rewriteMarkdownLocalFileLinks(content: string): string {
   if (!content.includes("](")) {
     return content;
   }
 
-  // Leave fenced code blocks untouched (sample markdown inside ```...```).
   const segments = content.split(/(```[\s\S]*?```)/g);
   return segments
     .map((segment, index) => {
@@ -254,8 +219,6 @@ export function rewriteMarkdownLocalFileLinks(content: string): string {
     .join("");
 }
 
-// Placeholder that cannot appear in a real markdown file href, used while
-// temporarily hiding inline-code spans from the link regex.
 const INLINE_CODE_MASK = /%%COCURDEX_INLINE_(\d+)%%/g;
 
 const INLINE_CODE_SPAN = /`([^`\n]*)`/g;
@@ -276,11 +239,6 @@ function unwrapPathLabeledFileLinkCodeSpan(span: string): string | null {
   return parseLocalFileHref(href) ? inner : null;
 }
 
-// Mask whole inline-code spans, rewrite links on the remainder, then restore.
-//
-// - [`path`](path) → mask turns the label into a token so the outer link still
-//   matches and only the href is rewritten (GitHub-style file citations).
-// - `[local](src/a.ts)` entirely inside one code span → fully masked, left alone.
 function rewriteLinksOutsideInlineCode(segment: string): string {
   if (!segment.includes("](")) {
     return segment;

@@ -1,4 +1,4 @@
-import type { CompatibleProviderModel } from "./contracts";
+import type { CompatibleProviderModel } from "./provider-contracts";
 
 export const CODEX_BUILT_IN_PROVIDER_ID = "codex";
 export const CODEX_DEFAULT_MODEL_ID = "gpt-5.5";

@@ -1,6 +1,5 @@
 import type { ViewColumnRecord } from "@cocurdex/shared";
 
-/** UI tint for default status / priority column ids (Linear-like hierarchy). */
 export function groupFieldColor(
   column: Pick<ViewColumnRecord, "id" | "color">,
 ): string | undefined {

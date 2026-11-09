@@ -111,9 +111,6 @@ function mapCodexDecision(method: string, decision: AgentPermissionDecision) {
   };
 }
 
-// Maps a permission escalation request (item/permissions/requestApproval) to
-// the PermissionsRequestApprovalResponse shape: grant the requested profile on
-// allow, grant nothing on deny.
 function mapCodexPermissionsProfileDecision(
   params: unknown,
   decision: AgentPermissionDecision,

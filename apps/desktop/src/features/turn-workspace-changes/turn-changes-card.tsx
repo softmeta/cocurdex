@@ -140,8 +140,6 @@ export function TurnChangesCard({
     setUndoResults((current) => ({ ...current, [changeSet.id]: result }));
   };
 
-  // Only surface the card once the turn is done and actually touched files:
-  // an in-progress "collecting" row adds noise while its actions are inert.
   if (
     changeSet.status === "error" ||
     changeSet.status === "collecting" ||
@@ -161,8 +159,6 @@ export function TurnChangesCard({
     (file) => file.restorable === false,
   );
   const canUndo = isTurnChangeSetUndoable(changeSet) && !isStreaming;
-  // Reviewing a turn means revealing the shell's git view — dispatch it as an
-  // intent so it also works when this chat lives in the detached window.
   const reviewTurn = (path = "") => {
     void desktopApi.chatWindow
       .dispatchIntent({

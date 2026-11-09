@@ -146,6 +146,7 @@ export function useSessionActions(host: SavedHost, allowFork: boolean) {
         icon: ACTION_ICONS[action],
         group: ACTION_GROUPS[action],
         destructive: action === "delete",
+        presents: action === "rename" || action === "delete",
         onPress: rowHandlers[action],
       })),
     });

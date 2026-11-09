@@ -165,10 +165,6 @@ export function NewSessionCard({
     onStartSession,
   });
 
-  // Wires the ChatComposer submit into the higher-level "start session"
-  // intent. ChatComposer already clears its own editor on send, so we just
-  // forward the prompt text + attachments along with the picked agent /
-  // permission / provider snapshot.
   const handleStartSession = async (
     text: string,
     attachments: MessageAttachment[],
@@ -211,11 +207,9 @@ export function NewSessionCard({
     (mode) => mode.id === selectedSessionModeId,
   );
   const triggerValues = [
-    // Nothing to show on the trigger while the agent default is in play.
     ...(selectedSessionMode && selectedSessionMode.id !== "default"
       ? [sessionModeLabel(effectiveSelectedAgent, selectedSessionMode)]
       : []),
-    // Nothing to show on the trigger while the axis is unset.
     ...(thinkingLevelOptions.length > 1 && selectedThinkingLevel
       ? [
           getThinkingLevelLabel(thinkingLevelOptions, selectedThinkingLevel) ??

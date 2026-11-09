@@ -1,11 +1,3 @@
-/**
- * App-level network proxy settings.
- *
- * Scope: agent child processes, app/daemon outbound HTTP (Node fetch with
- * NODE_USE_ENV_PROXY), and Electron Chromium traffic. Does not hijack the
- * integrated terminal PTY by default.
- */
-
 export const NETWORK_PROXY_SETTING_KEY = "network.proxy";
 
 export const PROXY_ENV_KEYS = [
@@ -27,21 +19,12 @@ export type NetworkProxyMode = "off" | "system" | "manual";
 
 export interface NetworkProxySettings {
   mode: NetworkProxyMode;
-  /** HTTP proxy URL, e.g. http://127.0.0.1:7890 or http://user:pass@host:port */
   httpProxy: string;
-  /** HTTPS proxy URL; empty means reuse httpProxy */
   httpsProxy: string;
-  /** Optional socks / catch-all proxy (ALL_PROXY) */
   allProxy: string;
-  /** Comma-separated bypass hosts; empty uses DEFAULT_NO_PROXY in manual mode */
   noProxy: string;
 }
 
-/**
- * Outcome of an outbound connectivity probe. `ok` reports whether the request
- * completed; the egress fields describe where it surfaced, so a proxy that
- * connects without changing the exit node is still recognizable.
- */
 export type NetworkProxyTestResult =
   | {
       ok: true;
@@ -57,11 +40,6 @@ export type NetworkProxyTestResult =
       error: string;
     };
 
-/**
- * "San Francisco, US · AS13335 Cloudflare" — whichever parts the probe knows.
- * Where the request surfaced is what tells the user the proxy is really in the
- * path.
- */
 export function formatProxyEgressDetail(
   result: NetworkProxyTestResult,
 ): string | null {
@@ -73,10 +51,6 @@ export function formatProxyEgressDetail(
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-/**
- * Strip userinfo from a proxy URL so chrome / logs can show the endpoint
- * without echoing stored credentials.
- */
 export function redactProxyUrl(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -169,11 +143,6 @@ const PROXY_URL_SCHEMES = new Set([
   "socks5h:",
 ]);
 
-/**
- * Validate a user-entered proxy URL. Empty means "unset" and is valid.
- * A scheme is required: bare `host:port` is parsed inconsistently by the
- * agent CLIs and by Chromium, which silently degrades to no proxy at all.
- */
 export function isValidProxyUrl(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -197,10 +166,6 @@ export function pickProxyEnv(env: EnvMap): EnvMap {
   return result;
 }
 
-/**
- * Resolve the proxy-related env assignments for the given settings.
- * `undefined` values mean the key should be deleted from the env.
- */
 export function resolveProxyEnvAssignments(
   settings: NetworkProxySettings,
   systemSnapshot: EnvMap,
@@ -279,7 +244,6 @@ export function withoutNodeEnvProxyFlag(env: EnvMap): EnvMap {
   return rest;
 }
 
-/** Mutate `env` so proxy keys match the resolved assignments. */
 export function assignProxyEnv(env: EnvMap, assignments: EnvMap): void {
   for (const [key, value] of Object.entries(assignments)) {
     if (value === undefined) {
@@ -290,11 +254,6 @@ export function assignProxyEnv(env: EnvMap, assignments: EnvMap): void {
   }
 }
 
-/**
- * Apply app proxy settings to a process-like env map.
- * Also enables Node's env-based proxy for fetch / http / https
- * (`NODE_USE_ENV_PROXY=1`, Node 22.21+ / 24+).
- */
 export function applyNetworkProxyToEnv(
   env: EnvMap,
   settings: NetworkProxySettings,
@@ -304,12 +263,6 @@ export function applyNetworkProxyToEnv(
   env.NODE_USE_ENV_PROXY = "1";
 }
 
-/**
- * Credentials Chromium should answer a proxy auth challenge with. Chromium
- * cannot read userinfo out of `proxyRules`, so the main process replays these
- * through the `login` event. HTTPS wins over HTTP wins over ALL_PROXY, matching
- * the precedence Chromium uses when picking the proxy in the first place.
- */
 export function getManualProxyCredentials(
   settings: NetworkProxySettings,
 ): { username: string; password: string } | null {
@@ -330,7 +283,6 @@ export function getManualProxyCredentials(
   return null;
 }
 
-/** True when manual mode is selected but no proxy URL was actually entered. */
 export function isManualProxyIncomplete(
   settings: NetworkProxySettings,
 ): boolean {
@@ -349,10 +301,6 @@ export interface ElectronProxyConfig {
   proxyBypassRules?: string;
 }
 
-/**
- * Map app proxy settings to Electron `session.setProxy` options.
- * Manual mode builds fixed_servers rules from http/https proxy URLs.
- */
 export function buildElectronProxyConfig(
   settings: NetworkProxySettings,
 ): ElectronProxyConfig {
@@ -376,8 +324,6 @@ export function buildElectronProxyConfig(
   if (https) {
     parts.push(`https=${toElectronProxyServer(https)}`);
   }
-  // Electron fixed_servers does not use ALL_PROXY the same way CLIs do;
-  // when only allProxy is set, treat it as the catch-all proxyRules value.
   if (parts.length === 0 && normalized.allProxy) {
     return {
       mode: "fixed_servers",
@@ -397,22 +343,6 @@ export function buildElectronProxyConfig(
   };
 }
 
-/**
- * Build one `proxyURL` token for Chromium's `proxyRules` grammar:
- *
- *   proxyURL = [<proxyScheme>"://"]<proxyHost>[":"<proxyPort>]
- *
- * Two consequences drive this function:
- * - The scheme must be kept for anything but plain HTTP, otherwise Chromium
- *   applies its `http` default and dials a SOCKS port as if it were an HTTP
- *   proxy. `socks5h` is a curl-ism Chromium does not know; it maps to `socks5`
- *   (Chromium always resolves DNS proxy-side for SOCKS5 anyway).
- * - The grammar has no userinfo slot, so credentials are dropped here. Chromium
- *   asks for proxy credentials through the `login` event instead; see the main
- *   process proxy service.
- *
- * https://www.electronjs.org/docs/latest/api/structures/proxy-config
- */
 function toElectronProxyServer(proxyUrl: string): string {
   try {
     const url = new URL(proxyUrl);
@@ -425,7 +355,6 @@ function toElectronProxyServer(proxyUrl: string): string {
   }
 }
 
-/** Credentials for a proxy URL, if it carries any. */
 export function extractProxyCredentials(
   proxyUrl: string,
 ): { username: string; password: string } | null {

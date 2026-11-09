@@ -29,8 +29,6 @@ async function atomicWriteText(
   }
 }
 
-// Absolute path → stable filename. Path is also stored inside the JSON so
-// human inspection and future re-keying remain possible.
 export function pdfAnnotationsStorageKey(filePath: string): string {
   return createHash("sha256").update(filePath).digest("hex");
 }
@@ -77,10 +75,6 @@ export class DaemonPdfAnnotationsService {
     );
   }
 
-  // Mutations are applied to the stored document inside a per-path queue, so
-  // concurrent clients never overwrite each other's marks with a stale
-  // snapshot. The queue is entered synchronously: awaiting path resolution
-  // first would let a later request whose awaits settle sooner jump ahead.
   async updateAnnotations(
     filePath: string,
     operation: PdfAnnotationsOperation,

@@ -1,10 +1,14 @@
-/* Streamdown integration layer.
- * Streamdown ships compiled JS with Tailwind utility classes, so register the
- * compiled files for Tailwind's content scanner. Paths are relative to this CSS
- * file: apps/desktop/src/styles -> apps/desktop/node_modules. */
 @source "../../node_modules/streamdown/dist/*.js";
 @source "../../node_modules/@streamdown/math/dist/*.js";
 @source "../../node_modules/@streamdown/cjk/dist/*.js";
+
+.chat-reading-prose :is(p, ul, ol, td):not(blockquote *) {
+  color: var(--reading-text);
+}
+
+.chat-reading-prose strong:not(a *, blockquote *) {
+  color: var(--chat-text-primary);
+}
 
 [data-streamdown="code-block"] {
   position: relative;
@@ -59,11 +63,6 @@
   padding: 16px 18px;
 }
 
-/* Streamdown bug workaround: when lineNumbers={false} the per-line <span>
- * wrapper inside the highlighted code body has no className at all, so each line
- * defaults to display:inline and the whole code block collapses onto a
- * single visual line. Force the line wrappers to behave as blocks. Targets
- * only the direct line spans, not the inner token spans. */
 [data-streamdown="code-block-body"] > pre > code > span {
   display: block;
 }

@@ -34,15 +34,12 @@ interface MessageBuffer {
   kind: "reasoning" | "response";
 }
 
-// Chunks without a provider message id all share this slot: the protocol
-// offers nothing else to tell concurrent anonymous streams apart.
 const ANONYMOUS_PROVIDER_MESSAGE_ID = "";
 
 function messageSegmentKey(
   kind: MessageBuffer["kind"],
   providerMessageId: string | null,
 ) {
-  // NUL keeps the two parts unambiguous — provider ids are opaque strings.
   return `${kind}\u0000${providerMessageId ?? ANONYMOUS_PROVIDER_MESSAGE_ID}`;
 }
 
@@ -181,7 +178,6 @@ function readMetaRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-/** Absolute context-window fill, as reported outside the notification stream. */
 export interface AcpContextUsage {
   contextTokensUsed?: number;
   contextWindowSize?: number;
@@ -193,7 +189,6 @@ function readNonNegativeInt(value: unknown): number | null {
     : null;
 }
 
-/** Grok stamps `_meta.totalTokens` as the current context fill estimate. */
 function readTotalTokensFromMeta(meta: Record<string, unknown> | null) {
   return meta ? readNonNegativeInt(meta.totalTokens) : null;
 }
@@ -209,20 +204,9 @@ function readCostUsd(cost: unknown): number | undefined {
   }
   const currency =
     typeof record.currency === "string" ? record.currency.toUpperCase() : "USD";
-  // Only forward USD; other currencies would mislabel the cost meter.
   return currency === "USD" ? amount : undefined;
 }
 
-/**
- * Map ACP prompt-response usage (`response.usage` and/or Grok `_meta` keys)
- * into a Cocurdex usage record.
- *
- * - Grok `_meta.inputTokens` / `outputTokens` / cache keys are **per-turn**
- *   (safe to accumulate).
- * - Unstable ACP `response.usage` totals are **session-cumulative** on the
- *   wire, so only `totalTokens` is taken as absolute context fill — not as
- *   additive input/output.
- */
 export function mapAcpPromptUsage(
   response: PromptResponse | null | undefined,
 ): AgentUsageRecord | null {
@@ -239,7 +223,6 @@ export function mapAcpPromptUsage(
   const contextTokensUsed =
     readTotalTokensFromMeta(meta) ?? readNonNegativeInt(usage?.totalTokens);
 
-  // Prefer Grok's per-turn meta; do not treat ACP `usage.*Tokens` as deltas.
   const inputTokens = readNonNegativeInt(meta?.inputTokens) ?? 0;
   const outputTokens = readNonNegativeInt(meta?.outputTokens) ?? 0;
   const cacheReadInputTokens =
@@ -355,7 +338,6 @@ export class AcpEventMapper {
   }: {
     configOptions?: SessionConfigOption[] | null;
     modes?: SessionModeState | null;
-    /** Model catalog context window — stamped onto later usage updates. */
     contextWindowSize?: number | null;
   }) {
     if (modes) {
@@ -375,8 +357,6 @@ export class AcpEventMapper {
       this.emitConfigOptions(configOptions);
     }
 
-    // Seed the absolute window size so context meters can show `used / limit`
-    // even when the global provider-models table has no row for this agent.
     if (
       typeof contextWindowSize === "number" &&
       Number.isFinite(contextWindowSize) &&
@@ -390,12 +370,6 @@ export class AcpEventMapper {
     }
   }
 
-  /**
-   * Absolute context fill obtained out of band, i.e. not from a session
-   * notification. After a resume the agent may recompute its own context
-   * estimate without emitting any update, so the only way to observe the new
-   * value before the next turn is to ask for it.
-   */
   applyContextUsage({ contextTokensUsed, contextWindowSize }: AcpContextUsage) {
     const windowSize = contextWindowSize ?? this.lastContextWindowSize;
     this.emitUsage({
@@ -407,8 +381,6 @@ export class AcpEventMapper {
   }
 
   handle(notification: SessionNotification) {
-    // Grok (and similar agents) stamp context fill on every notification's
-    // `_meta.totalTokens` instead of sending a dedicated `usage_update`.
     if (!this.usageOptions.contextFromUsageUpdates) {
       this.emitContextFromMeta(readMetaRecord(notification._meta));
     }
@@ -513,9 +485,6 @@ export class AcpEventMapper {
         });
         return;
       case "usage_update": {
-        // Unstable ACP context-window update (`used` / `size` / optional cost).
-        // Cost is cumulative session cost on the wire — convert to a delta so
-        // `mergeUsageRecords` can keep summing billable fields.
         const record = update as {
           used?: unknown;
           size?: unknown;
@@ -564,10 +533,6 @@ export class AcpEventMapper {
     return this.messages.size > 0 || this.tools.size > 0;
   }
 
-  /**
-   * Apply usage from the `session/prompt` response (Grok `_meta` + optional
-   * unstable `usage` object) and complete the turn.
-   */
   complete(
     stopReason: StopReason,
     durationMs: number,
@@ -656,7 +621,6 @@ export class AcpEventMapper {
       inputTokens: 0,
       outputTokens: 0,
       contextTokensUsed: totalTokens,
-      // Keep stamping the seeded window so absolute merges stay complete.
       ...(this.lastContextWindowSize != null
         ? { contextWindowSize: this.lastContextWindowSize }
         : {}),
@@ -676,7 +640,6 @@ export class AcpEventMapper {
       (nextUsed === undefined || nextUsed === this.lastContextTokensUsed) &&
       (nextSize == null || nextSize === this.lastContextWindowSize);
 
-    // Skip pure context-only updates that do not change the window fill.
     if (contextUnchanged && !hasBilling) {
       return;
     }
@@ -705,15 +668,6 @@ export class AcpEventMapper {
       return;
     }
 
-    // ACP message IDs identify provider messages, but Cocurdex messages are
-    // renderable timeline segments. A tool call starting therefore ends every
-    // open segment even when the provider resumes streaming with the same
-    // message ID. Only the start is a boundary: later updates keep the tool
-    // row where it already sits in the timeline, so a provider that streams
-    // anonymous chunks alongside them must not have its stream split per update.
-    // Within one boundary, segments are tracked per (kind, message ID): agents
-    // that explore in parallel interleave chunks from several provider messages,
-    // and a single active segment would splice those streams into each other.
     const key = messageSegmentKey(kind, messageId ?? null);
     let id = this.activeMessageSegments.get(key);
     if (!id) {
@@ -745,9 +699,6 @@ export class AcpEventMapper {
   }
 
   private nextTimelineTimestamp() {
-    // Timeline records from different tables are merged by their timestamps.
-    // Preserve ACP notification order even when several updates share a clock
-    // millisecond, instead of delegating an unknowable tie to the renderer.
     const currentTimestampMs = Date.parse(this.now());
     if (!Number.isFinite(currentTimestampMs)) {
       throw new Error("ACP event timestamp must be a valid ISO date.");

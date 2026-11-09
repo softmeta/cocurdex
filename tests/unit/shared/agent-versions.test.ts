@@ -6,6 +6,12 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("parseAgentVersion", () => {
+  it("skips a long digit run without consuming a following version", () => {
+    expect(parseAgentVersion(`${"0".repeat(50_000)} v2.0.20-beta.1`)).toBe(
+      "2.0.20-beta.1",
+    );
+  });
+
   it("extracts the version from each CLI's own output shape", () => {
     expect(parseAgentVersion("2.1.239 (Claude Code)")).toBe("2.1.239");
     expect(parseAgentVersion("codex-cli 0.149.0")).toBe("0.149.0");

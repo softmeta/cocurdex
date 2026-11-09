@@ -3,14 +3,6 @@ import { startTransition } from "react";
 import type { PluginConfig } from "streamdown";
 import { HtmlPreview } from "./markdown-html-preview";
 
-// Streamdown's heavyweight plugins (syntax highlighting, KaTeX, Mermaid) dominate the
-// renderer bundle, and a message only needs them when it actually contains a
-// code fence, math, or a diagram. Loading them on demand keeps them out of the
-// startup path; until they land, that message renders with the light plugin
-// set, which is the same fallback plain prose already uses.
-//
-// They load independently: a transcript full of code fences must not pull in
-// Mermaid, which is the largest of the three and is needed only by ```mermaid.
 export type HeavyPluginKind = "code" | "math" | "mermaid";
 
 const importers: Record<HeavyPluginKind, () => Promise<PluginConfig>> = {
@@ -18,8 +10,6 @@ const importers: Record<HeavyPluginKind, () => Promise<PluginConfig>> = {
     import("./markdown-code-highlighter")
       .then((module) => module.loadMarkdownCodeHighlighter())
       .then((code) => ({ code })),
-  // singleDollarTextMath keeps the $E=mc^2$ form our prompts use; double-dollar
-  // blocks still work.
   math: () =>
     import("@streamdown/math").then((module) => ({
       math: module.createMathPlugin({ singleDollarTextMath: true }),
@@ -39,9 +29,6 @@ const loaded = new Map<HeavyPluginKind, PluginConfig>();
 const inFlight = new Set<HeavyPluginKind>();
 const listeners = new Set<() => void>();
 
-// useSyncExternalStore compares snapshots by identity, so this must stay the
-// same object until a plugin actually lands. Building it per call makes React
-// re-render forever.
 let snapshot: PluginConfig = LIGHT_STREAMDOWN_PLUGINS;
 let loadedKinds: ReadonlySet<HeavyPluginKind> = new Set();
 
@@ -82,9 +69,6 @@ export function loadHeavyPlugins(kinds: readonly HeavyPluginKind[]) {
         loaded.set(kind, plugin);
         snapshot = mergePluginConfigs([...loaded.values()]);
         loadedKinds = new Set(loaded.keys());
-        // Every mounted MarkdownRenderer re-renders here, and on a long
-        // transcript that means highlighting the whole history at once. Keep it
-        // interruptible so hover and input stay alive while it runs.
         startTransition(() => {
           for (const listener of listeners) {
             listener();
@@ -92,7 +76,6 @@ export function loadHeavyPlugins(kinds: readonly HeavyPluginKind[]) {
         });
       })
       .catch((error) => {
-        // Leave the light plugin set in place and allow a later retry.
         console.error("[Markdown] heavy plugin load failed", kind, error);
       })
       .finally(() => {

@@ -43,10 +43,6 @@ import { useSidebarSessionView } from "./use-sidebar-session-view";
 import { WorkspacesPanel } from "./workspaces-panel";
 
 interface LeftSidebarProps {
-  // Dock reuse: drop the titlebar spacer (the dock has its own header) and
-  // fire onAfterNavigate so the dock drawer can auto-close once a target is
-  // picked. headerStart slots chrome (e.g. session-list toggle) into the same
-  // bg-sidebar column so the dock drawer matches the main sidebar paint path.
   headerStart?: ReactNode;
   hideTitlebarSpacer?: boolean;
   onAfterNavigate?(): void;
@@ -96,9 +92,6 @@ export function LeftSidebar({
   const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useAtom(
     collapsedWorkspaceIdsAtom,
   );
-  // Workspaces and chat are alternate views of the same rail, not two stacked
-  // lists: only one list competes for the sidebar height at a time. The center
-  // panel reads the same atom so its empty state matches the visible tab.
   const activeTab = useAtomValue(sidebarTabAtom);
   const switchSidebarTab = useSetAtom(switchSidebarTabAtom);
 
@@ -126,13 +119,9 @@ export function LeftSidebar({
   };
 
   const handleRemoveWorkspace = async (workspaceId: string) => {
-    // Backend cascade-deletes sessions + their children in a single
-    // transaction; mirror that on the frontend store so the sidebar updates
-    // immediately without waiting for a bootstrap roundtrip.
     try {
       await desktopApi.deleteWorkspace(workspaceId);
     } catch {
-      // Keep the sidebar in sync with the database: nothing was removed.
       toast.error(t("sessions:workspace.removeFailed"));
       return;
     }
@@ -143,10 +132,7 @@ export function LeftSidebar({
   const handleRevealWorkspace = async (rootPath: string) => {
     try {
       await desktopApi.openWorkspaceInFileManager(rootPath);
-    } catch {
-      // openPath surfaces OS errors as resolved strings; swallow so the UI
-      // is not blocked. A toast layer would belong here but is out of scope.
-    }
+    } catch {}
   };
 
   const handleSelectSession = (workspaceId: string, sessionId: string) => {
@@ -203,9 +189,6 @@ export function LeftSidebar({
         hideTitlebarSpacer={hideTitlebarSpacer}
       />
 
-      {/* Start-only padding so ScrollArea roots reach the edge and the custom
-          thumb sits flush right; every row (chrome and list alike) takes its
-          end inset from a pe-3 parent so the hover fills line up. */}
       <div
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ps-3",

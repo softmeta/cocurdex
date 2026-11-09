@@ -13,11 +13,8 @@ import {
   getBuiltinProviders,
 } from "@earendil-works/pi-ai/providers/all";
 
-// Models on any api Cocurdex doesn't drive yet are dropped from the catalog.
 const supportedApis = new Set<ProviderApi>(providerApis);
 
-// Base URLs Pi leaves empty on these providers (auth-only or templated hosts).
-// Without them the provider has no endpoint and drops from the template list.
 const providerBaseUrls: Record<string, string> = {
   "cloudflare-ai-gateway":
     "https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/compat",
@@ -150,9 +147,6 @@ export async function listPiProviderModels(
 
   const now = new Date().toISOString();
 
-  // Gateways (opencode, fireworks, cloudflare) expose models across several
-  // apis. Keep every supported-api model — each record carries its own api, so
-  // downstream agent-compatibility filtering handles them per model.
   return getSupportedProviderModels(provider).map((model) =>
     mapPiModelToRecord(config.id, model, now),
   );

@@ -70,9 +70,6 @@ function getSkillInvocation(agentId: AgentId, skillName: string): string {
     case "pi":
       return `/skill:${skillName} `;
     case "opencode":
-      // OpenCode v1 exposes skills through its model-facing skill tool rather
-      // than a server command, so an explicit instruction works across v1 and
-      // the newer slash-capable runtime.
       return `Use the \`${skillName}\` skill. `;
     default:
       return `/${skillName} `;
@@ -170,8 +167,6 @@ export async function listAgentSkills(
   );
   const byName = new Map<string, AgentSlashCommand>();
 
-  // Roots are ordered from broad to specific, so later definitions override
-  // global or cross-agent definitions with the same skill name.
   for (const skills of discovered) {
     for (const skill of skills) {
       byName.set(skill.name, skill);

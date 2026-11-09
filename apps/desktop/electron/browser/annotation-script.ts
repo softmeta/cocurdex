@@ -1,5 +1,3 @@
-// This script is injected into the page via WebContents.executeJavaScript.
-// It runs in the page's main world and has full DOM access.
 export function getAnnotationScript(): string {
   return `(function() {
   if (window.__annotationScriptLoaded) return;

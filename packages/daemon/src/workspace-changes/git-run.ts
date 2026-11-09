@@ -12,7 +12,6 @@ const GIT_IDENTITY_ENV = {
   GIT_COMMITTER_EMAIL: "cocurdex@localhost",
 };
 
-/** Runs git with stdin content — used for batched `cat-file --batch-check`. */
 export function runGitWithInput(
   args: string[],
   options: { cwd: string; input: string },

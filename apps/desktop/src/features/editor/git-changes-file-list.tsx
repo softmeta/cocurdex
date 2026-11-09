@@ -14,13 +14,6 @@ interface GitChangesFileListProps {
   onSelect: (path: string) => void;
 }
 
-// Flat alternative to the tree index: the same rows without the folder
-// hierarchy, so a change set reads as one scannable column. Picking a row means
-// the same thing it does in the tree — reveal that file in the diff stack.
-//
-// The index column is narrow, so a row carries only the file icon, the path and
-// git's one-letter status; line counts and the change-type glyph belong to the
-// diff cards, where there is room for them.
 export function GitChangesFileList({
   entries,
   selectedPath,
@@ -48,9 +41,6 @@ export function GitChangesFileList({
             type="button"
           >
             <FileTypeIcon className="shrink-0" path={entry.path} />
-            {/* The directory yields first: it only claims leftover space, and
-                the file name keeps its width until the row is too small for the
-                name alone. */}
             <span className="flex min-w-0 flex-1 items-center">
               {dir ? (
                 <span className="min-w-0 flex-1 truncate text-editor-fg-muted">

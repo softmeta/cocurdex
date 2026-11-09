@@ -12,14 +12,6 @@ import { AcpProcessExitError } from "./acp-errors";
 import { appendStderrTail, sanitizeStderrExcerpt } from "./acp-stderr";
 import { traceAcpStreams } from "./acp-trace";
 
-// Teardown budget per connection. ACP agents run their tool commands in their
-// own detached process groups (Grok Build wraps them in process-wrap's
-// `ProcessSession`, i.e. setsid), so a process-group kill cannot reach those
-// grandchildren: the agent reaps them best, and only while it is still alive
-// to run its own teardown. Killing the agent alone orphans whatever command
-// it was running — which then keeps holding files and raising OS permission
-// prompts long after the app is gone. So close in stages: stdin EOF for a
-// clean exit, then SIGTERM, then a process-tree kill as a last resort.
 const EOF_GRACE_MS = 3_000;
 const SIGTERM_GRACE_MS = 1_500;
 
@@ -67,7 +59,6 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
   let stderrTail = "";
   child.stderr.setEncoding("utf8");
   child.stderr.on("data", (chunk: string) => {
-    process.stderr.write(chunk);
     stderrTail = appendStderrTail(stderrTail, chunk);
   });
   const processGone = new Promise<void>((resolve) => {
@@ -107,10 +98,6 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
     );
   const onExtRequest = handlers.onExtRequest;
   if (onExtRequest) {
-    // Registered under both names: extension methods travel with a leading
-    // underscore, and peers differ on whether they strip it before dispatch.
-    // An unregistered method answers -32601, which the agent reports as a
-    // failed tool call with no UI anywhere.
     for (const method of extRequestMethods ?? []) {
       for (const wireMethod of [method, `_${method}`]) {
         app.onRequest(
@@ -124,8 +111,6 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
   const onExtNotification = handlers.onExtNotification;
   if (onExtNotification) {
     for (const method of extNotificationMethods ?? []) {
-      // Same underscore ambiguity as the ext requests above: register both
-      // spellings so the push lands whichever way the agent addresses it.
       for (const wireMethod of [method, `_${method}`]) {
         app.onNotification(
           wireMethod,
@@ -163,14 +148,8 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
       connection.agent.request(methods.agent.session.setMode, request),
     setSessionConfigOption: (request) =>
       connection.agent.request(methods.agent.session.setConfigOption, request),
-    // Untyped request: the SDK's method map has no `session/set_model` yet.
     setSessionModel: (request) =>
       connection.agent.request("session/set_model", request),
-    // ACP extension methods travel with a leading underscore, which the peer
-    // strips before dispatching: `_x.ai/foo` arrives as ext method `x.ai/foo`.
-    // The SDK's own `extNotification` omits it and sends the bare name, which
-    // agents on the Rust ACP crate reject with "Method not found" (verified
-    // against `grok agent stdio`), so we add the prefix here.
     extNotification: (method, params) =>
       connection.agent.notify(`_${method}`, params),
     extRequest: (method, params) =>
@@ -184,9 +163,6 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
       if (hasExited(child)) {
         return;
       }
-      // Callers cancel the active turn (`session/cancel`) before disposing, so
-      // the agent is already tearing its tool processes down by the time we
-      // get here; these windows are what let it finish.
       if (child.stdin && !child.stdin.writableEnded) {
         child.stdin.end();
       }

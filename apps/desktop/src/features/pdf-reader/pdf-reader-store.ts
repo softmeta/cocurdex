@@ -19,9 +19,6 @@ export const PDF_ACTIVE_PATH_KEY = "cocurdex.pdf.activePath";
 export const PDF_READING_POSITIONS_KEY = "cocurdex.pdf.readingPositions";
 export const PDF_SIDE_PANEL_WIDTH_KEY = "cocurdex.pdf.sidePanelWidth";
 
-// Absolute file paths of the PDFs open in the reader. Workspace authorization
-// happens entirely in the main process, so the renderer only tracks paths.
-// Persisted so open tabs survive app restarts and right-panel remounts.
 const storedOpenPdfsAtom = atomWithStorage<string[]>(
   PDF_OPEN_PATHS_KEY,
   [],
@@ -53,7 +50,6 @@ export const activePdfPathAtom = atom(
   },
 );
 
-// Active path, but only while it is still in the open list.
 export const activeOpenPdfPathAtom = atom<string | null>((get) => {
   const activePath = get(activePdfPathAtom);
   if (!activePath) {
@@ -64,8 +60,6 @@ export const activeOpenPdfPathAtom = atom<string | null>((get) => {
 
 export const pdfReaderRevealNonceAtom = atom(0);
 
-// Last page the user was reading per absolute path. Survives tab switches and
-// app restarts so reopening a PDF lands on the prior page instead of page 1.
 const storedReadingPositionsAtom = atomWithStorage<PdfReadingPositions>(
   PDF_READING_POSITIONS_KEY,
   {},
@@ -110,8 +104,6 @@ export const setPdfReadingPositionAtom = atom(
   },
 );
 
-// Shared left-rail width for outline / marks / thumbnails. Persisted so the
-// drawer size survives restarts like other PDF reader preferences.
 const storedSidePanelWidthAtom = atomWithStorage<number>(
   PDF_SIDE_PANEL_WIDTH_KEY,
   PDF_SIDE_PANEL_DEFAULT_WIDTH,
@@ -137,8 +129,6 @@ export const openPdfReaderAtom = atom(null, (get, set, filePath: string) => {
   void set(hydratePdfAnnotationsAtom, filePath);
 });
 
-// Open a PDF and optionally land on a page. Sets the reading position first so
-// a remounted viewer seeds initialPage correctly (same path as resume reading).
 export const openPdfAtPageAtom = atom(
   null,
   (_get, set, payload: { filePath: string; pageNumber?: number | null }) => {

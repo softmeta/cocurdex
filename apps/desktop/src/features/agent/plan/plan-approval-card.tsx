@@ -17,9 +17,6 @@ import { Button } from "@/components/ui";
 import { cn } from "@/lib";
 import { PlanApprovalFeedback } from "./plan-approval-feedback";
 
-// Collapsed: readable preview without eating the dock.
-// Expanded: taller for review, still capped. The whole card overlays upward
-// so the chat flex layout does not reflow (and the header stays visible).
 export function PlanApprovalCard({
   approval,
   onResolve,
@@ -42,7 +39,6 @@ export function PlanApprovalCard({
     }
 
     const update = () => {
-      // 2px slack avoids flicker from subpixel rounding.
       setContentOverflows(node.scrollHeight > node.clientHeight + 2);
     };
     update();
@@ -56,15 +52,11 @@ export function PlanApprovalCard({
     return () => observer.disconnect();
   }, []);
 
-  // Resolved approvals leave no card behind: the dock only ever shows the one
-  // parked decision, and the agent's own tool-call row keeps the history.
   if (approval.status !== "pending") {
     return null;
   }
 
   const planContent = approval.planContent;
-  // Show expand when content is clipped, or when already expanded (so collapse
-  // remains available after the viewport grows past the content height).
   const showExpandToggle = contentOverflows || isExpanded;
 
   const handleResolve = async (decision: AgentPlanApprovalDecision) => {
@@ -80,8 +72,6 @@ export function PlanApprovalCard({
     }
   };
 
-  // One line: fixed title + pending chip. The plan body carries the real
-  // content.
   const header = (
     <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
       <div className="flex size-6 shrink-0 items-center justify-center rounded-control bg-chat-status-pending-bg text-chat-status-pending-fg">
@@ -118,7 +108,6 @@ export function PlanApprovalCard({
               expanded && "max-h-[min(60dvh,32rem)]",
               !expanded && "max-h-[min(36dvh,18rem)]",
             )}
-            // Only the in-flow (collapsed) shell is measured for overflow.
             ref={expanded ? undefined : measureBody}
           >
             <MarkdownRenderer content={planContent} tone="assistant" />
@@ -211,8 +200,6 @@ export function PlanApprovalCard({
 
   return (
     <div className={cn("relative w-full", isExpanded && "z-30")}>
-      {/* In-flow shell: always the collapsed footprint so chat flex height
-          does not jump when the plan body grows. */}
       <article
         className={cn(
           "w-full overflow-hidden rounded-panel border border-chat-border bg-chat-surface-raised text-chat-fg shadow-chat-soft",
@@ -224,9 +211,6 @@ export function PlanApprovalCard({
         {footer}
       </article>
 
-      {/* Expanded: full card (header + taller body + footer) overlays upward
-          from the same bottom edge — header stays on the card, chat is only
-          covered, not reflowed. */}
       {isExpanded ? (
         <article className="absolute inset-x-0 bottom-0 z-40 w-full overflow-hidden rounded-panel border border-chat-border bg-chat-surface-raised text-chat-fg shadow-chat-soft">
           {header}

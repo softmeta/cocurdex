@@ -83,7 +83,6 @@ describe("parseFilePathCandidate", () => {
 });
 
 describe("scanFilePathCandidates", () => {
-  // Helper: assert a single match covering `slice` of `text` with the given candidate.
   function expectSingle(
     text: string,
     slice: string,

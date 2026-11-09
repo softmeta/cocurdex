@@ -25,7 +25,6 @@ export const APPEARANCE_SETTINGS_STORAGE_KEY =
 export interface AppearanceSettings {
   codeFontFamily: string;
   codeFontSize: number;
-  /** Named color pack applied for both light and dark resolved modes. */
   themePreset: ThemePresetId;
   uiFontFamily: string;
   uiFontSize: number;
@@ -39,11 +38,6 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   uiFontSize: 13,
 };
 
-/**
- * Allowed Appearance font-size ranges (px, integer steps in the UI).
- * Kept narrow so type can scale without fixed rem chrome (h-8, size-4)
- * looking badly mismatched.
- */
 export const UI_FONT_SIZE_MIN = 12;
 export const UI_FONT_SIZE_MAX = 16;
 export const CODE_FONT_SIZE_MIN = 11;

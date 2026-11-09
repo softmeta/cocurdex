@@ -12,7 +12,6 @@ export const applyContextBreakdownEventAtom = atom(
       return;
     }
 
-    // Each report is a full snapshot of the window, so the latest one wins.
     set(sessionContextBreakdownAtom, {
       ...get(sessionContextBreakdownAtom),
       [event.sessionId]: event.breakdown,

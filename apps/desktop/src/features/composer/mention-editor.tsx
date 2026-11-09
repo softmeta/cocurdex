@@ -256,9 +256,6 @@ export const MentionEditor = forwardRef<
   }, [emitMentionQuery]);
   useDocumentEvent("selectionchange", handleSelectionChange);
 
-  // Callback ref doubles as the autoFocus seam: it fires when the node attaches
-  // (focusing on mount) and re-fires if autoFocus flips, since its identity
-  // then changes — matching the old effect without a separate useEffect.
   const setEditorNode = useCallback(
     (node: HTMLDivElement | null) => {
       editorRef.current = node;

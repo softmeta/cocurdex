@@ -19,9 +19,7 @@ export function readDiagnosticsPreferences(
     ) {
       return { verbose: true };
     }
-  } catch {
-    // Missing or malformed preferences fall back to defaults.
-  }
+  } catch {}
   return DEFAULT_PREFERENCES;
 }
 

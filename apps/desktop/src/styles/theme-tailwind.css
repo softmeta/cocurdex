@@ -1,6 +1,3 @@
-/* Project Tailwind extension layer.
- * The shadcn preset registers standard utilities in theme-preset.css. This file
- * only exposes Cocurdex-specific semantic tokens as Tailwind utilities. */
 @theme {
   --color-app: var(--app-bg);
   --color-app-foreground: var(--app-fg);
@@ -158,27 +155,6 @@
   --shadow-overlay: var(--overlay-shadow);
   --color-menu-ring: var(--menu-ring);
 
-  /*
-   * Typography scale — relative to --app-ui-font-size (Appearance → UI size).
-   *
-   * Product semantic steps (ratios vs UI base, original 13px-body design):
-   *   text-2xs     ~10/13 — micro labels, keyboard hints
-   *   text-meta    ~11/13 — timestamps, badges, dense list metadata
-   *   text-body    1×     — default body / list rows / form labels
-   *   text-display ~15/13 — card headings, prominent body
-   *   text-title   ~19/13 — page / palette titles
-   *
-   * Tailwind steps: text-sm is pinned to the UI base (same as text-body) so
-   * shadcn's default text-sm matches list rows. Other steps keep the default
-   * Tailwind ladder relative to text-sm (xs:sm:base:lg:xl = 12:14:16:18:20).
-   */
-  /*
-   * Line heights are rounded to whole pixels instead of kept as ratios: at any
-   * UI size other than 13px a ratio yields a fractional line box (14px * 18/13
-   * = 19.38px), which makes every row height and offset fractional. Hover /
-   * selected fills then snap to device pixels row by row, so the visible gap
-   * between adjacent menu or list rows appears to shift as the pointer moves.
-   */
   --text-2xs: calc(var(--app-ui-font-size) * 10 / 13);
   --text-2xs--line-height: round(calc(var(--app-ui-font-size) * 14 / 13), 1px);
   --text-meta: calc(var(--app-ui-font-size) * 11 / 13);
@@ -196,7 +172,6 @@
     1px
   );
 
-  /* Pivot: Appearance UI size / shadcn control text. */
   --text-avatar-emoji-sm: 0.8125rem;
   --text-avatar-emoji-sm--line-height: 1;
   --text-avatar-emoji-md: 1.0625rem;
@@ -207,29 +182,11 @@
   --text-avatar-emoji-xl--line-height: 1;
   --text-sm: var(--app-ui-font-size);
   --text-sm--line-height: round(calc(var(--app-ui-font-size) * 18 / 13), 1px);
-  /* Default Tailwind ratios vs text-sm (12/14, 16/14, 18/14, 20/14). */
   --text-xs: calc(var(--text-sm) * 12 / 14);
   --text-base: calc(var(--text-sm) * 16 / 14);
   --text-lg: calc(var(--text-sm) * 18 / 14);
   --text-xl: calc(var(--text-sm) * 20 / 14);
 
-  /*
-   * Radius scale (single source of truth).
-   *
-   * Prefer semantic utilities in app code:
-   *   rounded-micro    2px  — checkbox, tooltip arrow tips, 1px chrome accents
-   *   rounded-dense    4px  — dense glyphs, kbd chips, tiny icon hit targets
-   *   rounded-control  6px  — buttons, inputs, list rows, menu items, triggers
-   *   rounded-card    12px  — cards, raised surfaces, select/menu popups
-   *   rounded-panel   14px  — dialogs, large panels
-   *   rounded-overlay 20px  — command palette, oversized floating shells
-   *   rounded-full           — avatars, dots, true pills only
-   *   rounded-none           — segmented seams / edge-flush chrome
-   *
-   * shadcn utilities (rounded-sm/md/lg/…) are pinned below so components/ui
-   * stay visually on this scale without editing those files. New app code
-   * must not introduce rounded-[Npx] or a second rem-multiplied scale.
-   */
   --radius-micro: 2px;
   --radius-dense: 4px;
   --radius-control: 6px;
@@ -237,7 +194,6 @@
   --radius-panel: 14px;
   --radius-overlay: 20px;
 
-  /* Pin Tailwind/shadcn radius steps → semantic tokens. */
   --radius-sm: var(--radius-dense);
   --radius-md: var(--radius-control);
   --radius-lg: var(--radius-control);
@@ -246,8 +202,5 @@
   --radius-3xl: var(--radius-overlay);
   --radius-4xl: var(--radius-overlay);
 
-  /*
-   * Semantic surface tokens that are not part of the chat / sidebar / editor groups.
-   */
   --color-control-thumb: var(--control-thumb);
 }
