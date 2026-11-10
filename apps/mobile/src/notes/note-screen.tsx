@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 import { hostConnection } from "@/connection";
-import { useLinkedEntityRows } from "@/entity-links";
+import { useLinkedEntitiesSheet } from "@/entity-links";
 import { useHostSessions } from "@/sessions";
 import {
   HeaderButtons,
@@ -118,28 +118,6 @@ function useNoteProperties(
   return { open, workspaceName };
 }
 
-function useNoteLinks(hostId: string, noteId: string) {
-  const { t } = useTranslation("common");
-  const openSheet = useOptionSheet();
-  const rows = useLinkedEntityRows(hostId, { kind: "note", id: noteId });
-  const open = () =>
-    openSheet({
-      title: t("links.title"),
-      items: rows.map((row) => ({
-        key: row.key,
-        label: row.title,
-        supporting: row.detail,
-        testID: row.testID,
-        onPress: () => row.onPress?.(),
-      })),
-    });
-  return {
-    label: t("links.title"),
-    empty: rows.length === 0,
-    open,
-  };
-}
-
 export function NoteScreen({
   host,
   noteId,
@@ -158,9 +136,11 @@ export function NoteScreen({
   const properties = useNoteProperties(host, noteId, notes);
   const saveLabel = useSaveLabel(doc.status, shown?.updatedAt);
   const settled = useTransitionSettled();
-  const [focused, setFocused] = useState(false);
   const [editing, setEditing] = useState(created);
-  const links = useNoteLinks(host.hostId, noteId);
+  const links = useLinkedEntitiesSheet(host.hostId, {
+    kind: "note",
+    id: noteId,
+  });
   const interactive = host.scopes.includes("interact");
   const ready = settled && doc.loaded && shown !== undefined;
 
@@ -170,13 +150,6 @@ export function NoteScreen({
       <Stack.Screen options={{ title: "" }} />
       <HeaderButtons
         items={[
-          {
-            key: "links",
-            icon: { ios: "link", android: "link" },
-            label: links.label,
-            hidden: focused || links.empty,
-            onPress: links.open,
-          },
           {
             key: "edit",
             icon: editing
@@ -226,7 +199,8 @@ export function NoteScreen({
         focusTitle={created}
         onTitle={doc.setTitle}
         onProperties={properties.open}
-        onFocusChange={setFocused}
+        links={links.label}
+        onLinks={links.open}
       />
     );
   }

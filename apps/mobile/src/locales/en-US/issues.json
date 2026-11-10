@@ -1,4 +1,12 @@
 {
+  "actions": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteMessage": "The issue is removed from the computer. This can't be undone.",
+    "deleteTitle": "Delete “{{title}}”?",
+    "failed": "Couldn't update the issue. Check the connection and try again.",
+    "title": "Actions"
+  },
   "create": {
     "creating": "Creating…",
     "descriptionPlaceholder": "Add a description",
@@ -37,11 +45,6 @@
     "empty": "No labels yet"
   },
   "missing": "This issue was deleted on the computer.",
-  "move": {
-    "action": "Move",
-    "failed": "Couldn't move the issue. Check the connection and try again.",
-    "title": "Move to"
-  },
   "noResults": "No issues match “{{query}}”",
   "search": "Search issues",
   "sessions": "Agent Sessions",

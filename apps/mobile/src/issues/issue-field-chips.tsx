@@ -43,6 +43,7 @@ export function useIssueFieldChips({
   values,
   testIDPrefix,
   enabled,
+  chipColor,
   beforePick,
   onChange,
 }: {
@@ -51,6 +52,7 @@ export function useIssueFieldChips({
   values: IssueFieldValues;
   testIDPrefix: string;
   enabled: boolean;
+  chipColor?: string;
   beforePick(): Promise<void>;
   onChange(field: IssueField, value: string): void;
 }) {
@@ -136,6 +138,7 @@ export function useIssueFieldChips({
         label={unset ? titles[field] : labelOf(field)}
         unset={unset}
         disabled={!enabled}
+        color={chipColor}
         accessibilityLabel={`${titles[field]}, ${labelOf(field)}`}
         leading={chipMarkOf(field)}
         onPress={(chip) => void pick(field, chip)}
@@ -158,10 +161,11 @@ export function useIssueFieldChips({
   return { chip, bar, menu: menu.menu };
 }
 
-function PropertyChip({
+export function PropertyChip({
   label,
   unset,
   disabled,
+  color,
   accessibilityLabel,
   leading,
   onPress,
@@ -170,6 +174,7 @@ function PropertyChip({
   label: string;
   unset: boolean;
   disabled: boolean;
+  color?: string;
   accessibilityLabel: string;
   leading?: ReactElement;
   onPress(chip: HostInstance | null): void;
@@ -187,7 +192,7 @@ function PropertyChip({
       onPress={() => onPress(chip.current)}
       style={({ pressed }) => [
         styles.chip,
-        { backgroundColor: colors.muted },
+        { backgroundColor: color ?? colors.muted },
         pressed && styles.pressed,
       ]}
       testID={testID}

@@ -197,11 +197,13 @@ export function useOpenLink(
 const MarkdownBlock = memo(function MarkdownBlock({
   markdown,
   streaming,
+  selectable,
   style,
   onOpenLink,
 }: {
   markdown: string;
   streaming: boolean;
+  selectable: boolean;
   style: MarkdownStyle;
   onOpenLink(url: string): void;
 }) {
@@ -211,7 +213,8 @@ const MarkdownBlock = memo(function MarkdownBlock({
       streamingAnimation={streaming}
       flavor="github"
       markdownStyle={style}
-      selectable={false}
+      selectable={selectable}
+      enableBlockContextMenu={false}
       enableTaskListItemToggle={false}
       onLinkPress={({ url }) => onOpenLink(url)}
     />
@@ -243,12 +246,14 @@ function useFileLinkedMarkdown(
 function SegmentView({
   block,
   streaming,
+  selectable,
   style,
   hostId,
   onOpenLink,
 }: {
   block: StreamingBlock;
   streaming: boolean;
+  selectable: boolean;
   style: MarkdownStyle;
   hostId: string | undefined;
   onOpenLink(url: string): void;
@@ -263,6 +268,7 @@ function SegmentView({
       <MarkdownBlock
         markdown={block.text}
         streaming={streaming}
+        selectable={selectable}
         style={style}
         onOpenLink={onOpenLink}
       />
@@ -275,6 +281,7 @@ function SegmentView({
         <MarkdownBlock
           markdown={`~~~~\n${block.source}\n~~~~`}
           streaming={false}
+          selectable={selectable}
           style={style}
           onOpenLink={onOpenLink}
         />
@@ -287,6 +294,7 @@ export function MarkdownText({
   markdown,
   reading = false,
   streaming = false,
+  selectable = false,
   hostId,
   fileRoot,
   testID,
@@ -294,6 +302,7 @@ export function MarkdownText({
   markdown: string;
   reading?: boolean;
   streaming?: boolean;
+  selectable?: boolean;
   hostId?: string;
   fileRoot?: string | null;
   testID?: string;
@@ -325,6 +334,7 @@ export function MarkdownText({
           key={block.key}
           block={block}
           streaming={streaming}
+          selectable={selectable}
           style={style}
           hostId={hostId}
           onOpenLink={openLink}

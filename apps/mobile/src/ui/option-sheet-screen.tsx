@@ -71,6 +71,11 @@ export function OptionSheetScreen({
     else router.dismiss(depth);
   };
   const select = (item: OptionSheetItem) => {
+    if (item.opensPage) {
+      close();
+      item.onPress();
+      return;
+    }
     const here = { pathname: route.pathname, params: route.params, depth };
     if (!selectOptionFrom(here, item)) close();
   };

@@ -2,7 +2,6 @@ import type {
   IssueFieldOption,
   IssueRecord,
   IssueStatusCategory,
-  ViewFull,
 } from "@cocurdex/shared";
 import { type IssueFilters, issueMatchesFilters } from "./issue-filters";
 
@@ -56,21 +55,4 @@ export function issueSections(
         .sort((left, right) => left.sortOrder - right.sortOrder),
     }))
     .filter((section) => section.issues.length > 0);
-}
-
-export function withIssueStatus(
-  view: ViewFull,
-  issueId: string,
-  statusId: string,
-): ViewFull {
-  const status = view.statusOptions.find((option) => option.id === statusId);
-  if (!status) return view;
-  return {
-    ...view,
-    issues: view.issues.map((issue) =>
-      issue.id === issueId
-        ? { ...issue, status: status.id, statusCategory: status.category }
-        : issue,
-    ),
-  };
 }

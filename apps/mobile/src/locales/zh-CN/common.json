@@ -15,6 +15,7 @@
     "yesterday": "昨天"
   },
   "links": {
+    "count_other": "关联 {{count}}",
     "relation": {
       "blocked-by": "被阻塞",
       "blocks": "阻塞",
@@ -54,6 +55,7 @@
     "notes": "笔记",
     "pair": "配对电脑",
     "renameComputer": "重命名电脑",
+    "renameNote": "重命名笔记",
     "renameSession": "重命名会话",
     "sessions": "会话",
     "settings": "设置"

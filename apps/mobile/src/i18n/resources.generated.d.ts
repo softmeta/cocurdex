@@ -117,6 +117,8 @@ export default interface Resources {
       yesterday: "Yesterday";
     };
     links: {
+      count_one: "{{count}} linked";
+      count_other: "{{count}} linked";
       relation: {
         "blocked-by": "Blocked by";
         blocks: "Blocks";
@@ -156,6 +158,7 @@ export default interface Resources {
       notes: "Notes";
       pair: "Pair a Computer";
       renameComputer: "Rename Computer";
+      renameNote: "Rename Note";
       renameSession: "Rename Session";
       sessions: "Sessions";
       settings: "Settings";
@@ -284,6 +287,14 @@ export default interface Resources {
     };
   };
   issues: {
+    actions: {
+      cancel: "Cancel";
+      delete: "Delete";
+      deleteMessage: "The issue is removed from the computer. This can't be undone.";
+      deleteTitle: "Delete “{{title}}”?";
+      failed: "Couldn't update the issue. Check the connection and try again.";
+      title: "Actions";
+    };
     create: {
       creating: "Creating…";
       descriptionPlaceholder: "Add a description";
@@ -322,11 +333,6 @@ export default interface Resources {
       empty: "No labels yet";
     };
     missing: "This issue was deleted on the computer.";
-    move: {
-      action: "Move";
-      failed: "Couldn't move the issue. Check the connection and try again.";
-      title: "Move to";
-    };
     noResults: "No issues match “{{query}}”";
     search: "Search issues";
     sessions: "Agent Sessions";
@@ -341,6 +347,16 @@ export default interface Resources {
     };
   };
   notes: {
+    actions: {
+      cancel: "Cancel";
+      delete: "Delete";
+      deleteMessage: "The note and its subpages are removed from the computer. This can't be undone.";
+      deleteTitle: "Delete “{{title}}”?";
+      failed: "Couldn't delete the note. Check the connection and try again.";
+      rename: "Rename";
+      subpage: "New Subpage";
+      title: "Actions";
+    };
     create: {
       failed: "Couldn't create the note. Check the connection and try again.";
       open: "New Note";
@@ -392,6 +408,11 @@ export default interface Resources {
       noParent: "None";
       parent: "Parent Note";
       title: "Note Properties";
+    };
+    rename: {
+      failed: "Couldn’t rename the note. Try again.";
+      save: "Save";
+      saving: "Saving";
     };
     search: "Search notes";
     unavailable: {
@@ -496,6 +517,7 @@ export default interface Resources {
     };
     list: {
       agentFilter: "Agent";
+      allGroups: "All";
       childSessions_one: "{{count}} child session";
       childSessions_other: "{{count}} child sessions";
       clearFilters: "Clear Filters";

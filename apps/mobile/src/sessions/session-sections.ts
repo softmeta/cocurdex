@@ -55,6 +55,7 @@ export interface SessionSection {
   key: string;
   heading: SessionSectionHeading;
   rows: SessionRow[];
+  total: number;
   hiddenCount: number;
 }
 
@@ -67,6 +68,7 @@ export interface SessionSectionsInput {
   view: SessionListView;
   collapsedIds: ReadonlySet<string>;
   expandedSectionKeys: ReadonlySet<string>;
+  focusedSectionKey?: string | null;
   now: Date;
 }
 
@@ -216,7 +218,10 @@ export function buildSessionSections(
       input.view.direction,
     );
     const rootLimit =
-      limited && !query && !input.expandedSectionKeys.has(key)
+      limited &&
+      !query &&
+      key !== input.focusedSectionKey &&
+      !input.expandedSectionKeys.has(key)
         ? resolveRootLimit(input.view.rootLimit)
         : Number.POSITIVE_INFINITY;
     const shown = limitSessionTreeRoots(
@@ -250,7 +255,13 @@ export function buildSessionSections(
         pinned: Boolean(session.pinnedAt),
       };
     });
-    return { key, heading, rows, hiddenCount: shown.hiddenRootCount };
+    return {
+      key,
+      heading,
+      rows,
+      total: sessions.length,
+      hiddenCount: shown.hiddenRootCount,
+    };
   };
 
   const sections: SessionSection[] = [];

@@ -1,7 +1,7 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { hostAddress, selectHost } from "@/hosts";
+import { selectHost } from "@/hosts";
 import { type AnchoredMenuItem, type MenuAnchor, useAnchoredMenu } from "@/ui";
 import { useUnpairHost } from "./use-unpair-host";
 
@@ -58,7 +58,6 @@ export function useComputerActions() {
       "remove",
     ];
     menu.open(anchor, {
-      title: `${host.name} · ${hostAddress(host)}`,
       items: actions.map((action) => ({
         key: action,
         testID: `computer-action-${action}`,

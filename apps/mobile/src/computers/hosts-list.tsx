@@ -18,7 +18,6 @@ import {
 } from "@/hosts";
 import { layout, space, useThemeColors } from "@/theme";
 import {
-  BrandHost,
   type MenuAnchor,
   menuAnchor,
   useScrollIndicatorWhileScrolling,
@@ -135,9 +134,7 @@ export function HostsList() {
         )}
       />
       {actions.menu}
-      {actions.dialog ? (
-        <BrandHost matchContents>{actions.dialog}</BrandHost>
-      ) : null}
+      {actions.dialog}
     </>
   );
 }

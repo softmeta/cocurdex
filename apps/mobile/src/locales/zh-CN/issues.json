@@ -1,4 +1,12 @@
 {
+  "actions": {
+    "cancel": "取消",
+    "delete": "删除",
+    "deleteMessage": "事项会从电脑上删除，无法恢复。",
+    "deleteTitle": "删除「{{title}}」？",
+    "failed": "无法更新事项，请检查连接后重试。",
+    "title": "操作"
+  },
   "create": {
     "creating": "正在创建…",
     "descriptionPlaceholder": "添加描述",
@@ -37,11 +45,6 @@
     "empty": "还没有标签"
   },
   "missing": "这个事项已在电脑上删除。",
-  "move": {
-    "action": "移动",
-    "failed": "无法移动该事项，请检查连接后重试。",
-    "title": "移动到"
-  },
   "noResults": "没有与“{{query}}”匹配的事项",
   "search": "搜索事项",
   "sessions": "Agent 会话",

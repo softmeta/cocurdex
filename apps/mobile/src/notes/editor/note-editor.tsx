@@ -18,8 +18,9 @@ import { useOpenLink } from "@/markdown";
 import { useTextScale } from "@/preferences";
 import { type ThemeColors, useThemeColors, useThemeName } from "@/theme";
 import {
-  useBottomKeyboardOverlap,
+  KeyboardDock,
   useHeaderOverlap,
+  useKeyboardFollow,
   useOptionSheet,
 } from "@/ui";
 import type { NoteDocSession } from "./note-doc-session";
@@ -51,6 +52,11 @@ function initialContent(body: NoteEditorBody): NoteEditorContent {
   if (body.kind === "doc") return { kind: "doc", state: body.session.state() };
   return { kind: "markdown", markdown: body.markdown };
 }
+
+// The IME opens a few hundred milliseconds after focus. Hold the format bar
+// until the keyboard reports in, and show it anyway after this long so a
+// hardware keyboard, which sends no keyboard events, still gets it.
+const FORMAT_BAR_KEYBOARD_WAIT_MS = 500;
 
 const BLOCK_STYLES: readonly NoteBlockStyle[] = [
   "paragraph",
@@ -103,6 +109,7 @@ export function NoteEditor({
   body,
   title,
   meta,
+  links = null,
   titlePlaceholder,
   bodyPlaceholder,
   focusTitle,
@@ -113,12 +120,14 @@ export function NoteEditor({
   ref,
   onTitle,
   onProperties,
+  onLinks,
   onFocusChange,
 }: {
   hostId: string;
   body: NoteEditorBody;
   title: string;
   meta: string | null;
+  links?: string | null;
   titlePlaceholder?: string;
   bodyPlaceholder?: string;
   focusTitle: boolean;
@@ -129,26 +138,29 @@ export function NoteEditor({
   ref?: Ref<NoteEditorHandle>;
   onTitle(title: string): void;
   onProperties?(): void;
+  onLinks?(): void;
   onFocusChange?(focused: boolean): void;
 }) {
   const { t } = useTranslation("notes");
   const colors = useThemeColors();
   const scheme = useThemeName();
   const router = useRouter();
-  const keyboardOverlap = useBottomKeyboardOverlap();
   const header = useHeaderOverlap();
-  const keyboardShown = keyboardOverlap > 0;
-  const bottomInset = useSafeAreaInsets().bottom;
+  const keyboard = useKeyboardFollow(useSafeAreaInsets().bottom);
   const openLink = useOpenLink(hostId, undefined);
   const openSheet = useOptionSheet();
   const webView = useRef<EditorWebView | null>(null);
   const sentMeta = useRef(meta);
+  const sentLinks = useRef(links);
   const sentEditable = useRef(editable);
   const textScale = useTextScale();
   const theme = editorTheme(colors, textScale);
   const sentTheme = useRef<string | null>(null);
   const themeKey = JSON.stringify(theme);
   const [focused, setFocused] = useState(false);
+  const [keyboardWaitOver, setKeyboardWaitOver] = useState(false);
+  const keyboardWait = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const formatBarShown = focused && (keyboard.shown || keyboardWaitOver);
   const [format, setFormat] = useState<NoteEditorFormatState | null>(null);
 
   const send = (message: NoteEditorInbound) =>
@@ -165,6 +177,11 @@ export function NoteEditor({
   if (sentEditable.current !== editable) {
     sentEditable.current = editable;
     send({ type: "editable", editable });
+  }
+
+  if (sentLinks.current !== links) {
+    sentLinks.current = links;
+    send({ type: "links", links });
   }
 
   if (meta !== null && sentMeta.current !== meta) {
@@ -235,6 +252,7 @@ export function NoteEditor({
           content: initialContent(body),
           title,
           meta: sentMeta.current,
+          links: sentLinks.current,
           titlePlaceholder: titlePlaceholder ?? t("editor.titlePlaceholder"),
           bodyPlaceholder: bodyPlaceholder ?? t("editor.bodyPlaceholder"),
           theme,
@@ -253,6 +271,14 @@ export function NoteEditor({
         onTitle(message.title);
         return;
       case "focus":
+        if (keyboardWait.current !== null) clearTimeout(keyboardWait.current);
+        keyboardWait.current = message.focused
+          ? setTimeout(
+              () => setKeyboardWaitOver(true),
+              FORMAT_BAR_KEYBOARD_WAIT_MS,
+            )
+          : null;
+        if (!message.focused) setKeyboardWaitOver(false);
         setFocused(message.focused);
         onFocusChange?.(message.focused);
         return;
@@ -264,6 +290,10 @@ export function NoteEditor({
         return;
       case "properties":
         onProperties?.();
+        return;
+      case "links":
+        run({ name: "blur" });
+        onLinks?.();
         return;
       case "openLink":
         openLink(message.href);
@@ -299,6 +329,25 @@ export function NoteEditor({
     [session],
   );
 
+  const formatBar = formatBarShown ? (
+    <NoteFormatBar
+      format={format}
+      onBlockStyle={openBlockStyles}
+      onBold={() => run({ name: "mark", mark: "bold" })}
+      onBulletList={() => run({ name: "list", kind: "bulletList" })}
+      onTaskList={() => run({ name: "list", kind: "taskList" })}
+      onInsert={() => openInsert(false)}
+      onHideKeyboard={() => run({ name: "blur" })}
+    />
+  ) : null;
+  const dock =
+    accessory || formatBar ? (
+      <>
+        {accessory}
+        {formatBar}
+      </>
+    ) : null;
+
   return (
     <View
       ref={header.ref}
@@ -308,47 +357,27 @@ export function NoteEditor({
         {
           backgroundColor: colors.background,
           paddingTop: header.overlap,
-          paddingBottom: keyboardOverlap,
         },
       ]}
     >
-      <WebView
-        ref={attach}
-        testID={testID}
-        source={{ html: NOTE_EDITOR_RUNTIME_HTML }}
-        originWhitelist={["about:blank"]}
-        onShouldStartLoadWithRequest={({ url }) => url === "about:blank"}
-        onMessage={handleMessage}
-        onContentProcessDidTerminate={() => webView.current?.reload()}
-        onRenderProcessGone={() => webView.current?.reload()}
-        setSupportMultipleWindows={false}
-        allowsLinkPreview={false}
-        hideKeyboardAccessoryView
-        keyboardDisplayRequiresUserAction={false}
-        textZoom={100}
-        style={[styles.fill, { backgroundColor: colors.background }]}
-      />
-      {accessory ? (
-        <View
-          style={{
-            paddingBottom: focused || keyboardShown ? 0 : bottomInset,
-          }}
-        >
-          {accessory}
-        </View>
-      ) : null}
-      {focused ? (
-        <NoteFormatBar
-          format={format}
-          bottomInset={keyboardShown ? 0 : bottomInset}
-          onBlockStyle={openBlockStyles}
-          onBold={() => run({ name: "mark", mark: "bold" })}
-          onBulletList={() => run({ name: "list", kind: "bulletList" })}
-          onTaskList={() => run({ name: "list", kind: "taskList" })}
-          onInsert={() => openInsert(false)}
-          onHideKeyboard={() => run({ name: "blur" })}
+      <KeyboardDock follow={keyboard} dock={dock}>
+        <WebView
+          ref={attach}
+          testID={testID}
+          source={{ html: NOTE_EDITOR_RUNTIME_HTML }}
+          originWhitelist={["about:blank"]}
+          onShouldStartLoadWithRequest={({ url }) => url === "about:blank"}
+          onMessage={handleMessage}
+          onContentProcessDidTerminate={() => webView.current?.reload()}
+          onRenderProcessGone={() => webView.current?.reload()}
+          setSupportMultipleWindows={false}
+          allowsLinkPreview={false}
+          hideKeyboardAccessoryView
+          keyboardDisplayRequiresUserAction={false}
+          textZoom={100}
+          style={[styles.fill, { backgroundColor: colors.background }]}
         />
-      ) : null}
+      </KeyboardDock>
     </View>
   );
 }

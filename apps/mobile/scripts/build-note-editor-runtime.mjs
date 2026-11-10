@@ -34,8 +34,11 @@ body{font-family:-apple-system,system-ui,Roboto,"PingFang SC","Noto Sans CJK SC"
 main{padding:4px 16px 120px}
 #title{display:block;width:100%;box-sizing:border-box;border:0;outline:0;resize:none;overflow:hidden;padding:0;margin:0;background:transparent;color:inherit;font:inherit;font-size:calc(var(--font-size)*1.65);line-height:1.22;font-weight:700}
 #title::placeholder{color:var(--muted-foreground)}
-#meta{display:block;border:0;background:transparent;padding:6px 0 4px;margin:0 0 4px;font:inherit;font-size:calc(var(--font-size)*0.765);line-height:1.4;color:var(--muted-foreground);text-align:left;min-height:32px}
-#meta[hidden]{display:none}
+#meta-row{display:flex;flex-wrap:wrap;align-items:center;column-gap:12px;margin:0 0 4px}
+#meta{display:block;border:0;background:transparent;padding:6px 0 4px;margin:0;font:inherit;font-size:calc(var(--font-size)*0.765);line-height:1.4;color:var(--muted-foreground);text-align:left;min-height:32px}
+#links{display:inline-flex;align-items:center;gap:4px;border:0;border-radius:999px;background:var(--muted);padding:3px 10px;margin:0;font:inherit;font-size:calc(var(--font-size)*0.765);line-height:1.4;color:var(--muted-foreground)}
+#links svg{width:1.1em;height:1.1em;flex:none}
+#meta[hidden],#links[hidden]{display:none}
 .prose{outline:0;min-height:50vh;caret-color:var(--tint);color:var(--reading-text,var(--foreground));word-wrap:break-word;white-space:pre-wrap}
 .prose :is(h1,h2,h3,h4,h5,h6,strong):not(a *){color:var(--foreground)}
 .prose>*:first-child{margin-top:6px}
@@ -82,7 +85,7 @@ const result = await esbuild.build({
 
 const script = result.outputFiles[0].text.replace(/<\/script/gi, "<\\/script");
 const style = STYLE.replace(/\n/g, "");
-const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><style>${style}</style></head><body><main><textarea id="title" rows="1" enterkeyhint="next"></textarea><button id="meta" type="button"></button><div id="body"></div></main><script>${script}</script></body></html>`;
+const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><style>${style}</style></head><body><main><textarea id="title" rows="1" enterkeyhint="next"></textarea><div id="meta-row"><button id="meta" type="button"></button><button id="links" type="button" hidden></button></div><div id="body"></div></main><script>${script}</script></body></html>`;
 const version = createHash("sha256").update(html).digest("hex").slice(0, 16);
 const output = `export const NOTE_EDITOR_RUNTIME_VERSION = "${version}";\nexport const NOTE_EDITOR_RUNTIME_HTML = ${JSON.stringify(html)};\n`;
 

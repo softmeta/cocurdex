@@ -55,7 +55,6 @@ function BarSymbol({ name }: { name: SymbolName }) {
 
 export function NoteFormatBar({
   format,
-  bottomInset,
   onBlockStyle,
   onBold,
   onBulletList,
@@ -64,7 +63,6 @@ export function NoteFormatBar({
   onHideKeyboard,
 }: {
   format: NoteEditorFormatState | null;
-  bottomInset: number;
   onBlockStyle(): void;
   onBold(): void;
   onBulletList(): void;
@@ -81,7 +79,7 @@ export function NoteFormatBar({
         {
           backgroundColor: colors.background,
           borderTopColor: colors.border,
-          paddingBottom: space.xs + bottomInset,
+          paddingBottom: space.xs,
         },
       ]}
     >

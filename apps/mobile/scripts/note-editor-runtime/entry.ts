@@ -48,12 +48,15 @@ function element<T extends HTMLElement>(id: string) {
 
 const titleField = element<HTMLTextAreaElement>("title");
 const metaButton = element<HTMLButtonElement>("meta");
+const linksButton = element<HTMLButtonElement>("links");
 const bodyHost = element<HTMLDivElement>("body");
 
 let doc: Y.Doc | null = null;
 let editor: EditorType | null = null;
 let lastFormat = "";
 let markdownFrame: number | null = null;
+let reportedFocus = false;
+let focusCheck: ReturnType<typeof setTimeout> | null = null;
 const codeHighlight = createCodeHighlight((requests) =>
   post({ type: "highlight", requests }),
 );
@@ -204,6 +207,26 @@ function bindDoc(content: Extract<NoteEditorContent, { kind: "doc" }>) {
   return Collaboration.configure({ document: created, field: NOTE_DOC_FIELD });
 }
 
+function holdsFocus() {
+  const active = document.activeElement;
+  return (
+    active === titleField || (active !== null && bodyHost.contains(active))
+  );
+}
+
+// Moving between the title and the body blurs one field before the other
+// gains focus; settle after both events so the host sees one focused span.
+function reportFocusSoon() {
+  if (focusCheck !== null) return;
+  focusCheck = setTimeout(() => {
+    focusCheck = null;
+    const focused = holdsFocus();
+    if (focused === reportedFocus) return;
+    reportedFocus = focused;
+    post({ type: "focus", focused });
+  }, 0);
+}
+
 function postMarkdownNextFrame() {
   if (markdownFrame !== null) return;
   markdownFrame = requestAnimationFrame(() => {
@@ -216,6 +239,15 @@ function postMarkdownNextFrame() {
   });
 }
 
+const LINK_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+
+function showLinks(label: string | null) {
+  linksButton.hidden = label === null;
+  linksButton.innerHTML = LINK_ICON;
+  if (label !== null) linksButton.append(label);
+}
+
 function start(message: Extract<NoteEditorInbound, { type: "init" }>) {
   applyTheme(message.theme);
   titleField.value = message.title;
@@ -224,6 +256,7 @@ function start(message: Extract<NoteEditorInbound, { type: "init" }>) {
   metaButton.textContent = message.meta;
   titleField.readOnly = !message.editable;
   metaButton.disabled = !message.interactive;
+  showLinks(message.links);
   fitTitle();
   const { content } = message;
   const collaborative = content.kind === "doc";
@@ -254,14 +287,10 @@ function start(message: Extract<NoteEditorInbound, { type: "init" }>) {
       if (!collaborative) postMarkdownNextFrame();
     },
     onFocus: ({ editor: current }) => {
-      post({ type: "focus", focused: true });
+      reportFocusSoon();
       reportFormat(current);
     },
-    onBlur: () => {
-      if (document.activeElement !== titleField) {
-        post({ type: "focus", focused: false });
-      }
-    },
+    onBlur: reportFocusSoon,
   });
   if (message.focusTitle && message.editable) {
     titleField.focus();
@@ -290,13 +319,10 @@ titleField.addEventListener("keydown", (event) => {
   event.preventDefault();
   editor?.commands.focus("start");
 });
-titleField.addEventListener("focus", () =>
-  post({ type: "focus", focused: true }),
-);
-titleField.addEventListener("blur", () => {
-  if (!editor?.isFocused) post({ type: "focus", focused: false });
-});
+titleField.addEventListener("focus", reportFocusSoon);
+titleField.addEventListener("blur", reportFocusSoon);
 metaButton.addEventListener("click", () => post({ type: "properties" }));
+linksButton.addEventListener("click", () => post({ type: "links" }));
 document.addEventListener(
   "click",
   (event) => {
@@ -351,6 +377,8 @@ window.noteEditor = {
     } else if (message.type === "meta") {
       metaButton.textContent = message.meta;
       metaButton.hidden = false;
+    } else if (message.type === "links") {
+      showLinks(message.links);
     } else if (message.type === "editable") {
       setEditable(message.editable);
     } else if (message.type === "theme") {

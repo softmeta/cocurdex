@@ -40,6 +40,8 @@ appId: dev.cocurdex.mobile
     visible: ${ISSUE_DESCRIPTION}
     timeout: 10000
 - assertVisible: ${ISSUE_SESSION_TITLE}
+- assertVisible:
+    id: "issue-field-status"
 - extendedWaitUntil:
     visible:
       id: "doc-image"
@@ -82,12 +84,18 @@ appId: dev.cocurdex.mobile
 - longPressOn: ${IN_PROGRESS_ISSUE_TITLE}
 - extendedWaitUntil:
     visible:
-      id: issue-move-done
+      id: issue-action-status
+    timeout: 5000
+- tapOn:
+    id: issue-action-status
+- extendedWaitUntil:
+    visible:
+      id: issue-status-done
     timeout: 5000
 - waitForAnimationToEnd
-- takeScreenshot: issue-move
+- takeScreenshot: issue-actions
 - tapOn:
-    id: issue-move-done
+    id: issue-status-done
 - extendedWaitUntil:
     notVisible: ${IN_PROGRESS_ISSUE_TITLE}
     timeout: 10000
@@ -103,10 +111,16 @@ appId: dev.cocurdex.mobile
 - longPressOn: ${IN_PROGRESS_ISSUE_TITLE}
 - extendedWaitUntil:
     visible:
-      id: issue-move-doing
+      id: issue-action-status
     timeout: 5000
 - tapOn:
-    id: issue-move-doing
+    id: issue-action-status
+- extendedWaitUntil:
+    visible:
+      id: issue-status-doing
+    timeout: 5000
+- tapOn:
+    id: issue-status-doing
 - scrollUntilVisible:
     element:
       id: issue-section-done
