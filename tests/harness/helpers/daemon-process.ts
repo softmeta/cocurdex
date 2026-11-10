@@ -34,7 +34,7 @@ export const bundledDaemonPath = path.join(
   "daemon.cjs",
 );
 
-const STARTUP_TIMEOUT_MS = 20_000;
+const STARTUP_TIMEOUT_MS = 60_000;
 const SHUTDOWN_TIMEOUT_MS = 20_000;
 const LOG_TAIL_LINES = 40;
 
