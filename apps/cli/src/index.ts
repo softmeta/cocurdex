@@ -31,6 +31,13 @@ import {
   handleDaemonHealthCommand,
   handleDiagnosticsCommand,
 } from "./diagnostics-commands";
+import {
+  formatCommandHelp,
+  formatFullHelp,
+  formatOverview,
+  groupUsageLines,
+  helpWidth,
+} from "./help";
 import { handleHostCommand, hostUsageLines } from "./host-commands";
 import { handleImageCommand, imageUsageLines } from "./image-commands";
 import { handleInboxCommand, inboxUsageLines } from "./inbox-commands";
@@ -99,8 +106,12 @@ async function main(rawArgs: string[]) {
   const parsed = parseArgs(rawArgs);
   const [resource, action, ...args] = parsed.args;
 
-  if (parsed.flags.has("help") || resource === "help" || resource === "-h") {
-    printUsage();
+  if (parsed.flags.has("help") || resource === "-h") {
+    printHelp(resource === "-h" ? undefined : resource, parsed);
+    return;
+  }
+  if (resource === "help") {
+    printHelp(action, parsed);
     return;
   }
 
@@ -590,7 +601,7 @@ async function main(rawArgs: string[]) {
     return;
   }
 
-  printUsage();
+  printHelp(resource, parsed);
   process.exitCode = 1;
 }
 
@@ -603,74 +614,96 @@ function printVersion(parsed: ParsedArgs) {
   console.log(`cocurdex ${version}`);
 }
 
-function printUsage() {
-  console.log(
-    [
-      "Usage:",
-      "  cocurdex [path]                         Open folder in desktop app (like code .)",
-      "  cocurdex open [path]                    Same as above",
-      "  cocurdex --version | -v | version       Print CLI version",
-      "  cocurdex note list|show|create|update|move|delete|backlinks|tags [--json]",
-      "  cocurdex note create|update ... [--body <markdown> | --body - | --body-file <path>]",
-      ...memoryUsageLines(),
-      "  cocurdex note update <id> ... [--expected-revision <n>]",
-      ...imageUsageLines(),
-      "  cocurdex link list <ref> [--json]",
-      "  cocurdex link add|remove <ref> <ref>   (ref: <kind>:<id> or cocurdex://<kind>/<id>; kind session|note|issue|deck)",
-      "  cocurdex deck list|show|create|update|delete|check [--json]",
-      "  cocurdex deck create|update ... [--title <t>] [--markdown-file <path|-> | --content-file <path|->]",
-      "  cocurdex deck update <id> ... [--expected-revision <n>]",
-      "  cocurdex deck edit <id> --ops-file <path|-> [--expected-revision <n>]",
-      "  cocurdex deck image <id> --slide <slideId> --file <path.png|path.jpg> [--alt <text>] [--replace <elementId>]",
-      "  cocurdex deck export <id> --output <path.pptx|path.pdf> [--format pptx|pdf]",
-      "  cocurdex deck import <file.pptx> [--title <t>] [--workspace <id>] [--json]",
-      "  cocurdex deck read <file.pptx> [--json]",
-      "  cocurdex issue list|show|create|update|move|delete|comment|views [--view <id>] [--json]",
-      "  cocurdex issue relate|unrelate <id> blocks|related|duplicate <id> [--json]",
-      "  cocurdex issue labels | label create --name <name> | label update <id|name> [--name <name>] [--color <color>] | label delete <id|name> [--json]",
-      "  cocurdex issue statuses | status create --name <name> --category backlog|unstarted|started|completed|canceled [--color <color>] | status update <id|name> [--name <name>] [--category <category>] [--color <color>] | status move <id|name> --position <n> | status delete <id|name> [--json]",
-      "  cocurdex search <query> [--kind note|issue] [--workspace <id>] [--json]",
-      ...skillsUsageLines(),
-      ...diagnosticsUsageLines(),
-      ...daemonBackgroundUsageLines(),
-      ...webUsageLines(),
-      ...hostUsageLines(),
-      ...worktreeUsageLines(),
-      "  cocurdex workspace list",
-      "  cocurdex session list",
-      "  cocurdex session create --workspace <id|path> [--agent <agent>] [--provider <provider> --model <model>] [--permission <mode>] [--role <role-id>] [--title <title>]",
-      "  cocurdex session tui [session-id]",
-      "  cocurdex session tui --workspace <id|path> --agent <agent> --provider <provider> --model <model>",
-      "  cocurdex session send <session-id> <prompt>",
-      ...sessionTreeUsageLines(),
-      ...sessionLineageUsageLines(),
-      ...sessionRuntimeUsageLines(),
-      "  cocurdex session peers <session-id>",
-      "  cocurdex session send-peer <from-session-id> <to-session-id> <message>",
-      "  cocurdex session peer-inbound <session-id> deliver|refuse",
-      "  cocurdex session stop <session-id>",
-      ...personaUsageLines(),
-      ...personaWorkUsageLines(),
-      ...routineUsageLines(),
-      ...inboxUsageLines(),
-      ...teamUsageLines(),
-      ...scriptRunUsageLines(),
-      ...providerUsageLines(),
-      ...agentAuthUsageLines(),
-      ...mcpUsageLines(),
-      ...applicationUsageLines(),
-      "  cocurdex workflow list",
-      "  cocurdex workflow definitions",
-      "  cocurdex workflow tui [run-id]",
-      "  cocurdex role list",
-      "  cocurdex workflow tui --workspace <id|path> --prompt <prompt> [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
-      "  cocurdex workflow create --workspace <id|path> --prompt <prompt> [--definition <id>] [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
-      "  cocurdex workflow show <run-id>",
-      "  cocurdex workflow start <run-id>",
-      "  cocurdex workflow approve|reject <run-id> [--reason <text>]",
-      "  cocurdex workflow cancel <run-id>",
-    ].join("\n"),
-  );
+function usageLines(): string[] {
+  return [
+    "  cocurdex open [path]                    Open a folder in the desktop app (same as cocurdex [path])",
+    "  cocurdex note list|show|create|update|move|delete|backlinks|tags [--json]",
+    "  cocurdex note create|update ... [--body <markdown> | --body - | --body-file <path>]",
+    ...memoryUsageLines(),
+    "  cocurdex note update <id> ... [--expected-revision <n>]",
+    ...imageUsageLines(),
+    "  cocurdex link list <ref> [--json]",
+    "  cocurdex link add|remove <ref> <ref>   (ref: <kind>:<id> or cocurdex://<kind>/<id>; kind session|note|issue|deck)",
+    "  cocurdex deck list|show|create|update|delete|check [--json]",
+    "  cocurdex deck create|update ... [--title <t>] [--markdown-file <path|-> | --content-file <path|->]",
+    "  cocurdex deck update <id> ... [--expected-revision <n>]",
+    "  cocurdex deck edit <id> --ops-file <path|-> [--expected-revision <n>]",
+    "  cocurdex deck image <id> --slide <slideId> --file <path.png|path.jpg> [--alt <text>] [--replace <elementId>]",
+    "  cocurdex deck export <id> --output <path.pptx|path.pdf> [--format pptx|pdf]",
+    "  cocurdex deck import <file.pptx> [--title <t>] [--workspace <id>] [--json]",
+    "  cocurdex deck read <file.pptx> [--json]",
+    "  cocurdex issue list|show|create|update|move|delete|comment|views [--view <id>] [--json]",
+    "  cocurdex issue relate|unrelate <id> blocks|related|duplicate <id> [--json]",
+    "  cocurdex issue labels [--json]",
+    "  cocurdex issue label create --name <name> [--color <color>] [--json]",
+    "  cocurdex issue label update <id|name> [--name <name>] [--color <color>] [--json]",
+    "  cocurdex issue label delete <id|name> [--json]",
+    "  cocurdex issue statuses [--json]",
+    "  cocurdex issue status create --name <name> --category backlog|unstarted|started|completed|canceled [--color <color>] [--json]",
+    "  cocurdex issue status update <id|name> [--name <name>] [--category <category>] [--color <color>] [--json]",
+    "  cocurdex issue status move <id|name> --position <n> [--json]",
+    "  cocurdex issue status delete <id|name> [--json]",
+    "  cocurdex search <query> [--kind note|issue] [--workspace <id>] [--json]",
+    ...skillsUsageLines(),
+    ...diagnosticsUsageLines(),
+    ...daemonBackgroundUsageLines(),
+    ...webUsageLines(),
+    ...hostUsageLines(),
+    ...worktreeUsageLines(),
+    "  cocurdex workspace list",
+    "  cocurdex session list",
+    "  cocurdex session create --workspace <id|path> [--agent <agent>] [--provider <provider> --model <model>] [--permission <mode>] [--role <role-id>] [--title <title>]",
+    "  cocurdex session tui [session-id]",
+    "  cocurdex session tui --workspace <id|path> --agent <agent> --provider <provider> --model <model>",
+    "  cocurdex session send <session-id> <prompt>",
+    ...sessionTreeUsageLines(),
+    ...sessionLineageUsageLines(),
+    ...sessionRuntimeUsageLines(),
+    "  cocurdex session peers <session-id>",
+    "  cocurdex session send-peer <from-session-id> <to-session-id> <message>",
+    "  cocurdex session peer-inbound <session-id> deliver|refuse",
+    "  cocurdex session stop <session-id>",
+    ...personaUsageLines(),
+    ...personaWorkUsageLines(),
+    ...routineUsageLines(),
+    ...inboxUsageLines(),
+    ...teamUsageLines(),
+    ...scriptRunUsageLines(),
+    ...providerUsageLines(),
+    ...agentAuthUsageLines(),
+    ...mcpUsageLines(),
+    ...applicationUsageLines(),
+    "  cocurdex workflow list",
+    "  cocurdex workflow definitions",
+    "  cocurdex workflow tui [run-id]",
+    "  cocurdex role list",
+    "  cocurdex workflow tui --workspace <id|path> --prompt <prompt> [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
+    "  cocurdex workflow create --workspace <id|path> --prompt <prompt> [--definition <id>] [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
+    "  cocurdex workflow show <run-id>",
+    "  cocurdex workflow start <run-id>",
+    "  cocurdex workflow approve|reject <run-id> [--reason <text>]",
+    "  cocurdex workflow cancel <run-id>",
+  ];
+}
+
+function printHelp(topic: string | undefined, parsed: ParsedArgs) {
+  const width = helpWidth(process.stdout.columns);
+  if (parsed.flags.has("all")) {
+    console.log(formatFullHelp(usageLines(), width));
+    return;
+  }
+  if (!topic || topic === "help") {
+    console.log(formatOverview(getCliVersion()));
+    return;
+  }
+  const lines = groupUsageLines(usageLines()).get(topic);
+  if (!lines) {
+    console.error(`Unknown command: ${topic}\n`);
+    console.error(formatOverview(getCliVersion()));
+    process.exitCode = 1;
+    return;
+  }
+  console.log(formatCommandHelp(topic, lines, width));
 }
 
 async function createSession(parsed: ParsedArgs) {
