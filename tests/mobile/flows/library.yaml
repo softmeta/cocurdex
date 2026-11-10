@@ -273,10 +273,8 @@ appId: dev.cocurdex.mobile
     visible: ${ISSUE_DESCRIPTION}
     timeout: 10000
 - takeScreenshot: note-issue-link
-- scrollUntilVisible:
-    element: "${LINK_NOTE_TITLE}.*"
-    direction: DOWN
-    timeout: 10000
+- tapOn:
+    id: issue-field-links
 - tapOn: "${LINK_NOTE_TITLE}.*"
 - extendedWaitUntil:
     visible: ${ISSUE_LINK_TEXT}
@@ -294,6 +292,8 @@ appId: dev.cocurdex.mobile
                   notVisible: ${ISSUE_LINK_TEXT}
                 commands:
                   - back
+                  - tapOn:
+                      id: issue-field-links
                   - tapOn: "${LINK_NOTE_TITLE}.*"
             - extendedWaitUntil:
                 visible: ${ISSUE_LINK_TEXT}
