@@ -25,7 +25,8 @@
     }
   }
 
-  :root[data-window-material] [data-window-sidebar] {
+  :root[data-window-material] [data-window-sidebar],
+  :root[data-window-material] [data-window-sidebar-edge] {
     --sidebar: var(--sidebar-translucent);
     --color-sidebar-surface-hover: color-mix(
       in srgb,

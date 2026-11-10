@@ -24,7 +24,7 @@ export function ResizeSeparator({
   return (
     <div
       className={cn(
-        "w-px bg-chrome-separator",
+        "w-px",
         position === "relative" && "relative z-10 shrink-0",
         position === "absolute-start" && "absolute inset-y-0 start-0 z-10",
         position === "absolute-end" && "absolute inset-y-0 end-0 z-10",
