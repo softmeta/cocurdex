@@ -1209,6 +1209,7 @@
   },
   "sidebar": {
     "backToApp": "返回应用",
+    "clearSearch": "清空搜索",
     "resize": "调整设置侧边栏宽度",
     "search": "搜索设置",
     "searchEmpty": "没有匹配的设置",

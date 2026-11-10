@@ -169,6 +169,7 @@ export function SettingsSidebar({
         <SidebarSearchInput
           aria-controls={isSearching ? resultsId : undefined}
           aria-label={t("sidebar.search")}
+          clearLabel={t("sidebar.clearSearch")}
           placeholder={t("sidebar.search")}
           ref={searchInputRef}
           role="searchbox"
@@ -177,6 +178,7 @@ export function SettingsSidebar({
             setQuery(event.target.value);
             setCursor(0);
           }}
+          onClear={() => setQuery("")}
           onKeyDown={handleSearchKeyDown}
         />
       </div>

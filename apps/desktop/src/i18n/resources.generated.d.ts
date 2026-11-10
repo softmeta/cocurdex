@@ -3560,6 +3560,7 @@ export default interface Resources {
     };
     sidebar: {
       backToApp: "Back to app";
+      clearSearch: "Clear search";
       resize: "Resize settings sidebar";
       search: "Search settings";
       searchEmpty: "No matching settings";

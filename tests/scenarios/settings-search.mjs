@@ -150,6 +150,39 @@ runScenario("settings-search", {
       },
     ],
     [
+      "the clear button empties the query and keeps focus in the box",
+      async ({ session, searchLabel, t }) => {
+        await typeQuery(session, searchLabel, "daemon");
+        await clickByRole(
+          session,
+          { role: "button", name: await t("sidebar.clearSearch") },
+          UI_TIMEOUT_MS,
+        );
+        await waitForRole(
+          session,
+          {
+            role: "button",
+            name: await t("sections.general"),
+            within: { role: "list" },
+          },
+          UI_TIMEOUT_MS,
+        );
+        const state = await session.run(() => {
+          const input = document.querySelector('input[role="searchbox"]');
+          return {
+            value: input?.value,
+            focused: document.activeElement === input,
+          };
+        });
+        check(
+          state.value === "" && state.focused,
+          "query cleared, box focused",
+          state,
+        );
+        return state;
+      },
+    ],
+    [
       "every indexed setting has a row to jump to",
       async ({ session, searchLabel, t }) => {
         const sectionIds = await session.run(() =>
