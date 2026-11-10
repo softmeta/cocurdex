@@ -16,7 +16,7 @@
 
   body {
     margin: 0;
-    background: var(--app-bg);
+    background: var(--shell-bg);
     color: var(--app-fg);
     font-family: var(--font-ui);
     font-size: var(--app-ui-font-size, 13px);
@@ -86,8 +86,8 @@ html[data-platform="other"] ::-webkit-scrollbar-thumb:hover {
   border-radius: 3px;
 }
 
-.xterm .xterm-viewport {
-  background-color: var(--editor-canvas);
+:root .xterm .xterm-viewport {
+  background-color: var(--editor-terminal-bg);
 }
 
 .xterm-decoration-overview-ruler {

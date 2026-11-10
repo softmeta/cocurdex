@@ -8,6 +8,7 @@
   --color-status-warning: var(--status-warning);
   --color-status-attention: var(--status-attention);
   --color-chat-canvas: var(--chat-canvas);
+  --color-chat-fade: var(--chat-fade);
   --color-chat-surface: var(--chat-surface);
   --color-chat-surface-raised: var(--chat-surface-raised);
   --color-chat-surface-strong: var(--chat-surface-strong);
@@ -62,6 +63,7 @@
   --color-chrome-separator: var(--chrome-separator);
   --color-chrome-separator-hover: var(--chrome-separator-hover);
   --color-chrome-separator-active: var(--chrome-separator-active);
+  --color-shell: var(--shell-bg);
   --color-sidebar-surface: var(--sidebar-surface);
   --color-sidebar-surface-hover: var(--sidebar-surface-hover);
   --color-sidebar-surface-active: var(--sidebar-surface-active);
@@ -90,6 +92,7 @@
   --color-editor-tab-active-bg: var(--editor-tab-active-bg);
   --color-editor-tab-active-solid: var(--editor-tab-active-solid);
   --color-editor-tab-hover-bg: var(--editor-tab-hover-bg);
+  --color-icon-button-hover: var(--icon-button-hover);
   --color-editor-file-icon-active: var(--editor-file-icon-active);
   --color-editor-file-icon: var(--editor-file-icon);
   --color-editor-folder-icon: var(--editor-folder-icon);

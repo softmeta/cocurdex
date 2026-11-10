@@ -1,8 +1,12 @@
 import {
   APPEARANCE_SETTINGS_STORAGE_KEY,
   type AppearanceSettings,
+  applyContentTransparency,
+  applySidebarTransparency,
   applyThemePreset,
   clampCodeFontSize,
+  clampContentTransparency,
+  clampSidebarTransparency,
   clampUiFontSize,
   getStoredAppearanceSettings,
   getStoredNotificationSettings,
@@ -84,6 +88,7 @@ function applyResolvedTheme(resolvedTheme: "light" | "dark") {
 
 export function syncThemeMode(themeMode: ThemeMode, prefersDark: boolean) {
   document.documentElement.dataset.themeMode = themeMode;
+  void desktopApi.setWindowThemeSource(themeMode);
   window.localStorage.setItem(THEME_MODE_STORAGE_KEY, themeMode);
   applyResolvedTheme(resolveThemeMode(themeMode, prefersDark));
 }
@@ -115,6 +120,13 @@ export function syncAppearanceSettings(appearanceSettings: AppearanceSettings) {
   const codeFontSize = clampCodeFontSize(appearanceSettings.codeFontSize);
   const normalized: AppearanceSettings = {
     ...appearanceSettings,
+    contentTransparency: clampContentTransparency(
+      appearanceSettings.contentTransparency,
+    ),
+    sidebarTransparency: clampSidebarTransparency(
+      appearanceSettings.sidebarTransparency,
+    ),
+    translucentSidebar: appearanceSettings.translucentSidebar !== false,
     uiFontSize,
     codeFontSize,
   };
@@ -123,7 +135,12 @@ export function syncAppearanceSettings(appearanceSettings: AppearanceSettings) {
   root.style.setProperty("--font-mono", codeFont);
   root.style.setProperty("--app-ui-font-size", `${uiFontSize}px`);
   root.style.setProperty("--app-code-font-size", `${codeFontSize}px`);
-  delete root.dataset.reduceTransparency;
+  applySidebarTransparency(normalized.sidebarTransparency);
+  applyContentTransparency(normalized.contentTransparency);
+  root.toggleAttribute(
+    "data-window-material",
+    desktopApi.capabilities.windowMaterial && normalized.translucentSidebar,
+  );
 
   window.localStorage.setItem(
     APPEARANCE_SETTINGS_STORAGE_KEY,

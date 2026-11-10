@@ -33,5 +33,6 @@ export {
   type AppSidebarIconButtonProps,
 } from "./sidebar-icon-button";
 export { AppSidebarRowTitle } from "./sidebar-row-title";
+export { SidebarSearchInput } from "./sidebar-search-input";
 export { AppStatusDot, type AppStatusTone } from "./status-dot";
 export { AppWindowOverlayHeader } from "./window-overlay-header";

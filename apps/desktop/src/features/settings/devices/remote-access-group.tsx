@@ -63,6 +63,7 @@ export function RemoteAccessGroup({
       title={t("devices.remote.groupTitle")}
     >
       <SettingRow
+        searchId="devices.remoteEnable"
         description={t("devices.remote.enable.description")}
         title={t("devices.remote.enable.title")}
       >
@@ -75,6 +76,7 @@ export function RemoteAccessGroup({
         />
       </SettingRow>
       <SettingRow
+        searchId="devices.keepAwake"
         description={t("devices.remote.keepAwake.description")}
         title={t("devices.remote.keepAwake.title")}
       >
@@ -88,6 +90,7 @@ export function RemoteAccessGroup({
         />
       </SettingRow>
       <SettingRow
+        searchId="devices.remotePort"
         description={t("devices.remote.port.description", {
           port: DEFAULT_REMOTE_ACCESS_PORT,
         })}

@@ -28,6 +28,7 @@ export function LocalWebGroup() {
   return (
     <SettingsGroup title={t("devices.localWeb.groupTitle")}>
       <SettingRow
+        searchId="devices.localWeb"
         description={t("devices.localWeb.open.description")}
         title={t("devices.localWeb.open.title")}
       >

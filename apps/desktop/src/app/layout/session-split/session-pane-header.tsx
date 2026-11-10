@@ -64,7 +64,7 @@ export function SessionPaneHeader({
         )}
         style={insetStyle}
       >
-        <div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-chat-canvas via-chat-canvas/85 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-chat-fade via-chat-fade/85 to-transparent" />
         {leading ? (
           <div className="pointer-events-auto relative">{leading}</div>
         ) : null}

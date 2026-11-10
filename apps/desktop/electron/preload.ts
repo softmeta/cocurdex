@@ -9,6 +9,7 @@ import type {
   HostBridge,
 } from "../src/lib/types";
 import { chatWindowApi } from "./window/chat-window-preload";
+import { WINDOW_MATERIAL_ARGUMENT } from "./window/window-material";
 
 const hostBridge: HostBridge = {
   chatWindow: chatWindowApi,
@@ -20,6 +21,7 @@ const hostBridge: HostBridge = {
     localWebClient: true,
     localFilePaths: true,
     localDaemonControl: true,
+    windowMaterial: process.argv.includes(WINDOW_MATERIAL_ARGUMENT),
   },
   getAppUpdateState: () => ipcRenderer.invoke("app:update:getState"),
   checkForAppUpdate: () => ipcRenderer.invoke("app:update:check"),
@@ -68,6 +70,8 @@ const hostBridge: HostBridge = {
   },
   setWindowSurfaceColor: (color: string) =>
     ipcRenderer.invoke("window:setSurfaceColor", color),
+  setWindowThemeSource: (themeSource: "system" | "light" | "dark") =>
+    ipcRenderer.invoke("window:setThemeSource", themeSource),
   browserNavigate: (url: string) => ipcRenderer.invoke("browser:navigate", url),
   browserUpdateHtml: (
     url: string,

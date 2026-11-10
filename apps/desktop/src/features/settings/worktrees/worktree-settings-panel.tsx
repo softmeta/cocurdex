@@ -161,6 +161,7 @@ export function WorktreeSettingsPanel() {
     <div className="settings-panel-enter flex flex-col gap-8">
       <SettingsGroup title={t("worktrees.groupTitle")}>
         <SettingRow
+          searchId="worktrees.root"
           description={t("worktrees.rootDescription")}
           title={t("worktrees.rootTitle")}
         >
@@ -186,6 +187,7 @@ export function WorktreeSettingsPanel() {
           </div>
         </SettingRow>
         <SettingRow
+          searchId="worktrees.fetch"
           description={t("worktrees.fetchDescription")}
           title={t("worktrees.fetchTitle")}
         >

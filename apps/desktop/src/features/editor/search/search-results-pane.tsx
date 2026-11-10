@@ -269,6 +269,7 @@ export function SearchResultsPane({ rootPath }: SearchResultsPaneProps) {
                   : "absolute start-0 top-0 w-full"
               }
               data-index={virtualItem.index}
+              data-window-sticky={isStickyHeader ? "" : undefined}
               key={virtualItem.key}
               ref={virtualizer.measureElement}
               style={

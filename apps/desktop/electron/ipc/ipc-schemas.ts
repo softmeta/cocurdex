@@ -91,6 +91,7 @@ export const schemas = {
   bounds: boundsSchema,
   visible: z.boolean(),
   enabled: z.boolean(),
+  themeSource: z.enum(["system", "light", "dark"]),
   hexColor: z
     .string()
     .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/),

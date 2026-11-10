@@ -190,7 +190,7 @@ export function AgentSelect({
       </DropdownMenuTrigger>
       <AppDropdownContent
         align={align}
-        className={contentClassName}
+        className={cn("flex flex-col", contentClassName)}
         side="bottom"
       >
         {teams ? (
@@ -229,11 +229,8 @@ export function AgentSelect({
         ) : null}
         {teams || roles ? <DropdownMenuSeparator /> : null}
         <ScrollArea
-          className="-mx-0.5"
-          viewportProps={{
-            className:
-              "max-h-[calc((var(--text-body--line-height)_+_0.625rem)_*_6)] overscroll-contain",
-          }}
+          className="-mx-0.5 flex min-h-0 shrink flex-col"
+          viewportProps={{ className: "min-h-0 shrink overscroll-contain" }}
         >
           <div className="px-0.5">
             <DropdownMenuGroup>

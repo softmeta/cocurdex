@@ -152,6 +152,10 @@
     "saveFailed": "无法保存这个角色。"
   },
   "appearance": {
+    "contentTransparency": {
+      "description": "主区域透出桌面的程度。",
+      "title": "主区域透明度"
+    },
     "groupTitle": "外观",
     "modes": {
       "dark": "深色",
@@ -164,9 +168,17 @@
       "searchPlaceholder": "搜索主题…",
       "title": "颜色主题"
     },
+    "sidebarTransparency": {
+      "description": "侧边栏透出桌面的程度。",
+      "title": "侧边栏透明度"
+    },
     "theme": {
       "description": "选择浅色、深色或跟随系统主题。",
       "title": "主题"
+    },
+    "translucentSidebar": {
+      "description": "让侧边栏透出背后的桌面。",
+      "title": "半透明侧边栏"
     },
     "typography": {
       "codeFontFamily": {
@@ -1209,7 +1221,11 @@
   },
   "sidebar": {
     "backToApp": "返回应用",
-    "resize": "调整设置侧边栏宽度"
+    "clearSearch": "清空搜索",
+    "resize": "调整设置侧边栏宽度",
+    "search": "搜索设置",
+    "searchEmpty": "没有匹配的设置",
+    "searchResults": "设置搜索结果"
   },
   "skills": {
     "actions": {

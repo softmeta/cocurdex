@@ -135,6 +135,7 @@ export function RelayGroup({
       title={t("devices.relay.groupTitle")}
     >
       <SettingRow
+        searchId="devices.relayUrl"
         description={t("devices.relay.url.description")}
         title={t("devices.relay.url.title")}
       >
@@ -169,6 +170,7 @@ export function RelayGroup({
         </div>
       </SettingRow>
       <SettingRow
+        searchId="devices.relayOnly"
         description={t("devices.relay.relayOnly.description")}
         title={t("devices.relay.relayOnly.title")}
       >
@@ -182,6 +184,7 @@ export function RelayGroup({
         />
       </SettingRow>
       <SettingRow
+        searchId="devices.relayCredential"
         description={t("devices.relay.credential.description")}
         title={t("devices.relay.credential.title")}
       >

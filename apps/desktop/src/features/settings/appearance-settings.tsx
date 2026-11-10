@@ -1,9 +1,10 @@
 import { Minus, Monitor, Moon, Plus, Sun } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { SettingsGroup } from "@/components/app";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui";
-import { useResolvedTheme } from "@/lib";
+import { SettingRow, SettingsGroup } from "@/components/app";
+import { Switch, ToggleGroup, ToggleGroupItem } from "@/components/ui";
+import { Slider } from "@/components/ui/slider";
+import { desktopApi, useResolvedTheme } from "@/lib";
 import {
   type AppearanceFontOption,
   fallbackCodeFontOptions,
@@ -13,11 +14,17 @@ import {
 import { SettingsSearchableSelect } from "./settings-select";
 import {
   type AppearanceSettings,
+  applyContentTransparency,
+  applySidebarTransparency,
   CODE_FONT_SIZE_MAX,
   CODE_FONT_SIZE_MIN,
+  CONTENT_TRANSPARENCY_MAX,
+  CONTENT_TRANSPARENCY_MIN,
   getThemePresetMeta,
   isThemePresetId,
   listThemePresets,
+  SIDEBAR_TRANSPARENCY_MAX,
+  SIDEBAR_TRANSPARENCY_MIN,
   type ThemeMode,
   type ThemePresetId,
   UI_FONT_SIZE_MAX,
@@ -30,28 +37,6 @@ interface AppearancePanelProps {
   onAppearanceSettingsChange(settings: AppearanceSettings): void;
   onThemeModeChange(themeMode: ThemeMode): void;
   themeMode: ThemeMode;
-}
-
-interface SettingRowProps {
-  children?: ReactNode;
-  description?: string;
-  title: string;
-}
-
-function SettingRow({ children, description, title }: SettingRowProps) {
-  return (
-    <div className="flex items-center justify-between gap-6 py-3.5">
-      <div className="min-w-0 flex-1">
-        <div className="text-body font-medium text-foreground">{title}</div>
-        {description ? (
-          <div className="mt-0.5 text-body text-muted-foreground">
-            {description}
-          </div>
-        ) : null}
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  );
 }
 
 function Stepper({
@@ -89,6 +74,48 @@ function Stepper({
       >
         <Plus className="size-3.5" />
       </button>
+    </div>
+  );
+}
+
+function TransparencySlider({
+  ariaLabel,
+  max,
+  min,
+  onCommit,
+  onPreview,
+  value,
+}: {
+  ariaLabel: string;
+  max: number;
+  min: number;
+  onCommit(value: number): void;
+  onPreview(value: number): void;
+  value: number;
+}) {
+  const [draft, setDraft] = useState<number | null>(null);
+  const shown = draft ?? value;
+
+  return (
+    <div className="flex w-48 items-center gap-3">
+      <Slider<number>
+        aria-label={ariaLabel}
+        max={max}
+        min={min}
+        step={1}
+        value={shown}
+        onValueChange={(next) => {
+          setDraft(next);
+          onPreview(next);
+        }}
+        onValueCommitted={(next) => {
+          setDraft(null);
+          onCommit(next);
+        }}
+      />
+      <span className="w-9 shrink-0 text-end text-body text-muted-foreground tabular-nums">
+        {shown}%
+      </span>
     </div>
   );
 }
@@ -217,6 +244,7 @@ export function AppearancePanel({
     <div className="settings-panel-enter flex flex-col gap-8">
       <SettingsGroup>
         <SettingRow
+          searchId="appearance.theme"
           description={t("appearance.theme.description")}
           title={t("appearance.theme.title")}
         >
@@ -255,6 +283,7 @@ export function AppearancePanel({
           </ToggleGroup>
         </SettingRow>
         <SettingRow
+          searchId="appearance.preset"
           description={t("appearance.preset.description")}
           title={t("appearance.preset.title")}
         >
@@ -267,10 +296,64 @@ export function AppearancePanel({
             value={appearanceSettings.themePreset}
           />
         </SettingRow>
+        {desktopApi.capabilities.windowMaterial ? (
+          <SettingRow
+            searchId="appearance.translucentSidebar"
+            description={t("appearance.translucentSidebar.description")}
+            title={t("appearance.translucentSidebar.title")}
+          >
+            <Switch
+              aria-label={t("appearance.translucentSidebar.title")}
+              checked={appearanceSettings.translucentSidebar}
+              onCheckedChange={(translucentSidebar) =>
+                updateAppearanceSettings({ translucentSidebar })
+              }
+            />
+          </SettingRow>
+        ) : null}
+        {desktopApi.capabilities.windowMaterial &&
+        appearanceSettings.translucentSidebar ? (
+          <SettingRow
+            searchId="appearance.sidebarTransparency"
+            description={t("appearance.sidebarTransparency.description")}
+            title={t("appearance.sidebarTransparency.title")}
+          >
+            <TransparencySlider
+              ariaLabel={t("appearance.sidebarTransparency.title")}
+              max={SIDEBAR_TRANSPARENCY_MAX}
+              min={SIDEBAR_TRANSPARENCY_MIN}
+              value={appearanceSettings.sidebarTransparency}
+              onPreview={applySidebarTransparency}
+              onCommit={(sidebarTransparency) =>
+                updateAppearanceSettings({ sidebarTransparency })
+              }
+            />
+          </SettingRow>
+        ) : null}
+        {desktopApi.capabilities.windowMaterial &&
+        appearanceSettings.translucentSidebar ? (
+          <SettingRow
+            searchId="appearance.contentTransparency"
+            description={t("appearance.contentTransparency.description")}
+            title={t("appearance.contentTransparency.title")}
+          >
+            <TransparencySlider
+              ariaLabel={t("appearance.contentTransparency.title")}
+              max={CONTENT_TRANSPARENCY_MAX}
+              min={CONTENT_TRANSPARENCY_MIN}
+              value={appearanceSettings.contentTransparency}
+              onPreview={applyContentTransparency}
+              onCommit={(contentTransparency) =>
+                updateAppearanceSettings({ contentTransparency })
+              }
+            />
+          </SettingRow>
+        ) : null}
       </SettingsGroup>
 
       <SettingsGroup title={t("appearance.typography.groupTitle")}>
         <SettingRow
+          searchId="appearance.uiFontSize"
           description={t("appearance.typography.uiFontSize.description")}
           title={t("appearance.typography.uiFontSize.title")}
         >
@@ -282,6 +365,7 @@ export function AppearancePanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="appearance.codeFontSize"
           description={t("appearance.typography.codeFontSize.description")}
           title={t("appearance.typography.codeFontSize.title")}
         >
@@ -295,6 +379,7 @@ export function AppearancePanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="appearance.uiFontFamily"
           description={t("appearance.typography.uiFontFamily.description")}
           title={t("appearance.typography.uiFontFamily.title")}
         >
@@ -310,6 +395,7 @@ export function AppearancePanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="appearance.codeFontFamily"
           description={t("appearance.typography.codeFontFamily.description")}
           title={t("appearance.typography.codeFontFamily.title")}
         >

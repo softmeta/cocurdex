@@ -1,0 +1,162 @@
+@media (prefers-reduced-transparency: no-preference) {
+  :root[data-window-material] {
+    --shell-bg: transparent;
+    --content-plane-base: var(--chat-canvas);
+    --content-plane: color-mix(
+      in srgb,
+      var(--content-plane-base) var(--content-tint, 90%),
+      transparent
+    );
+    --sidebar-material: color-mix(
+      in srgb,
+      var(--foreground) 7%,
+      var(--background)
+    );
+    --sidebar-translucent: color-mix(
+      in srgb,
+      var(--sidebar-material) var(--sidebar-tint, 88%),
+      transparent
+    );
+  }
+
+  :root[data-window-material][data-theme="light"] {
+    --content-plane-base: color-mix(
+      in srgb,
+      var(--foreground) 1%,
+      var(--chat-canvas)
+    );
+  }
+
+  :root[data-window-material] {
+    --editor-monaco-bg: transparent;
+    --editor-monaco-gutter: transparent;
+    --editor-monaco-sticky: var(--content-plane-base);
+    --editor-terminal-bg: transparent;
+  }
+
+  :root[data-window-material] [data-window-sidebar] {
+    --window-sticky-surface: var(--sidebar-material);
+  }
+
+  :root[data-window-material] [data-window-content] {
+    --window-sticky-surface: var(--content-plane-base);
+  }
+
+  :root[data-window-material] [data-window-sticky] {
+    container-type: scroll-state;
+  }
+
+  :root[data-window-material] [data-window-sidebar] [data-window-sticky] {
+    background-color: transparent;
+  }
+
+  @container scroll-state(stuck: top) {
+    :root[data-window-material] [data-window-sticky]::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background-color: var(--window-sticky-surface);
+    }
+
+    :root[data-window-material]
+      [data-window-sidebar]
+      [data-window-sticky]::before {
+      inset-inline: -6px;
+      border-radius: var(--radius-control);
+    }
+  }
+
+  :root[data-window-material] [data-window-content] {
+    background-color: var(--content-plane);
+    --color-app: transparent;
+    --color-chat-canvas: transparent;
+    --color-editor-shell: transparent;
+    --color-editor-canvas: transparent;
+    --color-chat-fade: color-mix(
+      in srgb,
+      var(--content-plane-base) min(100%, var(--content-tint, 90%) + 7%),
+      transparent
+    );
+  }
+
+  :root[data-window-material][data-theme="dark"] [data-window-content] {
+    --color-settings-surface: color-mix(
+      in srgb,
+      var(--foreground) 4%,
+      transparent
+    );
+    --color-settings-surface-hover: color-mix(
+      in srgb,
+      var(--foreground) 8%,
+      transparent
+    );
+    --color-settings-surface-active: color-mix(
+      in srgb,
+      var(--foreground) 12%,
+      transparent
+    );
+  }
+
+  :root[data-window-material][data-theme="light"] [data-window-content] {
+    --color-settings-surface: color-mix(
+      in srgb,
+      var(--foreground) 2%,
+      transparent
+    );
+    --color-settings-surface-hover: color-mix(
+      in srgb,
+      var(--foreground) 5%,
+      transparent
+    );
+    --color-settings-surface-active: color-mix(
+      in srgb,
+      var(--foreground) 8%,
+      transparent
+    );
+    --color-chat-code-inline: color-mix(
+      in srgb,
+      var(--foreground) 2.5%,
+      transparent
+    );
+    --color-chat-code-block: color-mix(
+      in srgb,
+      var(--foreground) 3%,
+      transparent
+    );
+    --color-chat-code-panel: var(--color-chat-code-block);
+    --color-chat-user-bubble: color-mix(
+      in srgb,
+      var(--foreground) 5%,
+      transparent
+    );
+  }
+
+  :root[data-window-material] [data-window-sidebar],
+  :root[data-window-material] [data-window-sidebar-edge] {
+    --sidebar: var(--sidebar-translucent);
+    --color-sidebar-surface-hover: color-mix(
+      in srgb,
+      var(--sidebar-foreground) 3%,
+      transparent
+    );
+    --color-sidebar-surface-active: color-mix(
+      in srgb,
+      var(--sidebar-foreground) 5%,
+      transparent
+    );
+  }
+
+  :root[data-window-material][data-theme="dark"] [data-window-sidebar] {
+    --color-sidebar-surface-hover: color-mix(
+      in srgb,
+      var(--sidebar-foreground) 4.5%,
+      transparent
+    );
+    --color-sidebar-surface-active: color-mix(
+      in srgb,
+      var(--sidebar-foreground) 7.5%,
+      transparent
+    );
+  }
+}

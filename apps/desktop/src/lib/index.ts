@@ -41,6 +41,7 @@ export {
   formatShortcut,
   formatShortcutLabel,
   isModifierOnlyKey,
+  matchesShortcut,
   parseShortcutCombo,
   type ShortcutCombo,
   type ShortcutDescriptor,

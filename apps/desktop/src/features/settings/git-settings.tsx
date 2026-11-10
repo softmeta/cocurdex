@@ -249,7 +249,10 @@ export function GitSettingsPanel() {
   return (
     <div className="settings-panel-enter flex flex-col gap-8">
       <SettingsGroup title={t("git.commitMessageModel.group")}>
-        <div className="flex items-center justify-between gap-4 py-3">
+        <div
+          className="flex items-center justify-between gap-4 py-3"
+          data-settings-search-id="git.commitAgent"
+        >
           <div className="min-w-0 flex-1">
             <div className="text-sm font-medium">
               {t("git.commitMessageModel.agentLabel")}
@@ -281,7 +284,10 @@ export function GitSettingsPanel() {
             }}
           />
         </div>
-        <div className="flex items-center justify-between gap-4 py-3">
+        <div
+          className="flex items-center justify-between gap-4 py-3"
+          data-settings-search-id="git.commitModel"
+        >
           <div className="min-w-0 flex-1">
             <div className="text-sm font-medium">
               {t("git.commitMessageModel.modelLabel")}

@@ -79,6 +79,7 @@ export function ScriptRunSettingsSection() {
 
   return (
     <SettingsGroup
+      searchId="teams.scriptRuns"
       description={t("teams.scriptRuns.description")}
       title={t("teams.scriptRuns.title")}
     >

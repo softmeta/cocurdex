@@ -9,6 +9,7 @@
 @import "./theme-tailwind.css";
 @import "./streamdown.css";
 @import "./base.css";
+@import "./window-material.css";
 @import "./motion.css";
 @import "./persona-tone.css";
 @import "./activity-timeline.css";

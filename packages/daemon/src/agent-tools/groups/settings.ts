@@ -160,7 +160,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
     tier: "write",
     storage: "renderer",
     description:
-      "Appearance settings: themePreset (named color preset id such as 'default'), uiFontFamily and codeFontFamily (empty string = system default), uiFontSize (12-16), codeFontSize (11-18).",
+      "Appearance settings: themePreset (named color preset id such as 'default'), uiFontFamily and codeFontFamily (empty string = system default), uiFontSize (12-16), codeFontSize (11-18), translucentSidebar (optional, default true), sidebarTransparency (optional integer 0-75, default 12) and contentTransparency (optional integer 0-25, default 10) apply only on desktop hosts with a window material.",
     valueSchema: {
       type: "object",
       properties: {
@@ -169,6 +169,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
         codeFontFamily: { type: "string" },
         uiFontSize: { type: "number" },
         codeFontSize: { type: "number" },
+        translucentSidebar: { type: "boolean" },
+        sidebarTransparency: { type: "integer", minimum: 0, maximum: 75 },
+        contentTransparency: { type: "integer", minimum: 0, maximum: 25 },
       },
       required: [
         "themePreset",
@@ -192,6 +195,31 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
         if (typeof record[field] !== "number") {
           throw new Error(
             `Value for 'app.appearance.${field}' must be a number`,
+          );
+        }
+      }
+      if (
+        record.translucentSidebar !== undefined &&
+        typeof record.translucentSidebar !== "boolean"
+      ) {
+        throw new Error(
+          "Value for 'app.appearance.translucentSidebar' must be a boolean",
+        );
+      }
+      for (const [field, max] of [
+        ["sidebarTransparency", 75],
+        ["contentTransparency", 25],
+      ] as const) {
+        const transparency = record[field];
+        if (
+          transparency !== undefined &&
+          (typeof transparency !== "number" ||
+            !Number.isInteger(transparency) ||
+            transparency < 0 ||
+            transparency > max)
+        ) {
+          throw new Error(
+            `Value for 'app.appearance.${field}' must be an integer from 0 to ${max}`,
           );
         }
       }

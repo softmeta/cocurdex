@@ -7,7 +7,10 @@ import { type IDisposable, Terminal } from "@xterm/xterm";
 import { desktopApi, onThemeChanged, readCssVarPx } from "@/lib";
 import "@xterm/xterm/css/xterm.css";
 import { markTerminalLive, takeQueuedTerminalCommand } from "./terminal-store";
-import { buildTerminalTheme } from "./terminal-theme";
+import {
+  buildTerminalTheme,
+  terminalBackgroundIsTransparent,
+} from "./terminal-theme";
 
 const DEFAULT_TERMINAL_FONT_FAMILY =
   'Menlo, Monaco, "Cascadia Code", "Source Code Pro", "Courier New", monospace';
@@ -169,6 +172,7 @@ function createEntry(
   cwd: string,
 ): Entry {
   const term = new Terminal({
+    allowTransparency: terminalBackgroundIsTransparent(),
     theme: buildTerminalTheme(),
     fontFamily: readTerminalFontFamily(),
     fontSize: readTerminalFontSize(),

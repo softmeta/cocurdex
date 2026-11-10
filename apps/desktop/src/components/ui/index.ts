@@ -185,7 +185,6 @@ export {
   SidebarMenuSubItem,
   sidebarListRowVariants,
 } from "./sidebar";
-export { Slider } from "./slider";
 export { Toaster } from "./sonner";
 export { Spinner } from "./spinner";
 export { Switch } from "./switch";

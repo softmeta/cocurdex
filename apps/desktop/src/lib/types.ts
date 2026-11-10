@@ -319,6 +319,7 @@ export interface HostCapabilities {
   localWebClient: boolean;
   localFilePaths: boolean;
   localDaemonControl: boolean;
+  windowMaterial: boolean;
   scopes?: readonly HostAccessScope[];
 }
 
@@ -791,6 +792,7 @@ export interface HostApi {
     listener: (event: { rootPath: string }) => void,
   ): () => void;
   setWindowSurfaceColor(color: string): Promise<void>;
+  setWindowThemeSource(themeSource: "system" | "light" | "dark"): Promise<void>;
   browserNavigate(url: string): Promise<void>;
   browserOpenHtml(
     html: string,

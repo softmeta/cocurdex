@@ -27,13 +27,18 @@ export function ResizableSidebarSlot({
 
   return (
     <>
-      <div className="shrink-0" style={{ width }}>
+      <div className="shrink-0" data-window-sidebar="" style={{ width }}>
         {children}
       </div>
-      <ResizeSeparator
-        ariaLabel={separatorAriaLabel}
-        onMouseDown={onResizeMouseDown}
-      />
+      <div
+        className="relative z-10 flex shrink-0 bg-sidebar"
+        data-window-sidebar-edge=""
+      >
+        <ResizeSeparator
+          ariaLabel={separatorAriaLabel}
+          onMouseDown={onResizeMouseDown}
+        />
+      </div>
     </>
   );
 }

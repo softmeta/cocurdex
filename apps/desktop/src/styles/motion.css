@@ -398,3 +398,22 @@
     animation: none;
   }
 }
+
+[data-settings-search-hit] {
+  animation: settings-search-hit 1600ms ease-out;
+}
+
+[data-settings-search-hit]:not([data-settings-search-scope="group"]) {
+  --settings-search-bleed: 1rem;
+}
+
+@keyframes settings-search-hit {
+  from,
+  40% {
+    background-color: var(--settings-surface-active);
+    box-shadow:
+      calc(-1 * var(--settings-search-bleed, 0px)) 0 0
+      var(--settings-surface-active),
+      var(--settings-search-bleed, 0px) 0 0 var(--settings-surface-active);
+  }
+}

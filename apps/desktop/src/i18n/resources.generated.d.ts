@@ -2496,6 +2496,10 @@ export default interface Resources {
       saveFailed: "Could not save this role.";
     };
     appearance: {
+      contentTransparency: {
+        description: "How much of the desktop shows through the main area.";
+        title: "Main area transparency";
+      };
       groupTitle: "Appearance";
       modes: {
         dark: "Dark";
@@ -2508,9 +2512,17 @@ export default interface Resources {
         searchPlaceholder: "Search themes...";
         title: "Color theme";
       };
+      sidebarTransparency: {
+        description: "How much of the desktop shows through the sidebar.";
+        title: "Sidebar transparency";
+      };
       theme: {
         description: "Choose between light, dark, or system themes.";
         title: "Theme";
+      };
+      translucentSidebar: {
+        description: "Let the desktop show through the sidebar.";
+        title: "Translucent sidebar";
       };
       typography: {
         codeFontFamily: {
@@ -3560,7 +3572,11 @@ export default interface Resources {
     };
     sidebar: {
       backToApp: "Back to app";
+      clearSearch: "Clear search";
       resize: "Resize settings sidebar";
+      search: "Search settings";
+      searchEmpty: "No matching settings";
+      searchResults: "Settings search results";
     };
     skills: {
       actions: {

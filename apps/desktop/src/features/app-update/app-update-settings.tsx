@@ -76,7 +76,10 @@ export function AppUpdateSettingsPanel() {
 
   return (
     <>
-      <div className="flex items-start justify-between gap-6 py-3.5">
+      <div
+        className="flex items-start justify-between gap-6 py-3.5"
+        data-settings-search-id="about.updates"
+      >
         <div className="min-w-0 flex-1">
           <div className="text-body font-medium text-foreground">
             {t("updates.title")}
@@ -115,7 +118,10 @@ export function AppUpdateSettingsPanel() {
           </Button>
         </div>
       </div>
-      <div className="flex items-center justify-between gap-6 py-3.5">
+      <div
+        className="flex items-center justify-between gap-6 py-3.5"
+        data-settings-search-id="about.updateChannel"
+      >
         <div className="min-w-0 flex-1">
           <div className="text-body font-medium text-foreground">
             {t("updates.channel.title")}

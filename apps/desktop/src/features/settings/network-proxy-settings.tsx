@@ -25,18 +25,23 @@ function SettingRow({
   children,
   description,
   footer,
+  searchId,
   title,
   vertical,
 }: {
   children?: ReactNode;
   description?: string;
   footer?: ReactNode;
+  searchId?: string;
   title: string;
   vertical?: boolean;
 }) {
   if (vertical) {
     return (
-      <div className="flex flex-col gap-2 py-3.5">
+      <div
+        className="flex flex-col gap-2 py-3.5"
+        data-settings-search-id={searchId}
+      >
         <div className="min-w-0">
           <div className="text-body font-medium text-foreground">{title}</div>
           {description ? (
@@ -51,7 +56,10 @@ function SettingRow({
   }
 
   return (
-    <div className="flex flex-col gap-2 py-3.5">
+    <div
+      className="flex flex-col gap-2 py-3.5"
+      data-settings-search-id={searchId}
+    >
       <div className="flex items-center justify-between gap-6">
         <div className="min-w-0 flex-1">
           <div className="text-body font-medium text-foreground">{title}</div>
@@ -81,6 +89,7 @@ function ProxyConnectivityRow({
 
   return (
     <SettingRow
+      searchId="environment.proxyTest"
       description={t("network.proxy.test.description")}
       footer={
         result ? (
@@ -268,6 +277,7 @@ export function NetworkProxySettingsPanel() {
     <div className="settings-panel-enter flex flex-col gap-8">
       <SettingsGroup title={t("network.proxy.groupTitle")}>
         <SettingRow
+          searchId="environment.proxyMode"
           description={t("network.proxy.scopeDescription")}
           title={t("network.proxy.modeTitle")}
         >
@@ -299,6 +309,7 @@ export function NetworkProxySettingsPanel() {
             </div>
           ) : null}
           <SettingRow
+            searchId="environment.httpProxy"
             description={t("network.proxy.httpProxy.description")}
             title={t("network.proxy.httpProxy.title")}
             vertical
@@ -317,6 +328,7 @@ export function NetworkProxySettingsPanel() {
             />
           </SettingRow>
           <SettingRow
+            searchId="environment.httpsProxy"
             description={t("network.proxy.httpsProxy.description")}
             title={t("network.proxy.httpsProxy.title")}
             vertical
@@ -337,6 +349,7 @@ export function NetworkProxySettingsPanel() {
             />
           </SettingRow>
           <SettingRow
+            searchId="environment.allProxy"
             description={t("network.proxy.allProxy.description")}
             title={t("network.proxy.allProxy.title")}
             vertical
@@ -355,6 +368,7 @@ export function NetworkProxySettingsPanel() {
             />
           </SettingRow>
           <SettingRow
+            searchId="environment.noProxy"
             description={t("network.proxy.noProxy.description")}
             title={t("network.proxy.noProxy.title")}
             vertical

@@ -1,6 +1,6 @@
 import { type ComponentProps, useCallback, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui";
-import { useMountEffect } from "@/lib";
+import { cn, useMountEffect } from "@/lib";
 import { SidebarScrollingContext } from "./sidebar-scrolling";
 
 const SCROLL_IDLE_MS = 150;
@@ -12,6 +12,7 @@ type ViewportScrollEvent = Parameters<
 >[0];
 
 export function SidebarScrollArea({
+  className,
   viewportProps,
   ...props
 }: SidebarScrollAreaProps) {
@@ -36,7 +37,12 @@ export function SidebarScrollArea({
   return (
     <SidebarScrollingContext.Provider value={scrolling}>
       <ScrollArea
-        viewportProps={{ ...viewportProps, onScroll: handleScroll }}
+        className={cn("-ms-3", className)}
+        viewportProps={{
+          ...viewportProps,
+          className: cn("[&>*]:ps-3", viewportProps?.className),
+          onScroll: handleScroll,
+        }}
         {...props}
       />
     </SidebarScrollingContext.Provider>

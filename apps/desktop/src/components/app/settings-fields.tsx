@@ -10,11 +10,13 @@ export function SettingsGroup({
   action,
   children,
   description,
+  searchId,
   title,
 }: {
   action?: ReactNode;
   children: ReactNode;
   description?: string;
+  searchId?: string;
   title?: string;
 }) {
   const hasHeader = Boolean(title || description || action);
@@ -37,7 +39,11 @@ export function SettingsGroup({
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
-      <div className="flex flex-col divide-y divide-border/40 rounded-card bg-settings-surface px-4">
+      <div
+        className="flex flex-col divide-y divide-border/40 rounded-card bg-settings-surface px-4"
+        data-settings-search-id={searchId}
+        data-settings-search-scope={searchId ? "group" : undefined}
+      >
         {children}
       </div>
     </div>
@@ -47,14 +53,19 @@ export function SettingsGroup({
 export function SettingRow({
   children,
   description,
+  searchId,
   title,
 }: {
   children?: ReactNode;
   description?: string;
+  searchId?: string;
   title: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-3.5">
+    <div
+      className="flex items-center justify-between gap-6 py-3.5"
+      data-settings-search-id={searchId}
+    >
       <div className="min-w-0 flex-1">
         <div className="text-body font-medium text-foreground">{title}</div>
         {description ? (

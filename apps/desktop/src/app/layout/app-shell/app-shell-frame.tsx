@@ -274,7 +274,7 @@ export function AppShellFrame({
 
   return (
     <div
-      className="relative h-screen overflow-hidden bg-background text-foreground"
+      className="relative h-screen overflow-hidden bg-shell text-foreground"
       {...dropHandlers}
     >
       <WorkspaceFolderDropOverlay active={isDraggingFolder} />
@@ -287,7 +287,7 @@ export function AppShellFrame({
             : "pointer-events-none opacity-0",
         )}
       >
-        <div className="relative flex h-screen flex-col overflow-hidden bg-app text-app-foreground">
+        <div className="relative flex h-screen flex-col overflow-hidden bg-shell text-app-foreground">
           <header
             className="absolute inset-x-0 top-0 z-30 flex select-none items-center"
             style={{ height: TITLEBAR_HEIGHT }}

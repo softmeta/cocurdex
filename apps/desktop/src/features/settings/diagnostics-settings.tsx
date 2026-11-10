@@ -42,6 +42,7 @@ export function DiagnosticsSettingsPanel() {
   return (
     <SettingsGroup title={t("diagnostics.group")}>
       <SettingRow
+        searchId="diagnostics.verbose"
         description={t("diagnostics.verbose.description")}
         title={t("diagnostics.verbose.title")}
       >
@@ -54,6 +55,7 @@ export function DiagnosticsSettingsPanel() {
         />
       </SettingRow>
       <SettingRow
+        searchId="diagnostics.export"
         description={t("diagnostics.description")}
         title={t("diagnostics.title")}
       >
