@@ -30,6 +30,7 @@
   --status-attention: oklch(0.623 0.214 259.815);
 
   --chat-canvas: var(--editor-canvas);
+  --chat-fade: var(--chat-canvas);
   --chat-surface: var(--card);
   --chat-surface-raised: var(--popover);
   --chat-surface-strong: var(--muted);

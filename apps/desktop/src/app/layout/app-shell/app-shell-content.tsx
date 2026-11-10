@@ -174,7 +174,10 @@ export function AppShellContent({
           >
             <LeftSidebar showFooter />
           </ResizableSidebarSlot>
-          <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden bg-app">
+          <div
+            className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden bg-app"
+            data-window-content={isCompact ? undefined : ""}
+          >
             <div
               className="h-full"
               style={

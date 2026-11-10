@@ -8,6 +8,7 @@
   --color-status-warning: var(--status-warning);
   --color-status-attention: var(--status-attention);
   --color-chat-canvas: var(--chat-canvas);
+  --color-chat-fade: var(--chat-fade);
   --color-chat-surface: var(--chat-surface);
   --color-chat-surface-raised: var(--chat-surface-raised);
   --color-chat-surface-strong: var(--chat-surface-strong);

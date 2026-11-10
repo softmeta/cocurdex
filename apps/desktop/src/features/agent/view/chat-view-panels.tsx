@@ -166,7 +166,7 @@ export function ComposerDock({
   );
 
   return (
-    <ComposerDockFrame className="bg-linear-to-t from-chat-canvas via-chat-canvas to-transparent">
+    <ComposerDockFrame className="bg-linear-to-t from-chat-fade via-chat-fade to-transparent">
       <div className="absolute inset-x-0 bottom-full z-10 -mx-1 -mt-1 mb-1 flex max-h-[75dvh] min-w-0 flex-col gap-2 overflow-y-auto overscroll-contain p-1">
         {plan && !hideComposer ? (
           <PlanPanel
