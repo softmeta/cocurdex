@@ -19,35 +19,57 @@ names an `origin/main` commit, so a release never needs its own PR or branch.
 The tag is the version. The Release workflow stamps it into `apps/desktop/package.json` before each
 build (`release.mjs stamp`); the `version` committed there is a dev placeholder, so never bump it.
 
-The relay and push lines tag an `origin/main` commit by hand with `git tag relay-vX.Y.Z <commit>`
-and push it; once its workflow publishes, deploy the relay on the host with
-`deploy-cocurdex-relay deploy relay-vX.Y.Z`.
+Never tag by hand when the script can: `release.mjs` owns the version arithmetic, the order, and
+the checks between steps.
 
-## Decide first
+## Release with `plan` and `run`
 
-Start every release question with:
+A release request (发版, 发测试版, what needs releasing) starts with:
 
 ```bash
-node scripts/release.mjs status
+node scripts/release.mjs plan            # add --json to read it programmatically
 ```
 
-It lists, for each line, what merged on `origin/main` since the line's last tag, skipping tests,
-docs, and Markdown, and flags risk signals: `schema migration`, `mobile native`, and
-`CLI or skill contract`. Read the listed PRs, then recommend per line:
+The plan is deterministic. For `origin/main` it prints the steps in order, the lines it does not
+release and why, and notes. It blocks everything while the `ci.yml` push run on the main tip is not a
+completed success. Its rules:
 
-- **Release** when a pending change fixes a bug users hit, or changes behavior users see.
-- **Hold** when every pending change is internal (refactors, tooling, unreleased features behind a flag).
-- **Beta first** for the app line when a change carries a `schema migration`, a `mobile native`
-  change, or a broad behavior change. A low-risk batch of fixes may go straight to stable.
-- **Relay with the app, unless the web client would break on an older daemon.** The relay's web
-  client calls the daemon of the user's own app, which may still run the last stable. Read what the
-  pending web changes call: when an installed daemon would serve them (or the client degrades
-  cleanly, such as a state the old daemon never reports), release the relay alongside the app.
-  Hold it until the matching app reaches stable only when the web client depends on RPC methods or
-  fields the installed daemon lacks.
+- **app**: with shipped app changes since the last app tag, cut the next beta at the main tip. When
+  those changes touch `apps/mobile/`, run the iOS flows first (CI runs only Android); on a host that
+  is not an Apple Silicon Mac the app is held instead.
+- **promotion is manual.** The plan only notes that the latest beta can be promoted. Pass
+  `--promote` only when the user asks for stable (转正, 发正式版, promote); it tags the latest beta's
+  commit unchanged and goes first, so later betas open the next line.
+- **relay**: released and then deployed after the app steps, only when every daemon RPC method its
+  web client calls (a method name in the renderer sources) exists in the stable app's
+  `packages/rpc/src/method-scopes.ts`, after any promotion in the same plan. Otherwise it is held and
+  the reason names the missing methods and whether promoting the open beta would unblock it.
+- **push**: never cuts the first push gateway release (that needs a host and APNs credentials); after
+  one exists, pending changes get the next patch.
 
-Present the recommendation with the PR list, and release only after the user agrees, unless they
-already asked for a specific release.
+Read the plan, then judge only what it cannot see, and hold a line with `--skip <line,...>` when:
+
+- every pending change of a line is internal (refactors, tooling, a dependency bump with no
+  user-visible effect), so a release would ship nothing users notice;
+- the relay's web client changed a field it reads or sends on an existing RPC method that the stable
+  daemon does not provide and does not degrade cleanly on (the method check sees names, not fields).
+
+When a release was requested, do not ask the user to confirm the plan: execute it and report.
+
+```bash
+node scripts/release.mjs run [--skip relay] [--promote]
+```
+
+`run` rebuilds the plan from fresh facts and executes the steps in order: it runs the iOS flows from
+this checkout (which must be a clean checkout of the main tip; the runner needs `applesimutils`:
+`brew tap wix/brew && brew install applesimutils`), pushes each tag, waits for its workflow, checks
+that the GitHub release published (a prerelease for a beta, with assets), and deploys the relay with
+`ssh cocurdex-relay deploy-cocurdex-relay deploy <tag>`. It stops at the first failure and reports
+which step failed. A step that failed before its tag was pushed (the iOS flows) is fixed on `main`
+and the whole `run` repeated. Once a tag is pushed, the plan moves past it, so a failed workflow on
+that tag is retried with `gh run rerun <run-id> --failed`, and a failed relay deploy with the same
+`ssh` command; then run again for the remaining steps. Report the tags, the runs, and the relay deploy
+commands, then check the deployed relay read-only (version, `systemctl status`, recent logs).
 
 ## Channels
 
@@ -63,7 +85,9 @@ The desktop channel setting lives in `app-update-channel.json`; `stable` refuses
 Channels are versions, not branches. There is no long-lived beta or stable branch: work merges to
 `main`, a beta tags a `main` commit, and promotion tags that same commit again.
 
-## Commands
+## Lower-level commands
+
+`run` uses these; reach for them only to repair a release by hand.
 
 ```bash
 node scripts/release.mjs tag beta [patch|minor|major]   # next beta.N, or beta.1 of a new line
@@ -83,33 +107,11 @@ first and refuses a tag that already exists.
 - `tag stable` refuses while a beta line is open; promote it or cut another beta.
 - A fix for a beta is a new beta: merge it, then `tag beta`. It soaks again before promotion.
 
-## Process
+## What a published app release contains
 
-1. Run `status` and agree on what to release with the user.
-2. Make sure everything to ship is merged and the latest `main` CI run is green
-   (`gh run list --workflow=ci.yml --branch main --limit 1`).
-3. When the release carries changes under `apps/mobile/` or the packages it uses, run the iOS
-   flows on this Apple Silicon Mac from a checkout of the commit to tag:
-
-   ```bash
-   pnpm --filter @cocurdex/mobile-e2e flows -- --platform ios --build
-   ```
-
-   CI runs only the Android flows, so this is the release's iOS coverage. A failure blocks the
-   tag: fix it on `main` first. The runner needs `applesimutils` (`brew tap wix/brew && brew
-   install applesimutils`) to grant notification permission.
-4. Run the command with `--dry-run`, check the tag and commit, then run it for real.
-5. Verify:
-
-   ```bash
-   gh run list --workflow=release.yml --limit 1
-   gh run watch <run-id> --exit-status
-   gh release view v<version> --json isDraft,isPrerelease,assets
-   ```
-
-   The workflow builds macOS arm64/x64, Windows x64, Linux x64, and, unless promoting, iOS and
-   Android, then publishes; expect about 15 minutes. Success is `isDraft: false` with the platform
-   artifacts, the APKs, `latest*.yml`, and `mac-update-*.json`. A beta publishes as a prerelease.
+The Release workflow builds macOS arm64/x64, Windows x64, Linux x64, and, unless promoting, iOS and
+Android, then publishes; expect about 15 minutes. Success is `isDraft: false` with the platform
+artifacts, the APKs, `latest*.yml`, and `mac-update-*.json`. A beta publishes as a prerelease.
 
 ## Scheduled beta
 
@@ -121,9 +123,10 @@ it logs why and stops. It pushes the tag with the `RELEASE_TAG_DEPLOY_KEY` deplo
 `release.yml` like a hand-pushed tag. Run it now with
 `gh workflow run scheduled-beta.yml [-f dry_run=true]`.
 
-It cannot run the iOS flows from step 3, so a scheduled beta carrying `apps/mobile/` changes ships
+It cannot run the iOS flows, so a scheduled beta carrying `apps/mobile/` changes ships
 to TestFlight on Android CI coverage alone. Before promoting such a beta, run the iOS flows on its
-commit; when they fail, fix on `main` and let the next beta pick it up.
+commit; when they fail, fix on `main` and let the next beta pick it up. It never promotes and never
+releases the relay or the push gateway; those go through `run`.
 
 ## Pitfalls
 

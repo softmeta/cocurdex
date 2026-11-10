@@ -152,8 +152,22 @@ export function buildPlan(facts) {
     );
     return plan;
   }
-  const appResult = planApp(facts, plan);
-  planRelay(facts, plan, appResult);
-  planPush(facts, plan);
+  const skip = new Set(facts.skip ?? []);
+  if (skip.has("app") && facts.promote) {
+    plan.blockers.push("promote: the app line is skipped");
+    return plan;
+  }
+  for (const line of skip) {
+    plan.held.push({ line, reason: "skipped on request" });
+  }
+  const appResult = skip.has("app")
+    ? { stableCommit: facts.app.latestStableCommit }
+    : planApp(facts, plan);
+  if (!skip.has("relay")) {
+    planRelay(facts, plan, appResult);
+  }
+  if (!skip.has("push")) {
+    planPush(facts, plan);
+  }
   return plan;
 }

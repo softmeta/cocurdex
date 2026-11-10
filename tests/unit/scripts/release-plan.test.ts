@@ -25,6 +25,7 @@ const change = (label: string, signals: string[] = []): Change => ({
 
 function facts(overrides: {
   promote?: boolean;
+  skip?: string[];
   ci?: { status: string; conclusion: string | null } | null;
   canRunIosFlows?: boolean;
   latest?: string;
@@ -39,6 +40,7 @@ function facts(overrides: {
   return {
     mainSha: MAIN,
     promote: overrides.promote ?? false,
+    skip: overrides.skip ?? [],
     ci:
       overrides.ci === undefined
         ? { status: "completed", conclusion: "success" }
@@ -195,6 +197,29 @@ describe("buildPlan", () => {
   it("cuts the next push gateway patch once it has shipped before", () => {
     const plan = buildPlan(facts({ pushPending: [change("#4 gateway")] }));
     expect(stepSummary(plan)).toEqual(["tag:push:push-v0.1.1"]);
+  });
+});
+
+describe("buildPlan with skipped lines", () => {
+  it("holds a skipped line and still plans the others", () => {
+    const plan = buildPlan(
+      facts({
+        skip: ["relay"],
+        appPending: [change("#1 fix")],
+        relayPending: [change("#1 fix")],
+      }),
+    );
+    expect(stepSummary(plan)).toEqual(["tag:app:v0.1.103-beta.13"]);
+    expect(plan.held).toContainEqual({
+      line: "relay",
+      reason: "skipped on request",
+    });
+  });
+
+  it("refuses to promote a skipped app line", () => {
+    const plan = buildPlan(facts({ promote: true, skip: ["app"] }));
+    expect(plan.steps).toEqual([]);
+    expect(plan.blockers).toHaveLength(1);
   });
 });
 

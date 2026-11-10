@@ -139,7 +139,7 @@ function missingMethodsAt(commits) {
   return Object.fromEntries(entries);
 }
 
-export function gatherFacts({ promote = false } = {}) {
+export function gatherFacts({ promote = false, skip = [] } = {}) {
   fetchOrigin();
   const mainSha = git(["rev-parse", "origin/main"]);
   const tags = appTagsOnMain();
@@ -155,6 +155,7 @@ export function gatherFacts({ promote = false } = {}) {
   return {
     mainSha,
     promote,
+    skip,
     ci: mainCiRun(mainSha),
     host: {
       canRunIosFlows: process.platform === "darwin" && process.arch === "arm64",

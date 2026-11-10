@@ -122,8 +122,8 @@ function runStatus() {
   }
 }
 
-function runPlan({ promote, json, execute, dryRun }) {
-  const plan = buildPlan(gatherFacts({ promote }));
+function runPlan({ promote, skip, json, execute, dryRun }) {
+  const plan = buildPlan(gatherFacts({ promote, skip }));
   console.log(json ? JSON.stringify(plan, null, 2) : formatPlan(plan));
   if (execute && !dryRun) {
     executePlan(plan);
@@ -158,14 +158,32 @@ Commands:
 
 Options:
   --promote              With plan or run: promote the latest beta first.
+  --skip <line,...>      With plan or run: hold these lines (app, relay, push).
   --json                 With plan or run: print the plan as JSON.
   --dry-run              Print the tag or plan; push and deploy nothing.
   --if-pending           With tag: exit quietly when no shipped app file
                          changed since the last app tag (scheduled betas).`);
 }
 
+function takeSkip(args) {
+  const index = args.indexOf("--skip");
+  if (index === -1) {
+    return { args, skip: [] };
+  }
+  const skip = (args[index + 1] ?? "").split(",").filter(Boolean);
+  const unknown = skip.filter(
+    (line) => !RELEASE_LINES.some((l) => l.name === line),
+  );
+  if (skip.length === 0 || unknown.length > 0) {
+    throw new Error(
+      `--skip takes release lines: ${RELEASE_LINES.map((l) => l.name).join(",")}`,
+    );
+  }
+  return { args: args.filter((_, i) => i !== index && i !== index + 1), skip };
+}
+
 function main() {
-  const args = process.argv.slice(2);
+  const { args, skip } = takeSkip(process.argv.slice(2));
   const has = (flag) => args.includes(flag);
   const [command, ...rest] = args.filter((a) => !FLAGS.includes(a));
   if (!command || command === "--help" || command === "-h") {
@@ -176,10 +194,10 @@ function main() {
     throw new Error("--if-pending applies only to tag");
   }
   if (
-    (has("--promote") || has("--json")) &&
+    (has("--promote") || has("--json") || skip.length > 0) &&
     !["plan", "run"].includes(command)
   ) {
-    throw new Error("--promote and --json apply only to plan and run");
+    throw new Error("--promote, --skip, and --json apply only to plan and run");
   }
   const dryRun = has("--dry-run");
   if (command === "tag") {
@@ -207,6 +225,7 @@ function main() {
     plan: () =>
       runPlan({
         promote: has("--promote"),
+        skip,
         json: has("--json"),
         execute: false,
         dryRun,
@@ -214,6 +233,7 @@ function main() {
     run: () =>
       runPlan({
         promote: has("--promote"),
+        skip,
         json: has("--json"),
         execute: true,
         dryRun,
