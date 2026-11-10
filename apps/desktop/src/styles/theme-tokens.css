@@ -228,6 +228,7 @@
     var(--editor-shell)
   );
   --editor-tab-hover-bg: var(--accent);
+  --icon-button-hover: color-mix(in srgb, var(--foreground) 4%, transparent);
   --editor-file-icon-active: var(--chart-5);
   --editor-file-icon: var(--muted-foreground);
   --editor-folder-icon: color-mix(
@@ -344,6 +345,7 @@
 }
 
 [data-theme="dark"] {
+  --icon-button-hover: color-mix(in srgb, var(--foreground) 6%, transparent);
   --reading-text: color-mix(in srgb, var(--foreground) 88%, var(--background));
   --menu-ring: color-mix(in srgb, var(--foreground) 12%, transparent);
   --menu-shadow: 0 8px 24px rgb(0 0 0 / 0.36), 0 1px 3px rgb(0 0 0 / 0.2);

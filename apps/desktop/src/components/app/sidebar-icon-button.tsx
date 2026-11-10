@@ -43,7 +43,7 @@ export const AppSidebarIconButton = forwardRef<
       ref={ref}
       aria-label={ariaLabel}
       className={cn(
-        "relative flex shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted transition-colors hover:bg-sidebar-surface-hover hover:text-sidebar-fg data-popup-open:bg-sidebar-surface-hover",
+        "relative flex shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted transition-colors hover:bg-icon-button-hover hover:text-sidebar-fg data-popup-open:bg-icon-button-hover",
         { default: "size-7", sm: "size-6" }[size],
         className,
       )}

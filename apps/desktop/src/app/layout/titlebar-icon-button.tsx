@@ -23,7 +23,7 @@ export function titlebarIconButtonClassName(options?: {
     "focus-visible:border-transparent focus-visible:ring-0 outline-none",
     isActive
       ? "bg-editor-tab-active-bg text-editor-fg hover:bg-editor-tab-active-bg hover:text-editor-fg"
-      : "bg-transparent text-editor-fg-subtle hover:bg-editor-tab-hover-bg hover:text-editor-fg",
+      : "bg-transparent text-editor-fg-subtle hover:bg-icon-button-hover hover:text-editor-fg",
     options?.className,
   );
 }

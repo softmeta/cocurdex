@@ -92,6 +92,7 @@
   --color-editor-tab-active-bg: var(--editor-tab-active-bg);
   --color-editor-tab-active-solid: var(--editor-tab-active-solid);
   --color-editor-tab-hover-bg: var(--editor-tab-hover-bg);
+  --color-icon-button-hover: var(--icon-button-hover);
   --color-editor-file-icon-active: var(--editor-file-icon-active);
   --color-editor-file-icon: var(--editor-file-icon);
   --color-editor-folder-icon: var(--editor-folder-icon);
