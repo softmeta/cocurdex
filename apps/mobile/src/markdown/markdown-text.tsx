@@ -212,6 +212,7 @@ const MarkdownBlock = memo(function MarkdownBlock({
       flavor="github"
       markdownStyle={style}
       selectable={false}
+      enableBlockContextMenu={false}
       enableTaskListItemToggle={false}
       onLinkPress={({ url }) => onOpenLink(url)}
     />
