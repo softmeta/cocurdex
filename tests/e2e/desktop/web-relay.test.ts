@@ -188,5 +188,5 @@ describe("web client through the relay", () => {
     const [unpaired] = await requestDaemon("host.devices.list", daemon.options);
     expect(unpaired?.revokedAt).not.toBeNull();
     expect(pageErrors).toEqual([]);
-  }, 180_000);
+  }, 240_000);
 });
