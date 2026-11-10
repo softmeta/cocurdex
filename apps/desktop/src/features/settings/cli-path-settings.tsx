@@ -78,7 +78,10 @@ export function CliPathSettingsPanel() {
     Boolean(status?.installed && status.pointsToCurrentApp) && !busy;
 
   return (
-    <div className="flex flex-col gap-3 py-3.5">
+    <div
+      className="flex flex-col gap-3 py-3.5"
+      data-settings-search-id="general.cli"
+    >
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
           <div className="text-body font-medium text-foreground">

@@ -1,7 +1,6 @@
 import { Minus, Monitor, Moon, Plus, Sun } from "lucide-react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { SettingsGroup } from "@/components/app";
+import { SettingRow, SettingsGroup } from "@/components/app";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui";
 import { useResolvedTheme } from "@/lib";
 import {
@@ -30,28 +29,6 @@ interface AppearancePanelProps {
   onAppearanceSettingsChange(settings: AppearanceSettings): void;
   onThemeModeChange(themeMode: ThemeMode): void;
   themeMode: ThemeMode;
-}
-
-interface SettingRowProps {
-  children?: ReactNode;
-  description?: string;
-  title: string;
-}
-
-function SettingRow({ children, description, title }: SettingRowProps) {
-  return (
-    <div className="flex items-center justify-between gap-6 py-3.5">
-      <div className="min-w-0 flex-1">
-        <div className="text-body font-medium text-foreground">{title}</div>
-        {description ? (
-          <div className="mt-0.5 text-body text-muted-foreground">
-            {description}
-          </div>
-        ) : null}
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  );
 }
 
 function Stepper({
@@ -217,6 +194,7 @@ export function AppearancePanel({
     <div className="settings-panel-enter flex flex-col gap-8">
       <SettingsGroup>
         <SettingRow
+          searchId="appearance.theme"
           description={t("appearance.theme.description")}
           title={t("appearance.theme.title")}
         >
@@ -255,6 +233,7 @@ export function AppearancePanel({
           </ToggleGroup>
         </SettingRow>
         <SettingRow
+          searchId="appearance.preset"
           description={t("appearance.preset.description")}
           title={t("appearance.preset.title")}
         >
@@ -271,6 +250,7 @@ export function AppearancePanel({
 
       <SettingsGroup title={t("appearance.typography.groupTitle")}>
         <SettingRow
+          searchId="appearance.uiFontSize"
           description={t("appearance.typography.uiFontSize.description")}
           title={t("appearance.typography.uiFontSize.title")}
         >
@@ -282,6 +262,7 @@ export function AppearancePanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="appearance.codeFontSize"
           description={t("appearance.typography.codeFontSize.description")}
           title={t("appearance.typography.codeFontSize.title")}
         >
@@ -295,6 +276,7 @@ export function AppearancePanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="appearance.uiFontFamily"
           description={t("appearance.typography.uiFontFamily.description")}
           title={t("appearance.typography.uiFontFamily.title")}
         >
@@ -310,6 +292,7 @@ export function AppearancePanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="appearance.codeFontFamily"
           description={t("appearance.typography.codeFontFamily.description")}
           title={t("appearance.typography.codeFontFamily.title")}
         >

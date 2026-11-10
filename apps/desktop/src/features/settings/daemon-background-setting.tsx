@@ -33,6 +33,7 @@ export function DaemonBackgroundSetting({
 
   return (
     <SettingRow
+      searchId="general.daemonBackground"
       description={t("daemon.background.description")}
       title={t("daemon.background.title")}
     >

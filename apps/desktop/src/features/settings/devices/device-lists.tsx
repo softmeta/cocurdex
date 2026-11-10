@@ -186,7 +186,11 @@ export function PairedDevicesGroup({
   };
 
   return (
-    <SettingsGroup action={action} title={t("devices.list.groupTitle")}>
+    <SettingsGroup
+      action={action}
+      searchId="devices.pairedDevices"
+      title={t("devices.list.groupTitle")}
+    >
       {devices.length === 0 ? (
         <div className="py-3.5">
           <Text size="body" tone="muted">
@@ -255,7 +259,10 @@ export function AccessLogGroup({
   const formatDateTime = useFormatDateTime();
   if (entries.length === 0) return null;
   return (
-    <SettingsGroup title={t("devices.audit.groupTitle")}>
+    <SettingsGroup
+      searchId="devices.accessLog"
+      title={t("devices.audit.groupTitle")}
+    >
       {entries.map((entry) => (
         <ListRow
           detail={[formatDateTime(entry.at), entry.actor, entry.remoteAddress]

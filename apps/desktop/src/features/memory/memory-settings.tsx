@@ -186,6 +186,7 @@ export function MemorySettingsPanel() {
     <div className="flex flex-col gap-8">
       <SettingsGroup title={t("settings.groupTitle")}>
         <SettingRow
+          searchId="memory.enabled"
           description={t("settings.enabled.description")}
           title={t("settings.enabled.title")}
         >
@@ -197,6 +198,7 @@ export function MemorySettingsPanel() {
           />
         </SettingRow>
         <SettingRow
+          searchId="memory.agentContext"
           description={t("settings.agentContext.description")}
           title={t("settings.agentContext.title")}
         >
@@ -213,6 +215,7 @@ export function MemorySettingsPanel() {
           />
         </SettingRow>
         <SettingRow
+          searchId="memory.agentTools"
           description={t("settings.agentTools.description")}
           title={t("settings.agentTools.title")}
         >
@@ -226,6 +229,7 @@ export function MemorySettingsPanel() {
           />
         </SettingRow>
         <SettingRow
+          searchId="memory.chatRecall"
           description={t("settings.chatRecall.description")}
           title={t("settings.chatRecall.title")}
         >
@@ -239,6 +243,7 @@ export function MemorySettingsPanel() {
           />
         </SettingRow>
         <SettingRow
+          searchId="memory.chatSaveTurns"
           description={t("settings.chatSaveTurns.description")}
           title={t("settings.chatSaveTurns.title")}
         >
@@ -252,6 +257,7 @@ export function MemorySettingsPanel() {
           />
         </SettingRow>
         <SettingRow
+          searchId="memory.chatSaveOnEnd"
           description={t("settings.chatSaveOnEnd.description")}
           title={t("settings.chatSaveOnEnd.title")}
         >
@@ -268,6 +274,7 @@ export function MemorySettingsPanel() {
 
       <SettingsGroup title={t("settings.cloudTitle")}>
         <SettingRow
+          searchId="memory.cloud"
           description={cloudDescription}
           title={t("settings.cloud.title")}
         >
@@ -392,6 +399,7 @@ export function MemorySettingsPanel() {
           </div>
         </div>
         <SettingRow
+          searchId="memory.cliPath"
           description={t("settings.cliPath.description")}
           title={t("settings.cliPath.title")}
         >

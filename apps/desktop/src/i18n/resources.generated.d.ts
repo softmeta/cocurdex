@@ -3561,6 +3561,9 @@ export default interface Resources {
     sidebar: {
       backToApp: "Back to app";
       resize: "Resize settings sidebar";
+      search: "Search settings";
+      searchEmpty: "No matching settings";
+      searchResults: "Settings search results";
     };
     skills: {
       actions: {

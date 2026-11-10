@@ -130,6 +130,7 @@ export function DelegatedRunLimitsGroup() {
       title={t("teams.runLimits.title")}
     >
       <SettingRow
+        searchId="teams.maxConcurrentRuns"
         description={t("teams.runLimits.maxConcurrentRuns.description")}
         title={t("teams.runLimits.maxConcurrentRuns.title")}
       >
@@ -143,6 +144,7 @@ export function DelegatedRunLimitsGroup() {
         />
       </SettingRow>
       <SettingRow
+        searchId="teams.maxConcurrentRunsPerAgent"
         description={t("teams.runLimits.maxConcurrentRunsPerAgent.description")}
         title={t("teams.runLimits.maxConcurrentRunsPerAgent.title")}
       >
@@ -156,6 +158,7 @@ export function DelegatedRunLimitsGroup() {
         />
       </SettingRow>
       <SettingRow
+        searchId="teams.runTimeout"
         description={t("teams.runLimits.timeout.description")}
         title={t("teams.runLimits.timeout.title")}
       >

@@ -89,6 +89,7 @@ export function GeneralPanel({
     <div className="settings-panel-enter flex flex-col gap-8">
       <SettingsGroup title={t("chatDisplay.groupTitle")}>
         <SettingRow
+          searchId="general.chatLayout"
           description={t("chatDisplay.layout.description")}
           title={t("chatDisplay.layout.title")}
         >
@@ -108,6 +109,7 @@ export function GeneralPanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="general.hideFab"
           description={t("chatDisplay.hideFab.description", {
             shortcut: toggleChatShortcut || t("shortcuts.unbound"),
           })}
@@ -119,6 +121,7 @@ export function GeneralPanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="general.activity"
           description={t("chatDisplay.activity.description")}
           title={t("chatDisplay.activity.title")}
         >
@@ -135,6 +138,7 @@ export function GeneralPanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="general.htmlPreview"
           title={t("chatDisplay.htmlPreview.title")}
           description={t("chatDisplay.htmlPreview.description")}
         >
@@ -161,6 +165,7 @@ export function GeneralPanel({
 
       <SettingsGroup title={t("followUp.groupTitle")}>
         <SettingRow
+          searchId="general.sendShortcut"
           description={t("sendShortcut.description")}
           title={t("sendShortcut.title")}
         >
@@ -174,6 +179,7 @@ export function GeneralPanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="general.followUp"
           description={t("followUp.description", {
             shortcut: oppositeFollowUpShortcut,
           })}
@@ -192,6 +198,7 @@ export function GeneralPanel({
 
       <SettingsGroup title={t("language.groupTitle")}>
         <SettingRow
+          searchId="general.language"
           description={t("language.description")}
           title={t("language.title")}
         >
@@ -204,6 +211,7 @@ export function GeneralPanel({
 
       <SettingsGroup title={t("notifications.groupTitle")}>
         <SettingRow
+          searchId="general.systemNotifications"
           description={t("notifications.systemNotifications.description")}
           title={t("notifications.systemNotifications.title")}
         >
@@ -218,6 +226,7 @@ export function GeneralPanel({
           />
         </SettingRow>
         <SettingRow
+          searchId="general.completionSound"
           description={t("notifications.completionSound.description")}
           title={t("notifications.completionSound.title")}
         >

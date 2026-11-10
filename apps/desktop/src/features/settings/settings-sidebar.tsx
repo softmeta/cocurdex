@@ -1,7 +1,9 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { ChevronDown, ChevronLeft } from "lucide-react";
+import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
+import { AppSearchInput } from "@/components/app";
 import {
   ScrollArea,
   SidebarListRow,
@@ -11,6 +13,16 @@ import {
   Text,
 } from "@/components/ui";
 import { cn } from "@/lib";
+import { searchSettings } from "./search/settings-search";
+import { buildSettingsSearchCorpus } from "./search/settings-search-docs";
+import { SettingsSearchResults } from "./search/settings-search-results";
+import { revealSettingsSearchTarget } from "./search/settings-search-reveal";
+import {
+  flattenSettingsSearchResults,
+  type SettingsSearchTarget,
+  stepSettingsSearchTarget,
+} from "./search/settings-search-targets";
+import { useSettingsSearchShortcut } from "./search/use-settings-search-shortcut";
 import {
   collapsedSettingsClusterIdsAtom,
   toggleSettingsClusterCollapsedAtom,
@@ -43,6 +55,7 @@ function SettingsSidebarSection({
         return (
           <SidebarMenuItem key={section.id}>
             <SidebarListRow
+              data-settings-section={section.id}
               isActive={isActive}
               onClick={() => onSectionChange(section.id)}
               render={<button type="button" />}
@@ -74,9 +87,69 @@ export function SettingsSidebar({
   onBackToApp,
   onSectionChange,
 }: SettingsSidebarProps) {
-  const { t } = useTranslation("settings");
+  const { t, i18n } = useTranslation("settings");
   const collapsedClusterIds = useAtomValue(collapsedSettingsClusterIdsAtom);
   const toggleClusterCollapsed = useSetAtom(toggleSettingsClusterCollapsedAtom);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const resultsId = useId();
+  const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
+  useSettingsSearchShortcut(searchInputRef);
+
+  const sections = clusters.flatMap((cluster) => cluster.items);
+  const sectionsById = new Map(sections.map((item) => [item.id, item]));
+  const isSearching = query.trim().length > 0;
+  const corpus = isSearching
+    ? buildSettingsSearchCorpus(i18n.language, sections)
+    : null;
+  const results = corpus
+    ? searchSettings(query, corpus.sections, corpus.docs)
+    : [];
+  const targets = flattenSettingsSearchResults(results);
+  const activeTarget = targets[cursor] ?? null;
+
+  const openTarget = (target: SettingsSearchTarget) => {
+    onSectionChange(target.section);
+    if (target.settingId) {
+      revealSettingsSearchTarget(target.settingId, target.fallbackId);
+    }
+  };
+
+  const handleSelect = (target: SettingsSearchTarget) => {
+    setCursor(
+      targets.findIndex(
+        (item) =>
+          item.section === target.section &&
+          item.settingId === target.settingId,
+      ),
+    );
+    openTarget(target);
+  };
+
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape" && query) {
+      event.preventDefault();
+      event.stopPropagation();
+      setQuery("");
+      return;
+    }
+    if (!isSearching) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setCursor(
+        stepSettingsSearchTarget(
+          targets,
+          cursor,
+          event.key === "ArrowDown" ? 1 : -1,
+        ),
+      );
+      return;
+    }
+    if (event.key === "Enter" && activeTarget) {
+      event.preventDefault();
+      openTarget(activeTarget);
+    }
+  };
 
   return (
     <aside
@@ -92,40 +165,67 @@ export function SettingsSidebar({
         </SidebarListRow>
       </div>
 
+      <div className="shrink-0 px-3 pb-2">
+        <AppSearchInput
+          aria-controls={isSearching ? resultsId : undefined}
+          aria-label={t("sidebar.search")}
+          placeholder={t("sidebar.search")}
+          ref={searchInputRef}
+          role="searchbox"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setCursor(0);
+          }}
+          onKeyDown={handleSearchKeyDown}
+        />
+      </div>
+
       <ScrollArea className="min-h-0 flex-1 px-3 pb-4">
-        {clusters.map((cluster, index) => {
-          const isCollapsed = collapsedClusterIds.includes(cluster.id);
-          return (
-            <div
-              className={cn("flex flex-col", index > 0 && "mt-3")}
-              key={cluster.id}
-            >
-              <button
-                aria-expanded={!isCollapsed}
-                className="flex h-7 w-full cursor-default items-center gap-1 rounded-control px-2 text-muted-foreground/70 transition-colors hover:text-foreground"
-                type="button"
-                onClick={() => toggleClusterCollapsed(cluster.id)}
-              >
-                <Text size="meta" truncate weight="medium">
-                  {t(`groups.${cluster.id}`)}
-                </Text>
-                <ChevronDown
-                  className={cn(
-                    "size-3.5 shrink-0 transition-transform",
-                    isCollapsed && "-rotate-90 rtl:rotate-90",
+        {isSearching ? (
+          <SettingsSearchResults
+            activeTarget={activeTarget}
+            id={resultsId}
+            results={results}
+            sectionsById={sectionsById}
+            onSelect={handleSelect}
+          />
+        ) : null}
+        {isSearching
+          ? null
+          : clusters.map((cluster, index) => {
+              const isCollapsed = collapsedClusterIds.includes(cluster.id);
+              return (
+                <div
+                  className={cn("flex flex-col", index > 0 && "mt-3")}
+                  key={cluster.id}
+                >
+                  <button
+                    aria-expanded={!isCollapsed}
+                    className="flex h-7 w-full cursor-default items-center gap-1 rounded-control px-2 text-muted-foreground/70 transition-colors hover:text-foreground"
+                    type="button"
+                    onClick={() => toggleClusterCollapsed(cluster.id)}
+                  >
+                    <Text size="meta" truncate weight="medium">
+                      {t(`groups.${cluster.id}`)}
+                    </Text>
+                    <ChevronDown
+                      className={cn(
+                        "size-3.5 shrink-0 transition-transform",
+                        isCollapsed && "-rotate-90 rtl:rotate-90",
+                      )}
+                    />
+                  </button>
+                  {isCollapsed ? null : (
+                    <SettingsSidebarSection
+                      activeSection={activeSection}
+                      items={cluster.items}
+                      onSectionChange={onSectionChange}
+                    />
                   )}
-                />
-              </button>
-              {isCollapsed ? null : (
-                <SettingsSidebarSection
-                  activeSection={activeSection}
-                  items={cluster.items}
-                  onSectionChange={onSectionChange}
-                />
-              )}
-            </div>
-          );
-        })}
+                </div>
+              );
+            })}
       </ScrollArea>
     </aside>
   );

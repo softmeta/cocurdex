@@ -1209,7 +1209,10 @@
   },
   "sidebar": {
     "backToApp": "返回应用",
-    "resize": "调整设置侧边栏宽度"
+    "resize": "调整设置侧边栏宽度",
+    "search": "搜索设置",
+    "searchEmpty": "没有匹配的设置",
+    "searchResults": "设置搜索结果"
   },
   "skills": {
     "actions": {

@@ -180,6 +180,7 @@ export function ShortcutsSettingsPanel() {
                     <div
                       key={definition.id}
                       className="flex items-center gap-3 py-1.5"
+                      data-settings-search-id={`shortcuts.${definition.id}`}
                       title={conflictLabel ?? item.description}
                     >
                       <div className="min-w-0 flex-1">
