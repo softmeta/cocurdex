@@ -1,7 +1,8 @@
 import { Minus, Monitor, Moon, Plus, Sun } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SettingRow, SettingsGroup } from "@/components/app";
-import { Switch, ToggleGroup, ToggleGroupItem } from "@/components/ui";
+import { Slider, Switch, ToggleGroup, ToggleGroupItem } from "@/components/ui";
 import { desktopApi, useResolvedTheme } from "@/lib";
 import {
   type AppearanceFontOption,
@@ -12,11 +13,14 @@ import {
 import { SettingsSearchableSelect } from "./settings-select";
 import {
   type AppearanceSettings,
+  applySidebarTransparency,
   CODE_FONT_SIZE_MAX,
   CODE_FONT_SIZE_MIN,
   getThemePresetMeta,
   isThemePresetId,
   listThemePresets,
+  SIDEBAR_TRANSPARENCY_MAX,
+  SIDEBAR_TRANSPARENCY_MIN,
   type ThemeMode,
   type ThemePresetId,
   UI_FONT_SIZE_MAX,
@@ -66,6 +70,42 @@ function Stepper({
       >
         <Plus className="size-3.5" />
       </button>
+    </div>
+  );
+}
+
+function SidebarTransparencySlider({
+  ariaLabel,
+  onCommit,
+  value,
+}: {
+  ariaLabel: string;
+  onCommit(value: number): void;
+  value: number;
+}) {
+  const [draft, setDraft] = useState<number | null>(null);
+  const shown = draft ?? value;
+
+  return (
+    <div className="flex w-48 items-center gap-3">
+      <Slider<number>
+        aria-label={ariaLabel}
+        max={SIDEBAR_TRANSPARENCY_MAX}
+        min={SIDEBAR_TRANSPARENCY_MIN}
+        step={1}
+        value={shown}
+        onValueChange={(next) => {
+          setDraft(next);
+          applySidebarTransparency(next);
+        }}
+        onValueCommitted={(next) => {
+          setDraft(null);
+          onCommit(next);
+        }}
+      />
+      <span className="w-9 shrink-0 text-end text-body text-muted-foreground tabular-nums">
+        {shown}%
+      </span>
     </div>
   );
 }
@@ -257,6 +297,22 @@ export function AppearancePanel({
               checked={appearanceSettings.translucentSidebar}
               onCheckedChange={(translucentSidebar) =>
                 updateAppearanceSettings({ translucentSidebar })
+              }
+            />
+          </SettingRow>
+        ) : null}
+        {desktopApi.capabilities.windowMaterial &&
+        appearanceSettings.translucentSidebar ? (
+          <SettingRow
+            searchId="appearance.sidebarTransparency"
+            description={t("appearance.sidebarTransparency.description")}
+            title={t("appearance.sidebarTransparency.title")}
+          >
+            <SidebarTransparencySlider
+              ariaLabel={t("appearance.sidebarTransparency.title")}
+              value={appearanceSettings.sidebarTransparency}
+              onCommit={(sidebarTransparency) =>
+                updateAppearanceSettings({ sidebarTransparency })
               }
             />
           </SettingRow>

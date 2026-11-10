@@ -164,6 +164,10 @@
       "searchPlaceholder": "搜索主题…",
       "title": "颜色主题"
     },
+    "sidebarTransparency": {
+      "description": "侧边栏透出桌面的程度。",
+      "title": "侧边栏透明度"
+    },
     "theme": {
       "description": "选择浅色、深色或跟随系统主题。",
       "title": "主题"

@@ -1,8 +1,10 @@
 import {
   APPEARANCE_SETTINGS_STORAGE_KEY,
   type AppearanceSettings,
+  applySidebarTransparency,
   applyThemePreset,
   clampCodeFontSize,
+  clampSidebarTransparency,
   clampUiFontSize,
   getStoredAppearanceSettings,
   getStoredNotificationSettings,
@@ -116,6 +118,9 @@ export function syncAppearanceSettings(appearanceSettings: AppearanceSettings) {
   const codeFontSize = clampCodeFontSize(appearanceSettings.codeFontSize);
   const normalized: AppearanceSettings = {
     ...appearanceSettings,
+    sidebarTransparency: clampSidebarTransparency(
+      appearanceSettings.sidebarTransparency,
+    ),
     translucentSidebar: appearanceSettings.translucentSidebar !== false,
     uiFontSize,
     codeFontSize,
@@ -125,6 +130,7 @@ export function syncAppearanceSettings(appearanceSettings: AppearanceSettings) {
   root.style.setProperty("--font-mono", codeFont);
   root.style.setProperty("--app-ui-font-size", `${uiFontSize}px`);
   root.style.setProperty("--app-code-font-size", `${codeFontSize}px`);
+  applySidebarTransparency(normalized.sidebarTransparency);
   root.toggleAttribute(
     "data-window-material",
     desktopApi.capabilities.windowMaterial && normalized.translucentSidebar,

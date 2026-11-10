@@ -2508,6 +2508,10 @@ export default interface Resources {
         searchPlaceholder: "Search themes...";
         title: "Color theme";
       };
+      sidebarTransparency: {
+        description: "How much of the desktop shows through the sidebar.";
+        title: "Sidebar transparency";
+      };
       theme: {
         description: "Choose between light, dark, or system themes.";
         title: "Theme";

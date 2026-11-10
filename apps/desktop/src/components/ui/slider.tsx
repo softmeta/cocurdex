@@ -7,12 +7,18 @@ type SliderValue = number | readonly number[];
 
 type SliderProps<Value extends SliderValue> = Omit<
   React.ComponentProps<typeof SliderPrimitive.Root>,
-  "value" | "defaultValue" | "onValueChange"
+  "value" | "defaultValue" | "onValueChange" | "onValueCommitted"
 > & {
   value?: Value;
   defaultValue?: Value;
   onValueChange?: (value: Value, eventDetails: unknown) => void;
+  onValueCommitted?: (value: Value, eventDetails: unknown) => void;
 };
+
+function sliderThumbCount(value: SliderValue | undefined) {
+  if (typeof value === "number") return 1;
+  return value?.length ?? 2;
+}
 
 function Slider<Value extends SliderValue = readonly number[]>({
   className,
@@ -21,23 +27,17 @@ function Slider<Value extends SliderValue = readonly number[]>({
   min = 0,
   max = 100,
   onValueChange,
+  onValueCommitted,
+  "aria-label": ariaLabel,
   ...props
 }: SliderProps<Value>) {
-  const _values = React.useMemo(
-    () =>
-      Array.isArray(value)
-        ? value
-        : Array.isArray(defaultValue)
-          ? defaultValue
-          : [min, max],
-    [value, defaultValue, min, max],
-  );
+  const thumbCount = sliderThumbCount(value ?? defaultValue);
   const thumbs = React.useMemo(
     () =>
-      Array.from({ length: _values.length }, (_, position) => ({
+      Array.from({ length: thumbCount }, (_, position) => ({
         id: `slider-thumb-${position}`,
       })),
-    [_values.length],
+    [thumbCount],
   );
 
   return (
@@ -46,6 +46,7 @@ function Slider<Value extends SliderValue = readonly number[]>({
       defaultValue={defaultValue as never}
       value={value as never}
       onValueChange={onValueChange as never}
+      onValueCommitted={onValueCommitted as never}
       min={min}
       max={max}
       className={cn(
@@ -71,6 +72,7 @@ function Slider<Value extends SliderValue = readonly number[]>({
           <SliderPrimitive.Thumb
             data-slot="slider-thumb"
             key={thumb.id}
+            aria-label={ariaLabel}
             className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
           />
         ))}

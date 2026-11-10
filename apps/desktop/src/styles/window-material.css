@@ -1,7 +1,11 @@
 @media (prefers-reduced-transparency: no-preference) {
   :root[data-window-material] {
     --shell-bg: transparent;
-    --sidebar-translucent: color-mix(in srgb, var(--sidebar) 88%, transparent);
+    --sidebar-translucent: color-mix(
+      in srgb,
+      var(--sidebar) var(--sidebar-tint, 88%),
+      transparent
+    );
   }
 
   :root[data-window-material] [data-window-sidebar] [data-sidebar-sticky] {

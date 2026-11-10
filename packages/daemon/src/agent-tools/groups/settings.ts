@@ -160,7 +160,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
     tier: "write",
     storage: "renderer",
     description:
-      "Appearance settings: themePreset (named color preset id such as 'default'), uiFontFamily and codeFontFamily (empty string = system default), uiFontSize (12-16), codeFontSize (11-18), translucentSidebar (optional, default true; desktop hosts with a window material only).",
+      "Appearance settings: themePreset (named color preset id such as 'default'), uiFontFamily and codeFontFamily (empty string = system default), uiFontSize (12-16), codeFontSize (11-18), translucentSidebar (optional, default true) and sidebarTransparency (optional integer 0-50, default 12) apply only on desktop hosts with a window material.",
     valueSchema: {
       type: "object",
       properties: {
@@ -170,6 +170,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
         uiFontSize: { type: "number" },
         codeFontSize: { type: "number" },
         translucentSidebar: { type: "boolean" },
+        sidebarTransparency: { type: "integer", minimum: 0, maximum: 50 },
       },
       required: [
         "themePreset",
@@ -202,6 +203,18 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
       ) {
         throw new Error(
           "Value for 'app.appearance.translucentSidebar' must be a boolean",
+        );
+      }
+      const transparency = record.sidebarTransparency;
+      if (
+        transparency !== undefined &&
+        (typeof transparency !== "number" ||
+          !Number.isInteger(transparency) ||
+          transparency < 0 ||
+          transparency > 50)
+      ) {
+        throw new Error(
+          "Value for 'app.appearance.sidebarTransparency' must be an integer from 0 to 50",
         );
       }
       return record;

@@ -19,8 +19,10 @@ export { SettingsScreen } from "./settings-screen-lazy";
 export {
   APPEARANCE_SETTINGS_STORAGE_KEY,
   type AppearanceSettings,
+  applySidebarTransparency,
   applyThemePreset,
   clampCodeFontSize,
+  clampSidebarTransparency,
   clampUiFontSize,
   defaultAppearanceSettings,
   getStoredAppearanceSettings,
