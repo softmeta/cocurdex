@@ -196,6 +196,7 @@ function TextFile({
         >
           <MarkdownText
             markdown={text}
+            selectable
             hostId={host.hostId}
             testID="file-markdown"
           />
