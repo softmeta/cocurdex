@@ -4,7 +4,7 @@ export function composerSendButtonClassName(canSend: boolean) {
   if (!canSend) {
     return "size-8 rounded-full bg-chat-surface-disabled text-chat-fg-muted transition-colors hover:bg-chat-surface-disabled";
   }
-  return "size-8 rounded-full bg-chat-fg text-chat-canvas transition-colors hover:bg-chat-fg-secondary";
+  return "size-8 rounded-full bg-chat-fg text-chat-fg-inverse transition-colors hover:bg-chat-fg-secondary";
 }
 
 export function composerStopButtonClassName() {
