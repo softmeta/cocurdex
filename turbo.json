@@ -42,6 +42,15 @@
       "cache": false,
       "inputs": ["desktop/**", "vitest.desktop.config.ts", "helpers/**"]
     },
+    "@cocurdex/unit-scripts#test": {
+      "dependsOn": ["transit"],
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/release.mjs",
+        "$TURBO_ROOT$/scripts/release/**"
+      ]
+    },
     "@cocurdex/scenarios#test:ui": {
       "dependsOn": ["^transit", "@cocurdex/desktop#build"],
       "cache": false,
