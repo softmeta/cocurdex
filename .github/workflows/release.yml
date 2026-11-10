@@ -845,6 +845,8 @@ jobs:
       - macos
       - windows
       - linux
+      - android
+      - ios
       - publish
     if: ${{ always() && github.ref_type == 'tag' && needs.prepare.result != 'skipped' && (needs.prepare.result != 'success' || needs.macos.result != 'success' || needs.windows.result != 'success' || needs.linux.result != 'success' || needs.publish.result != 'success') }}
     runs-on: ubuntu-latest

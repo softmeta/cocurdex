@@ -29,6 +29,8 @@ function facts(overrides: {
   ci?: { status: string; conclusion: string | null } | null;
   canRunIosFlows?: boolean;
   latest?: string;
+  latestPublished?: boolean;
+  latestCommit?: string;
   appPending?: Change[];
   relayPending?: Change[];
   missingAtStable?: string[];
@@ -48,7 +50,8 @@ function facts(overrides: {
     host: { canRunIosFlows: overrides.canRunIosFlows ?? true },
     app: {
       latest: parseAppTag(latest),
-      latestCommit: BETA_COMMIT,
+      latestCommit: overrides.latestCommit ?? BETA_COMMIT,
+      latestPublished: overrides.latestPublished ?? true,
       latestDate: "2026-11-10",
       latestStableCommit: STABLE_COMMIT,
       pending: overrides.appPending ?? [],
@@ -197,6 +200,30 @@ describe("buildPlan", () => {
   it("cuts the next push gateway patch once it has shipped before", () => {
     const plan = buildPlan(facts({ pushPending: [change("#4 gateway")] }));
     expect(stepSummary(plan)).toEqual(["tag:push:push-v0.1.1"]);
+  });
+});
+
+describe("buildPlan when the latest beta never published", () => {
+  it("refuses to promote it", () => {
+    const plan = buildPlan(facts({ promote: true, latestPublished: false }));
+    expect(plan.steps).toEqual([]);
+    expect(plan.blockers.join()).toContain(
+      "v0.1.103-beta.12 has no published release",
+    );
+  });
+
+  it("cuts the next beta on a newer main tip even without app changes", () => {
+    const plan = buildPlan(facts({ latestPublished: false }));
+    expect(stepSummary(plan)).toEqual(["tag:app:v0.1.103-beta.13"]);
+    expect(plan.notes.join()).not.toContain("can be promoted");
+  });
+
+  it("blocks when main has not moved, since mobile build numbers would repeat", () => {
+    const plan = buildPlan(
+      facts({ latestPublished: false, latestCommit: MAIN }),
+    );
+    expect(plan.steps).toEqual([]);
+    expect(plan.blockers.join()).toContain("merge a commit");
   });
 });
 

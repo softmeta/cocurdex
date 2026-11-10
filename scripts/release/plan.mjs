@@ -30,12 +30,32 @@ function tagStep(lineName, tag, commit, changes) {
   };
 }
 
+function unpublishedBlocker({ app, mainSha, promote }) {
+  const tag = app.latest.tag;
+  if (promote) {
+    return `promote: ${tag} has no published release; cut the next beta and promote that`;
+  }
+  if (app.latestCommit === mainSha) {
+    return `${tag} has no published release and main has not moved; merge a commit before the next beta, since mobile build numbers repeat on the same commit`;
+  }
+  return null;
+}
+
 function planApp(facts, plan) {
   const { app, mainSha, host } = facts;
   let latest = app.latest;
   let stableCommit = app.latestStableCommit;
 
-  if (facts.promote) {
+  if (!app.latestPublished) {
+    const blocker = unpublishedBlocker(facts);
+    if (blocker) {
+      plan.blockers.push(blocker);
+      return { stableCommit };
+    }
+    plan.notes.push(
+      `${latest.tag} has no published release; the next beta replaces it`,
+    );
+  } else if (facts.promote) {
     if (latest.beta === null) {
       plan.blockers.push(
         `promote: ${latest.tag} is already stable; there is no beta to promote`,
@@ -52,7 +72,7 @@ function planApp(facts, plan) {
     );
   }
 
-  if (app.pending.length === 0) {
+  if (app.pending.length === 0 && app.latestPublished) {
     if (!facts.promote) {
       plan.held.push({
         line: "app",
