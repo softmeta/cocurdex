@@ -2,7 +2,8 @@ import { Minus, Monitor, Moon, Plus, Sun } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SettingRow, SettingsGroup } from "@/components/app";
-import { Slider, Switch, ToggleGroup, ToggleGroupItem } from "@/components/ui";
+import { Switch, ToggleGroup, ToggleGroupItem } from "@/components/ui";
+import { Slider } from "@/components/ui/slider";
 import { desktopApi, useResolvedTheme } from "@/lib";
 import {
   type AppearanceFontOption,
