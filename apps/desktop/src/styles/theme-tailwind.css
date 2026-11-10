@@ -37,6 +37,7 @@
   --color-chat-border-strong: var(--chat-border-strong);
   --color-chat-border-accent: var(--chat-border-accent);
   --color-chat-fg: var(--chat-text-primary);
+  --color-chat-fg-inverse: var(--chat-canvas);
   --color-chat-fg-secondary: var(--chat-text-secondary);
   --color-chat-fg-muted: var(--chat-text-muted);
   --color-chat-fg-subtle: var(--chat-text-subtle);
