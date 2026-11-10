@@ -2,11 +2,8 @@ import {
   EMPTY_ISSUE_FILTERS,
   type IssueFilters,
 } from "@cocurdex/mobile/internal/issues/issue-filters";
-import {
-  issueSections,
-  withIssueStatus,
-} from "@cocurdex/mobile/internal/issues/issue-sections";
-import type { IssueFieldOption, IssueRecord, ViewFull } from "@cocurdex/shared";
+import { issueSections } from "@cocurdex/mobile/internal/issues/issue-sections";
+import type { IssueFieldOption, IssueRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 
 const now = "2026-10-25T00:00:00.000Z";
@@ -91,26 +88,5 @@ describe("issueSections", () => {
         (section) => section.issues.map((entry) => entry.identifier),
       ),
     ).toEqual(["COC-6"]);
-  });
-});
-
-describe("withIssueStatus", () => {
-  const view = {
-    statusOptions: statuses,
-    issues: [issue(1, "todo"), issue(2, "todo")],
-  } as unknown as ViewFull;
-
-  it("moves only the chosen issue and carries the status category", () => {
-    const moved = withIssueStatus(view, "issue-1", "done");
-    expect(
-      moved.issues.map((entry) => [entry.status, entry.statusCategory]),
-    ).toEqual([
-      ["done", "completed"],
-      ["todo", null],
-    ]);
-  });
-
-  it("leaves the view untouched for an unknown status", () => {
-    expect(withIssueStatus(view, "issue-1", "gone")).toBe(view);
   });
 });

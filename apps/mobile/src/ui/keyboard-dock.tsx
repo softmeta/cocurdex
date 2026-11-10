@@ -43,12 +43,9 @@ export function useKeyboardFollow(restingInset: number): KeyboardFollow {
     },
     [],
   );
-  const dockStyle = useAnimatedStyle(
-    () => ({
-      transform: [{ translateY: -Math.max(height.value - restingInset, 0) }],
-    }),
-    [restingInset],
-  );
+  const dockStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -Math.max(height.value - restingInset, 0) }],
+  }));
   return { shown, settledHeight, restingInset, dockStyle };
 }
 

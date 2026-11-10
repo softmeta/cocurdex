@@ -11,7 +11,6 @@ import {
   useSavedHosts,
 } from "@/hosts";
 import {
-  BrandHost,
   Form,
   FormRow,
   FormSection,
@@ -134,7 +133,7 @@ function Detail({ host, current }: { host: SavedHost; current: boolean }) {
           </FormRow>
         </FormSection>
       </Form>
-      {dialog ? <BrandHost matchContents>{dialog}</BrandHost> : null}
+      {dialog}
     </>
   );
 }

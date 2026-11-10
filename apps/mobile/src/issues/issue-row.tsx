@@ -18,13 +18,13 @@ export function IssueRowView({
   statusTitle,
   labelNames,
   onPress,
-  onMove,
+  onActions,
 }: {
   issue: IssueRecord;
   statusTitle: string;
   labelNames: string[];
   onPress(): void;
-  onMove(anchor: MenuAnchor): void;
+  onActions(anchor: MenuAnchor): void;
 }) {
   const { t } = useTranslation("issues");
   const colors = useThemeColors();
@@ -35,14 +35,14 @@ export function IssueRowView({
       accessibilityLabel={issue.title}
       accessibilityRole="button"
       accessibilityValue={{ text: `${statusTitle}, ${detail}` }}
-      accessibilityActions={[{ name: "move", label: t("move.action") }]}
+      accessibilityActions={[{ name: "actions", label: t("actions.title") }]}
       onAccessibilityAction={(event) => {
-        if (event.nativeEvent.actionName === "move") {
-          measureAnchor(row.current, onMove);
+        if (event.nativeEvent.actionName === "actions") {
+          measureAnchor(row.current, onActions);
         }
       }}
       onPress={onPress}
-      onLongPress={(event) => onMove(menuAnchor(event))}
+      onLongPress={(event) => onActions(menuAnchor(event))}
       ref={row}
       style={({ pressed }) => [
         styles.row,

@@ -12,6 +12,7 @@ import {
   useScrollIndicatorWhileScrolling,
   useTabBarInset,
 } from "@/ui";
+import { useNoteActions } from "./note-actions";
 import { useNotes } from "./note-queries";
 import { NoteRowView } from "./note-row";
 import { type NoteRow, noteSections } from "./note-sections";
@@ -22,6 +23,7 @@ export function NoteList({ host, query }: { host: SavedHost; query: string }) {
   const { t } = useTranslation("notes");
   const router = useRouter();
   const notes = useNotes(host.hostId);
+  const noteActions = useNoteActions(host);
   const pull = usePullToRefresh(() => notes.mutate());
   const { workspaces } = useHostSessions(host.hostId);
   const sections = useMemo(
@@ -50,47 +52,52 @@ export function NoteList({ host, query }: { host: SavedHost; query: string }) {
 
   const searching = query.trim() !== "";
   return (
-    <SectionList<NoteRow>
-      {...scrollIndicator}
-      contentContainerStyle={{ paddingBottom: tabBarInset }}
-      style={styles.fill}
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardDismissMode="on-drag"
-      keyboardShouldPersistTaps="handled"
-      sections={sections}
-      keyExtractor={(row) => row.note.id}
-      stickySectionHeadersEnabled={false}
-      refreshing={pull.refreshing}
-      onRefresh={pull.onRefresh}
-      ListEmptyComponent={
-        searching ? (
-          <ListNotice
-            icon={{ ios: "magnifyingglass", android: "search" }}
-            title={t("noResults", { query: query.trim() })}
+    <>
+      <SectionList<NoteRow>
+        {...scrollIndicator}
+        contentContainerStyle={{ paddingBottom: tabBarInset }}
+        style={styles.fill}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        sections={sections}
+        keyExtractor={(row) => row.note.id}
+        stickySectionHeadersEnabled={false}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
+        ListEmptyComponent={
+          searching ? (
+            <ListNotice
+              icon={{ ios: "magnifyingglass", android: "search" }}
+              title={t("noResults", { query: query.trim() })}
+            />
+          ) : (
+            <ListNotice
+              icon={{ ios: "doc.text", android: "description" }}
+              title={t("empty.title")}
+              description={t("empty.description", { host: host.name })}
+            />
+          )
+        }
+        renderSectionHeader={({ section }) => (
+          <ListSectionHeader title={section.title} />
+        )}
+        renderItem={({ item }) => (
+          <NoteRowView
+            row={item}
+            onPress={() =>
+              router.push({
+                pathname: "/note/[hostId]/[noteId]",
+                params: { hostId: host.hostId, noteId: item.note.id },
+              })
+            }
+            onActions={(anchor) => noteActions.open(item.note, anchor)}
           />
-        ) : (
-          <ListNotice
-            icon={{ ios: "doc.text", android: "description" }}
-            title={t("empty.title")}
-            description={t("empty.description", { host: host.name })}
-          />
-        )
-      }
-      renderSectionHeader={({ section }) => (
-        <ListSectionHeader title={section.title} />
-      )}
-      renderItem={({ item }) => (
-        <NoteRowView
-          row={item}
-          onPress={() =>
-            router.push({
-              pathname: "/note/[hostId]/[noteId]",
-              params: { hostId: host.hostId, noteId: item.note.id },
-            })
-          }
-        />
-      )}
-    />
+        )}
+      />
+      {noteActions.menu}
+      {noteActions.dialog}
+    </>
   );
 }
 

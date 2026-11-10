@@ -12,9 +12,9 @@ import {
   useScrollIndicatorWhileScrolling,
   useTabBarInset,
 } from "@/ui";
+import { useIssueActions } from "./issue-actions";
 import { setIssueFilters, useIssueFilters } from "./issue-filter-store";
 import { activeIssueFilterCount, EMPTY_ISSUE_FILTERS } from "./issue-filters";
-import { useIssueMove } from "./issue-move";
 import { useIssueView } from "./issue-queries";
 import { IssueRowView } from "./issue-row";
 import { issueSections } from "./issue-sections";
@@ -40,7 +40,7 @@ export function IssueList({
   const view = useIssueView(host.hostId);
   const data = view.data;
   const pull = usePullToRefresh(() => view.mutate());
-  const issueMove = useIssueMove(host);
+  const issueActions = useIssueActions(host);
   const filters = useIssueFilters(host.hostId);
   const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
   const searching = query.trim() !== "";
@@ -159,13 +159,12 @@ export function IssueList({
                 params: { hostId: host.hostId, issueId: item.id },
               })
             }
-            onMove={(anchor) =>
-              issueMove.open(item, data.statusOptions, anchor)
-            }
+            onActions={(anchor) => issueActions.open(item, anchor)}
           />
         )}
       />
-      {issueMove.menu}
+      {issueActions.menu}
+      {issueActions.dialog}
     </>
   );
 }

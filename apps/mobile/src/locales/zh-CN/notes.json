@@ -1,4 +1,14 @@
 {
+  "actions": {
+    "cancel": "取消",
+    "delete": "删除",
+    "deleteMessage": "笔记及其子页面会从电脑上删除，无法恢复。",
+    "deleteTitle": "删除「{{title}}」？",
+    "failed": "无法删除笔记，请检查连接后重试。",
+    "rename": "重命名",
+    "subpage": "新建子页面",
+    "title": "操作"
+  },
   "create": {
     "failed": "无法创建笔记，请检查连接后重试。",
     "open": "新建笔记"
@@ -50,6 +60,11 @@
     "noParent": "无",
     "parent": "上级笔记",
     "title": "笔记属性"
+  },
+  "rename": {
+    "failed": "重命名失败，请重试。",
+    "save": "保存",
+    "saving": "正在保存"
   },
   "search": "搜索笔记",
   "unavailable": {

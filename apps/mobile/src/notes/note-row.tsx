@@ -1,6 +1,14 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useRef } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  type HostInstance,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { layout, space, useThemeColors } from "@/theme";
-import { useAgeLabel } from "@/ui";
+import { type MenuAnchor, measureAnchor, menuAnchor, useAgeLabel } from "@/ui";
 import type { NoteRow } from "./note-sections";
 
 const INDENT = 20;
@@ -8,11 +16,15 @@ const INDENT = 20;
 export function NoteRowView({
   row,
   onPress,
+  onActions,
 }: {
   row: NoteRow;
   onPress(): void;
+  onActions(anchor: MenuAnchor): void;
 }) {
+  const { t } = useTranslation("notes");
   const colors = useThemeColors();
+  const pressable = useRef<HostInstance>(null);
   const age = useAgeLabel(row.note.updatedAt);
   const folder = row.note.kind === "folder";
   return (
@@ -22,8 +34,15 @@ export function NoteRowView({
       accessibilityValue={{
         text: [row.note.excerpt, age].filter(Boolean).join(", "),
       }}
-      disabled={folder}
-      onPress={onPress}
+      accessibilityActions={[{ name: "actions", label: t("actions.title") }]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === "actions") {
+          measureAnchor(pressable.current, onActions);
+        }
+      }}
+      onPress={folder ? undefined : onPress}
+      onLongPress={(event) => onActions(menuAnchor(event))}
+      ref={pressable}
       style={({ pressed }) => [
         styles.row,
         { paddingLeft: layout.sideMargin + row.depth * INDENT },

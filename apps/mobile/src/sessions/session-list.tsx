@@ -7,7 +7,6 @@ import { Pressable, SectionList, StyleSheet, Text, View } from "react-native";
 import { useAgentRoles } from "@/agents";
 import { layout, space, useThemeColors } from "@/theme";
 import {
-  BrandHost,
   ListNotice,
   ListSectionHeader,
   PendingIndicator,
@@ -234,9 +233,7 @@ export function SessionList({
         </View>
       ) : null}
       {actions.menu}
-      {actions.dialog ? (
-        <BrandHost matchContents>{actions.dialog}</BrandHost>
-      ) : null}
+      {actions.dialog}
     </>
   );
 }

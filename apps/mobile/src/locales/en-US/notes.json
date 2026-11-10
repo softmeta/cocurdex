@@ -1,4 +1,14 @@
 {
+  "actions": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteMessage": "The note and its subpages are removed from the computer. This can't be undone.",
+    "deleteTitle": "Delete “{{title}}”?",
+    "failed": "Couldn't delete the note. Check the connection and try again.",
+    "rename": "Rename",
+    "subpage": "New Subpage",
+    "title": "Actions"
+  },
   "create": {
     "failed": "Couldn't create the note. Check the connection and try again.",
     "open": "New Note"
@@ -50,6 +60,11 @@
     "noParent": "None",
     "parent": "Parent Note",
     "title": "Note Properties"
+  },
+  "rename": {
+    "failed": "Couldn’t rename the note. Try again.",
+    "save": "Save",
+    "saving": "Saving"
   },
   "search": "Search notes",
   "unavailable": {

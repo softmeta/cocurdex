@@ -255,6 +255,15 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="rename-note/[hostId]/[noteId]"
+              options={{
+                title: t("screens.renameNote"),
+                presentation: "modal",
+                headerStyle: { backgroundColor: grouped.page },
+                contentStyle: { backgroundColor: grouped.page },
+              }}
+            />
+            <Stack.Screen
               name="rename-session/[hostId]/[sessionId]"
               options={{
                 title: t("screens.renameSession"),
