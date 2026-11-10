@@ -14,8 +14,10 @@ import {
   useTabBarInset,
 } from "@/ui";
 import { useSessionActions } from "./session-actions-menu";
+import { SessionGroupChips } from "./session-group-chips";
 import { useSessionListLabels } from "./session-list-labels";
 import {
+  focusSessionSection,
   toggleSectionExpanded,
   toggleSessionChildren,
   useSessionListUi,
@@ -60,12 +62,18 @@ function useHeadingTitle(agentLabels: ReadonlyMap<AgentId, string>) {
   };
 }
 
-function SectionFooter({ section }: { section: SessionSection }) {
+function SectionFooter({
+  section,
+  focused,
+}: {
+  section: SessionSection;
+  focused: boolean;
+}) {
   const { t } = useTranslation("sessions");
   const colors = useThemeColors();
   const { expandedSectionKeys } = useSessionListUi();
   const expanded = expandedSectionKeys.has(section.key);
-  if (section.hiddenCount === 0 && !expanded) return null;
+  if (focused || (section.hiddenCount === 0 && !expanded)) return null;
   return (
     <Pressable
       accessibilityRole="button"
@@ -121,6 +129,7 @@ export function SessionList({
         view,
         collapsedIds: ui.collapsedIds,
         expandedSectionKeys: ui.expandedSectionKeys,
+        focusedSectionKey: ui.focusedSectionKey,
         now: new Date(),
       }).map((section) => ({ ...section, data: section.rows })),
     [
@@ -148,11 +157,33 @@ export function SessionList({
 
   const offline = OFFLINE_STATES.has(snapshot.connection);
   const searching = query.trim() !== "";
+  const chipsShown =
+    mode === "work" &&
+    !searching &&
+    view.grouping !== "none" &&
+    sections.length > 1;
+  const focused = chipsShown
+    ? sections.find((section) => section.key === ui.focusedSectionKey)
+    : undefined;
+  const chips = chipsShown
+    ? sections.map((section) => ({
+        key: section.key,
+        label: headingTitle(section.heading) ?? "",
+        count: section.total,
+      }))
+    : [];
   const filtering =
     view.statuses.length + view.agents.length + view.environments.length > 0;
 
   return (
     <>
+      {chipsShown ? (
+        <SessionGroupChips
+          chips={chips}
+          selectedKey={focused?.key ?? null}
+          onSelect={focusSessionSection}
+        />
+      ) : null}
       <SectionList<SessionRow, SessionSection>
         {...scrollIndicator}
         contentContainerStyle={{ paddingBottom: tabBarInset }}
@@ -160,7 +191,7 @@ export function SessionList({
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
-        sections={sections}
+        sections={focused ? [focused] : sections}
         keyExtractor={(row) => row.id}
         stickySectionHeadersEnabled={false}
         ListEmptyComponent={
@@ -187,11 +218,12 @@ export function SessionList({
           )
         }
         renderSectionHeader={({ section }) => {
+          if (focused) return null;
           const title = headingTitle(section.heading);
           return title ? <ListSectionHeader title={title} /> : null;
         }}
         renderSectionFooter={({ section }) => (
-          <SectionFooter section={section} />
+          <SectionFooter section={section} focused={focused !== undefined} />
         )}
         renderItem={({ item }) => (
           <>

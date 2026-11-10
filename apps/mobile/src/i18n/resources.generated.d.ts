@@ -517,6 +517,7 @@ export default interface Resources {
     };
     list: {
       agentFilter: "Agent";
+      allGroups: "All";
       childSessions_one: "{{count}} child session";
       childSessions_other: "{{count}} child sessions";
       clearFilters: "Clear Filters";
