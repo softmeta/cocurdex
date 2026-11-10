@@ -351,7 +351,7 @@
     var(--foreground)
   );
   --modal-scrim: rgb(0 0 0 / 0.4);
-  --sidebar: color-mix(in srgb, black 22%, var(--background));
+  --sidebar: color-mix(in srgb, var(--foreground) 2%, var(--background));
   --sidebar-surface-hover: color-mix(
     in srgb,
     var(--sidebar-foreground) 4.5%,
