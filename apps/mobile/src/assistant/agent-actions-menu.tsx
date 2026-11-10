@@ -117,7 +117,6 @@ export function useAgentActions(
     ];
     const agentHandlers = handlers(agent);
     menu.open(anchor, {
-      title: agent.role.name,
       items: actions.map((action) => ({
         key: action,
         testID: `assistant-action-${action}`,

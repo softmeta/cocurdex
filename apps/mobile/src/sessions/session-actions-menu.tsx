@@ -138,7 +138,6 @@ export function useSessionActions(host: SavedHost, allowFork: boolean) {
     ];
     const rowHandlers = handlers(row);
     menu.open(anchor, {
-      title: row.title,
       items: actions.map((action) => ({
         key: action,
         testID: `session-action-${action}`,
