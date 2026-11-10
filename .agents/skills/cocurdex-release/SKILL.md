@@ -66,9 +66,10 @@ this checkout (which must be a clean checkout of the main tip; the runner needs 
 that the GitHub release published (a prerelease for a beta, with assets), and deploys the relay with
 `ssh cocurdex-relay deploy-cocurdex-relay deploy <tag>`. It stops at the first failure and reports
 which step failed. A step that failed before its tag was pushed (the iOS flows) is fixed on `main`
-and the whole `run` repeated. Once a tag is pushed, the plan moves past it, so a failed workflow on
-that tag is retried with `gh run rerun <run-id> --failed`, and a failed relay deploy with the same
-`ssh` command; then run again for the remaining steps. Report the tags, the runs, and the relay deploy
+and the whole `run` repeated. A failed relay deploy is retried with the same `ssh` command. A failed
+app release workflow is not rerun (see Pitfalls): once anything lands on `main`, `plan` sees the
+beta's release unpublished and cuts the next beta in its place, and it refuses `--promote` until a
+beta has published. Report the tags, the runs, and the relay deploy
 commands, then check the deployed relay read-only (version, `systemctl status`, recent logs).
 
 ## Channels
@@ -133,5 +134,9 @@ releases the relay or the push gateway; those go through `run`.
 - **The tagged commit must be on `origin/main`.** The `Validate release tag` job rejects a tag on
   a branch commit; merge first.
 - **Never re-point or delete a published tag.** Ship a fix as the next beta or patch instead.
-- **A failed job on a tag** is retried with `gh run rerun <run-id> --failed`; do not push a new tag
-  for the same commit.
+- **Do not rerun a failed app release run.** When a desktop job fails, the cleanup job deletes the
+  draft release with every asset uploaded so far, so `gh run rerun --failed` has nothing to upload
+  into, and a full rerun repeats the mobile build number (`git rev-list --count HEAD`), which
+  TestFlight and Play reject once the first attempt uploaded it. Ship the next beta from a newer
+  `main` commit instead; never push a second tag on the same commit. A relay or push run that fails
+  before publishing has no such state and is rerun with `gh run rerun <run-id> --failed`.

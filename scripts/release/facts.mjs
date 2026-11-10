@@ -99,6 +99,13 @@ function mainCiRun(sha) {
   return run ?? null;
 }
 
+function isPublished(tag) {
+  const out = gh(["release", "view", tag, "--json", "isDraft"], {
+    allowFailure: true,
+  });
+  return out !== null && JSON.parse(out).isDraft === false;
+}
+
 function daemonMethodsAt(ref) {
   const source = git(["show", `${ref}:${METHOD_SCOPES_PATH}`], {
     allowFailure: true,
@@ -164,6 +171,7 @@ export function gatherFacts({ promote = false, skip = [] } = {}) {
       latest,
       latestCommit,
       latestDate: git(["log", "-1", "--format=%cs", latest.tag]),
+      latestPublished: isPublished(latest.tag),
       latestStableCommit,
       pending: pendingChanges(RELEASE_LINES[0], latest.tag),
     },
