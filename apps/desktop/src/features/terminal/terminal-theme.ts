@@ -10,6 +10,19 @@ function readVar(name: string, fallback: string): string {
   return value || fallback;
 }
 
+// xterm's css.toColor accepts a translucent color only as comma-separated
+// rgba(); other non-opaque forms fall back to its default black background.
+const XTERM_TRANSPARENT = "rgba(0, 0, 0, 0)";
+
+function readTerminalBackground(dark: boolean): string {
+  const value = readVar("--editor-terminal-bg", dark ? "#0c0c10" : "#f7f8fa");
+  return value === "transparent" ? XTERM_TRANSPARENT : value;
+}
+
+export function terminalBackgroundIsTransparent(): boolean {
+  return readTerminalBackground(isDark()) === XTERM_TRANSPARENT;
+}
+
 function isDark(): boolean {
   if (typeof window === "undefined") return true;
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -65,7 +78,7 @@ export function buildTerminalTheme(): ITheme {
     : "rgba(15, 23, 42, 0.24)";
 
   return {
-    background: readVar("--editor-canvas", dark ? "#0c0c10" : "#f7f8fa"),
+    background: readTerminalBackground(dark),
     foreground: readVar("--editor-text", dark ? "#d4d4d8" : "#0f172a"),
     cursor: readVar("--editor-text", dark ? "#d4d4d8" : "#0f172a"),
     cursorAccent: readVar("--editor-canvas", dark ? "#0c0c10" : "#f7f8fa"),

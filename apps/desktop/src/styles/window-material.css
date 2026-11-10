@@ -27,20 +27,36 @@
     );
   }
 
-  :root[data-window-material] [data-window-sidebar] [data-sidebar-sticky] {
+  :root[data-window-material] {
+    --editor-monaco-bg: transparent;
+    --editor-monaco-gutter: transparent;
+    --editor-monaco-sticky: var(--content-plane-base);
+    --editor-terminal-bg: transparent;
+  }
+
+  :root[data-window-material] [data-window-sidebar] {
+    --window-sticky-surface: var(--sidebar-material);
+  }
+
+  :root[data-window-material] [data-window-content] {
+    --window-sticky-surface: var(--content-plane-base);
+  }
+
+  :root[data-window-material] [data-window-sticky] {
     container-type: scroll-state;
+  }
+
+  :root[data-window-material] [data-window-sidebar] [data-window-sticky] {
     background-color: transparent;
   }
 
   @container scroll-state(stuck: top) {
-    :root[data-window-material]
-      [data-window-sidebar]
-      [data-sidebar-sticky]::before {
+    :root[data-window-material] [data-window-sticky]::before {
       content: "";
       position: absolute;
       inset: 0;
       z-index: -1;
-      background-color: var(--sidebar-translucent);
+      background-color: var(--window-sticky-surface);
     }
   }
 
@@ -48,6 +64,8 @@
     background-color: var(--content-plane);
     --color-app: transparent;
     --color-chat-canvas: transparent;
+    --color-editor-shell: transparent;
+    --color-editor-canvas: transparent;
     --color-chat-fade: color-mix(
       in srgb,
       var(--content-plane-base) 97%,

@@ -86,8 +86,8 @@ html[data-platform="other"] ::-webkit-scrollbar-thumb:hover {
   border-radius: 3px;
 }
 
-.xterm .xterm-viewport {
-  background-color: var(--editor-canvas);
+:root .xterm .xterm-viewport {
+  background-color: var(--editor-terminal-bg);
 }
 
 .xterm-decoration-overview-ruler {

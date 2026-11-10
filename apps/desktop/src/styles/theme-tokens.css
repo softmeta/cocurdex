@@ -250,6 +250,8 @@
   --role-avatar-face: oklch(0.21 0.006 285.885);
   --role-avatar-face-light: oklch(0.985 0.002 285.885);
   --editor-monaco-bg: var(--editor-canvas);
+  --editor-monaco-sticky: var(--editor-monaco-bg);
+  --editor-terminal-bg: var(--editor-canvas);
   --editor-monaco-line-highlight: color-mix(
     in srgb,
     var(--accent) 46%,

@@ -60,6 +60,7 @@ function DayHeading({ children }: { children: string }) {
   return (
     <Text
       className="sticky top-0 z-10 bg-editor-shell px-2 pt-2 pb-1"
+      data-window-sticky=""
       size="meta"
       tone="muted"
     >

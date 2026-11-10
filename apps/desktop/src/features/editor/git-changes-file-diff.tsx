@@ -192,6 +192,7 @@ export function GitChangeFileDiff({
             state === "folded" && "rounded-b-card pb-2",
             stickyHeader && "sticky top-0 z-10 bg-editor-monaco-bg",
           )}
+          data-window-sticky={stickyHeader ? "" : undefined}
         >
           <GitChangeRowHeader
             actionsEnabled={actionsEnabled}

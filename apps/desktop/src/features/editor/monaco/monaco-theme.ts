@@ -87,6 +87,10 @@ function buildEditorChromeColors(isDark: boolean): Record<string, string> {
       "--editor-monaco-selection-inactive",
       fallback.inactiveSelection,
     ),
+    "editorStickyScroll.background": getEditorThemeColor(
+      "--editor-monaco-sticky",
+      fallback.background,
+    ),
     "editorGutter.background": getEditorThemeColor(
       "--editor-monaco-gutter",
       fallback.gutter,

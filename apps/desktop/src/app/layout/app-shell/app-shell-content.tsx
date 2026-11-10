@@ -113,6 +113,7 @@ export function AppShellContent({
       {isRightPanelOpen ? (
         <div
           data-testid="shell-right-panel"
+          data-window-content=""
           className={cn(
             "flex min-w-0 overflow-hidden bg-app",
             isPanelFullWidth
