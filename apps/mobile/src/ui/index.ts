@@ -32,7 +32,11 @@ export { headerLeading } from "./header-leading";
 export { useHeaderOptions } from "./header-options";
 export { useHeaderOverlap } from "./header-overlap";
 export { keyboardHidden } from "./keyboard";
-export { useBottomKeyboardOverlap } from "./keyboard-overlap";
+export {
+  KeyboardDock,
+  type KeyboardFollow,
+  useKeyboardFollow,
+} from "./keyboard-dock";
 export { useKeyboardVisible } from "./keyboard-visible";
 export { ListNotice, ListSectionHeader } from "./list-parts";
 export { ListScreenHeader } from "./list-screen-header";

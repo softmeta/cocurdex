@@ -18,8 +18,9 @@ import { useOpenLink } from "@/markdown";
 import { useTextScale } from "@/preferences";
 import { type ThemeColors, useThemeColors, useThemeName } from "@/theme";
 import {
-  useBottomKeyboardOverlap,
+  KeyboardDock,
   useHeaderOverlap,
+  useKeyboardFollow,
   useOptionSheet,
 } from "@/ui";
 import type { NoteDocSession } from "./note-doc-session";
@@ -140,10 +141,8 @@ export function NoteEditor({
   const colors = useThemeColors();
   const scheme = useThemeName();
   const router = useRouter();
-  const keyboardOverlap = useBottomKeyboardOverlap();
   const header = useHeaderOverlap();
-  const keyboardShown = keyboardOverlap > 0;
-  const bottomInset = useSafeAreaInsets().bottom;
+  const keyboard = useKeyboardFollow(useSafeAreaInsets().bottom);
   const openLink = useOpenLink(hostId, undefined);
   const openSheet = useOptionSheet();
   const webView = useRef<EditorWebView | null>(null);
@@ -156,7 +155,7 @@ export function NoteEditor({
   const [focused, setFocused] = useState(false);
   const [keyboardWaitOver, setKeyboardWaitOver] = useState(false);
   const keyboardWait = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const formatBarShown = focused && (keyboardShown || keyboardWaitOver);
+  const formatBarShown = focused && (keyboard.shown || keyboardWaitOver);
   const [format, setFormat] = useState<NoteEditorFormatState | null>(null);
 
   const send = (message: NoteEditorInbound) =>
@@ -315,6 +314,25 @@ export function NoteEditor({
     [session],
   );
 
+  const formatBar = formatBarShown ? (
+    <NoteFormatBar
+      format={format}
+      onBlockStyle={openBlockStyles}
+      onBold={() => run({ name: "mark", mark: "bold" })}
+      onBulletList={() => run({ name: "list", kind: "bulletList" })}
+      onTaskList={() => run({ name: "list", kind: "taskList" })}
+      onInsert={() => openInsert(false)}
+      onHideKeyboard={() => run({ name: "blur" })}
+    />
+  ) : null;
+  const dock =
+    accessory || formatBar ? (
+      <>
+        {accessory}
+        {formatBar}
+      </>
+    ) : null;
+
   return (
     <View
       ref={header.ref}
@@ -324,47 +342,27 @@ export function NoteEditor({
         {
           backgroundColor: colors.background,
           paddingTop: header.overlap,
-          paddingBottom: keyboardOverlap,
         },
       ]}
     >
-      <WebView
-        ref={attach}
-        testID={testID}
-        source={{ html: NOTE_EDITOR_RUNTIME_HTML }}
-        originWhitelist={["about:blank"]}
-        onShouldStartLoadWithRequest={({ url }) => url === "about:blank"}
-        onMessage={handleMessage}
-        onContentProcessDidTerminate={() => webView.current?.reload()}
-        onRenderProcessGone={() => webView.current?.reload()}
-        setSupportMultipleWindows={false}
-        allowsLinkPreview={false}
-        hideKeyboardAccessoryView
-        keyboardDisplayRequiresUserAction={false}
-        textZoom={100}
-        style={[styles.fill, { backgroundColor: colors.background }]}
-      />
-      {accessory ? (
-        <View
-          style={{
-            paddingBottom: formatBarShown || keyboardShown ? 0 : bottomInset,
-          }}
-        >
-          {accessory}
-        </View>
-      ) : null}
-      {formatBarShown ? (
-        <NoteFormatBar
-          format={format}
-          bottomInset={keyboardShown ? 0 : bottomInset}
-          onBlockStyle={openBlockStyles}
-          onBold={() => run({ name: "mark", mark: "bold" })}
-          onBulletList={() => run({ name: "list", kind: "bulletList" })}
-          onTaskList={() => run({ name: "list", kind: "taskList" })}
-          onInsert={() => openInsert(false)}
-          onHideKeyboard={() => run({ name: "blur" })}
+      <KeyboardDock follow={keyboard} dock={dock}>
+        <WebView
+          ref={attach}
+          testID={testID}
+          source={{ html: NOTE_EDITOR_RUNTIME_HTML }}
+          originWhitelist={["about:blank"]}
+          onShouldStartLoadWithRequest={({ url }) => url === "about:blank"}
+          onMessage={handleMessage}
+          onContentProcessDidTerminate={() => webView.current?.reload()}
+          onRenderProcessGone={() => webView.current?.reload()}
+          setSupportMultipleWindows={false}
+          allowsLinkPreview={false}
+          hideKeyboardAccessoryView
+          keyboardDisplayRequiresUserAction={false}
+          textZoom={100}
+          style={[styles.fill, { backgroundColor: colors.background }]}
         />
-      ) : null}
+      </KeyboardDock>
     </View>
   );
 }

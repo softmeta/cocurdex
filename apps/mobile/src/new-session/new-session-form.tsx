@@ -19,7 +19,7 @@ import {
   uploadImage,
 } from "@/session-detail";
 import { layout, space, useThemeColors } from "@/theme";
-import { keyboardHidden, useBottomKeyboardOverlap } from "@/ui";
+import { KeyboardDock, keyboardHidden, useKeyboardFollow } from "@/ui";
 import { useNewSessionSelection } from "./new-session-selection";
 import { useNewSessionState } from "./new-session-store";
 import { createSessionStarter, shownSessionPayload } from "./start-session";
@@ -40,7 +40,7 @@ function Draft({
   const router = useRouter();
   const colors = useThemeColors();
   const bottomInset = Math.max(useSafeAreaInsets().bottom - space.sm, 0);
-  const keyboardOverlap = useBottomKeyboardOverlap();
+  const keyboard = useKeyboardFollow(bottomInset);
   const {
     draft,
     workspaceId,
@@ -118,42 +118,47 @@ function Draft({
           ),
         }}
       />
-      <View style={[styles.fill, { backgroundColor: colors.background }]}>
+      <KeyboardDock
+        follow={keyboard}
+        style={{ backgroundColor: colors.background }}
+        dock={
+          <>
+            {failed ? (
+              <Text
+                accessibilityRole="alert"
+                style={[styles.error, { color: colors.destructive }]}
+              >
+                {t("newSession.failed")}
+              </Text>
+            ) : null}
+            <Composer
+              running={false}
+              canSend={canStart}
+              canEdit={!starting}
+              onSend={start}
+              onStop={() => undefined}
+              onPickImages={pickImages}
+              onUploadImage={(image) => uploadImage(host.hostId, image)}
+              placeholder={t("newSession.promptPlaceholder")}
+              inputTestID="new-session-prompt"
+              autoFocus
+              accessory={
+                <ConfigTrigger
+                  testID="new-session-agent"
+                  leading={leading}
+                  summary={configSummary || t("newSession.none")}
+                  mode={modeLabel}
+                  onPress={() => void openConfig()}
+                />
+              }
+            />
+          </>
+        }
+      >
         <View style={styles.fill}>
           {preview ? <PendingTranscript host={host} send={preview} /> : null}
         </View>
-        {failed ? (
-          <Text
-            accessibilityRole="alert"
-            style={[styles.error, { color: colors.destructive }]}
-          >
-            {t("newSession.failed")}
-          </Text>
-        ) : null}
-        <View style={{ paddingBottom: keyboardOverlap || bottomInset }}>
-          <Composer
-            running={false}
-            canSend={canStart}
-            canEdit={!starting}
-            onSend={start}
-            onStop={() => undefined}
-            onPickImages={pickImages}
-            onUploadImage={(image) => uploadImage(host.hostId, image)}
-            placeholder={t("newSession.promptPlaceholder")}
-            inputTestID="new-session-prompt"
-            autoFocus
-            accessory={
-              <ConfigTrigger
-                testID="new-session-agent"
-                leading={leading}
-                summary={configSummary || t("newSession.none")}
-                mode={modeLabel}
-                onPress={() => void openConfig()}
-              />
-            }
-          />
-        </View>
-      </View>
+      </KeyboardDock>
     </>
   );
 }
