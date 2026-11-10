@@ -52,6 +52,11 @@ function initialContent(body: NoteEditorBody): NoteEditorContent {
   return { kind: "markdown", markdown: body.markdown };
 }
 
+// The IME opens a few hundred milliseconds after focus. Hold the format bar
+// until the keyboard reports in, and show it anyway after this long so a
+// hardware keyboard, which sends no keyboard events, still gets it.
+const FORMAT_BAR_KEYBOARD_WAIT_MS = 500;
+
 const BLOCK_STYLES: readonly NoteBlockStyle[] = [
   "paragraph",
   "heading1",
@@ -149,6 +154,9 @@ export function NoteEditor({
   const sentTheme = useRef<string | null>(null);
   const themeKey = JSON.stringify(theme);
   const [focused, setFocused] = useState(false);
+  const [keyboardWaitOver, setKeyboardWaitOver] = useState(false);
+  const keyboardWait = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const formatBarShown = focused && (keyboardShown || keyboardWaitOver);
   const [format, setFormat] = useState<NoteEditorFormatState | null>(null);
 
   const send = (message: NoteEditorInbound) =>
@@ -253,6 +261,14 @@ export function NoteEditor({
         onTitle(message.title);
         return;
       case "focus":
+        if (keyboardWait.current !== null) clearTimeout(keyboardWait.current);
+        keyboardWait.current = message.focused
+          ? setTimeout(
+              () => setKeyboardWaitOver(true),
+              FORMAT_BAR_KEYBOARD_WAIT_MS,
+            )
+          : null;
+        if (!message.focused) setKeyboardWaitOver(false);
         setFocused(message.focused);
         onFocusChange?.(message.focused);
         return;
@@ -331,13 +347,13 @@ export function NoteEditor({
       {accessory ? (
         <View
           style={{
-            paddingBottom: focused || keyboardShown ? 0 : bottomInset,
+            paddingBottom: formatBarShown || keyboardShown ? 0 : bottomInset,
           }}
         >
           {accessory}
         </View>
       ) : null}
-      {focused ? (
+      {formatBarShown ? (
         <NoteFormatBar
           format={format}
           bottomInset={keyboardShown ? 0 : bottomInset}

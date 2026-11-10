@@ -40,6 +40,8 @@ appId: dev.cocurdex.mobile
     visible: ${ISSUE_DESCRIPTION}
     timeout: 10000
 - assertVisible: ${ISSUE_SESSION_TITLE}
+- assertVisible:
+    id: "issue-field-status"
 - extendedWaitUntil:
     visible:
       id: "doc-image"
