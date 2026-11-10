@@ -3,7 +3,7 @@ import { ChevronDown, ChevronLeft } from "lucide-react";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
-import { AppSearchInput } from "@/components/app";
+import { SidebarSearchInput } from "@/components/app";
 import {
   ScrollArea,
   SidebarListRow,
@@ -166,7 +166,7 @@ export function SettingsSidebar({
       </div>
 
       <div className="shrink-0 px-3 pb-2">
-        <AppSearchInput
+        <SidebarSearchInput
           aria-controls={isSearching ? resultsId : undefined}
           aria-label={t("sidebar.search")}
           placeholder={t("sidebar.search")}
