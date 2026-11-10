@@ -6,6 +6,7 @@
   --app-code-font-size: 13px;
 
   --app-bg: var(--editor-canvas);
+  --shell-bg: var(--app-bg);
   --app-fg: var(--foreground);
   --app-overlay: color-mix(in srgb, var(--background) 90%, transparent);
   --menu-ring: color-mix(in srgb, var(--foreground) 4%, transparent);

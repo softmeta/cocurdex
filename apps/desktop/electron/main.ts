@@ -83,6 +83,9 @@ import {
   rendererScheme,
   titleBarChromeOptions,
   titleBarOverlayFor,
+  WINDOW_MATERIAL_ARGUMENT,
+  windowMaterialFor,
+  windowMaterialOptions,
 } from "./window";
 
 const MIN_WINDOW_WIDTH = 400;
@@ -203,9 +206,14 @@ function getSurfaceColor() {
 }
 
 let chatWindows: ReturnType<typeof registerChatWindowHandlers> | undefined;
+const materialWindows = new WeakSet<BrowserWindow>();
 
 function createWindow() {
   const surfaceColor = getSurfaceColor();
+  const material = windowMaterialFor(
+    process.platform,
+    process.getSystemVersion(),
+  );
   const window = new BrowserWindow({
     width: 1440,
     height: 960,
@@ -214,12 +222,15 @@ function createWindow() {
     backgroundColor: surfaceColor,
     show: false,
     ...titleBarChromeOptions(process.platform, surfaceColor),
+    ...windowMaterialOptions(material),
     webPreferences: {
       preload: preloadPath,
       backgroundThrottling: false,
       devTools: resolveMainWindowDevTools({ packaged: app.isPackaged }),
+      additionalArguments: material ? [WINDOW_MATERIAL_ARGUMENT] : [],
     },
   });
+  if (material) materialWindows.add(window);
   chatWindows?.setPrimaryWindow(window);
   let didShowWindow = false;
   const showWindowOnce = () => {
@@ -616,11 +627,21 @@ app
       schemas.hexColor,
       async (event, color) => {
         const window = BrowserWindow.fromWebContents(event.sender);
-        window?.setBackgroundColor(color);
+        if (window && !materialWindows.has(window)) {
+          window.setBackgroundColor(color);
+        }
         if (window && hasTitleBarOverlay(process.platform)) {
           window.setTitleBarOverlay(titleBarOverlayFor(color));
         }
         getBrowserView()?.setBackgroundColor(color);
+      },
+    );
+    registerHandler(
+      ipcMain,
+      "window:setThemeSource",
+      schemas.themeSource,
+      async (_event, themeSource) => {
+        nativeTheme.themeSource = themeSource;
       },
     );
     registerHandler(

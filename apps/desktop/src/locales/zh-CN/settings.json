@@ -168,6 +168,10 @@
       "description": "选择浅色、深色或跟随系统主题。",
       "title": "主题"
     },
+    "translucentSidebar": {
+      "description": "让侧边栏透出背后的桌面。",
+      "title": "半透明侧边栏"
+    },
     "typography": {
       "codeFontFamily": {
         "description": "代码编辑器和 diff 使用的字体。",

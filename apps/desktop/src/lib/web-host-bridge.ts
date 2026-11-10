@@ -160,6 +160,7 @@ export function webHostCapabilities(access: WebHostAccess): HostCapabilities {
     localWebClient: false,
     localFilePaths: false,
     localDaemonControl: false,
+    windowMaterial: false,
     scopes,
   };
 }

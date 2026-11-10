@@ -105,7 +105,7 @@ export function AppShellContent({
   return (
     <main
       className={cn(
-        "relative flex min-h-0 flex-1 overflow-hidden bg-app",
+        "relative flex min-h-0 flex-1 overflow-hidden bg-shell",
         isRightPanelOpen && !isPanelFullWidth && "shell-panel-opening",
       )}
       ref={contentRowRef}
@@ -174,7 +174,7 @@ export function AppShellContent({
           >
             <LeftSidebar showFooter />
           </ResizableSidebarSlot>
-          <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+          <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden bg-app">
             <div
               className="h-full"
               style={

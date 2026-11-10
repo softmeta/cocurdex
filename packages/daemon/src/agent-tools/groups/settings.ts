@@ -160,7 +160,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
     tier: "write",
     storage: "renderer",
     description:
-      "Appearance settings: themePreset (named color preset id such as 'default'), uiFontFamily and codeFontFamily (empty string = system default), uiFontSize (12-16), codeFontSize (11-18).",
+      "Appearance settings: themePreset (named color preset id such as 'default'), uiFontFamily and codeFontFamily (empty string = system default), uiFontSize (12-16), codeFontSize (11-18), translucentSidebar (optional, default true; desktop hosts with a window material only).",
     valueSchema: {
       type: "object",
       properties: {
@@ -169,6 +169,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
         codeFontFamily: { type: "string" },
         uiFontSize: { type: "number" },
         codeFontSize: { type: "number" },
+        translucentSidebar: { type: "boolean" },
       },
       required: [
         "themePreset",
@@ -194,6 +195,14 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
             `Value for 'app.appearance.${field}' must be a number`,
           );
         }
+      }
+      if (
+        record.translucentSidebar !== undefined &&
+        typeof record.translucentSidebar !== "boolean"
+      ) {
+        throw new Error(
+          "Value for 'app.appearance.translucentSidebar' must be a boolean",
+        );
       }
       return record;
     },

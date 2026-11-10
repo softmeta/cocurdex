@@ -1,6 +1,7 @@
 import type { ParseKeys } from "i18next";
 import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
 import { shortcutIds } from "@/features/shortcuts";
+import type { HostCapabilities } from "@/lib";
 
 type SettingsKey = ParseKeys<"settings">;
 type MemoryKey = ParseKeys<"memory">;
@@ -16,7 +17,14 @@ export interface SettingsSearchEntry {
   description?: SettingsSearchTextKey;
   group?: SettingsSearchTextKey;
   fallbackId?: string;
+  requires?: HostCapabilityFlag;
 }
+
+type HostCapabilityFlag = {
+  [K in keyof HostCapabilities]-?: HostCapabilities[K] extends boolean
+    ? K
+    : never;
+}[keyof HostCapabilities];
 
 function s(key: SettingsKey): SettingsSearchTextKey {
   return { ns: "settings", key };
@@ -34,6 +42,13 @@ function row(
   group?: SettingsSearchTextKey,
 ): SettingsSearchEntry {
   return { id: `${section}.${id}`, section, title, description, group };
+}
+
+function requiring(
+  entry: SettingsSearchEntry,
+  requires: HostCapabilityFlag,
+): SettingsSearchEntry {
+  return { ...entry, requires };
 }
 
 function shownVia(
@@ -130,26 +145,35 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     s("notifications.completionSound.description"),
     notifications,
   ),
-  row(
-    "general",
-    "cli",
-    s("cli.title"),
-    s("cli.description"),
-    s("cli.groupTitle"),
+  requiring(
+    row(
+      "general",
+      "cli",
+      s("cli.title"),
+      s("cli.description"),
+      s("cli.groupTitle"),
+    ),
+    "localDaemonControl",
   ),
-  row(
-    "general",
-    "daemon",
-    s("daemon.title"),
-    s("daemon.description"),
-    s("daemon.groupTitle"),
+  requiring(
+    row(
+      "general",
+      "daemon",
+      s("daemon.title"),
+      s("daemon.description"),
+      s("daemon.groupTitle"),
+    ),
+    "localDaemonControl",
   ),
-  row(
-    "general",
-    "daemonBackground",
-    s("daemon.background.title"),
-    s("daemon.background.description"),
-    s("daemon.groupTitle"),
+  requiring(
+    row(
+      "general",
+      "daemonBackground",
+      s("daemon.background.title"),
+      s("daemon.background.description"),
+      s("daemon.groupTitle"),
+    ),
+    "localDaemonControl",
   ),
   row(
     "appearance",
@@ -162,6 +186,15 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     "preset",
     s("appearance.preset.title"),
     s("appearance.preset.description"),
+  ),
+  requiring(
+    row(
+      "appearance",
+      "translucentSidebar",
+      s("appearance.translucentSidebar.title"),
+      s("appearance.translucentSidebar.description"),
+    ),
+    "windowMaterial",
   ),
   row(
     "appearance",
@@ -363,12 +396,15 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     s("network.proxy.test.description"),
     proxy,
   ),
-  row(
-    "devices",
-    "localWeb",
-    s("devices.localWeb.open.title"),
-    s("devices.localWeb.open.description"),
-    s("devices.localWeb.groupTitle"),
+  requiring(
+    row(
+      "devices",
+      "localWeb",
+      s("devices.localWeb.open.title"),
+      s("devices.localWeb.open.description"),
+      s("devices.localWeb.groupTitle"),
+    ),
+    "localWebClient",
   ),
   row(
     "devices",

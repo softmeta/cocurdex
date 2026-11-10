@@ -26,6 +26,7 @@ export interface AppearanceSettings {
   codeFontFamily: string;
   codeFontSize: number;
   themePreset: ThemePresetId;
+  translucentSidebar: boolean;
   uiFontFamily: string;
   uiFontSize: number;
 }
@@ -34,6 +35,7 @@ export const defaultAppearanceSettings: AppearanceSettings = {
   codeFontFamily: "",
   codeFontSize: 13,
   themePreset: DEFAULT_THEME_PRESET_ID,
+  translucentSidebar: true,
   uiFontFamily: "",
   uiFontSize: 13,
 };
@@ -115,6 +117,7 @@ export function getStoredAppearanceSettings(): AppearanceSettings {
       codeFontFamily: normalizeFontFamily(parsed.codeFontFamily),
       codeFontSize: clampCodeFontSize(parsed.codeFontSize),
       themePreset,
+      translucentSidebar: parsed.translucentSidebar !== false,
       uiFontFamily: normalizeFontFamily(parsed.uiFontFamily),
       uiFontSize: clampUiFontSize(parsed.uiFontSize),
     };

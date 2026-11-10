@@ -337,7 +337,7 @@ export function SettingsScreen({
   );
 
   return (
-    <main className="relative flex h-screen overflow-hidden bg-app text-foreground">
+    <main className="relative flex h-screen overflow-hidden bg-shell text-foreground">
       {isSidebarOpen ? (
         <ResizableSidebarSlot
           isOpen={isSidebarOpen}

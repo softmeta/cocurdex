@@ -11,3 +11,8 @@ export {
   titleBarChromeOptions,
   titleBarOverlayFor,
 } from "./title-bar-chrome";
+export {
+  WINDOW_MATERIAL_ARGUMENT,
+  windowMaterialFor,
+  windowMaterialOptions,
+} from "./window-material";

@@ -16,7 +16,7 @@
 
   body {
     margin: 0;
-    background: var(--app-bg);
+    background: var(--shell-bg);
     color: var(--app-fg);
     font-family: var(--font-ui);
     font-size: var(--app-ui-font-size, 13px);

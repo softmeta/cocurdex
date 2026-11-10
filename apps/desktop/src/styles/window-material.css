@@ -1,0 +1,50 @@
+@media (prefers-reduced-transparency: no-preference) {
+  :root[data-window-material] {
+    --shell-bg: transparent;
+    --sidebar-translucent: color-mix(in srgb, var(--sidebar) 88%, transparent);
+  }
+
+  :root[data-window-material] [data-window-sidebar] [data-sidebar-sticky] {
+    container-type: scroll-state;
+    background-color: transparent;
+  }
+
+  @container scroll-state(stuck: top) {
+    :root[data-window-material]
+      [data-window-sidebar]
+      [data-sidebar-sticky]::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background-color: var(--sidebar-translucent);
+    }
+  }
+
+  :root[data-window-material] [data-window-sidebar] {
+    --sidebar: var(--sidebar-translucent);
+    --color-sidebar-surface-hover: color-mix(
+      in srgb,
+      var(--sidebar-foreground) 3%,
+      transparent
+    );
+    --color-sidebar-surface-active: color-mix(
+      in srgb,
+      var(--sidebar-foreground) 5%,
+      transparent
+    );
+  }
+
+  :root[data-window-material][data-theme="dark"] [data-window-sidebar] {
+    --color-sidebar-surface-hover: color-mix(
+      in srgb,
+      var(--sidebar-foreground) 4.5%,
+      transparent
+    );
+    --color-sidebar-surface-active: color-mix(
+      in srgb,
+      var(--sidebar-foreground) 7.5%,
+      transparent
+    );
+  }
+}

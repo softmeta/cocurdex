@@ -2512,6 +2512,10 @@ export default interface Resources {
         description: "Choose between light, dark, or system themes.";
         title: "Theme";
       };
+      translucentSidebar: {
+        description: "Let the desktop show through the sidebar.";
+        title: "Translucent sidebar";
+      };
       typography: {
         codeFontFamily: {
           description: "Font used in code editors and diffs.";

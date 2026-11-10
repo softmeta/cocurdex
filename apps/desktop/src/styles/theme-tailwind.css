@@ -62,6 +62,7 @@
   --color-chrome-separator: var(--chrome-separator);
   --color-chrome-separator-hover: var(--chrome-separator-hover);
   --color-chrome-separator-active: var(--chrome-separator-active);
+  --color-shell: var(--shell-bg);
   --color-sidebar-surface: var(--sidebar-surface);
   --color-sidebar-surface-hover: var(--sidebar-surface-hover);
   --color-sidebar-surface-active: var(--sidebar-surface-active);

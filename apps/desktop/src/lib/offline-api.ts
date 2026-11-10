@@ -103,6 +103,7 @@ export const offlineApi: DesktopApi = {
     localWebClient: false,
     localFilePaths: false,
     localDaemonControl: false,
+    windowMaterial: false,
   },
   bootstrapApp: async () => ({
     workspaces: [],
@@ -730,6 +731,7 @@ export const offlineApi: DesktopApi = {
   resolveWorkspaceOpenPath: async () => null,
   onOpenWorkspaceFromCli: () => () => {},
   setWindowSurfaceColor: async () => {},
+  setWindowThemeSource: async () => {},
   browserNavigate: async () => {},
   browserUpdateHtml: async () => false,
   browserOpenHtml: async () => {

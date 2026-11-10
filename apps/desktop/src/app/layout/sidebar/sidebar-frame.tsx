@@ -27,7 +27,7 @@ export function ResizableSidebarSlot({
 
   return (
     <>
-      <div className="shrink-0" style={{ width }}>
+      <div className="shrink-0" data-window-sidebar="" style={{ width }}>
         {children}
       </div>
       <ResizeSeparator

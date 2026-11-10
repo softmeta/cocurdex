@@ -1,8 +1,8 @@
 import { Minus, Monitor, Moon, Plus, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SettingRow, SettingsGroup } from "@/components/app";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui";
-import { useResolvedTheme } from "@/lib";
+import { Switch, ToggleGroup, ToggleGroupItem } from "@/components/ui";
+import { desktopApi, useResolvedTheme } from "@/lib";
 import {
   type AppearanceFontOption,
   fallbackCodeFontOptions,
@@ -246,6 +246,21 @@ export function AppearancePanel({
             value={appearanceSettings.themePreset}
           />
         </SettingRow>
+        {desktopApi.capabilities.windowMaterial ? (
+          <SettingRow
+            searchId="appearance.translucentSidebar"
+            description={t("appearance.translucentSidebar.description")}
+            title={t("appearance.translucentSidebar.title")}
+          >
+            <Switch
+              aria-label={t("appearance.translucentSidebar.title")}
+              checked={appearanceSettings.translucentSidebar}
+              onCheckedChange={(translucentSidebar) =>
+                updateAppearanceSettings({ translucentSidebar })
+              }
+            />
+          </SettingRow>
+        ) : null}
       </SettingsGroup>
 
       <SettingsGroup title={t("appearance.typography.groupTitle")}>

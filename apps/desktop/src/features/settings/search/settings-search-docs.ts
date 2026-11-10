@@ -1,6 +1,7 @@
 import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
 import { i18n } from "@/i18n";
 import { supportedLocales } from "@/i18n/language";
+import { desktopApi } from "@/lib";
 import type { SettingsSectionItem } from "../settings-sections";
 import {
   normalizeSettingsSearchText,
@@ -57,6 +58,7 @@ export function buildSettingsSearchCorpus(
   for (const entry of settingsSearchEntries) {
     const section = sectionById.get(entry.section);
     if (!section) continue;
+    if (entry.requires && !desktopApi.capabilities[entry.requires]) continue;
     docs.push({
       id: entry.id,
       section: entry.section,
