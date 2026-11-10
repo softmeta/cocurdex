@@ -91,6 +91,10 @@ function buildEditorChromeColors(isDark: boolean): Record<string, string> {
       "--editor-monaco-sticky",
       fallback.background,
     ),
+    "minimap.background": getEditorThemeColor(
+      "--editor-monaco-minimap",
+      fallback.background,
+    ),
     "editorGutter.background": getEditorThemeColor(
       "--editor-monaco-gutter",
       fallback.gutter,
