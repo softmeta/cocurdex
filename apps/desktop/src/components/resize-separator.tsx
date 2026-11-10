@@ -41,7 +41,7 @@ export function ResizeSeparator({
         role="separator"
         onMouseDown={onMouseDown}
       >
-        <div className="mx-auto h-full w-px bg-chrome-separator transition-[width,background-color] duration-150 group-hover:w-[3px] group-hover:bg-chrome-separator-hover" />
+        <div className="mx-auto h-full w-px bg-chrome-separator transition-colors duration-150 group-hover:bg-chrome-separator-hover" />
       </div>
     </div>
   );
