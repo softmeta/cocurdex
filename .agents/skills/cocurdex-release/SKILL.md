@@ -111,6 +111,20 @@ first and refuses a tag that already exists.
    Android, then publishes; expect about 15 minutes. Success is `isDraft: false` with the platform
    artifacts, the APKs, `latest*.yml`, and `mac-update-*.json`. A beta publishes as a prerelease.
 
+## Scheduled beta
+
+`scheduled-beta.yml` runs daily at 19:00 UTC (04:00 UTC+9) and runs
+`release.mjs tag beta --if-pending`: it cuts the next app beta only when the `origin/main` tip has a
+completed, green `ci.yml` push run and a shipped app file changed since the last app tag; otherwise
+it logs why and stops. It pushes the tag with the `RELEASE_TAG_DEPLOY_KEY` deploy key from the
+`release` environment, which the "Protect release tags" ruleset lets bypass, so the tag push starts
+`release.yml` like a hand-pushed tag. Run it now with
+`gh workflow run scheduled-beta.yml [-f dry_run=true]`.
+
+It cannot run the iOS flows from step 3, so a scheduled beta carrying `apps/mobile/` changes ships
+to TestFlight on Android CI coverage alone. Before promoting such a beta, run the iOS flows on its
+commit; when they fail, fix on `main` and let the next beta pick it up.
+
 ## Pitfalls
 
 - **The tagged commit must be on `origin/main`.** The `Validate release tag` job rejects a tag on

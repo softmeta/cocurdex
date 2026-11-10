@@ -1,0 +1,70 @@
+name: Scheduled beta
+
+on:
+  schedule:
+    - cron: "0 19 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print the tag without pushing it
+        type: boolean
+        default: false
+
+concurrency:
+  group: scheduled-beta
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  tag:
+    name: Tag the next app beta
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          fetch-depth: 0
+          ssh-key: ${{ secrets.RELEASE_TAG_DEPLOY_KEY }}
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+
+      - name: Require green CI on the main tip
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin main
+          sha="$(git rev-parse origin/main)"
+          result="$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow ci.yml \
+            --branch main --event push --commit "${sha}" --limit 1 \
+            --json status,conclusion --jq '.[0] | "\(.status) \(.conclusion)"')"
+          echo "CI on ${sha:0:7}: ${result:-no run}"
+          if [[ "${result}" == "completed success" ]]; then
+            echo "green=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "::notice::Skipping the beta: CI on main ${sha:0:7} is '${result:-no run}', not a completed success"
+            echo "green=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Tag the beta when app changes are pending
+        if: steps.ci.outputs.green == 'true'
+        env:
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+          args=(tag beta --if-pending)
+          if [[ "${DRY_RUN}" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+          node scripts/release.mjs "${args[@]}"

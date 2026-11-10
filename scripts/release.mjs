@@ -136,10 +136,29 @@ function pushTag(tag, commit, { dryRun }) {
   );
 }
 
-function runTag(channel, kind, { dryRun }) {
+function pendingAppChanges(tag) {
+  const app = RELEASE_LINES.find((line) => line.name === "app");
+  return changesSince(tag)
+    .map((change) => ({ ...change, files: lineFiles(app, change.files) }))
+    .filter((change) => change.files.length > 0);
+}
+
+function runTag(channel, kind, { dryRun, ifPending }) {
   fetchOrigin();
   const latest = latestAppTag();
   const commit = git(["rev-parse", "origin/main"]);
+  if (ifPending) {
+    const pending = pendingAppChanges(latest.tag);
+    if (pending.length === 0) {
+      console.log(`No app changes since ${latest.tag}; nothing to release`);
+      return;
+    }
+    for (const change of pending) {
+      const signals = fileSignals(change.files);
+      const flags = signals.length > 0 ? ` [${signals.join(", ")}]` : "";
+      console.log(`  - ${describeChange(change)}${flags}`);
+    }
+  }
   if (git(["rev-parse", `${latest.tag}^{commit}`]) === commit) {
     throw new Error(
       `${latest.tag} already points at the origin/main tip; nothing new to release`,
@@ -331,13 +350,21 @@ Commands:
                          (used by the Release workflow).
 
 Options:
-  --dry-run              Print the tag and commit; tag and push nothing.`);
+  --dry-run              Print the tag and commit; tag and push nothing.
+  --if-pending           With tag: exit quietly when no shipped app file
+                         changed since the last app tag (scheduled betas).`);
 }
 
 function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
-  const [command, ...rest] = args.filter((a) => a !== "--dry-run");
+  const ifPending = args.includes("--if-pending");
+  const [command, ...rest] = args.filter(
+    (a) => a !== "--dry-run" && a !== "--if-pending",
+  );
+  if (ifPending && command !== "tag") {
+    throw new Error("--if-pending applies only to tag");
+  }
   if (!command || command === "--help" || command === "-h") {
     printHelp();
     return;
@@ -351,7 +378,7 @@ function main() {
     ) {
       throw new Error(`Usage: tag <beta|stable> [${LINE_KINDS.join("|")}]`);
     }
-    runTag(channel, kind, { dryRun });
+    runTag(channel, kind, { dryRun, ifPending });
     return;
   }
   if (command === "stamp" && rest.length === 1) {
