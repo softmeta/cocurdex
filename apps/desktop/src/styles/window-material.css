@@ -22,7 +22,7 @@
   :root[data-window-material][data-theme="light"] {
     --content-plane-base: color-mix(
       in srgb,
-      var(--foreground) 2%,
+      var(--foreground) 1%,
       var(--chat-canvas)
     );
   }
@@ -73,7 +73,40 @@
     );
   }
 
+  :root[data-window-material][data-theme="dark"] [data-window-content] {
+    --color-settings-surface: color-mix(
+      in srgb,
+      var(--foreground) 4%,
+      transparent
+    );
+    --color-settings-surface-hover: color-mix(
+      in srgb,
+      var(--foreground) 8%,
+      transparent
+    );
+    --color-settings-surface-active: color-mix(
+      in srgb,
+      var(--foreground) 12%,
+      transparent
+    );
+  }
+
   :root[data-window-material][data-theme="light"] [data-window-content] {
+    --color-settings-surface: color-mix(
+      in srgb,
+      var(--foreground) 2%,
+      transparent
+    );
+    --color-settings-surface-hover: color-mix(
+      in srgb,
+      var(--foreground) 5%,
+      transparent
+    );
+    --color-settings-surface-active: color-mix(
+      in srgb,
+      var(--foreground) 8%,
+      transparent
+    );
     --color-chat-code-inline: color-mix(
       in srgb,
       var(--foreground) 2.5%,

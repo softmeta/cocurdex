@@ -355,7 +355,10 @@ export function SettingsScreen({
         </ResizableSidebarSlot>
       ) : null}
 
-      <section className="min-w-0 flex-1 overflow-hidden bg-app">
+      <section
+        className="min-w-0 flex-1 overflow-hidden bg-app"
+        data-window-content=""
+      >
         <header
           className={cn(
             "app-drag flex h-8 min-w-0 shrink-0 items-center border-b pe-4 transition-colors",
