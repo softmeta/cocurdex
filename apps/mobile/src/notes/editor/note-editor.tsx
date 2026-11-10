@@ -109,6 +109,7 @@ export function NoteEditor({
   body,
   title,
   meta,
+  links = null,
   titlePlaceholder,
   bodyPlaceholder,
   focusTitle,
@@ -119,12 +120,14 @@ export function NoteEditor({
   ref,
   onTitle,
   onProperties,
+  onLinks,
   onFocusChange,
 }: {
   hostId: string;
   body: NoteEditorBody;
   title: string;
   meta: string | null;
+  links?: string | null;
   titlePlaceholder?: string;
   bodyPlaceholder?: string;
   focusTitle: boolean;
@@ -135,6 +138,7 @@ export function NoteEditor({
   ref?: Ref<NoteEditorHandle>;
   onTitle(title: string): void;
   onProperties?(): void;
+  onLinks?(): void;
   onFocusChange?(focused: boolean): void;
 }) {
   const { t } = useTranslation("notes");
@@ -147,6 +151,7 @@ export function NoteEditor({
   const openSheet = useOptionSheet();
   const webView = useRef<EditorWebView | null>(null);
   const sentMeta = useRef(meta);
+  const sentLinks = useRef(links);
   const sentEditable = useRef(editable);
   const textScale = useTextScale();
   const theme = editorTheme(colors, textScale);
@@ -172,6 +177,11 @@ export function NoteEditor({
   if (sentEditable.current !== editable) {
     sentEditable.current = editable;
     send({ type: "editable", editable });
+  }
+
+  if (sentLinks.current !== links) {
+    sentLinks.current = links;
+    send({ type: "links", links });
   }
 
   if (meta !== null && sentMeta.current !== meta) {
@@ -242,6 +252,7 @@ export function NoteEditor({
           content: initialContent(body),
           title,
           meta: sentMeta.current,
+          links: sentLinks.current,
           titlePlaceholder: titlePlaceholder ?? t("editor.titlePlaceholder"),
           bodyPlaceholder: bodyPlaceholder ?? t("editor.bodyPlaceholder"),
           theme,
@@ -279,6 +290,10 @@ export function NoteEditor({
         return;
       case "properties":
         onProperties?.();
+        return;
+      case "links":
+        run({ name: "blur" });
+        onLinks?.();
         return;
       case "openLink":
         openLink(message.href);

@@ -1,4 +1,1 @@
-export {
-  LinkedEntitiesSection,
-  useLinkedEntityRows,
-} from "./linked-entities";
+export { useLinkedEntitiesSheet } from "./linked-entities";

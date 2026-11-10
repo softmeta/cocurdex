@@ -9,7 +9,7 @@ import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useTranslation } from "react-i18next";
 import { Alert, StyleSheet, Text, View } from "react-native";
-import { LinkedEntitiesSection } from "@/entity-links";
+import { useLinkedEntitiesSheet } from "@/entity-links";
 import { MarkdownText } from "@/markdown";
 import { space, useGroupedColors, useThemeColors } from "@/theme";
 import {
@@ -86,6 +86,11 @@ function IssueFields({
     (id) => view?.labels.find((label) => label.id === id)?.name ?? [],
   );
   const labelText = labels.length > 0 ? labels.join(", ") : t("field.none");
+  const links = useLinkedEntitiesSheet(
+    host.hostId,
+    { kind: "issue", id: issue.id },
+    isShownAsIssueStructure,
+  );
   return (
     <View style={styles.fields}>
       {DETAIL_FIELDS.map(fields.chip)}
@@ -110,6 +115,24 @@ function IssueFields({
           })
         }
       />
+      {links.label ? (
+        <PropertyChip
+          testID="issue-field-links"
+          label={links.label}
+          unset={false}
+          disabled={false}
+          color={grouped.cell}
+          accessibilityLabel={links.label}
+          leading={
+            <SymbolView
+              name={{ ios: "link", android: "link" }}
+              size={16}
+              tintColor={colors.mutedForeground}
+            />
+          }
+          onPress={links.open}
+        />
+      ) : null}
       {fields.menu}
     </View>
   );
@@ -259,11 +282,6 @@ export function IssueScreen({
             ))}
           </FormSection>
         ) : null}
-        <LinkedEntitiesSection
-          hostId={host.hostId}
-          entity={{ kind: "issue", id: issue.id }}
-          hideLink={isShownAsIssueStructure}
-        />
       </Form>
     </>
   );

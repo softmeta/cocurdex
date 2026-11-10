@@ -6,7 +6,7 @@ import type {
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { entityLinkHref } from "@/markdown";
-import { FormRow, FormSection } from "@/ui";
+import { useOptionSheet } from "@/ui";
 import { useEntityLinks } from "./entity-links-queries";
 
 function linkKey(link: EntityLink) {
@@ -30,7 +30,7 @@ function useRelationLabels(): Record<EntityLinkRelation, string> {
   };
 }
 
-export function useLinkedEntityRows(
+function useLinkedEntityRows(
   hostId: string,
   entity: EntityRef,
   hideLink?: (link: EntityLink) => boolean,
@@ -55,30 +55,29 @@ export function useLinkedEntityRows(
     });
 }
 
-export function LinkedEntitiesSection({
-  hostId,
-  entity,
-  hideLink,
-}: {
-  hostId: string;
-  entity: EntityRef;
-  hideLink?: (link: EntityLink) => boolean;
-}) {
+export function useLinkedEntitiesSheet(
+  hostId: string,
+  entity: EntityRef,
+  hideLink?: (link: EntityLink) => boolean,
+) {
   const { t } = useTranslation("common");
+  const openSheet = useOptionSheet();
   const rows = useLinkedEntityRows(hostId, entity, hideLink);
-  if (rows.length === 0) return null;
-  return (
-    <FormSection title={t("links.title")}>
-      {rows.map((row) => (
-        <FormRow
-          key={row.key}
-          testID={row.testID}
-          onPress={row.onPress}
-          supporting={row.detail}
-        >
-          {row.title}
-        </FormRow>
-      ))}
-    </FormSection>
-  );
+  const open = () =>
+    openSheet({
+      title: t("links.title"),
+      items: rows.map((row) => ({
+        key: row.key,
+        label: row.title,
+        supporting: row.detail,
+        testID: row.testID,
+        opensPage: row.onPress !== undefined,
+        onPress: () => row.onPress?.(),
+      })),
+    });
+  return {
+    count: rows.length,
+    label: rows.length > 0 ? t("links.count", { count: rows.length }) : null,
+    open,
+  };
 }

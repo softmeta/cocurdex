@@ -48,6 +48,7 @@ function element<T extends HTMLElement>(id: string) {
 
 const titleField = element<HTMLTextAreaElement>("title");
 const metaButton = element<HTMLButtonElement>("meta");
+const linksButton = element<HTMLButtonElement>("links");
 const bodyHost = element<HTMLDivElement>("body");
 
 let doc: Y.Doc | null = null;
@@ -238,6 +239,15 @@ function postMarkdownNextFrame() {
   });
 }
 
+const LINK_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+
+function showLinks(label: string | null) {
+  linksButton.hidden = label === null;
+  linksButton.innerHTML = LINK_ICON;
+  if (label !== null) linksButton.append(label);
+}
+
 function start(message: Extract<NoteEditorInbound, { type: "init" }>) {
   applyTheme(message.theme);
   titleField.value = message.title;
@@ -246,6 +256,7 @@ function start(message: Extract<NoteEditorInbound, { type: "init" }>) {
   metaButton.textContent = message.meta;
   titleField.readOnly = !message.editable;
   metaButton.disabled = !message.interactive;
+  showLinks(message.links);
   fitTitle();
   const { content } = message;
   const collaborative = content.kind === "doc";
@@ -311,6 +322,7 @@ titleField.addEventListener("keydown", (event) => {
 titleField.addEventListener("focus", reportFocusSoon);
 titleField.addEventListener("blur", reportFocusSoon);
 metaButton.addEventListener("click", () => post({ type: "properties" }));
+linksButton.addEventListener("click", () => post({ type: "links" }));
 document.addEventListener(
   "click",
   (event) => {
@@ -365,6 +377,8 @@ window.noteEditor = {
     } else if (message.type === "meta") {
       metaButton.textContent = message.meta;
       metaButton.hidden = false;
+    } else if (message.type === "links") {
+      showLinks(message.links);
     } else if (message.type === "editable") {
       setEditable(message.editable);
     } else if (message.type === "theme") {

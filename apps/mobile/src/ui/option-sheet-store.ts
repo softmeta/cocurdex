@@ -8,6 +8,7 @@ export interface OptionSheetItem {
   leading?: ReactElement;
   destructive?: boolean;
   selected?: boolean;
+  opensPage?: boolean;
   testID?: string;
   onPress(): void;
 }

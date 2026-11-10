@@ -59,6 +59,7 @@ export type NoteEditorInbound =
       content: NoteEditorContent;
       title: string;
       meta: string | null;
+      links: string | null;
       titlePlaceholder: string;
       bodyPlaceholder: string;
       theme: NoteEditorTheme;
@@ -70,6 +71,7 @@ export type NoteEditorInbound =
   | { type: "remote"; update: string }
   | { type: "title"; title: string }
   | { type: "meta"; meta: string }
+  | { type: "links"; links: string | null }
   | { type: "theme"; theme: NoteEditorTheme }
   | { type: "highlighted"; id: number; tokens: NoteCodeToken[] }
   | { type: "command"; command: NoteEditorCommand };
@@ -83,6 +85,7 @@ export type NoteEditorOutbound =
   | { type: "format"; format: NoteEditorFormatState }
   | { type: "slash" }
   | { type: "properties" }
+  | { type: "links" }
   | { type: "openLink"; href: string }
   | { type: "openImage"; src: string; alt: string }
   | { type: "highlight"; requests: NoteCodeRequest[] };
@@ -96,6 +99,7 @@ const OUTBOUND_TYPES = new Set<NoteEditorOutbound["type"]>([
   "format",
   "slash",
   "properties",
+  "links",
   "openLink",
   "openImage",
   "highlight",

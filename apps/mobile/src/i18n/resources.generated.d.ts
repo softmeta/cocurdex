@@ -117,6 +117,8 @@ export default interface Resources {
       yesterday: "Yesterday";
     };
     links: {
+      count_one: "{{count}} linked";
+      count_other: "{{count}} linked";
       relation: {
         "blocked-by": "Blocked by";
         blocks: "Blocks";
