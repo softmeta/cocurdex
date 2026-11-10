@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "allowJs": true,
+    "checkJs": false,
+    "paths": {
+      "@scripts/*": ["../../../scripts/*"]
+    }
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}
