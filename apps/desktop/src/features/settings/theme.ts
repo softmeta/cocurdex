@@ -49,9 +49,9 @@ export const UI_FONT_SIZE_MAX = 16;
 export const CODE_FONT_SIZE_MIN = 11;
 export const CODE_FONT_SIZE_MAX = 18;
 export const SIDEBAR_TRANSPARENCY_MIN = 0;
-export const SIDEBAR_TRANSPARENCY_MAX = 75;
+export const SIDEBAR_TRANSPARENCY_MAX = 100;
 export const CONTENT_TRANSPARENCY_MIN = 0;
-export const CONTENT_TRANSPARENCY_MAX = 25;
+export const CONTENT_TRANSPARENCY_MAX = 100;
 
 export function isThemeMode(value: string | null): value is ThemeMode {
   return value === "light" || value === "dark" || value === "system";

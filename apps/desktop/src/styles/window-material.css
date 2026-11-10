@@ -31,6 +31,7 @@
     --editor-monaco-bg: transparent;
     --editor-monaco-gutter: transparent;
     --editor-monaco-sticky: var(--content-plane-base);
+    --editor-monaco-minimap: var(--content-plane-base);
     --editor-terminal-bg: transparent;
   }
 

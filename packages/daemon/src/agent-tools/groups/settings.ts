@@ -160,7 +160,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
     tier: "write",
     storage: "renderer",
     description:
-      "Appearance settings: themePreset (named color preset id such as 'default'), uiFontFamily and codeFontFamily (empty string = system default), uiFontSize (12-16), codeFontSize (11-18), translucentSidebar (optional, default true), sidebarTransparency (optional integer 0-75, default 12) and contentTransparency (optional integer 0-25, default 10) apply only on desktop hosts with a window material.",
+      "Appearance settings: themePreset (named color preset id such as 'default'), uiFontFamily and codeFontFamily (empty string = system default), uiFontSize (12-16), codeFontSize (11-18), translucentSidebar (optional, default true), sidebarTransparency (optional integer 0-100, default 12) and contentTransparency (optional integer 0-100, default 10) apply only on desktop hosts with a window material.",
     valueSchema: {
       type: "object",
       properties: {
@@ -170,8 +170,8 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
         uiFontSize: { type: "number" },
         codeFontSize: { type: "number" },
         translucentSidebar: { type: "boolean" },
-        sidebarTransparency: { type: "integer", minimum: 0, maximum: 75 },
-        contentTransparency: { type: "integer", minimum: 0, maximum: 25 },
+        sidebarTransparency: { type: "integer", minimum: 0, maximum: 100 },
+        contentTransparency: { type: "integer", minimum: 0, maximum: 100 },
       },
       required: [
         "themePreset",
@@ -207,8 +207,8 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
         );
       }
       for (const [field, max] of [
-        ["sidebarTransparency", 75],
-        ["contentTransparency", 25],
+        ["sidebarTransparency", 100],
+        ["contentTransparency", 100],
       ] as const) {
         const transparency = record[field];
         if (
