@@ -58,6 +58,12 @@
       z-index: -1;
       background-color: var(--window-sticky-surface);
     }
+
+    :root[data-window-material]
+      [data-window-sidebar]
+      [data-window-sticky]::before {
+      inset-inline: -100vw;
+    }
   }
 
   :root[data-window-material] [data-window-content] {
