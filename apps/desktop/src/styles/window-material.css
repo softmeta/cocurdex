@@ -4,7 +4,7 @@
     --content-plane-base: var(--chat-canvas);
     --content-plane: color-mix(
       in srgb,
-      var(--content-plane-base) 90%,
+      var(--content-plane-base) var(--content-tint, 90%),
       transparent
     );
     --sidebar-material: color-mix(
@@ -74,7 +74,7 @@
     --color-editor-canvas: transparent;
     --color-chat-fade: color-mix(
       in srgb,
-      var(--content-plane-base) 97%,
+      var(--content-plane-base) min(100%, var(--content-tint, 90%) + 7%),
       transparent
     );
   }

@@ -205,6 +205,15 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     ),
     "windowMaterial",
   ),
+  requiring(
+    row(
+      "appearance",
+      "contentTransparency",
+      s("appearance.contentTransparency.title"),
+      s("appearance.contentTransparency.description"),
+    ),
+    "windowMaterial",
+  ),
   row(
     "appearance",
     "uiFontSize",

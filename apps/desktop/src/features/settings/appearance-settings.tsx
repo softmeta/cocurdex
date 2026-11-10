@@ -13,9 +13,12 @@ import {
 import { SettingsSearchableSelect } from "./settings-select";
 import {
   type AppearanceSettings,
+  applyContentTransparency,
   applySidebarTransparency,
   CODE_FONT_SIZE_MAX,
   CODE_FONT_SIZE_MIN,
+  CONTENT_TRANSPARENCY_MAX,
+  CONTENT_TRANSPARENCY_MIN,
   getThemePresetMeta,
   isThemePresetId,
   listThemePresets,
@@ -74,13 +77,19 @@ function Stepper({
   );
 }
 
-function SidebarTransparencySlider({
+function TransparencySlider({
   ariaLabel,
+  max,
+  min,
   onCommit,
+  onPreview,
   value,
 }: {
   ariaLabel: string;
+  max: number;
+  min: number;
   onCommit(value: number): void;
+  onPreview(value: number): void;
   value: number;
 }) {
   const [draft, setDraft] = useState<number | null>(null);
@@ -90,13 +99,13 @@ function SidebarTransparencySlider({
     <div className="flex w-48 items-center gap-3">
       <Slider<number>
         aria-label={ariaLabel}
-        max={SIDEBAR_TRANSPARENCY_MAX}
-        min={SIDEBAR_TRANSPARENCY_MIN}
+        max={max}
+        min={min}
         step={1}
         value={shown}
         onValueChange={(next) => {
           setDraft(next);
-          applySidebarTransparency(next);
+          onPreview(next);
         }}
         onValueCommitted={(next) => {
           setDraft(null);
@@ -308,11 +317,33 @@ export function AppearancePanel({
             description={t("appearance.sidebarTransparency.description")}
             title={t("appearance.sidebarTransparency.title")}
           >
-            <SidebarTransparencySlider
+            <TransparencySlider
               ariaLabel={t("appearance.sidebarTransparency.title")}
+              max={SIDEBAR_TRANSPARENCY_MAX}
+              min={SIDEBAR_TRANSPARENCY_MIN}
               value={appearanceSettings.sidebarTransparency}
+              onPreview={applySidebarTransparency}
               onCommit={(sidebarTransparency) =>
                 updateAppearanceSettings({ sidebarTransparency })
+              }
+            />
+          </SettingRow>
+        ) : null}
+        {desktopApi.capabilities.windowMaterial &&
+        appearanceSettings.translucentSidebar ? (
+          <SettingRow
+            searchId="appearance.contentTransparency"
+            description={t("appearance.contentTransparency.description")}
+            title={t("appearance.contentTransparency.title")}
+          >
+            <TransparencySlider
+              ariaLabel={t("appearance.contentTransparency.title")}
+              max={CONTENT_TRANSPARENCY_MAX}
+              min={CONTENT_TRANSPARENCY_MIN}
+              value={appearanceSettings.contentTransparency}
+              onPreview={applyContentTransparency}
+              onCommit={(contentTransparency) =>
+                updateAppearanceSettings({ contentTransparency })
               }
             />
           </SettingRow>

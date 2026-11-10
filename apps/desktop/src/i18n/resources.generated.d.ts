@@ -2496,6 +2496,10 @@ export default interface Resources {
       saveFailed: "Could not save this role.";
     };
     appearance: {
+      contentTransparency: {
+        description: "How much of the desktop shows through the main area.";
+        title: "Main area transparency";
+      };
       groupTitle: "Appearance";
       modes: {
         dark: "Dark";

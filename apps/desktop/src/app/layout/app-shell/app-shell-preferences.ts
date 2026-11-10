@@ -1,9 +1,11 @@
 import {
   APPEARANCE_SETTINGS_STORAGE_KEY,
   type AppearanceSettings,
+  applyContentTransparency,
   applySidebarTransparency,
   applyThemePreset,
   clampCodeFontSize,
+  clampContentTransparency,
   clampSidebarTransparency,
   clampUiFontSize,
   getStoredAppearanceSettings,
@@ -118,6 +120,9 @@ export function syncAppearanceSettings(appearanceSettings: AppearanceSettings) {
   const codeFontSize = clampCodeFontSize(appearanceSettings.codeFontSize);
   const normalized: AppearanceSettings = {
     ...appearanceSettings,
+    contentTransparency: clampContentTransparency(
+      appearanceSettings.contentTransparency,
+    ),
     sidebarTransparency: clampSidebarTransparency(
       appearanceSettings.sidebarTransparency,
     ),
@@ -131,6 +136,7 @@ export function syncAppearanceSettings(appearanceSettings: AppearanceSettings) {
   root.style.setProperty("--app-ui-font-size", `${uiFontSize}px`);
   root.style.setProperty("--app-code-font-size", `${codeFontSize}px`);
   applySidebarTransparency(normalized.sidebarTransparency);
+  applyContentTransparency(normalized.contentTransparency);
   root.toggleAttribute(
     "data-window-material",
     desktopApi.capabilities.windowMaterial && normalized.translucentSidebar,

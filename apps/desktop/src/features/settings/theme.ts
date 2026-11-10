@@ -25,6 +25,7 @@ export const APPEARANCE_SETTINGS_STORAGE_KEY =
 export interface AppearanceSettings {
   codeFontFamily: string;
   codeFontSize: number;
+  contentTransparency: number;
   themePreset: ThemePresetId;
   sidebarTransparency: number;
   translucentSidebar: boolean;
@@ -35,6 +36,7 @@ export interface AppearanceSettings {
 export const defaultAppearanceSettings: AppearanceSettings = {
   codeFontFamily: "",
   codeFontSize: 13,
+  contentTransparency: 10,
   themePreset: DEFAULT_THEME_PRESET_ID,
   sidebarTransparency: 12,
   translucentSidebar: true,
@@ -47,7 +49,9 @@ export const UI_FONT_SIZE_MAX = 16;
 export const CODE_FONT_SIZE_MIN = 11;
 export const CODE_FONT_SIZE_MAX = 18;
 export const SIDEBAR_TRANSPARENCY_MIN = 0;
-export const SIDEBAR_TRANSPARENCY_MAX = 50;
+export const SIDEBAR_TRANSPARENCY_MAX = 75;
+export const CONTENT_TRANSPARENCY_MIN = 0;
+export const CONTENT_TRANSPARENCY_MAX = 25;
 
 export function isThemeMode(value: string | null): value is ThemeMode {
   return value === "light" || value === "dark" || value === "system";
@@ -106,6 +110,24 @@ export function clampSidebarTransparency(value: unknown) {
   );
 }
 
+export function clampContentTransparency(value: unknown) {
+  return Math.round(
+    clampNumber(
+      value,
+      CONTENT_TRANSPARENCY_MIN,
+      CONTENT_TRANSPARENCY_MAX,
+      defaultAppearanceSettings.contentTransparency,
+    ),
+  );
+}
+
+export function applyContentTransparency(transparency: number) {
+  document.documentElement.style.setProperty(
+    "--content-tint",
+    `${100 - clampContentTransparency(transparency)}%`,
+  );
+}
+
 export function applySidebarTransparency(transparency: number) {
   document.documentElement.style.setProperty(
     "--sidebar-tint",
@@ -138,6 +160,7 @@ export function getStoredAppearanceSettings(): AppearanceSettings {
     return {
       codeFontFamily: normalizeFontFamily(parsed.codeFontFamily),
       codeFontSize: clampCodeFontSize(parsed.codeFontSize),
+      contentTransparency: clampContentTransparency(parsed.contentTransparency),
       sidebarTransparency: clampSidebarTransparency(parsed.sidebarTransparency),
       themePreset,
       translucentSidebar: parsed.translucentSidebar !== false,

@@ -13,7 +13,7 @@ export function SidebarFooter({ isAssistant }: { isAssistant: boolean }) {
   const { t } = useTranslation("sessions");
 
   return (
-    <div className="flex h-8 shrink-0 items-center gap-0.5 pe-1.25 ps-3">
+    <div className="flex h-8 shrink-0 items-center gap-0.5 pe-1.75 ps-3">
       {isAssistant ? <AppsEntryButton /> : null}
       <div className="min-w-0 flex-1" />
       {isAssistant ? <MemoryStatusButton /> : null}

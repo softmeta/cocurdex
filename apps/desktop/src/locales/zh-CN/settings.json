@@ -152,6 +152,10 @@
     "saveFailed": "无法保存这个角色。"
   },
   "appearance": {
+    "contentTransparency": {
+      "description": "主区域透出桌面的程度。",
+      "title": "主区域透明度"
+    },
     "groupTitle": "外观",
     "modes": {
       "dark": "深色",
