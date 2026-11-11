@@ -271,8 +271,7 @@ runScenario("chat-streaming", {
           ];
           check(
             headerHeights.length === 2 &&
-              headerHeights[0].split(":")[1] ===
-                headerHeights[1].split(":")[1],
+              headerHeights[0].split(":")[1] === headerHeights[1].split(":")[1],
             "turn activity header changed size when the stream ended",
             { headerHeights },
           );
