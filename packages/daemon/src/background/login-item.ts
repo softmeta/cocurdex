@@ -61,7 +61,7 @@ function launchAgent(target: LoginItemTarget): LoginItem {
     "  <key>LimitLoadToSessionType</key>",
     "  <string>Aqua</string>",
     "  <key>ProcessType</key>",
-    "  <string>Background</string>",
+    "  <string>Interactive</string>",
     "</dict>",
     "</plist>",
     "",

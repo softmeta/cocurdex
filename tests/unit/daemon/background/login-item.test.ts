@@ -57,6 +57,9 @@ describe("login item for the background daemon", () => {
     expect(item.content).toContain(`<string>${BACKGROUND_DAEMON_ARG}</string>`);
     expect(item.content).toMatch(/<key>RunAtLoad<\/key>\s*<true\/>/);
     expect(item.content).not.toContain("KeepAlive");
+    expect(item.content).toMatch(
+      /<key>ProcessType<\/key>\s*<string>Interactive<\/string>/,
+    );
     expect(item.content).not.toContain(BACKGROUND_USER_DATA_ARG);
   });
 
