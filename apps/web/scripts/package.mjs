@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
-const INLINE_SCRIPT = /<script>([\s\S]*?)<\/script>/g;
+const INLINE_SCRIPT = /<script\s*>([\s\S]*?)<\/script\s*>/gi;
 const DEFAULT_RENDERER = fileURLToPath(
   new URL("../../desktop/out/renderer", import.meta.url),
 );
