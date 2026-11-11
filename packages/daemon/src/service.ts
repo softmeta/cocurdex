@@ -26,7 +26,6 @@ import type {
   SessionConfiguration,
   SessionRecord,
   SetSessionPinnedPayload,
-  SupportedLocale,
   SyncPullInput,
   SyncPullResult,
   TurnChangeDiffRequest,
@@ -45,7 +44,6 @@ import {
   type HostPrincipal,
   isAgentEvent,
   isAgentId,
-  isAssistantSessionId,
   isChatSession,
   isChatWorkspaceId,
   isFeatureEnabled,
@@ -53,12 +51,8 @@ import {
   isPersonalSession,
   isPersonalWorkspaceId,
   isSessionRuntimeEvent,
-  isSupportedLocale,
   isToolCallId,
-  type MessageOrigin,
-  matchSupportedLocale,
   messageAgentLookup,
-  newAssistantSessionId,
   normalizeAgentRoleAvatar,
   normalizeAgentRoleDescription,
   normalizeAgentRoleName,
@@ -89,6 +83,7 @@ import { registerApplicationTools } from "./agent-tools/groups/applications";
 import { AgentCatalog } from "./agents";
 import { resolveApplicationPrincipal } from "./application-principal";
 import { ApplicationService } from "./application-service";
+import { AssistantSessions } from "./assistant/assistant-sessions";
 import { DaemonAttachmentStore } from "./attachment-store";
 import { DaemonBackgroundService } from "./background";
 import { DaemonCommitMessageService } from "./commit-message";
@@ -110,9 +105,7 @@ import {
   daemonNoiseCrypto,
   type HostKeyStore,
 } from "./host-access/host-key-store";
-import { briefMarkdown } from "./inbox/brief-text";
-import { buildBrief } from "./inbox/build-brief";
-import { buildInbox } from "./inbox/build-inbox";
+import { InboxService } from "./inbox/inbox-service";
 import { DaemonMcpService } from "./mcp-service";
 import { MemoryService } from "./memory";
 import { OutboxService, routineRunAlert } from "./outbox";
@@ -143,12 +136,10 @@ import {
 import { PushService, pushTriggerForEvent } from "./push";
 import {
   createRoutineSessions,
-  isValidTimeZone,
   ROUTINE_RUN_SECTION,
   RoutineService,
   routineRunPolicy,
   routineRunSection,
-  zonedDayStart,
 } from "./routines";
 import { SLOW_REQUEST_THRESHOLD_MS } from "./rpc-request-log";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
@@ -220,8 +211,6 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const BRIEF_POSTED_SETTING_KEY = "personal.briefPostedAt";
-const BRIEF_LOCALE_SETTING_KEY = "personal.briefLocale";
 
 export class CocurdexDaemonService {
   readonly events = new EventEmitter();
@@ -235,6 +224,8 @@ export class CocurdexDaemonService {
   readonly decks: DaemonDeckService;
   readonly personalAgents: PersonalAgentService;
   readonly routines: RoutineService;
+  readonly inbox: InboxService;
+  readonly assistant: AssistantSessions;
   private readonly outbox: OutboxService;
   readonly providerService: DaemonProviderService;
   readonly acpRegistry: AcpRegistryService;
@@ -291,6 +282,24 @@ export class CocurdexDaemonService {
     this.startedAt = options.startedAt ?? new Date().toISOString();
     this.userDataPath = options.userDataPath;
     this.state = new DaemonState(options.userDataPath);
+    this.inbox = new InboxService({
+      state: this.state,
+      runtime: {
+        getPendingInteractions: () => this.runtime.getPendingInteractions(),
+      },
+      routines: () => this.routines,
+      announceSessionsChanged: () => this.announceSessionsChanged(),
+    });
+    this.assistant = new AssistantSessions({
+      state: this.state,
+      agents: {
+        readDisabledAgentIds: () => this.agents.readDisabledAgentIds(),
+        detectAgents: () => this.agents.detectAgents(),
+      },
+      saveSessionConfiguration: (configuration) =>
+        this.saveSessionConfiguration(configuration),
+      announceSessionsChanged: () => this.announceSessionsChanged(),
+    });
     this.queuedFollowUps = new SessionFollowUpQueue(this.state);
     this.hostKeys = createHostKeyStore(options.userDataPath);
     this.hostAccess = new HostAccessService({
@@ -363,7 +372,9 @@ export class CocurdexDaemonService {
         );
       },
       greet: async (sessionId, content) => {
-        await this.postToSession(sessionId, content, { kind: "greeting" });
+        await this.inbox.postToSession(sessionId, content, {
+          kind: "greeting",
+        });
       },
       removeDependents: async (agentId) => {
         this.delegations.forgetPersona(agentId);
@@ -392,13 +403,15 @@ export class CocurdexDaemonService {
       ensureSession: routineSessions.ensureSession,
       runTurn: routineSessions.runTurn,
       deliverResult: (routine, run, content) =>
-        this.postToHomeThread(routine.agentId, content, {
-          kind: "routine",
-          routineId: routine.id,
-          routineName: routine.name,
-          runId: run.id,
-          ...(run.sessionId ? { sessionId: run.sessionId } : {}),
-        }).then(() => undefined),
+        this.inbox
+          .postToHomeThread(routine.agentId, content, {
+            kind: "routine",
+            routineId: routine.id,
+            routineName: routine.name,
+            runId: run.id,
+            ...(run.sessionId ? { sessionId: run.sessionId } : {}),
+          })
+          .then(() => undefined),
       alertRun: (run) => this.alertRoutineRun(run),
       announceChanged: () =>
         this.events.emit("daemon.event", {
@@ -1061,129 +1074,6 @@ export class CocurdexDaemonService {
     return this.state.sessionAttention.update(payload);
   }
 
-  async listInbox() {
-    const pending = this.runtime.getPendingInteractions();
-    return buildInbox({
-      sessions: await this.state.listSessions(),
-      delegatedSessionIds: new Set(
-        this.state.data.delegations.list().map((row) => row.workSessionId),
-      ),
-      attention: await this.state.sessionAttention.list(),
-      pending: {
-        permissions: pending.permissions.map((request) => ({
-          sessionId: request.sessionId,
-          detail: request.title,
-          createdAt: request.createdAt,
-        })),
-        questions: pending.questions.map((question) => ({
-          sessionId: question.sessionId,
-          detail: question.question,
-          createdAt: question.createdAt,
-        })),
-        planApprovals: pending.planApprovals.map((approval) => ({
-          sessionId: approval.sessionId,
-          detail: null,
-          createdAt: approval.createdAt,
-        })),
-      },
-      routines: this.routines.list(),
-      latestRuns: this.routines.latestRuns(),
-    });
-  }
-
-  async getBrief(timeZone?: string | null) {
-    const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (!isValidTimeZone(zone)) throw new Error(`Unknown time zone: ${zone}`);
-    const { day, start } = zonedDayStart(new Date(), zone);
-    return buildBrief({
-      day,
-      timeZone: zone,
-      inbox: await this.listInbox(),
-      routines: this.routines.list(),
-      runsToday: this.routines.runsFinishedSince(start.toISOString()),
-    });
-  }
-
-  async postBrief(payload: {
-    timeZone?: string | null;
-    locale?: SupportedLocale | null;
-  }) {
-    const brief = await this.getBrief(payload.timeZone);
-    const locale = await this.briefLocale(payload.locale ?? null);
-    if (!brief) return null;
-    const posted = await this.state.getAppSetting(BRIEF_POSTED_SETTING_KEY);
-    if (posted && JSON.parse(posted) >= brief.updatedAt) return null;
-    const message = await this.postToHomeThread(
-      null,
-      briefMarkdown(brief, locale),
-      { kind: "brief", day: brief.day },
-    );
-    if (message) {
-      await this.state.setAppSetting(
-        BRIEF_POSTED_SETTING_KEY,
-        JSON.stringify(brief.updatedAt),
-      );
-    }
-    return message;
-  }
-
-  private async briefLocale(requested: SupportedLocale | null) {
-    if (requested) {
-      await this.state.setAppSetting(
-        BRIEF_LOCALE_SETTING_KEY,
-        JSON.stringify(requested),
-      );
-      return requested;
-    }
-    const stored = await this.state.getAppSetting(BRIEF_LOCALE_SETTING_KEY);
-    const parsed = stored ? (JSON.parse(stored) as string) : null;
-    if (isSupportedLocale(parsed)) return parsed;
-    return matchSupportedLocale([
-      Intl.DateTimeFormat().resolvedOptions().locale,
-    ]);
-  }
-
-  private async postToHomeThread(
-    agentId: string | null,
-    content: string,
-    origin: MessageOrigin,
-  ) {
-    const persona = agentId
-      ? this.state.data.personalAgents.getById(agentId)
-      : this.state.data.personalAgents.getDefault();
-    if (!persona) return null;
-    return this.postToSession(persona.homeSessionId, content, origin);
-  }
-
-  private async postToSession(
-    sessionId: string,
-    content: string,
-    origin: MessageOrigin,
-  ) {
-    const message = await this.state.appendMessage({
-      id: crypto.randomUUID(),
-      sessionId,
-      role: "assistant",
-      kind: "response",
-      content,
-      attachments: [],
-      createdAt: new Date().toISOString(),
-      origin,
-    });
-    this.announceSessionsChanged();
-    return message;
-  }
-
-  async readInboxItem(id: string) {
-    const item = (await this.listInbox()).find((entry) => entry.id === id);
-    if (!item?.sessionId) return;
-    await this.state.sessionAttention.update({
-      sessionId: item.sessionId,
-      action: "visited",
-      at: new Date().toISOString(),
-    });
-  }
-
   private async reconcileWorkspaceChanges() {
     try {
       const workspaces = await this.state.listWorkspaces();
@@ -1196,118 +1086,6 @@ export class CocurdexDaemonService {
       });
     }
     await this.state.maintainStorage();
-  }
-
-  async getOrCreateAssistantSession(input: { workspaceId: string }) {
-    const existing = await this.mostRecentAssistantSession(input.workspaceId);
-    if (!existing) {
-      return this.createAssistantSession(input.workspaceId);
-    }
-    const snapshotSource = await this.assistantSnapshotSource(
-      input.workspaceId,
-      existing.agentType,
-    );
-    if (!existing.providerSnapshot && snapshotSource) {
-      const updated: SessionRecord = {
-        ...existing,
-        providerSnapshot: snapshotSource,
-        updatedAt: new Date().toISOString(),
-      };
-      await this.state.saveSession(updated);
-      this.events.emit("daemon.event", {
-        type: "data.changed",
-        areas: ["agent"],
-      });
-      return updated;
-    }
-    return existing;
-  }
-
-  async createAssistantSession(workspaceId: string) {
-    const agentType =
-      (await this.mostRecentAssistantSession(workspaceId))?.agentType ??
-      (await this.recentSessionAgentType(workspaceId)) ??
-      (await this.defaultAssistantAgentId());
-    return this.saveSessionConfiguration({
-      id: newAssistantSessionId(),
-      workspaceId,
-      title: "Assistant",
-      agentType,
-      writeMode: "read-only",
-      sessionModeId: null,
-      permissionMode: undefined,
-      agentRoleId: null,
-      providerSnapshot: await this.assistantSnapshotSource(
-        workspaceId,
-        agentType,
-      ),
-      worktreePath: null,
-      peerInbound: "refuse",
-    });
-  }
-
-  private async mostRecentAssistantSession(
-    workspaceId: string,
-  ): Promise<SessionRecord | null> {
-    const workspace = (await this.state.listWorkspaces()).find(
-      (candidate) => candidate.id === workspaceId,
-    );
-    if (!workspace) {
-      throw new Error(`Workspace ${workspaceId} not found`);
-    }
-    const [sessions, disabledIds] = await Promise.all([
-      this.state.listSessions(),
-      this.agents.readDisabledAgentIds(),
-    ]);
-    return (
-      sessions.find(
-        (session) =>
-          session.workspaceId === workspaceId &&
-          isAssistantSessionId(session.id) &&
-          !disabledIds.has(session.agentType),
-      ) ?? null
-    );
-  }
-
-  private async recentSessionAgentType(
-    workspaceId: string,
-  ): Promise<AgentId | null> {
-    const [sessions, disabledIds] = await Promise.all([
-      this.state.listSessions(),
-      this.agents.readDisabledAgentIds(),
-    ]);
-    return (
-      sessions.find(
-        (session) =>
-          session.workspaceId === workspaceId &&
-          !disabledIds.has(session.agentType),
-      )?.agentType ?? null
-    );
-  }
-
-  private async assistantSnapshotSource(
-    workspaceId: string,
-    agentType: AgentId,
-  ) {
-    const sessions = await this.state.listSessions();
-    return (
-      sessions.find(
-        (session) =>
-          session.workspaceId === workspaceId &&
-          session.agentType === agentType &&
-          session.providerSnapshot,
-      )?.providerSnapshot ?? null
-    );
-  }
-
-  private async defaultAssistantAgentId(): Promise<AgentId> {
-    const agent = (await this.agents.detectAgents()).find(
-      (item) => item.enabled !== false && item.availability === "available",
-    );
-    if (!agent) {
-      throw new Error("No agent is available on this machine.");
-    }
-    return agent.id;
   }
 
   listSessions() {

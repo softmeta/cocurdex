@@ -167,9 +167,9 @@ export async function handleSessionRequest(
     case "session.getToolCallResult":
       return service.getToolCallResult(request.params);
     case "assistant.session.create":
-      return service.createAssistantSession(request.params.workspaceId);
+      return service.assistant.create(request.params.workspaceId);
     case "assistant.session.getOrCreate":
-      return service.getOrCreateAssistantSession(request.params);
+      return service.assistant.getOrCreate(request.params);
     case "attention.list":
       return service.listSessionAttention();
     case "attention.update":

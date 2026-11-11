@@ -169,13 +169,13 @@ export async function handleAutomationRequest(
     case "personalAgent.work.stop":
       return service.delegations.stop(request.params);
     case "inbox.list":
-      return service.listInbox();
+      return service.inbox.list();
     case "inbox.brief":
-      return service.getBrief(request.params.timeZone);
+      return service.inbox.getBrief(request.params.timeZone);
     case "inbox.postBrief":
-      return service.postBrief(request.params);
+      return service.inbox.postBrief(request.params);
     case "inbox.read":
-      await service.readInboxItem(request.params.id);
+      await service.inbox.readItem(request.params.id);
       return null;
     case "routine.list":
       return service.routines.list(request.params.agentId);
