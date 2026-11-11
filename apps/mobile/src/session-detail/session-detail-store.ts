@@ -1,15 +1,15 @@
 import type { HostConnection } from "@cocurdex/client-runtime";
+import {
+  keepOlderPages,
+  prependTranscriptPage,
+  STREAM_RENDER_BATCH_MS,
+} from "@cocurdex/client-runtime";
 import type {
   AgentMessageDeltaEvent,
   AgentToolCallRecord,
   CocurdexDaemonEvent,
   MessageRecord,
   SessionObservationSnapshot,
-} from "@cocurdex/shared";
-import {
-  keepOlderPages,
-  prependTranscriptPage,
-  STREAM_RENDER_BATCH_MS,
 } from "@cocurdex/shared";
 
 export type SessionDetailConnection = Pick<

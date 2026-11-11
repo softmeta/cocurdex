@@ -1,4 +1,4 @@
-import type { FilePathCandidate } from "@cocurdex/shared";
+import type { FilePathCandidate } from "@cocurdex/client-runtime";
 import {
   isValidElement,
   type KeyboardEvent,

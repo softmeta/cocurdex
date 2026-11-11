@@ -1,8 +1,5 @@
-import {
-  type AgentEvent,
-  type MessageRecord,
-  STREAM_RENDER_BATCH_MS,
-} from "@cocurdex/shared";
+import { STREAM_RENDER_BATCH_MS } from "@cocurdex/client-runtime";
+import type { AgentEvent, MessageRecord } from "@cocurdex/shared";
 import { createStore } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {

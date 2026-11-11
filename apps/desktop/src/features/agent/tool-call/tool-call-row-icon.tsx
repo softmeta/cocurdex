@@ -1,5 +1,8 @@
+import {
+  type ActivityAction,
+  getActivityAction,
+} from "@cocurdex/client-runtime";
 import type { AgentToolCallRecord } from "@cocurdex/shared";
-import { type ActivityAction, getActivityAction } from "@cocurdex/shared";
 import {
   Bot,
   FilePen,

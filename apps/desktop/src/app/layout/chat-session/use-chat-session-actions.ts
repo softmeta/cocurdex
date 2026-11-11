@@ -1,13 +1,11 @@
+import { generateLocalSessionTitle } from "@cocurdex/client-runtime";
 import type {
   AgentThinkingLevel,
   MessageAttachment,
   MessageRecord,
   SessionRecord,
 } from "@cocurdex/shared";
-import {
-  generateLocalSessionTitle,
-  sessionConfiguration,
-} from "@cocurdex/shared";
+import { sessionConfiguration } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import { appendMessageAtom } from "@/features/agent";

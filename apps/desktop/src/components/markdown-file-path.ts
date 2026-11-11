@@ -3,7 +3,7 @@ import {
   parseFilePathCandidate,
   parseLocalFileHref,
   scanFilePathCandidates,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 import type { ReactNode } from "react";
 
 export interface ResolvedFilePath {

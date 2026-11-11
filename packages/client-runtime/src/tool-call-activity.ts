@@ -1,4 +1,4 @@
-import type { AgentToolCallRecord } from "./contracts";
+import type { AgentToolCallRecord } from "@cocurdex/shared";
 
 export type ActivityAction =
   | "command"

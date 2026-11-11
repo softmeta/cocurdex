@@ -1,14 +1,16 @@
 import {
+  normalizeSessionListView,
+  type SessionListView,
+} from "@cocurdex/client-runtime";
+import {
   buildSessionSections,
   sessionRowStatus,
 } from "@cocurdex/mobile/internal/sessions/session-sections";
-import {
-  normalizeSessionListView,
-  type SessionAttentionSnapshot,
-  type SessionListView,
-  type SessionPrimaryState,
-  type SessionRecord,
-  type WorkspaceRecord,
+import type {
+  SessionAttentionSnapshot,
+  SessionPrimaryState,
+  SessionRecord,
+  WorkspaceRecord,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 

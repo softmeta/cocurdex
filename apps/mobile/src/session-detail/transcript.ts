@@ -1,9 +1,9 @@
+import { getToolCallInputSummary } from "@cocurdex/client-runtime";
 import {
   type AgentPermissionRequestRecord,
   type AgentPlanApprovalRecord,
   type AgentQuestionRequestRecord,
   type AgentToolCallRecord,
-  getToolCallInputSummary,
   type ImageAttachment,
   isImageAttachment,
   type MessageRecord,

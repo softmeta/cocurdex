@@ -1,4 +1,4 @@
-import { STREAM_TEXT_FADE_MS } from "@cocurdex/shared";
+import { STREAM_TEXT_FADE_MS } from "@cocurdex/client-runtime";
 import type { StreamdownProps } from "streamdown";
 
 type RehypePlugins = NonNullable<StreamdownProps["rehypePlugins"]>;

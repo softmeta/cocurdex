@@ -1,4 +1,4 @@
-import { sentPromptPeek } from "@cocurdex/shared";
+import { sentPromptPeek } from "@cocurdex/client-runtime";
 import {
   type ComponentRef,
   type ReactElement,

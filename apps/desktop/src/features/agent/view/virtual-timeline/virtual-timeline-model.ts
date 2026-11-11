@@ -1,4 +1,4 @@
-import { sentPromptPeek } from "@cocurdex/shared";
+import { sentPromptPeek } from "@cocurdex/client-runtime";
 import { defaultRangeExtractor, type Range } from "@tanstack/react-virtual";
 import type { ConversationGroup } from "../chat-timeline";
 

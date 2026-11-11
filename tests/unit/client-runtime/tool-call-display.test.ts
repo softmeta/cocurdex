@@ -2,7 +2,7 @@ import {
   getDisplayDirectory,
   getWorkspaceRelativePath,
   withoutWorkspaceCd,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 import { describe, expect, it } from "vitest";
 
 const POSIX_ROOT = "/Users/me/repo";

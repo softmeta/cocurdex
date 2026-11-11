@@ -1,5 +1,6 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
-import { type AgentId, normalizeSessionListView } from "@cocurdex/shared";
+import { normalizeSessionListView } from "@cocurdex/client-runtime";
+import type { AgentId } from "@cocurdex/shared";
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";

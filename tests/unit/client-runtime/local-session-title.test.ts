@@ -1,4 +1,4 @@
-import { generateLocalSessionTitle } from "@cocurdex/shared";
+import { generateLocalSessionTitle } from "@cocurdex/client-runtime";
 import { describe, expect, it } from "vitest";
 
 describe("generateLocalSessionTitle", () => {

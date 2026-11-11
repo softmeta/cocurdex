@@ -1,4 +1,4 @@
-import { parseFilePathCandidate } from "@cocurdex/shared";
+import { parseFilePathCandidate } from "@cocurdex/client-runtime";
 import type { MouseEvent, ReactNode } from "react";
 import { cn, desktopApi, openEntity } from "@/lib";
 import {

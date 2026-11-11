@@ -1,4 +1,3 @@
-import type { SessionRecord } from "@cocurdex/shared";
 import {
   DEFAULT_SESSION_LIST_VIEW,
   filterSessionsByView,
@@ -8,7 +7,8 @@ import {
   sessionUpdatedBucket,
   splitPinnedSessions,
   visibleSessionProperties,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
+import type { SessionRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 
 function session(

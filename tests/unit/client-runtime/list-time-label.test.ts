@@ -1,4 +1,4 @@
-import { formatListTime } from "@cocurdex/shared";
+import { formatListTime } from "@cocurdex/client-runtime";
 import { describe, expect, it } from "vitest";
 
 const local = (...parts: [number, number, number, number?, number?]) => {

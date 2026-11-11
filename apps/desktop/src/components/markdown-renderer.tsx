@@ -1,4 +1,4 @@
-import { hidePendingTableStart } from "@cocurdex/shared";
+import { hidePendingTableStart } from "@cocurdex/client-runtime";
 import type { ReactNode } from "react";
 import {
   memo,

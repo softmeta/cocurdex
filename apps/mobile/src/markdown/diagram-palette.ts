@@ -1,7 +1,7 @@
 import {
   MERMAID_THEME_VARIABLES,
   type MermaidAppearance,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 import { themeColors } from "@/theme";
 import type { DiagramPalette } from "./native-mermaid";
 

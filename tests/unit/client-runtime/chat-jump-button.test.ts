@@ -1,4 +1,7 @@
-import { resolveJumpButton, resolveScrollDirection } from "@cocurdex/shared";
+import {
+  resolveJumpButton,
+  resolveScrollDirection,
+} from "@cocurdex/client-runtime";
 import { describe, expect, it } from "vitest";
 
 describe("resolveJumpButton", () => {

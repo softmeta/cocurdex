@@ -1,4 +1,4 @@
-import type { AgentPermissionRequestRecord } from "./contracts";
+import type { AgentPermissionRequestRecord } from "@cocurdex/shared";
 
 export type PermissionDetail = {
   label: "Command" | "Path" | "Pattern" | "Query" | "URL";

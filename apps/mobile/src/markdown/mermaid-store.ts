@@ -1,4 +1,4 @@
-import type { MermaidAppearance } from "@cocurdex/shared";
+import type { MermaidAppearance } from "@cocurdex/client-runtime";
 import { useCallback, useSyncExternalStore } from "react";
 import { diagramPalette } from "./diagram-palette";
 import { createDiagramCache } from "./mermaid-cache";

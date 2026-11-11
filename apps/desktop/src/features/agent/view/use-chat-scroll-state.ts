@@ -2,7 +2,7 @@ import {
   resolveScrollDirection,
   type ScrollDirection,
   scrollDirectionOfDelta,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 import { type RefObject, useCallback, useRef, useState } from "react";
 import {
   getTranscriptContentHeight,

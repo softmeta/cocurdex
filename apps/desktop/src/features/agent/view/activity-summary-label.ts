@@ -1,4 +1,4 @@
-import type { ActivityAction } from "@cocurdex/shared";
+import type { ActivityAction } from "@cocurdex/client-runtime";
 import { i18n } from "@/i18n";
 import type { ActivitySummary } from "./activity-summary";
 

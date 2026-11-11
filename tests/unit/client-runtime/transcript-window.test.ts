@@ -1,9 +1,11 @@
 import {
   keepOlderPages,
-  type MessageRecord,
   mergeOlderBoundary,
   prependTranscriptPage,
-  type SessionObservationSnapshot,
+} from "@cocurdex/client-runtime";
+import type {
+  MessageRecord,
+  SessionObservationSnapshot,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 

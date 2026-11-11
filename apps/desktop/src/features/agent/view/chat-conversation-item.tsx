@@ -1,9 +1,9 @@
+import { formatDurationMs } from "@cocurdex/client-runtime";
 import {
   type AgentQuestionRequestRecord,
   type AgentToolCallRecord,
   type AgentTurnCompletedEvent,
   type AgentUsageRecord,
-  formatDurationMs,
   isContextAttachment,
   isDocumentAttachment,
   isImageAttachment,

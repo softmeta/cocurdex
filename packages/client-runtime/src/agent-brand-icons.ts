@@ -1,4 +1,4 @@
-import type { BuiltInAgentId } from "./contracts";
+import type { BuiltInAgentId } from "@cocurdex/shared";
 
 export interface AgentBrandIconPath {
   d: string;

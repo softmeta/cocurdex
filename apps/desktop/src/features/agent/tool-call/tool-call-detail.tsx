@@ -1,8 +1,8 @@
+import { getLineRangeLabel } from "@cocurdex/client-runtime";
 import {
   type AgentToolCallRecord,
   formatToolCallData,
   formatToolCallOutput,
-  getLineRangeLabel,
 } from "@cocurdex/shared";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { FileText, Terminal } from "lucide-react";

@@ -1,8 +1,5 @@
-import {
-  type AgentToolCallRecord,
-  formatElapsed,
-  type MessageRecord,
-} from "@cocurdex/shared";
+import { formatElapsed } from "@cocurdex/client-runtime";
+import type { AgentToolCallRecord, MessageRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
   getActivityState,

@@ -1,5 +1,5 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
-import { countActiveSessionFilters } from "@cocurdex/shared";
+import { countActiveSessionFilters } from "@cocurdex/client-runtime";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useCurrentHost } from "@/hosts";

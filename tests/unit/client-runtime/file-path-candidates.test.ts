@@ -2,7 +2,7 @@ import {
   parseFilePathCandidate,
   resolveCandidatePath,
   scanFilePathCandidates,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 import { describe, expect, it } from "vitest";
 
 describe("parseFilePathCandidate", () => {

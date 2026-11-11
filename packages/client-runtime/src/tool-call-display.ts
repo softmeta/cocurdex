@@ -1,4 +1,4 @@
-import type { AgentToolCallRecord } from "./contracts";
+import type { AgentToolCallRecord } from "@cocurdex/shared";
 
 function asObjectRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {

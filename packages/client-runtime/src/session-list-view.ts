@@ -1,16 +1,14 @@
-import type { AgentId, SessionRecord } from "./contracts";
+import type { AgentId, SessionRecord } from "@cocurdex/shared";
 import {
   defaultOrderDirection,
+  groupChildren,
+  rootSessionId,
   SESSION_ORDER_DIRECTIONS,
   SESSION_ORDERINGS,
   type SessionOrderDirection,
   type SessionOrdering,
-} from "./session-ordering";
-import {
-  groupChildren,
-  rootSessionId,
   subtreeActivityAt,
-} from "./session-tree";
+} from "@cocurdex/shared";
 
 export const SESSION_GROUPINGS = [
   "workspace",

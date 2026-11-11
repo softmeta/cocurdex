@@ -1,4 +1,4 @@
-import type { MermaidAppearance } from "@cocurdex/shared";
+import type { MermaidAppearance } from "@cocurdex/client-runtime";
 import type { RenderedDiagram } from "./mermaid-cache";
 import {
   type MermaidMessage,

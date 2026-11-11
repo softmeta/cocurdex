@@ -1,4 +1,4 @@
-import { getCompactRelativeTime } from "@cocurdex/shared";
+import { getCompactRelativeTime } from "@cocurdex/client-runtime";
 import { describe, expect, it } from "vitest";
 
 const NOW = Date.parse("2026-08-19T12:00:00.000Z");

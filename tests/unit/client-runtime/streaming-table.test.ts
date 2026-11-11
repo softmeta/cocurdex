@@ -1,4 +1,4 @@
-import { hidePendingTableStart } from "@cocurdex/shared";
+import { hidePendingTableStart } from "@cocurdex/client-runtime";
 import { describe, expect, it } from "vitest";
 
 describe("hidePendingTableStart", () => {

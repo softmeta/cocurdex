@@ -1,7 +1,7 @@
-import {
-  type AgentToolCallLocation,
-  type AgentToolCallRecord,
-  resolveCandidatePath,
+import { resolveCandidatePath } from "@cocurdex/client-runtime";
+import type {
+  AgentToolCallLocation,
+  AgentToolCallRecord,
 } from "@cocurdex/shared";
 import * as Clipboard from "expo-clipboard";
 import { Stack, useRouter } from "expo-router";

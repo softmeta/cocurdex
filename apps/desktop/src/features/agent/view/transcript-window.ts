@@ -1,5 +1,8 @@
+import {
+  joinTranscriptPages,
+  mergeOlderBoundary,
+} from "@cocurdex/client-runtime";
 import type { SessionTranscriptPage } from "@cocurdex/shared";
-import { joinTranscriptPages, mergeOlderBoundary } from "@cocurdex/shared";
 import { atom } from "jotai";
 import { mergeTurnChangeSetsAtom } from "@/features/turn-workspace-changes";
 import { desktopApi } from "@/lib";

@@ -1,7 +1,7 @@
 import type {
   SessionObservationSnapshot,
   SessionTranscriptPage,
-} from "./session-observation";
+} from "@cocurdex/shared";
 
 export function mergeOlderBoundary(
   current: number | null | undefined,

@@ -1,7 +1,7 @@
 import {
   type ActivityActionCount,
   summarizeToolActions,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 import { isReasoningMessage } from "./chat-message-utils";
 import type { TimelineGroup } from "./chat-timeline";
 

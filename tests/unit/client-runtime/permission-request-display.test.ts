@@ -1,7 +1,5 @@
-import {
-  type AgentPermissionRequestRecord,
-  describePermissionRequest,
-} from "@cocurdex/shared";
+import { describePermissionRequest } from "@cocurdex/client-runtime";
+import type { AgentPermissionRequestRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 
 function permission(

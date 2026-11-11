@@ -1,9 +1,9 @@
 import {
   type AgentBrandIcon as AgentBrandIconGeometry,
   BUILT_IN_AGENT_BRAND_ICONS,
-  type BuiltInAgentId,
   REGISTRY_AGENT_BRAND_ICONS,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
+import type { BuiltInAgentId } from "@cocurdex/shared";
 import type { FC, SVGProps } from "react";
 import { cn } from "@/lib";
 

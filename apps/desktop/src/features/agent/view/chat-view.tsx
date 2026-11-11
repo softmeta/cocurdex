@@ -1,7 +1,7 @@
-import {
-  type AgentQuestionRequestRecord,
-  type MessageAttachment,
-  resolveJumpButton,
+import { resolveJumpButton } from "@cocurdex/client-runtime";
+import type {
+  AgentQuestionRequestRecord,
+  MessageAttachment,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useRef, useState } from "react";

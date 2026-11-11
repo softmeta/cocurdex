@@ -1,9 +1,9 @@
+import { STREAM_RENDER_BATCH_MS } from "@cocurdex/client-runtime";
 import type {
   AgentEvent,
   AgentTurnCompletedEvent,
   MessageRecord,
 } from "@cocurdex/shared";
-import { STREAM_RENDER_BATCH_MS } from "@cocurdex/shared";
 import type { Getter, Setter } from "jotai";
 import { atom } from "jotai";
 import { findMessageById, upsertMessages } from "./message-collection";

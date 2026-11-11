@@ -1,4 +1,5 @@
-import { type AgentId, countActiveSessionFilters } from "@cocurdex/shared";
+import { countActiveSessionFilters } from "@cocurdex/client-runtime";
+import type { AgentId } from "@cocurdex/shared";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
