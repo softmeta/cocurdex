@@ -1,6 +1,6 @@
 ---
 name: cocurdex-release
-description: Decide what Cocurdex needs to release and ship it end to end — the app (desktop, iOS, Android), the relay, or the push gateway. Use when the user asks what needs releasing, whether to release, or says 发版 / 发测试版 / 发正式版 / 转正 / 出个 beta / 要不要发版 / 哪些要发 / cut a release / ship a release / promote the beta / release the desktop app / release the relay.
+description: Decide what Cocurdex needs to release and ship it end to end — the app (desktop, iOS, Android), the web client, the relay, or the push gateway. Use when the user asks what needs releasing, whether to release, or says 发版 / 发测试版 / 发正式版 / 转正 / 出个 beta / 要不要发版 / 哪些要发 / cut a release / ship a release / promote the beta / release the desktop app / release the web client / release the relay.
 ---
 
 # Cocurdex release
@@ -13,7 +13,8 @@ names an `origin/main` commit, so a release never needs its own PR or branch.
 | line | tag | workflow | ships |
 | --- | --- | --- | --- |
 | app | `v<version>` | `release.yml` | desktop (macOS, Windows, Linux), iOS TestFlight, Android Play internal and APKs |
-| relay | `relay-v<version>` | `relay-release.yml` | relay binaries, with the desktop renderer built in as the web client |
+| web | `web-v<version>` | `web-release.yml` | web client: the desktop renderer as static files, with its CSP in a `<meta>` tag |
+| relay | `relay-v<version>` | `relay-release.yml` | relay binaries and image (service only; it serves no pages) |
 | push | `push-v<version>` | `push-release.yml` | push gateway |
 
 The tag is the version. The Release workflow stamps it into `apps/desktop/package.json` before each
@@ -40,10 +41,14 @@ completed success. Its rules:
 - **promotion is manual.** The plan only notes that the latest beta can be promoted. Pass
   `--promote` only when the user asks for stable (转正, 发正式版, promote); it tags the latest beta's
   commit unchanged and goes first, so later betas open the next line.
-- **relay**: released and then deployed after the app steps, only when every daemon RPC method its
+- **web**: released and then deployed after the app steps, only when every daemon RPC method the
   web client calls (a method name in the renderer sources) exists in the stable app's
   `packages/rpc/src/method-scopes.ts`, after any promotion in the same plan. Otherwise it is held and
-  the reason names the missing methods and whether promoting the open beta would unblock it.
+  the reason names the missing methods and whether promoting the open beta would unblock it. The
+  first web release is tagged and deployed by hand once its host serves `/opt/cocurdex-web/current`.
+- **relay**: released and then deployed after the web steps whenever `services/relay/` changed. It
+  serves only `/healthz` and `/v1/*`; the page is the web line's job. It is held until the first
+  web release exists, since the relay stopped serving the page.
 - **push**: never cuts the first push gateway release (that needs a host and APNs credentials); after
   one exists, pending changes get the next patch.
 
@@ -51,25 +56,26 @@ Read the plan, then judge only what it cannot see, and hold a line with `--skip 
 
 - every pending change of a line is internal (refactors, tooling, a dependency bump with no
   user-visible effect), so a release would ship nothing users notice;
-- the relay's web client changed a field it reads or sends on an existing RPC method that the stable
+- the web client changed a field it reads or sends on an existing RPC method that the stable
   daemon does not provide and does not degrade cleanly on (the method check sees names, not fields).
 
 When a release was requested, do not ask the user to confirm the plan: execute it and report.
 
 ```bash
-node scripts/release.mjs run [--skip relay] [--promote]
+node scripts/release.mjs run [--skip web,relay] [--promote]
 ```
 
 `run` rebuilds the plan from fresh facts and executes the steps in order: it runs the iOS flows from
 this checkout (which must be a clean checkout of the main tip; the runner needs `applesimutils`:
 `brew tap wix/brew && brew install applesimutils`), pushes each tag, waits for its workflow, checks
-that the GitHub release published (a prerelease for a beta, with assets), and deploys the relay with
+that the GitHub release published (a prerelease for a beta, with assets), and deploys the web client and the relay with
+`ssh cocurdex-relay deploy-cocurdex-web deploy <tag>` and
 `ssh cocurdex-relay deploy-cocurdex-relay deploy <tag>`. It stops at the first failure and reports
 which step failed. A step that failed before its tag was pushed (the iOS flows) is fixed on `main`
-and the whole `run` repeated. A failed relay deploy is retried with the same `ssh` command. A failed
+and the whole `run` repeated. A failed web or relay deploy is retried with the same `ssh` command. A failed
 app release workflow is not rerun (see Pitfalls): once anything lands on `main`, `plan` sees the
 beta's release unpublished and cuts the next beta in its place, and it refuses `--promote` until a
-beta has published. Report the tags, the runs, and the relay deploy
+beta has published. Report the tags, the runs, and the deploy
 commands, then check the deployed relay read-only (version, `systemctl status`, recent logs).
 
 ## Channels
@@ -127,7 +133,7 @@ it logs why and stops. It pushes the tag with the `RELEASE_TAG_DEPLOY_KEY` deplo
 It cannot run the iOS flows, so a scheduled beta carrying `apps/mobile/` changes ships
 to TestFlight on Android CI coverage alone. Before promoting such a beta, run the iOS flows on its
 commit; when they fail, fix on `main` and let the next beta pick it up. It never promotes and never
-releases the relay or the push gateway; those go through `run`.
+releases the web client, the relay, or the push gateway; those go through `run`.
 
 ## Pitfalls
 
@@ -138,5 +144,5 @@ releases the relay or the push gateway; those go through `run`.
   draft release with every asset uploaded so far, so `gh run rerun --failed` has nothing to upload
   into, and a full rerun repeats the mobile build number (`git rev-list --count HEAD`), which
   TestFlight and Play reject once the first attempt uploaded it. Ship the next beta from a newer
-  `main` commit instead; never push a second tag on the same commit. A relay or push run that fails
+  `main` commit instead; never push a second tag on the same commit. A web, relay, or push run that fails
   before publishing has no such state and is rerun with `gh run rerun <run-id> --failed`.

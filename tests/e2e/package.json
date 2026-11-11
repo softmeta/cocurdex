@@ -20,7 +20,8 @@
     "@cocurdex/secure-channel": "workspace:*",
     "@cocurdex/shared": "workspace:*",
     "@cocurdex/test-fixtures": "workspace:*",
-    "@cocurdex/test-harness": "workspace:*"
+    "@cocurdex/test-harness": "workspace:*",
+    "@cocurdex/web": "workspace:*"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

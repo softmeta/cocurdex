@@ -98,8 +98,52 @@ function planApp(facts, plan) {
   return { stableCommit };
 }
 
-function planRelay(facts, plan, { stableCommit }) {
-  const { relay, mainSha } = facts;
+function planWeb(facts, plan, { stableCommit }) {
+  const { web, mainSha } = facts;
+  if (!web.last) {
+    plan.held.push({
+      line: "web",
+      reason:
+        "never released; the first web release needs its host set up, so it is tagged and deployed by hand",
+    });
+    return;
+  }
+  if (web.pending.length === 0) {
+    plan.held.push({
+      line: "web",
+      reason: `no web changes since ${web.last}`,
+    });
+    return;
+  }
+  if (!stableCommit) {
+    plan.held.push({
+      line: "web",
+      reason: "no stable app release serves the web client yet",
+    });
+    return;
+  }
+  const missing = web.missingMethodsAt[stableCommit] ?? [];
+  if (missing.length > 0) {
+    const unblockedByPromote =
+      !facts.promote &&
+      facts.app.latest.beta !== null &&
+      (web.missingMethodsAt[facts.app.latestCommit] ?? []).length === 0;
+    const hint = unblockedByPromote
+      ? `; promoting ${facts.app.latest.tag} would unblock it`
+      : "";
+    plan.held.push({
+      line: "web",
+      reason: `the web client calls daemon methods the stable app lacks: ${listMethods(missing)}${hint}`,
+    });
+    return;
+  }
+  const tag = nextServiceTag(lineByName("web").tagPrefix, web.last);
+  plan.steps.push(tagStep("web", tag, mainSha, web.pending));
+  plan.steps.push({ kind: "deploy", line: "web", tag });
+}
+
+function planRelay(facts, plan) {
+  const { relay, web, mainSha } = facts;
   if (relay.pending.length === 0) {
     plan.held.push({
       line: "relay",
@@ -107,25 +151,11 @@ function planRelay(facts, plan, { stableCommit }) {
     });
     return;
   }
-  if (!stableCommit) {
+  if (!web.last) {
     plan.held.push({
       line: "relay",
-      reason: "no stable app release serves the web client yet",
-    });
-    return;
-  }
-  const missing = relay.missingMethodsAt[stableCommit] ?? [];
-  if (missing.length > 0) {
-    const unblockedByPromote =
-      !facts.promote &&
-      facts.app.latest.beta !== null &&
-      (relay.missingMethodsAt[facts.app.latestCommit] ?? []).length === 0;
-    const hint = unblockedByPromote
-      ? `; promoting ${facts.app.latest.tag} would unblock it`
-      : "";
-    plan.held.push({
-      line: "relay",
-      reason: `the web client calls daemon methods the stable app lacks: ${listMethods(missing)}${hint}`,
+      reason:
+        "the relay no longer serves the web client; release and deploy the first web release before it",
     });
     return;
   }
@@ -183,8 +213,11 @@ export function buildPlan(facts) {
   const appResult = skip.has("app")
     ? { stableCommit: facts.app.latestStableCommit }
     : planApp(facts, plan);
+  if (!skip.has("web")) {
+    planWeb(facts, plan, appResult);
+  }
   if (!skip.has("relay")) {
-    planRelay(facts, plan, appResult);
+    planRelay(facts, plan);
   }
   if (!skip.has("push")) {
     planPush(facts, plan);

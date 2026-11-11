@@ -30,7 +30,6 @@ type Config struct {
 	HostLimiter         *RateLimiter
 	ConnectLimiter      *RateLimiter
 	TrustProxy          bool
-	WebAssets           http.Handler
 	Logger              *slog.Logger
 	Now                 func() time.Time
 }
@@ -102,9 +101,6 @@ func NewServer(config Config) *Server {
 	server.mux.HandleFunc("GET /v1/host", server.handleHost)
 	server.mux.HandleFunc("GET /v1/host/accept/{ticket}", server.handleAccept)
 	server.mux.HandleFunc("GET /v1/connect/{routeId}", server.handleConnect)
-	if config.WebAssets != nil {
-		server.mux.Handle("GET /", config.WebAssets)
-	}
 	return server
 }
 

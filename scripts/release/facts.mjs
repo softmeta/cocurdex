@@ -154,7 +154,7 @@ export function gatherFacts({ promote = false, skip = [] } = {}) {
   const latestStable = [...tags].reverse().find((tag) => tag.beta === null);
   const latestCommit = commitOf(latest.tag);
   const latestStableCommit = latestStable ? commitOf(latestStable.tag) : null;
-  const [relay, push] = ["relay", "push"].map((name) => {
+  const [relay, web, push] = ["relay", "web", "push"].map((name) => {
     const line = lineByName(name);
     const last = lastLineTag(line);
     return { last, pending: pendingChanges(line, last) };
@@ -175,10 +175,11 @@ export function gatherFacts({ promote = false, skip = [] } = {}) {
       latestStableCommit,
       pending: pendingChanges(RELEASE_LINES[0], latest.tag),
     },
-    relay: {
-      ...relay,
+    relay,
+    web: {
+      ...web,
       missingMethodsAt:
-        relay.pending.length > 0
+        web.pending.length > 0
           ? missingMethodsAt([latestStableCommit, latestCommit])
           : {},
     },

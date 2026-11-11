@@ -138,12 +138,14 @@ function printHelp() {
 Commands:
   plan                   Decide what to release, what to hold and why, and the
                          order: app (iOS flows when apps/mobile changed, then
-                         the next beta), relay (only when the stable app serves
-                         every daemon method its web client calls; then deploy),
-                         push gateway. Exits 1 when blocked.
+                         the next beta), web client (only when the stable app
+                         serves every daemon method it calls; then deploy),
+                         relay (then deploy), push gateway. Exits 1 when
+                         blocked.
   run                    Build the plan and execute it step by step: push each
                          tag, wait for its workflow, verify the release, deploy
-                         the relay. Stops at the first failure.
+                         the web client and the relay. Stops at the first
+                         failure.
   status                 For each release line, list what merged on origin/main
                          since its last tag, with risk signals.
   tag beta [kind]        Tag the origin/main tip as the next app beta: the next
@@ -158,7 +160,8 @@ Commands:
 
 Options:
   --promote              With plan or run: promote the latest beta first.
-  --skip <line,...>      With plan or run: hold these lines (app, relay, push).
+  --skip <line,...>      With plan or run: hold these lines (app, web, relay,
+                         push).
   --json                 With plan or run: print the plan as JSON.
   --dry-run              Print the tag or plan; push and deploy nothing.
   --if-pending           With tag: exit quietly when no shipped app file
