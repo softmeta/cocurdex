@@ -807,6 +807,7 @@ export class CocurdexDaemonService {
         (await this.agents.isAgentDisabled(agentId))
           ? []
           : this.mcp.serversForAgent(agentId),
+      reclaim: {},
     });
     this.workspaceChanges = createWorkspaceChangeCoordinator({
       userDataPath: options.userDataPath,

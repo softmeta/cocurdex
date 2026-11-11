@@ -376,6 +376,7 @@ export function createPiSdkAdapter(
     getDescriptor() {
       return descriptor;
     },
+    runsInProcess: true,
     listSlashCommands(payload: ListSlashCommandsPayload) {
       return listPiSlashCommands(payload);
     },

@@ -489,6 +489,11 @@ export interface AgentSessionConfigUpdatedEvent {
   configOptions: AgentSessionConfigOption[];
 }
 
+export interface AgentSessionRuntimeReleasedEvent {
+  type: "session.runtime.released";
+  sessionId: string;
+}
+
 export interface AgentSessionMode {
   id: string;
   name: string;
@@ -556,6 +561,7 @@ export type AgentEvent =
   | AgentProviderRuntimeUpdatedEvent
   | AgentSessionConfigUpdatedEvent
   | AgentSessionModeUpdatedEvent
+  | AgentSessionRuntimeReleasedEvent
   | AgentStateChangedEvent
   | AgentPermissionRequestedEvent
   | AgentPermissionResolvedEvent

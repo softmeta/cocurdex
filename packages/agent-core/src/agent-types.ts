@@ -158,6 +158,7 @@ export interface AgentAdapter {
     payload: ForkProviderSessionPayload,
   ): Promise<AgentProviderSessionRecord | null>;
   injectsContextHandoff?: boolean;
+  runsInProcess?: boolean;
   listSlashCommands?(
     payload: ListSlashCommandsPayload,
   ): Promise<AgentSlashCommand[]>;
