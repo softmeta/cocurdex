@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+CONFIG=/etc/default/cocurdex-web
+# shellcheck disable=SC1090
+[ -f "$CONFIG" ] && . "$CONFIG"
+
 ROOT=${COCURDEX_WEB_ROOT_DIR:-/opt/cocurdex-web}
 CHECK_URL=${COCURDEX_WEB_CHECK_URL:-}
 RELEASES_URL=${COCURDEX_WEB_RELEASES_URL:-https://github.com/softmeta/cocurdex/releases/download}
@@ -98,7 +102,7 @@ setup() {
   command -v sha256sum >/dev/null || fail "sha256sum is required"
   install -m 0755 -o root -g root "$0" "$INSTALL_PATH"
   mkdir -p "$ROOT"
-  echo "serve $ROOT/current as the web root; deploy with: sudo deploy-cocurdex-web deploy <web-vX.Y.Z>"
+  echo "serve $ROOT/current as the web root; set COCURDEX_WEB_CHECK_URL in $CONFIG to verify each deploy; deploy with: sudo deploy-cocurdex-web deploy <web-vX.Y.Z>"
 }
 
 rollback() {
