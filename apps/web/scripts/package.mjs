@@ -38,10 +38,12 @@ export function contentSecurityPolicy(index, connectSources) {
   ].join("; ");
 }
 
+const CHARSET_META = /<meta charset="[^"]*"\s*\/?>/i;
+
 function withPolicy(index, policy) {
-  const head = index.indexOf("<head>");
-  if (head < 0) throw new Error("index.html has no <head>");
-  const at = head + "<head>".length;
+  const charset = CHARSET_META.exec(index);
+  if (!charset) throw new Error("index.html declares no charset");
+  const at = charset.index + charset[0].length;
   const meta = `\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`;
   return index.slice(0, at) + meta + index.slice(at);
 }
