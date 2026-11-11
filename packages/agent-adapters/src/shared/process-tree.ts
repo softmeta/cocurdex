@@ -134,3 +134,51 @@ export function stopChildProcess(
   }
   child.kill(signal);
 }
+
+const EOF_GRACE_MS = 3_000;
+const SIGTERM_GRACE_MS = 1_500;
+
+function hasExited(child: ChildProcess) {
+  return child.exitCode !== null || child.signalCode !== null;
+}
+
+function waitForExit(child: ChildProcess, timeoutMs: number) {
+  if (hasExited(child)) return Promise.resolve(true);
+  return new Promise<boolean>((resolve) => {
+    const timeout = setTimeout(() => {
+      child.off("close", handleClose);
+      resolve(false);
+    }, timeoutMs);
+    const handleClose = () => {
+      clearTimeout(timeout);
+      resolve(true);
+    };
+    child.once("close", handleClose);
+  });
+}
+
+export interface ProcessShutdownTimings {
+  eofGraceMs?: number;
+  sigtermGraceMs?: number;
+}
+
+export async function shutdownChildProcess(
+  child: ChildProcess,
+  timings: ProcessShutdownTimings = {},
+  platform: NodeJS.Platform = process.platform,
+) {
+  if (hasExited(child)) return;
+  if (child.stdin && !child.stdin.writableEnded) child.stdin.end();
+  if (await waitForExit(child, timings.eofGraceMs ?? EOF_GRACE_MS)) return;
+  if (platform !== "win32") {
+    child.kill("SIGTERM");
+    if (await waitForExit(child, timings.sigtermGraceMs ?? SIGTERM_GRACE_MS)) {
+      return;
+    }
+  }
+  if (child.pid === undefined) {
+    child.kill("SIGKILL");
+    return;
+  }
+  await killProcessTree(child.pid, platform);
+}

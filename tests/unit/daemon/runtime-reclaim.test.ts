@@ -130,7 +130,12 @@ describe("AgentRuntimeManager idle reclaim", () => {
     try {
       for (const session of [codex, pi]) {
         await manager.sendSessionMessage(
-          { session, workspaceRootPath: "/workspace", content: "hi" },
+          {
+            session,
+            workspaceRootPath: "/workspace",
+            messageId: `${session.id}-1`,
+            content: "hi",
+          },
           { ...persistence, history: [] },
         );
       }
@@ -149,7 +154,12 @@ describe("AgentRuntimeManager idle reclaim", () => {
       });
 
       await manager.sendSessionMessage(
-        { session: codex, workspaceRootPath: "/workspace", content: "again" },
+        {
+          session: codex,
+          workspaceRootPath: "/workspace",
+          messageId: "codex-2",
+          content: "again",
+        },
         { ...persistence, history: [] },
       );
       expect(
