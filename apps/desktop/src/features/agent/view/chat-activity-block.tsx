@@ -32,7 +32,12 @@ export function ActivityBlock({
 
   const trigger =
     variant === "turn" ? (
-      <TurnTrigger busy={busy} label={label} open={open} />
+      <TurnTrigger
+        busy={busy}
+        label={label}
+        liveLabel={liveLabel}
+        open={open}
+      />
     ) : (
       <StepTrigger
         busy={busy}
@@ -73,22 +78,26 @@ export function ActivityBlock({
 function TurnTrigger({
   busy,
   label,
+  liveLabel,
   open,
 }: {
   busy: boolean;
   label: string;
+  liveLabel?: ReactNode;
   open: boolean;
 }) {
   return (
     <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 border-chat-border-soft mb-3 border-b pt-0.5 pb-2 text-body transition-colors hover:text-chat-fg-secondary">
-      <span
-        className={cn(
-          "min-w-0 truncate font-medium text-chat-fg-muted",
-          busy && "activity-shimmer",
-        )}
-      >
-        {label}
-      </span>
+      {liveLabel ?? (
+        <span
+          className={cn(
+            "min-w-0 truncate font-medium text-chat-fg-muted",
+            busy && "activity-shimmer",
+          )}
+        >
+          {label}
+        </span>
+      )}
       <ChevronDown
         className={cn(
           "size-3.5 shrink-0 text-chat-fg-muted transition-transform",

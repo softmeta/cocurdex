@@ -37,11 +37,18 @@ function startRecorder() {
       el.textContent.startsWith("Stream verification begins."),
     );
     if (node) {
+      const header = document.querySelector(
+        "[data-testid=chat-timeline] button[aria-expanded]",
+      );
       record.nodes.add(node);
       record.frames.push({
         at: performance.now(),
         length: node.textContent.length,
         fading: node.querySelectorAll("[data-stream-fade]").length,
+        streaming: document.querySelectorAll("[data-streaming]").length > 0,
+        headerHeight: header
+          ? Math.round(header.getBoundingClientRect().height)
+          : null,
       });
     }
     if (!record.done) requestAnimationFrame(sample);
@@ -215,6 +222,14 @@ runScenario("chat-streaming", {
             null,
             30_000,
           );
+          await session.waitUntil(
+            () => {
+              const frames = window.__streamRecorder.frames;
+              return frames.length > 0 && !frames.at(-1).streaming;
+            },
+            null,
+            5_000,
+          );
           const report = await session.run(() => {
             const record = window.__streamRecorder;
             record.done = true;
@@ -246,6 +261,21 @@ runScenario("chat-streaming", {
             expected: answer.length,
           });
           check(report.errors.length === 0, "renderer errors", report.errors);
+          const headerHeights = [
+            ...new Set(
+              report.frames.map(
+                (frame) =>
+                  `${frame.streaming ? "live" : "done"}:${frame.headerHeight}`,
+              ),
+            ),
+          ];
+          check(
+            headerHeights.length === 2 &&
+              headerHeights[0].split(":")[1] ===
+                headerHeights[1].split(":")[1],
+            "turn activity header changed size when the stream ended",
+            { headerHeights },
+          );
           const maxGrowth = Math.max(
             ...report.frames
               .slice(1)

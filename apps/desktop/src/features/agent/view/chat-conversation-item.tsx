@@ -65,7 +65,11 @@ import {
   getSegmentKey,
   groupActivityWithFollowingItem,
 } from "./chat-segment-groups";
-import type { ConversationGroup, TimelineGroup } from "./chat-timeline";
+import type {
+  ConversationGroup,
+  ConversationRenderSegment,
+  TimelineGroup,
+} from "./chat-timeline";
 import {
   findConversationTurnStats,
   getDisplayedItems,
@@ -630,6 +634,24 @@ function getTurnPhase(
   return turnStats?.stopReason === "cancelled" ? "interrupted" : "completed";
 }
 
+function getTurnWorkSegment(
+  segments: ConversationRenderSegment[],
+  phase: TurnPhase,
+  turnEndMessageId: string | null | undefined,
+) {
+  if (phase === "live") {
+    return segments.find((segment) => segment.kind === "activity");
+  }
+  if (turnEndMessageId === null) {
+    return segments.at(-1);
+  }
+  const turnEndIndex = segments.findIndex(
+    (segment) =>
+      segment.kind === "item" && segment.item.id === turnEndMessageId,
+  );
+  return segments[turnEndIndex - 1];
+}
+
 export const ChatConversationItem = memo(function ChatConversationItem({
   activity,
   conversationGroup,
@@ -686,15 +708,7 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   const isStopped = phase === "interrupted";
   const showStoppedInActions =
     isStopped && showMessageActions && turnEndMessageId != null;
-  const turnWorkSegment =
-    turnEndMessageId === null
-      ? segments.at(-1)
-      : segments[
-          segments.findIndex(
-            (segment) =>
-              segment.kind === "item" && segment.item.id === turnEndMessageId,
-          ) - 1
-        ];
+  const turnWorkSegment = getTurnWorkSegment(segments, phase, turnEndMessageId);
 
   const liveLabel =
     showActivity && activity && activity.kind !== "responding" ? (
