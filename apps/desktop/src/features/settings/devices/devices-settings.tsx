@@ -64,7 +64,6 @@ function HostDevicesPanel() {
 
   return (
     <div className="settings-panel-enter flex flex-col gap-8">
-      <LocalWebGroup />
       {remoteAllowed ? (
         <RemoteAccessGroup
           key={snapshot.remote.settings.port}
@@ -100,6 +99,7 @@ function HostDevicesPanel() {
         <PendingPairingsGroup pairings={snapshot.pairings} onChanged={reload} />
       ) : null}
       <RemoteHostsGroup />
+      <LocalWebGroup />
       <AccessLogGroup entries={snapshot.audit} />
       {remoteAllowed && pairing ? (
         <PairDeviceDialog
