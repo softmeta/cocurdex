@@ -3,6 +3,7 @@ import { mapMessage } from "../mappers";
 import type { SqliteRow } from "../sqlite-types";
 import { allocateTimelineSeq } from "../timeline-sequence";
 import type { MessageRepository } from "./message-repository";
+import { seqRangeClause } from "./timeline-seq-range";
 
 export function createSqliteMessageRepository(
   database: DatabaseSync,
@@ -35,6 +36,17 @@ export function createSqliteMessageRepository(
            ORDER BY seq ASC`,
         )
         .all(sessionId, changeSeq) as SqliteRow[];
+      return rows.map(mapMessage);
+    },
+    async listBySessionIdInSeqRange(sessionId, range) {
+      const clause = seqRangeClause("seq", range);
+      const rows = database
+        .prepare(
+          `SELECT * FROM messages
+           WHERE session_id = ? AND ${clause.sql}
+           ORDER BY seq ASC`,
+        )
+        .all(sessionId, ...clause.params) as SqliteRow[];
       return rows.map(mapMessage);
     },
     async getById(messageId) {

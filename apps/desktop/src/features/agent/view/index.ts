@@ -7,4 +7,8 @@ export {
   messagesBySessionAtom,
   messagesLoadedBySessionAtom,
 } from "./message-store";
+export {
+  applyTranscriptPageAtom,
+  recordOlderBoundaryAtom,
+} from "./transcript-window";
 export { useSessionMessages } from "./use-session-messages";

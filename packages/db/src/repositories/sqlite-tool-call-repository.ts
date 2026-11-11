@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { mapToolCall, mapToolCallSummary } from "../mappers";
 import { parseJson, type SqliteRow } from "../sqlite-types";
 import { allocateTimelineSeq } from "../timeline-sequence";
+import { seqRangeClause } from "./timeline-seq-range";
 import type { ToolCallRepository } from "./tool-call-repository";
 
 const SUMMARY_COLUMNS =
@@ -48,6 +49,17 @@ export function createSqliteToolCallRepository(
            ORDER BY seq ASC`,
         )
         .all(sessionId, changeSeq) as SqliteRow[];
+      return rows.map(mapToolCallSummary);
+    },
+    async listSummariesInSeqRange(sessionId, range) {
+      const clause = seqRangeClause("seq", range);
+      const rows = database
+        .prepare(
+          `SELECT ${SUMMARY_COLUMNS} FROM tool_calls
+           WHERE session_id = ? AND ${clause.sql}
+           ORDER BY seq ASC`,
+        )
+        .all(sessionId, ...clause.params) as SqliteRow[];
       return rows.map(mapToolCallSummary);
     },
     async getResultById(toolCallId) {

@@ -33,7 +33,10 @@ import {
   unconfirmedSends,
 } from "./pending-send";
 import { PromptOutline } from "./prompt-outline";
-import { useSessionDetail } from "./session-detail-stores";
+import {
+  loadOlderSessionDetail,
+  useSessionDetail,
+} from "./session-detail-stores";
 import { SessionTitle } from "./session-title";
 import { sessionWorkspace, sessionWorkspacePath } from "./session-workspace";
 import { StatusLine } from "./status-line";
@@ -276,6 +279,11 @@ export function SessionDetailScreen({
         presentation={conversation ? "assistant" : "work"}
         userBubble={personaBubble ?? undefined}
         bottomInset={dockHeight ?? 0}
+        onReachOldest={
+          observation?.olderBeforeSeq == null
+            ? undefined
+            : () => void loadOlderSessionDetail(host.hostId, sessionId)
+        }
         actions={{
           hostId: host.hostId,
           fileRoot: canReadFiles ? workspacePath : undefined,

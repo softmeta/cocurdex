@@ -37,6 +37,11 @@ export async function handleSessionRequest(
       return service.listSessions();
     case "session.snapshot":
       return service.getSessionSnapshot(request.params.sessionId);
+    case "session.transcriptPage":
+      return service.getSessionTranscriptPage(
+        request.params.sessionId,
+        request.params.beforeSeq,
+      );
     case "session.executionTree":
       return service.getSessionExecutionTree(
         request.params.sessionId,

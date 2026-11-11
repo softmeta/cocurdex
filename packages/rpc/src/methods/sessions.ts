@@ -26,6 +26,7 @@ import type {
   SessionMessagesResult,
   SessionObservationSnapshot,
   SessionRecord,
+  SessionTranscriptPage,
   SetSessionPinnedPayload,
   TurnChangeDiff,
   TurnChangeDiffRequest,
@@ -44,6 +45,10 @@ export type SessionsRequests = {
   "assistant.session.getOrCreate": { workspaceId: string };
   "session.list": undefined;
   "session.snapshot": { sessionId: string };
+  "session.transcriptPage": {
+    sessionId: string;
+    beforeSeq: number | null;
+  };
   "session.executionTree": { sessionId: string; maxDepth?: number };
   "session.fork": ForkSessionPayload;
   "session.switchAgent": { sessionId: string; agentType: AgentId };
@@ -113,6 +118,7 @@ export type SessionsResults = {
   "assistant.session.getOrCreate": SessionRecord;
   "session.list": SessionRecord[];
   "session.snapshot": SessionObservationSnapshot | null;
+  "session.transcriptPage": SessionTranscriptPage;
   "session.executionTree": SessionExecutionTree | null;
   "session.fork": SessionRecord;
   "session.switchAgent": SessionRecord;

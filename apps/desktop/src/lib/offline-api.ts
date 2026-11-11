@@ -663,12 +663,13 @@ export const offlineApi: DesktopApi = {
   approveHostDevice: async () => ({ ok: false, reason: "notPending" }),
   updateHostDeviceScopes: async () => null,
   listHostAudit: async () => [],
-  listSessionMessages: async () => ({
+  getTranscriptPage: async () => ({
     messages: [],
+    toolCalls: [],
     turnStats: {},
     turnChangeSets: {},
+    olderBeforeSeq: null,
   }),
-  listSessionToolCalls: async () => [],
   getToolCallResult: async () => null,
   undoTurnChanges: async () => ({
     changeSetId: "",

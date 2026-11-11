@@ -349,11 +349,7 @@ export function CenterPanel({
     activeMessages.length,
     activeToolCalls.length,
   );
-  useActiveSessionTranscript(
-    activeSession,
-    activeMessages.length,
-    activeToolCalls,
-  );
+  useActiveSessionTranscript(activeSession, activeToolCalls);
   const { activeBranches, activeBranch } = useGitBranches(
     workingPath ?? undefined,
   );

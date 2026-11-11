@@ -318,10 +318,8 @@ export const daemonProductApi: ProductRequestApi = {
   updateHostDeviceScopes: (deviceId, scopes) =>
     rpc("host.devices.updateScopes", { deviceId, scopes }),
   listHostAudit: (limit) => rpc("host.audit.list", { limit }),
-  listSessionMessages: (sessionId) =>
-    rpc("session.listMessages", { sessionId }),
-  listSessionToolCalls: (sessionId) =>
-    rpc("session.listToolCalls", { sessionId }),
+  getTranscriptPage: (sessionId, beforeSeq) =>
+    rpc("session.transcriptPage", { sessionId, beforeSeq }),
   getToolCallResult: (toolCallId) =>
     rpc("session.getToolCallResult", { toolCallId }),
   undoTurnChanges: (payload) => rpc("session.undoTurnChanges", payload),

@@ -63,10 +63,12 @@ export {
 export {
   appendMessageAtom,
   applyAgentEventAtom,
+  applyTranscriptPageAtom,
   ChatView,
   loadSessionMessagesAtom,
   loadTurnStatsAtom,
   messagesBySessionAtom,
   messagesLoadedBySessionAtom,
+  recordOlderBoundaryAtom,
   useSessionMessages,
 } from "./view";

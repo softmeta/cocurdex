@@ -2,14 +2,11 @@ import type { AgentToolCallRecord, SessionRecord } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import {
-  loadSessionMessagesAtom,
-  loadSessionToolCallsAtom,
-  loadTurnStatsAtom,
+  applyTranscriptPageAtom,
   messagesLoadedBySessionAtom,
   shouldRefreshSessionToolCalls,
   toolCallsLoadedBySessionAtom,
 } from "@/features/agent";
-import { loadTurnChangeSetsAtom } from "@/features/turn-workspace-changes";
 import {
   activeWorktreesAtom,
   gitBranchesByRootAtom,
@@ -48,15 +45,11 @@ export function useSessionSwitchMetrics(
 
 export function useActiveSessionTranscript(
   activeSession: SessionRecord | undefined,
-  messageCount: number,
   activeToolCalls: AgentToolCallRecord[],
 ) {
   const messagesLoadedBySession = useAtomValue(messagesLoadedBySessionAtom);
   const toolCallsLoadedBySession = useAtomValue(toolCallsLoadedBySessionAtom);
-  const loadSessionMessages = useSetAtom(loadSessionMessagesAtom);
-  const loadTurnStats = useSetAtom(loadTurnStatsAtom);
-  const loadTurnChangeSets = useSetAtom(loadTurnChangeSetsAtom);
-  const loadSessionToolCalls = useSetAtom(loadSessionToolCallsAtom);
+  const applyTranscriptPage = useSetAtom(applyTranscriptPageAtom);
   const reconciledTerminalSessions = useRef(new Set<string>());
 
   useEffect(() => {
@@ -93,46 +86,15 @@ export function useActiveSessionTranscript(
       loadToolCalls: shouldLoadToolCalls,
     });
 
-    const messagesPromise = shouldLoadMessages
-      ? desktopApi.listSessionMessages(sessionId).then((messages) => {
-          markSessionSwitch(sessionId, "messages-ipc-end", {
-            count: messages.messages.length,
-          });
-          measureSessionSwitch(
-            sessionId,
-            "messages-ipc",
-            "transcript-load-start",
-            "messages-ipc-end",
-            { count: messages.messages.length },
-          );
-          return messages;
-        })
-      : Promise.resolve(null);
-    const toolCallsPromise = shouldLoadToolCalls
-      ? desktopApi.listSessionToolCalls(sessionId).then((toolCalls) => {
-          markSessionSwitch(sessionId, "tool-calls-ipc-end", {
-            count: toolCalls.length,
-          });
-          measureSessionSwitch(
-            sessionId,
-            "tool-calls-ipc",
-            "transcript-load-start",
-            "tool-calls-ipc-end",
-            { count: toolCalls.length },
-          );
-          return toolCalls;
-        })
-      : Promise.resolve(null);
-
-    void Promise.all([messagesPromise, toolCallsPromise])
-      .then(([messages, toolCalls]) => {
+    void desktopApi
+      .getTranscriptPage(sessionId, null)
+      .then((page) => {
         if (cancelled) {
           return;
         }
-
         markSessionSwitch(sessionId, "transcript-load-end", {
-          messageCount: messages?.messages.length ?? messageCount,
-          toolCallCount: toolCalls?.length ?? activeToolCalls.length,
+          messageCount: page.messages.length,
+          toolCallCount: page.toolCalls.length,
         });
         measureSessionSwitch(
           sessionId,
@@ -140,19 +102,7 @@ export function useActiveSessionTranscript(
           "transcript-load-start",
           "transcript-load-end",
         );
-
-        if (messages) {
-          loadSessionMessages({ messages: messages.messages, sessionId });
-          loadTurnStats(messages.turnStats);
-          loadTurnChangeSets({
-            changeSets: messages.turnChangeSets ?? {},
-            sessionId,
-          });
-        }
-
-        if (toolCalls) {
-          loadSessionToolCalls({ sessionId, toolCalls });
-        }
+        applyTranscriptPage({ sessionId, page });
       })
       .catch((error) => {
         console.error("[CenterPanel] load active session transcript failed", {
@@ -166,12 +116,8 @@ export function useActiveSessionTranscript(
     };
   }, [
     activeSession,
-    messageCount,
     activeToolCalls,
-    loadSessionMessages,
-    loadTurnStats,
-    loadTurnChangeSets,
-    loadSessionToolCalls,
+    applyTranscriptPage,
     messagesLoadedBySession,
     toolCallsLoadedBySession,
   ]);

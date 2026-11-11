@@ -1,5 +1,4 @@
 import type { AgentSession } from "@cocurdex/agent-core";
-import type { TurnChangeSetRepository } from "@cocurdex/db";
 import type {
   HostCheckpointKind,
   NativeWorkspaceChangeEvidence,
@@ -17,6 +16,7 @@ import { collectTurnFilePaths, sumFileStats } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import { createCheckpointBlobStore } from "./blob-store";
 import type { HostCheckpoint, HostCheckpointAdapter } from "./checkpoint";
+import type { WorkspaceChangeRepository } from "./checkpoint-cleanup";
 import {
   reconcileCheckpoints,
   deleteSessionCheckpoints as removeSessionCheckpoints,
@@ -92,7 +92,7 @@ export interface WorkspaceChangeCoordinator {
 
 interface CoordinatorOptions {
   userDataPath: string;
-  repository: TurnChangeSetRepository;
+  repository: WorkspaceChangeRepository;
   now?(): string;
   createId?(): string;
   getNativeSession?(sessionId: string): AgentSession | null;

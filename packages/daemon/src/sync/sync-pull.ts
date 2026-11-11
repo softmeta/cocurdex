@@ -6,6 +6,7 @@ import type {
   MessageRecord,
   SessionInteractionSnapshot,
   SessionRecord,
+  SessionTranscriptPage,
   SessionTranscriptSync,
   StoredBootstrapData,
   StoredSyncPullResult,
@@ -19,29 +20,27 @@ export interface SyncPullSources {
   bootstrap(): Promise<StoredBootstrapData>;
   listSessionsChangedSince(changeSeq: number): Promise<SessionRecord[]>;
   listTombstonesSince(changeSeq: number): SyncTombstone[];
-  listMessages(sessionId: string): Promise<MessageRecord[]>;
+  readTranscriptWindow(
+    sessionId: string,
+    beforeSeq: number | null,
+  ): Promise<SessionTranscriptPage>;
   listMessagesChangedSince(
     sessionId: string,
     changeSeq: number,
   ): Promise<MessageRecord[]>;
   listActiveMessages(sessionId: string): MessageRecord[];
-  listToolCalls(sessionId: string): Promise<AgentToolCallRecord[]>;
   listToolCallsChangedSince(
     sessionId: string,
     changeSeq: number,
   ): Promise<AgentToolCallRecord[]>;
-  listTurnStats(
-    sessionId: string,
-  ): Promise<Record<string, AgentTurnCompletedEvent>>;
   listTurnStatsChangedSince(
     sessionId: string,
     changeSeq: number,
   ): Promise<Record<string, AgentTurnCompletedEvent>>;
-  listTurnChangeSets(sessionId: string): Promise<Record<string, TurnChangeSet>>;
-  hasTurnChangeSetsChangedSince(
+  listTurnChangeSetsChangedSince(
     sessionId: string,
     changeSeq: number,
-  ): Promise<boolean>;
+  ): Promise<Record<string, TurnChangeSet>>;
   getPlan(sessionId: string): AgentSessionPlan | null;
   getInteractions(): SessionInteractionSnapshot;
 }
@@ -55,22 +54,32 @@ async function fullTranscript(
   sources: SyncPullSources,
   sessionId: string,
 ): Promise<SessionTranscriptSync> {
-  const [messages, toolCalls, turnStats, turnChangeSets] = await Promise.all([
-    sources.listMessages(sessionId),
-    sources.listToolCalls(sessionId),
-    sources.listTurnStats(sessionId),
-    sources.listTurnChangeSets(sessionId),
-  ]);
+  const page = await sources.readTranscriptWindow(sessionId, null);
   return {
     complete: true,
-    messages,
+    messages: page.messages,
     deletedMessageIds: [],
     activeMessages: sources.listActiveMessages(sessionId),
-    turnStats,
-    turnChangeSets,
-    toolCalls,
+    turnStats: page.turnStats,
+    turnChangeSets: page.turnChangeSets,
+    deletedTurnChangeSetIds: [],
+    toolCalls: page.toolCalls,
     plan: sources.getPlan(sessionId),
+    olderBeforeSeq: page.olderBeforeSeq,
   };
+}
+
+function deletedIds(
+  tombstones: SyncTombstone[],
+  entity: SyncTombstone["entity"],
+  present: ReadonlySet<string>,
+) {
+  return tombstones
+    .filter(
+      (tombstone) =>
+        tombstone.entity === entity && !present.has(tombstone.entityId),
+    )
+    .map((tombstone) => tombstone.entityId);
 }
 
 async function transcriptChanges(
@@ -79,37 +88,37 @@ async function transcriptChanges(
   since: number,
   tombstones: SyncTombstone[],
 ): Promise<SessionTranscriptSync> {
-  const [messages, toolCalls, turnStats, turnChangeSetsChanged] =
-    await Promise.all([
-      sources.listMessagesChangedSince(sessionId, since),
-      sources.listToolCallsChangedSince(sessionId, since),
-      sources.listTurnStatsChangedSince(sessionId, since),
-      sources.hasTurnChangeSetsChangedSince(sessionId, since),
-    ]);
-  const present = new Set(messages.map((message) => message.id));
+  const [messages, toolCalls, turnStats, turnChangeSets] = await Promise.all([
+    sources.listMessagesChangedSince(sessionId, since),
+    sources.listToolCallsChangedSince(sessionId, since),
+    sources.listTurnStatsChangedSince(sessionId, since),
+    sources.listTurnChangeSetsChangedSince(sessionId, since),
+  ]);
   const sessionTombstones = tombstones.filter(
     (tombstone) => tombstone.sessionId === sessionId,
   );
-  const deletedMessageIds = sessionTombstones
-    .filter(
-      (tombstone) =>
-        tombstone.entity === "message" && !present.has(tombstone.entityId),
-    )
-    .map((tombstone) => tombstone.entityId);
-  const reloadChangeSets =
-    turnChangeSetsChanged ||
-    sessionTombstones.some((tombstone) => tombstone.entity === "turnChangeSet");
+  const presentChangeSets = new Set(
+    Object.values(turnChangeSets).map((changeSet) => changeSet.id),
+  );
   return {
     complete: false,
     messages,
-    deletedMessageIds,
+    deletedMessageIds: deletedIds(
+      sessionTombstones,
+      "message",
+      new Set(messages.map((message) => message.id)),
+    ),
     activeMessages: sources.listActiveMessages(sessionId),
     turnStats,
-    turnChangeSets: reloadChangeSets
-      ? await sources.listTurnChangeSets(sessionId)
-      : null,
+    turnChangeSets,
+    deletedTurnChangeSetIds: deletedIds(
+      sessionTombstones,
+      "turnChangeSet",
+      presentChangeSets,
+    ),
     toolCalls,
     plan: sources.getPlan(sessionId),
+    olderBeforeSeq: null,
   };
 }
 

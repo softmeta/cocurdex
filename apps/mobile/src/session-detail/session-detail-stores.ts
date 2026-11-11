@@ -47,6 +47,10 @@ function subscribeSessionDetail(
   };
 }
 
+export function loadOlderSessionDetail(hostId: string, sessionId: string) {
+  return sessionDetailStore(hostId, sessionId).store.loadOlder();
+}
+
 export function useSessionDetail(hostId: string, sessionId: string) {
   const subscribe = useCallback(
     (listener: () => void) =>

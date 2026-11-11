@@ -1,7 +1,16 @@
 import type { TurnChangeSet } from "@cocurdex/shared";
+import type { TimelineSeqRange } from "./timeline-repository";
 
 export interface TurnChangeSetRepository {
   listBySessionId(sessionId: string): Promise<Record<string, TurnChangeSet>>;
+  listByUserMessageSeqRange(
+    sessionId: string,
+    range: TimelineSeqRange,
+  ): Promise<Record<string, TurnChangeSet>>;
+  listChangedSince(
+    sessionId: string,
+    changeSeq: number,
+  ): Promise<Record<string, TurnChangeSet>>;
   getByMessageId(
     sessionId: string,
     messageId: string,

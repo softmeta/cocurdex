@@ -20,6 +20,7 @@ export const DAEMON_METHOD_SCOPES: Record<DaemonMethod, HostAccessScope> = {
   "worktree.list": "read",
   "session.list": "read",
   "session.snapshot": "read",
+  "session.transcriptPage": "read",
   "session.get": "read",
   "session.lastMessage": "read",
   "session.runtimeState": "read",

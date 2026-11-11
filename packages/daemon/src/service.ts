@@ -1604,34 +1604,30 @@ export class CocurdexDaemonService {
       return null;
     }
 
-    const [
-      messages,
-      activeMessages,
-      toolCalls,
-      queuedAgentInputs,
-      usage,
-      turnChangeSets,
-    ] = await Promise.all([
-      this.state.listMessagesBySessionId(sessionId),
-      this.state.listActiveMessagesBySessionId(sessionId),
-      this.state.listToolCallsBySessionId(sessionId),
+    const [page, queuedAgentInputs, usage] = await Promise.all([
+      this.state.readTranscriptPage(sessionId, null),
       this.state.listQueuedAgentInputs(sessionId),
       this.state.getSessionUsage(sessionId),
-      this.state.listTurnChangeSets(sessionId),
     ]);
 
     return {
       session,
-      messages,
-      activeMessages,
-      toolCalls,
+      messages: page.messages,
+      activeMessages: this.state.listActiveMessagesBySessionId(sessionId),
+      toolCalls: page.toolCalls,
       queuedAgentInputs,
       activeRun: this.state.getActiveRun(sessionId),
       usage,
-      turnChangeSets,
+      turnChangeSets: page.turnChangeSets,
       interactions: this.runtime.getSessionInteractions(sessionId),
       plan: this.runtime.getSessionPlan(sessionId),
+      olderBeforeSeq: page.olderBeforeSeq,
     };
+  }
+
+  async getSessionTranscriptPage(sessionId: string, beforeSeq: number | null) {
+    validateSessionId(sessionId);
+    return this.state.readTranscriptPage(sessionId, beforeSeq);
   }
 
   getSessionExecutionTree(sessionId: string, maxDepth?: number) {

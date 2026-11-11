@@ -30,6 +30,15 @@ export interface SessionObservationSnapshot {
   turnChangeSets: Record<string, TurnChangeSet>;
   interactions: SessionInteractionSnapshot;
   plan: AgentSessionPlan | null;
+  olderBeforeSeq: number | null;
+}
+
+export interface SessionTranscriptPage {
+  messages: MessageRecord[];
+  toolCalls: AgentToolCallRecord[];
+  turnStats: Record<string, AgentTurnCompletedEvent>;
+  turnChangeSets: Record<string, TurnChangeSet>;
+  olderBeforeSeq: number | null;
 }
 
 export interface SessionTranscriptSync {
@@ -38,9 +47,11 @@ export interface SessionTranscriptSync {
   deletedMessageIds: string[];
   activeMessages: MessageRecord[];
   turnStats: Record<string, AgentTurnCompletedEvent>;
-  turnChangeSets: Record<string, TurnChangeSet> | null;
+  turnChangeSets: Record<string, TurnChangeSet>;
+  deletedTurnChangeSetIds: string[];
   toolCalls: AgentToolCallRecord[];
   plan: AgentSessionPlan | null;
+  olderBeforeSeq: number | null;
 }
 
 export type SyncPullMode = "full" | "delta";

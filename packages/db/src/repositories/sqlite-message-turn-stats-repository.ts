@@ -5,6 +5,7 @@ import type {
 } from "@cocurdex/shared";
 import { parseJson, type SqliteRow } from "../sqlite-types";
 import type { MessageTurnStatsRepository } from "./message-turn-stats-repository";
+import { seqRangeClause } from "./timeline-seq-range";
 
 function parseUsage(value: unknown): AgentUsageRecord | undefined {
   if (value === null || value === undefined) {
@@ -75,6 +76,23 @@ export function createSqliteMessageTurnStatsRepository(
            WHERE session_id = ? AND change_seq > ?`,
         )
         .all(sessionId, changeSeq) as SqliteRow[];
+      return Object.fromEntries(
+        rows.map((row) => {
+          const stats = mapTurnStats(row);
+          return [stats.messageId, stats];
+        }),
+      );
+    },
+    async listByMessageSeqRange(sessionId, range) {
+      const clause = seqRangeClause("m.seq", range);
+      const rows = database
+        .prepare(
+          `SELECT s.*
+           FROM message_turn_stats s
+           JOIN messages m ON m.id = s.message_id
+           WHERE s.session_id = ? AND ${clause.sql}`,
+        )
+        .all(sessionId, ...clause.params) as SqliteRow[];
       return Object.fromEntries(
         rows.map((row) => {
           const stats = mapTurnStats(row);

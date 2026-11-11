@@ -11,13 +11,14 @@ import {
   loadSessionPlanAtom,
   loadSessionToolCallsAtom,
   loadTurnStatsAtom,
+  recordOlderBoundaryAtom,
 } from "@/features/agent";
 import { bootstrapSessionUsageAtom } from "@/features/composer";
 import {
   mergeSessionChangesAtom,
   reconcileSessionsAtom,
 } from "@/features/sessions";
-import { loadTurnChangeSetsAtom } from "@/features/turn-workspace-changes";
+import { mergeTurnChangeSetsAtom } from "@/features/turn-workspace-changes";
 
 type Store = ReturnType<typeof getDefaultStore>;
 
@@ -43,10 +44,14 @@ function applyTranscript(
     store.set(appendMessageAtom, message);
   }
   store.set(loadTurnStatsAtom, transcript.turnStats);
-  if (transcript.turnChangeSets) {
-    store.set(loadTurnChangeSetsAtom, {
-      changeSets: transcript.turnChangeSets,
+  store.set(mergeTurnChangeSetsAtom, {
+    changeSets: transcript.turnChangeSets,
+    deletedIds: transcript.deletedTurnChangeSetIds,
+  });
+  if (transcript.complete) {
+    store.set(recordOlderBoundaryAtom, {
       sessionId,
+      olderBeforeSeq: transcript.olderBeforeSeq,
     });
   }
   if (transcript.complete || transcript.toolCalls.length > 0) {

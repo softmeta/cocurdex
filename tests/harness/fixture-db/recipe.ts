@@ -171,6 +171,33 @@ const AUDIT_TURNS: FixtureTurn[] = Array.from(
   }),
 );
 
+const LEDGER_TURN_COUNT = 40;
+const LEDGER_PARAGRAPHS = 36;
+
+function ledgerReply(index: number): string {
+  return [
+    `### Ledger batch ${index + 1}`,
+    "",
+    ...Array.from(
+      { length: LEDGER_PARAGRAPHS },
+      (_, line) =>
+        `Entry ${line + 1} of batch ${index + 1} settles order ${(index + 1) * 1000 + line} against the payment ledger, records the captured amount, the refunded amount, and the fee withheld by the processor, then marks the reconciliation as complete.\n`,
+    ),
+  ].join("\n");
+}
+
+export const LEDGER_SESSION_TITLE = "Payment ledger export";
+export const LEDGER_FIRST_PROMPT = "Export ledger batch 1.";
+
+const LEDGER_TURNS: FixtureTurn[] = Array.from(
+  { length: LEDGER_TURN_COUNT },
+  (_, index) => ({
+    messageId: `fixture-message-ledger-${index + 1}`,
+    prompt: `Export ledger batch ${index + 1}.`,
+    replies: [{ text: [ledgerReply(index)] }],
+  }),
+);
+
 const DIAGRAM_STAGES = ["Cart", "Discount", "Payment", "Fulfillment", "Refund"];
 
 function diagramReply(): string {
@@ -388,6 +415,12 @@ export const FIXTURE_SESSIONS: FixtureSession[] = [
     title: "Checkout audit log",
     kind: "main",
     turns: AUDIT_TURNS,
+  },
+  {
+    id: "fixture-session-ledger-export",
+    title: LEDGER_SESSION_TITLE,
+    kind: "main",
+    turns: LEDGER_TURNS,
   },
   {
     id: "fixture-session-checkout-diagrams",

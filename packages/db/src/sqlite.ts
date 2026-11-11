@@ -56,6 +56,7 @@ import type {
   SessionAttentionRepository,
   SessionRepository,
   SessionUsageRepository,
+  TimelineRepository,
   ToolCallRepository,
   TurnChangeSetRepository,
   WorkspaceRepository,
@@ -76,6 +77,7 @@ import {
   createSqliteSessionAttentionRepository,
   createSqliteSessionRepository,
   createSqliteSessionUsageRepository,
+  createSqliteTimelineRepository,
   createSqliteToolCallRepository,
   createSqliteTurnChangeSetRepository,
   createSqliteWorkspaceRepository,
@@ -116,6 +118,7 @@ export interface CocurdexDatabase {
   hostAccess: HostAccessRepository;
   sessionUsage: SessionUsageRepository;
   toolCalls: ToolCallRepository;
+  timeline: TimelineRepository;
   editorViews: EditorViewRepository;
   providerSessions: ProviderSessionRepository;
   contextTransfers: ContextTransferRepository;
@@ -224,6 +227,7 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     hostAccess: createSqliteHostAccessRepository(database),
     sessionUsage: createSqliteSessionUsageRepository(database),
     toolCalls: createSqliteToolCallRepository(database),
+    timeline: createSqliteTimelineRepository(database),
     editorViews: createSqliteEditorViewRepository(database),
     providerSessions: createSqliteProviderSessionRepository(database),
     contextTransfers: createSqliteContextTransferRepository(database),

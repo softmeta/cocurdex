@@ -46,6 +46,7 @@ import type { ChatViewProps } from "./chat-view-types";
 import { useChatBottomStick } from "./use-chat-bottom-stick";
 import { useChatScrollState } from "./use-chat-scroll-state";
 import { useChatViewPerfMarkers } from "./use-chat-view-perf-markers";
+import { useOlderTranscriptLoader } from "./use-older-transcript";
 import { useSentPromptAnchor } from "./use-sent-prompt-anchor";
 import {
   type ChatTimelineScrollHandle,
@@ -262,6 +263,10 @@ export function ChatView({
     userMessageRefs,
     viewportRef,
   });
+  const olderTranscript = useOlderTranscriptLoader(
+    sessionId,
+    timelineScrollRef,
+  );
   useChatReadingPosition(
     `session:${sessionId ?? ""}`,
     () => timelineScrollRef.current?.readPosition() ?? null,
@@ -394,10 +399,19 @@ export function ChatView({
                   onKeyDownCapture: () => handleUserScrollIntent(),
                   onPointerDown: markUserScrollIntent,
                   onPointerDownCapture: markUserScrollIntent,
-                  onScroll: () => syncScrollState(stickyUserMessages),
+                  onScroll: (event) => {
+                    syncScrollState(stickyUserMessages);
+                    if (isInitialBottomSettled) {
+                      olderTranscript.loadNearTop(event.currentTarget);
+                    }
+                  },
                   onTouchMoveCapture: () => handleUserScrollIntent(),
-                  onWheelCapture: (event) =>
-                    handleUserScrollIntent(event.deltaY),
+                  onWheelCapture: (event) => {
+                    handleUserScrollIntent(event.deltaY);
+                    if (event.deltaY < 0 && isInitialBottomSettled) {
+                      olderTranscript.loadNearTop(viewportRef.current);
+                    }
+                  },
                   tabIndex: 0,
                 }}
                 viewportRef={attachViewport}
@@ -459,7 +473,7 @@ export function ChatView({
             <JumpControls
               streaming={isRunning && shouldShowJumpToLatest}
               onJumpToLatest={() => scrollToLatest(true)}
-              onJumpToTop={scrollToTop}
+              onJumpToTop={() => olderTranscript.loadAllThen(scrollToTop)}
               showJumpToLatest={shouldShowJumpToLatest}
               showJumpToTop={shouldShowJumpToTop}
             />

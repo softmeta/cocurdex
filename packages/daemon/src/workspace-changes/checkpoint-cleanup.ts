@@ -11,6 +11,10 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+export type WorkspaceChangeRepository = Omit<
+  TurnChangeSetRepository,
+  "listByUserMessageSeqRange" | "listChangedSince"
+>;
 type RetentionRepository = Pick<TurnChangeSetRepository, "listAll" | "upsert">;
 
 export async function applyCheckpointRetention(
@@ -81,7 +85,7 @@ function checkpointRefs(changeSet: TurnChangeSet) {
 }
 
 export async function collectLiveFilesystemRefs(
-  repository: TurnChangeSetRepository,
+  repository: WorkspaceChangeRepository,
   filesystemAdapter: HostCheckpointAdapter,
 ) {
   const changeSets = await repository.listAll();
@@ -111,7 +115,7 @@ export async function collectLiveFilesystemRefs(
 export async function deleteSessionCheckpoints(input: {
   sessionId: string;
   workspaceRootPath?: string;
-  repository: TurnChangeSetRepository;
+  repository: WorkspaceChangeRepository;
   filesystemAdapter: HostCheckpointAdapter;
   gitAdapter: HostCheckpointAdapter;
   blobStore: CheckpointBlobStore;
@@ -133,7 +137,7 @@ export async function deleteSessionCheckpoints(input: {
 }
 
 export async function reconcileCheckpoints(input: {
-  repository: TurnChangeSetRepository;
+  repository: WorkspaceChangeRepository;
   filesystemAdapter: HostCheckpointAdapter;
   gitAdapter: HostCheckpointAdapter;
   blobStore: CheckpointBlobStore;

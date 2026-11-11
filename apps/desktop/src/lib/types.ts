@@ -21,7 +21,6 @@ import type {
   AgentSessionMode,
   AgentSessionRuntimeState,
   AgentSlashCommand,
-  AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
   ArchiveSessionPayload,
@@ -136,8 +135,8 @@ import type {
   SessionAttentionSnapshot,
   SessionExecutionTree,
   SessionIdsPayload,
-  SessionMessagesResult,
   SessionRecord,
+  SessionTranscriptPage,
   SetSessionPinnedPayload,
   StartScriptRunPayload,
   SyncPullInput,
@@ -664,8 +663,10 @@ export interface ProductApi {
     scopes: HostAccessScope[],
   ): Promise<PairedDeviceRecord | null>;
   listHostAudit(limit: number): Promise<HostAccessAuditEntry[]>;
-  listSessionMessages(sessionId: string): Promise<SessionMessagesResult>;
-  listSessionToolCalls(sessionId: string): Promise<AgentToolCallRecord[]>;
+  getTranscriptPage(
+    sessionId: string,
+    beforeSeq: number | null,
+  ): Promise<SessionTranscriptPage>;
   getToolCallResult(toolCallId: string): Promise<AgentToolCallResult | null>;
   undoTurnChanges(
     payload: UndoTurnChangesInput,

@@ -52,6 +52,7 @@ import { getDatabasePath } from "./paths";
 import { StorageMaintenance } from "./storage-maintenance";
 import { formatSyncCursor } from "./sync/sync-cursor";
 import type { SyncPullSources } from "./sync/sync-pull";
+import { readTranscriptPage } from "./sync/transcript-page";
 import { withMessageSeq, withTimelineSeq } from "./timeline-seq-event";
 import { capToolCallOutput, withoutToolCallOutput } from "./tool-call-output";
 import {
@@ -363,23 +364,25 @@ export class DaemonState {
       listSessionsChangedSince: (since) =>
         database.sessions.listChangedSince(since),
       listTombstonesSince: (since) => database.sync.listTombstonesSince(since),
-      listMessages: (sessionId) => this.listMessagesBySessionId(sessionId),
+      readTranscriptWindow: (sessionId, beforeSeq) =>
+        readTranscriptPage(database, sessionId, beforeSeq, settled),
       listMessagesChangedSince: async (sessionId, since) =>
         settled(await database.messages.listChangedSince(sessionId, since)),
       listActiveMessages: (sessionId) => this.deltaBuffer.list(sessionId),
-      listToolCalls: (sessionId) =>
-        database.toolCalls.listSummariesBySessionId(sessionId),
       listToolCallsChangedSince: (sessionId, since) =>
         database.toolCalls.listSummariesChangedSince(sessionId, since),
-      listTurnStats: (sessionId) =>
-        database.messageTurnStats.listBySessionId(sessionId),
       listTurnStatsChangedSince: (sessionId, since) =>
         database.messageTurnStats.listChangedSince(sessionId, since),
-      listTurnChangeSets: (sessionId) =>
-        database.turnChangeSets.listBySessionId(sessionId),
-      hasTurnChangeSetsChangedSince: async (sessionId, since) =>
-        database.sync.hasTurnChangeSetsChangedSince(sessionId, since),
+      listTurnChangeSetsChangedSince: (sessionId, since) =>
+        database.turnChangeSets.listChangedSince(sessionId, since),
     };
+  }
+
+  async readTranscriptPage(sessionId: string, beforeSeq: number | null) {
+    const database = await this.getDatabase();
+    return readTranscriptPage(database, sessionId, beforeSeq, (messages) =>
+      messages.filter((message) => !this.deltaBuffer.has(message.id)),
+    );
   }
 
   async listMessagesBySessionId(sessionId: string) {

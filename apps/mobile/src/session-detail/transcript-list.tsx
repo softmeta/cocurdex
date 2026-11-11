@@ -39,9 +39,11 @@ export function TranscriptList({
   renderRow,
   sentMessageId,
   bottomInset = 0,
+  onReachOldest,
   ref,
 }: {
   items: readonly CondensedItem[];
+  onReachOldest?: () => void;
   footer?: ReactElement;
   bottomInset?: number;
   renderRow: (item: CondensedItem) => ReactElement;
@@ -266,6 +268,12 @@ export function TranscriptList({
         ]}
         scrollEventThrottle={32}
         onScroll={onScroll}
+        maintainVisibleContentPosition={
+          onReachOldest ? { minIndexForVisible: 0 } : undefined
+        }
+        onStartReached={() => {
+          if (jump.userScrolled) onReachOldest?.();
+        }}
         onScrollBeginDrag={() => {
           latestJump.current = null;
           navigation.current.target = undefined;
