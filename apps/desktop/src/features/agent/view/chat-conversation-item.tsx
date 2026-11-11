@@ -83,6 +83,7 @@ import { MessageOriginLine } from "./message-origin-line";
 import { turnStatsByMessageAtom } from "./message-store";
 import { MessageTime } from "./message-time";
 import { PeerPrompt } from "./peer-prompt";
+import { useLiveActivityText } from "./use-live-activity-text";
 import { useMessageFilePathHandlers } from "./use-message-file-path-handlers";
 
 function getMessageArticleClassName(
@@ -710,9 +711,14 @@ export const ChatConversationItem = memo(function ChatConversationItem({
     isStopped && showMessageActions && turnEndMessageId != null;
   const turnWorkSegment = getTurnWorkSegment(segments, phase, turnEndMessageId);
 
+  const liveText = useLiveActivityText(showActivity ? activity : null);
   const liveLabel =
     showActivity && activity && activity.kind !== "responding" ? (
-      <ActivityLiveLabel activity={activity} runStartedAt={runStartedAt} />
+      <ActivityLiveLabel
+        activity={activity}
+        runStartedAt={runStartedAt}
+        text={liveText}
+      />
     ) : null;
   const lastSegment = segments.at(-1);
   const liveSegment =

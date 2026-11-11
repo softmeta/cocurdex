@@ -28,3 +28,14 @@ export function useToolCallTriggerParts(
   const workingDirectory = useSessionWorkingDirectory(toolCall.sessionId);
   return getToolCallTriggerParts(toolCall, tense, workingDirectory);
 }
+
+export function useActiveToolCallLabel(
+  toolCall: AgentToolCallRecord | undefined,
+) {
+  const workingDirectory = useSessionWorkingDirectory(
+    toolCall?.sessionId ?? "",
+  );
+  return toolCall
+    ? getToolCallTriggerParts(toolCall, "present", workingDirectory)
+    : null;
+}

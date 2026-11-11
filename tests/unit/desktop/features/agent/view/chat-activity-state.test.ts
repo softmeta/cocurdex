@@ -37,6 +37,7 @@ describe("getActivityState", () => {
     });
 
     expect(activity?.kind).toBe("usingTools");
+    expect(activity?.activeToolCall?.id).toBe("run");
   });
 
   it("falls back to planning when only worktree setup is active", () => {

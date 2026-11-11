@@ -3,10 +3,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";
 import { AgentRoleAvatar } from "@/features/sessions";
-import { useMountEffect } from "@/lib";
+import { cn, useMountEffect } from "@/lib";
 import { useChatAssistantRole, useChatPresentation } from "../chat-display";
 import type { ActivityState } from "./chat-activity-state";
 import { useActivityMotion } from "./use-activity-motion";
+import type { LiveActivityText } from "./use-live-activity-text";
 
 function ActivityGlyph({ activity }: { activity: ActivityState }) {
   const { completeWorkingCycle, motion } = useActivityMotion(activity);
@@ -60,7 +61,7 @@ function AssistantThinkingLabel() {
   return <span className="activity-shimmer truncate">{t(key)}</span>;
 }
 
-function AssistantActivityLabel({ activity }: { activity: ActivityState }) {
+function AssistantActivityLabel({ text }: { text: LiveActivityText }) {
   const { t } = useTranslation("agent");
   const role = useChatAssistantRole();
 
@@ -69,7 +70,7 @@ function AssistantActivityLabel({ activity }: { activity: ActivityState }) {
       {role ? (
         <AgentRoleAvatar role={role} showAgent={false} size="sm" />
       ) : null}
-      {activity.kind === "usingTools" ? (
+      {text.handling ? (
         <span className="activity-shimmer truncate">
           {t("activity.handling")}
         </span>
@@ -83,35 +84,58 @@ function AssistantActivityLabel({ activity }: { activity: ActivityState }) {
 export function ActivityLiveLabel({
   activity,
   runStartedAt,
+  text,
 }: {
   activity: ActivityState;
   runStartedAt?: number;
+  text: LiveActivityText;
 }) {
   if (useChatPresentation() === "assistant") {
-    return <AssistantActivityLabel activity={activity} />;
+    return <AssistantActivityLabel text={text} />;
   }
-  return <WorkActivityLabel activity={activity} runStartedAt={runStartedAt} />;
+  return (
+    <WorkActivityLabel
+      activity={activity}
+      runStartedAt={runStartedAt}
+      text={text}
+    />
+  );
 }
 
 function WorkActivityLabel({
   activity,
   runStartedAt,
+  text,
 }: {
   activity: ActivityState;
   runStartedAt?: number;
+  text: LiveActivityText;
 }) {
-  const { t } = useTranslation("agent");
   const elapsedLabel = useElapsedLabel(runStartedAt);
-
   return (
     <span className="flex min-w-0 items-center gap-2 text-chat-fg-muted">
       <ActivityGlyph activity={activity} />
       <span className="shrink-0 tabular-nums text-chat-fg-muted/70">
         {elapsedLabel}
       </span>
-      <span className="activity-shimmer shrink-0">
-        {t(`activity.${activity.kind}`)}
-      </span>
+      {text.title ? (
+        <span
+          className={cn(
+            "activity-shimmer",
+            text.secondary ? "shrink-0" : "min-w-0 truncate",
+          )}
+        >
+          {text.title}
+        </span>
+      ) : null}
+      {text.secondary ? (
+        <span
+          className="activity-shimmer min-w-0 truncate font-mono [font-variant-ligatures:none]"
+          title={text.secondary}
+        >
+          {text.secondary}
+        </span>
+      ) : null}
     </span>
   );
 }

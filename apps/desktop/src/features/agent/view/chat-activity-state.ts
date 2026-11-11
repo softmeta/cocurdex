@@ -18,6 +18,7 @@ export type ActivityState = {
   kind: ActivityKind;
   tone: "complete" | "error" | "muted" | "running";
   toolActivityId?: string;
+  activeToolCall?: AgentToolCallRecord;
 };
 
 function isActiveToolCall(toolCall: AgentToolCallRecord) {
@@ -85,14 +86,15 @@ export function getActivityState({
     tone: "running" as const,
     toolActivityId: latestToolCall?.id,
   };
-  const hasActiveToolCall = toolCalls.some(
+  const activeToolCall = toolCalls.findLast(
     (toolCall) =>
       isActiveToolCall(toolCall) && !isWorktreeSetupToolCall(toolCall),
   );
-  if (isRunning && hasActiveToolCall) {
+  if (isRunning && activeToolCall) {
     return {
       kind: "usingTools",
       ...runningState,
+      activeToolCall,
     };
   }
 
