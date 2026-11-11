@@ -93,11 +93,13 @@ Cocurdex keeps one MCP server list, configured through the `cocurdex mcp` CLI (o
 
 ## Background daemon
 
-The daemon behind the app, the CLI, and paired devices runs only while the desktop app is open, unless background mode is on.
+The daemon behind the app, the CLI, and paired devices runs only while the desktop app is open, unless background mode is on. A headless install (the `cocurdex-headless-<platform>-<arch>` release archive, for servers and machines without the desktop app) runs the same daemon with a bundled Node runtime and no app.
 
-- Inspect: `cocurdex daemon background status [--json]` reports `enabled`, `available` (false for a source build, which cannot register a login item), and `registered` (whether the login item is in place).
-- Change: `cocurdex daemon background on|off`. On keeps the daemon running after the app quits and starts it at login (a LaunchAgent on macOS, a Run registry value on Windows, an XDG autostart entry on Linux); off removes the login item, and the daemon stops with the app again. Only this computer's user can change it; paired devices are refused. Turn it on only when the user asks.
-- When the daemon is not running, the CLI of an installed app starts it on its own, so commands work without opening the app.
+- Inspect: `cocurdex daemon background status [--json]` reports `enabled`, `available` (false for a source build, which cannot register a login item), `registered` (whether the login item is in place), and `startsAt` (`boot` or `login`).
+- Change: `cocurdex daemon background on|off`. On keeps the daemon running after the app quits and starts it again by itself (a LaunchAgent on macOS, a Run registry value on Windows, an XDG autostart entry for the Linux app); off removes the login item, and the daemon stops with the app again. A headless Linux install registers a systemd user service and enables lingering, so it starts at boot (`startsAt: boot`); when lingering cannot be enabled, and on macOS and Windows, it starts when the user signs in, so a machine that must come back after a reboot needs automatic login for that account. Only this computer's user can change it; paired devices are refused. Turn it on only when the user asks.
+- When the daemon is not running, the CLI of an installed app or headless install starts it on its own, so commands work without opening the app.
+- Stop: `cocurdex daemon stop [--json]` shuts the daemon down when it is idle and refuses while agent turns, queued inputs, or searches are running.
+- Credentials: `cocurdex daemon health` prints where provider credentials live (`credentialStore` in `--json`). A headless install falls back to a `credentials.json` file readable only by the user in the data directory when no system keyring is available; the desktop app always uses the system keyring.
 
 ## Remote devices
 
