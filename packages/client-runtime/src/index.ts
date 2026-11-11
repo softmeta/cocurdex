@@ -1,4 +1,10 @@
+export * from "./agent-brand-icons";
 export { type BackoffPolicy, backoffDelay } from "./backoff";
+export * from "./chat-elapsed";
+export * from "./chat-jump-button";
+export * from "./chat-prompt-anchor";
+export * from "./compact-relative-time";
+export * from "./file-path-candidates";
 export {
   type ForegroundWakeup,
   foregroundWakeup,
@@ -21,6 +27,21 @@ export {
   type HostReadOptions,
   isConnectionLoss,
 } from "./host-connection";
+export * from "./list-time-label";
+export * from "./local-session-title";
+export {
+  MERMAID_THEME_CSS,
+  MERMAID_THEME_VARIABLES,
+  type MermaidAppearance,
+  type MermaidThemeVariables,
+} from "./mermaid-theme";
+export {
+  describePermissionRequest,
+  filterDetailsCoveredByText,
+  type PermissionDetail,
+  type PermissionRequestDisplay,
+  type PermissionRequestSummary,
+} from "./permission-request-display";
 export type {
   HostEndpoint,
   HostPlatform,
@@ -68,6 +89,8 @@ export {
   createSecureTransport,
   type SecureSocketConnector,
 } from "./secure-transport";
+export * from "./session-list-view";
+export * from "./streaming-markdown";
 export {
   type ConnectionState,
   type ConnectionStatus,
@@ -82,3 +105,22 @@ export {
   type SyncEngineOptions,
   type SyncScope,
 } from "./sync-engine";
+export {
+  type ActivityAction,
+  type ActivityActionCount,
+  getActivityAction,
+  summarizeToolActions,
+  type ToolActionSummary,
+} from "./tool-call-activity";
+export {
+  getCommandPreview,
+  getDisplayDirectory,
+  getLineRangeLabel,
+  getToolCallInputSummary,
+  getWorkspaceRelativePath,
+  sanitizeCommand,
+  truncateMiddle,
+  unwrapShellCommand,
+  withoutWorkspaceCd,
+} from "./tool-call-display";
+export * from "./transcript-window";

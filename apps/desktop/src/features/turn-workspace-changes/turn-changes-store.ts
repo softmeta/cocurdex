@@ -18,18 +18,27 @@ export const undoResultsByChangeSetAtom = atom<
   Record<string, UndoTurnChangesResult>
 >({});
 
-export const loadTurnChangeSetsAtom = atom(
+export const mergeTurnChangeSetsAtom = atom(
   null,
   (
     get,
     set,
-    input: { sessionId: string; changeSets: Record<string, TurnChangeSet> },
+    input: {
+      changeSets: Record<string, TurnChangeSet>;
+      deletedIds?: readonly string[];
+    },
   ) => {
+    const deleted = new Set(input.deletedIds ?? []);
     const next = Object.fromEntries(
       Object.entries(get(turnChangeSetsByMessageAtom)).filter(
-        ([, changeSet]) => changeSet.sessionId !== input.sessionId,
+        ([, changeSet]) => !deleted.has(changeSet.id),
       ),
     );
+    for (const changeSet of Object.values(input.changeSets)) {
+      if (changeSet.messageId && changeSet.userMessageId) {
+        delete next[changeSet.userMessageId];
+      }
+    }
     set(turnChangeSetsByMessageAtom, { ...next, ...input.changeSets });
   },
 );

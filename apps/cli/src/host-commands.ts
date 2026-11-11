@@ -20,6 +20,11 @@ import {
   printRows,
   stringFlag,
 } from "./parse-args";
+import {
+  handleRemoteHostCommand,
+  isRemoteHostAction,
+  REMOTE_HOST_USAGE_LINES,
+} from "./remote-host-commands";
 
 const DEFAULT_PAIRING_SCOPES: HostAccessScope[] = [
   "read",
@@ -39,6 +44,7 @@ export function hostUsageLines() {
     "  cocurdex host scopes <device-id> --scopes read,interact,approvals,files.read [--json]",
     "  cocurdex host audit [--limit <n>] [--json]",
     "  cocurdex host traffic [--reset] [--json]",
+    ...REMOTE_HOST_USAGE_LINES,
   ];
 }
 
@@ -245,6 +251,10 @@ export async function handleHostCommand(
       remoteAccess: await requestDaemon("host.remoteAccess.get"),
     }));
     printResult(result, parsed);
+    return true;
+  }
+  if (action === "remotes" && isRemoteHostAction(args[0])) {
+    await handleRemoteHostCommand(args[0], args.slice(1), parsed);
     return true;
   }
   if (action === "remote" && (args[0] === "enable" || args[0] === "disable")) {

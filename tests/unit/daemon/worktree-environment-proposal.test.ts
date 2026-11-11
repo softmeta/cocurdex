@@ -52,7 +52,7 @@ async function createService() {
     .list()
     .find((agent) => agent.id === "pi");
   if (!pi) throw new Error("Pi descriptor not found");
-  vi.spyOn(service, "listAgents").mockResolvedValue([
+  vi.spyOn(service.agents, "listAgents").mockResolvedValue([
     { ...pi, availability: "available" },
   ]);
   await service.workspaces.saveWorkspace(createWorkspace());
@@ -119,7 +119,7 @@ describe("settings set and pending changes", () => {
     expect(pending).toHaveLength(1);
     expect(pending[0]).toMatchObject({ key: "app.theme", value: "dark" });
 
-    await service.settings.acknowledgeChange(pending[0]!.id);
+    await service.settings.acknowledgeChange(pending[0]?.id);
     expect(await service.settings.listPendingChanges()).toEqual([]);
   });
 
@@ -176,7 +176,7 @@ describe("assistant session", () => {
   it("creates a read-only assistant session and returns it on repeat calls", async () => {
     const service = await createService();
 
-    const session = await service.getOrCreateAssistantSession({
+    const session = await service.assistant.getOrCreate({
       workspaceId: "workspace-1",
     });
     if (!session) {
@@ -187,7 +187,7 @@ describe("assistant session", () => {
     expect(session.writeMode).toBe("read-only");
     expect(session.worktreePath ?? null).toBeNull();
 
-    const again = await service.getOrCreateAssistantSession({
+    const again = await service.assistant.getOrCreate({
       workspaceId: "workspace-1",
     });
     expect(again?.id).toBe(session.id);
@@ -196,7 +196,7 @@ describe("assistant session", () => {
 
   it("starts a new assistant session and reuses it afterwards", async () => {
     const service = await createService();
-    const first = await service.getOrCreateAssistantSession({
+    const first = await service.assistant.getOrCreate({
       workspaceId: "workspace-1",
     });
     if (!first) {
@@ -204,12 +204,12 @@ describe("assistant session", () => {
     }
 
     await new Promise((resolve) => setTimeout(resolve, 2));
-    const created = await service.createAssistantSession("workspace-1");
+    const created = await service.assistant.create("workspace-1");
     expect(isAssistantSessionId(created.id)).toBe(true);
     expect(created.id).not.toBe(first.id);
     expect(created.agentType).toBe(first.agentType);
 
-    const reused = await service.getOrCreateAssistantSession({
+    const reused = await service.assistant.getOrCreate({
       workspaceId: "workspace-1",
     });
     expect(reused?.id).toBe(created.id);
@@ -236,7 +236,7 @@ describe("assistant session", () => {
       }),
     );
 
-    const created = await service.getOrCreateAssistantSession({
+    const created = await service.assistant.getOrCreate({
       workspaceId: "workspace-1",
     });
     expect(created?.providerSnapshot).toMatchObject({
@@ -247,7 +247,7 @@ describe("assistant session", () => {
 
   it("backfills the provider snapshot on an existing assistant session", async () => {
     const service = await createService();
-    const created = await service.getOrCreateAssistantSession({
+    const created = await service.assistant.getOrCreate({
       workspaceId: "workspace-1",
     });
     expect(created?.providerSnapshot ?? null).toBeNull();
@@ -270,7 +270,7 @@ describe("assistant session", () => {
       }),
     );
 
-    const backfilled = await service.getOrCreateAssistantSession({
+    const backfilled = await service.assistant.getOrCreate({
       workspaceId: "workspace-1",
     });
     expect(backfilled?.id).toBe(created?.id);

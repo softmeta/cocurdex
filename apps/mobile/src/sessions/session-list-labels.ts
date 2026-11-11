@@ -1,12 +1,11 @@
 import type {
   SessionEnvironment,
   SessionGrouping,
-  SessionOrderDirection,
-  SessionOrdering,
   SessionRootLimit,
   SessionStatusBucket,
   SessionUpdatedBucket,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
+import type { SessionOrderDirection, SessionOrdering } from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
 
 export function useSessionListLabels() {

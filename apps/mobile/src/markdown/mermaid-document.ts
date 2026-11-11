@@ -2,7 +2,7 @@ import {
   MERMAID_THEME_CSS,
   MERMAID_THEME_VARIABLES,
   type MermaidAppearance,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 
 export function allowsMermaidNavigation(url: string) {
   return url === "about:blank";

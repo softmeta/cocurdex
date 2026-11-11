@@ -83,10 +83,10 @@ cocurdex routine delete <routine> --json
 A persona does not write code itself. It hands repository work to an ordinary work session in one of the user's workspaces, which runs on the user's coding agents and shows up in the work sidebar, where the user can follow and take it over. A `<session-id>` is the `sessionId` that `start` and `list` return.
 
 ```bash
-cocurdex persona work catalog --json
+cocurdex persona work catalog [--host <computer>] --json
 cocurdex persona work list <persona> --json
 cocurdex persona work start <persona> --workspace <id|name> --prompt <text>|--prompt-file <path> \
-  [--title <title>] [--role <role>|--team <template>] [--worktree] --json
+  [--title <title>] [--role <role>|--team <template>] [--worktree] [--host <computer>] --json
 cocurdex persona work send <persona> <session-id> <message> --json
 cocurdex persona work stop <persona> <session-id> --json
 ```
@@ -97,6 +97,16 @@ cocurdex persona work stop <persona> <session-id> --json
 - The session runs with the workspace's usual permission mode; approvals and questions reach the user through the assistant overview and notifications, never the persona.
 - `send` delivers a follow-up into the session's current turn when its agent supports it, otherwise after it. A persona can only see, message, and stop the sessions it delegated.
 - Inside a persona's thread, the `work` tool group (`work_catalog`, `work_start`, `work_list`, `work_send`, `work_stop`) does the same. A routine can delegate only with `full` access.
+
+### Work on another computer
+
+A persona can also hand work to another computer the user paired with this one (`cocurdex host remotes list`, see `/cocurdex-settings`). `--host <computer>` takes the paired computer's id or exact name.
+
+- `catalog --host <computer>` lists that computer's workspaces and agent roles (no team templates); `catalog` without it also returns `hosts`, the paired computers with whether each is reachable. Always pick the workspace from that computer's catalog: a remote start never falls back to a workspace of this computer.
+- `start --host` runs the session on that computer, with its agents, files, and permission mode. `--team` is refused there. The task arrives marked as coming from this computer and the persona.
+- `list` shows remote work with `host` (`id`, `name`, `reachable`) and `waitingFor` (`permission`, `question`, `plan`, or `null`). Approvals and questions are answered on that computer, never here: tell the user "it is waiting for you on <computer>". This computer checks remote sessions about every 15 seconds; when one finishes a turn, its reply is posted into the persona's home thread as coming from that computer.
+- `send` and `stop` reach the remote session the same way. When the computer is offline, `start`, `send`, and `stop` fail with `host_unreachable`; `list` keeps the last known state with `reachable: false`.
+- The other computer must grant this one `read`, `interact`, and `execute`. Removing the computer (`cocurdex host remotes remove`) stops tracking its work here.
 
 ## Inbox and brief
 

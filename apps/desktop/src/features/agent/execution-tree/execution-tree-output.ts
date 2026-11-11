@@ -1,9 +1,8 @@
+import { formatDurationMs, unwrapShellCommand } from "@cocurdex/client-runtime";
 import {
   type AgentToolCallResult,
   type ExecutionToolCallSummary,
-  formatDurationMs,
   formatToolCallOutput,
-  unwrapShellCommand,
 } from "@cocurdex/shared";
 import { getToolCallSummary } from "../tool-call/tool-call-utils";
 

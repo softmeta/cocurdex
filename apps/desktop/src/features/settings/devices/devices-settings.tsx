@@ -1,9 +1,10 @@
+import { savedHostSafetyCode } from "@cocurdex/client-runtime";
 import { hostPairingAddresses } from "@cocurdex/shared";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Text } from "@/components/ui";
-import { webPairedHost } from "@/lib";
+import { remoteWindowHost, removePairedHost, webPairedHost } from "@/lib";
 import {
   AccessLogGroup,
   PairedDevicesGroup,
@@ -13,19 +14,36 @@ import { LocalWebGroup } from "./local-web-group";
 import { PairDeviceDialog } from "./pair-device-dialog";
 import { RelayGroup } from "./relay-group";
 import { RemoteAccessGroup } from "./remote-access-group";
+import { RemoteHostsGroup } from "./remote-hosts-group";
 import { useHostAccess } from "./use-host-access";
-import { WebPairedHostGroup } from "./web-paired-host-group";
+import {
+  type PairedHostSummary,
+  WebPairedHostGroup,
+} from "./web-paired-host-group";
 
 export function DevicesSettingsPanel() {
-  const pairedHost = webPairedHost();
-  if (pairedHost) {
+  const summary = pairedHostSummary();
+  if (summary) {
     return (
       <div className="settings-panel-enter flex flex-col gap-8">
-        <WebPairedHostGroup host={pairedHost} />
+        <WebPairedHostGroup host={summary} />
       </div>
     );
   }
   return <HostDevicesPanel />;
+}
+
+function pairedHostSummary(): PairedHostSummary | null {
+  const remote = remoteWindowHost();
+  if (remote) return remote;
+  const web = webPairedHost();
+  if (!web) return null;
+  return {
+    name: web.name,
+    safetyCode: savedHostSafetyCode(web),
+    pairedAt: web.pairedAt,
+    forget: () => removePairedHost(web.hostId),
+  };
 }
 
 function HostDevicesPanel() {
@@ -81,6 +99,7 @@ function HostDevicesPanel() {
       {remoteAllowed ? (
         <PendingPairingsGroup pairings={snapshot.pairings} onChanged={reload} />
       ) : null}
+      <RemoteHostsGroup />
       <AccessLogGroup entries={snapshot.audit} />
       {remoteAllowed && pairing ? (
         <PairDeviceDialog

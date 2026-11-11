@@ -2,6 +2,7 @@ import type {
   AgentToolCallerContext,
   DelegatedWorkRecord,
   DelegationCatalog,
+  DelegationCatalogQuery,
   SendDelegatedWorkPayload,
   StartDelegatedWorkPayload,
 } from "@cocurdex/shared";
@@ -9,7 +10,7 @@ import type { AgentToolRegistry } from "../tool-registry";
 
 export interface WorkToolDependencies {
   personaOf(sessionId: string): Promise<string | null>;
-  catalog(): Promise<DelegationCatalog>;
+  catalog(query: DelegationCatalogQuery): Promise<DelegationCatalog>;
   start(payload: StartDelegatedWorkPayload): Promise<DelegatedWorkRecord>;
   list(personaId: string): Promise<DelegatedWorkRecord[]>;
   send(payload: SendDelegatedWorkPayload): Promise<DelegatedWorkRecord>;
@@ -50,17 +51,23 @@ export function registerWorkTools(
       group: "work",
       name: "catalog",
       description:
-        "List what you can delegate coding work to: the user's workspaces (code repositories), their saved agent roles, and their team templates. Read it before work_start when you do not know the ids.",
+        "List what you can delegate coding work to: the user's workspaces (code repositories), their saved agent roles, their team templates, and the other computers paired with this one (hosts). Pass host to list the workspaces and agent roles on that computer instead. Read it before work_start when you do not know the ids.",
       inputSchema: {
         type: "object",
-        properties: {},
+        properties: {
+          host: {
+            type: "string",
+            description:
+              "Id or name of a paired computer from hosts; omit for this computer",
+          },
+        },
         additionalProperties: false,
       },
     },
     isAvailable: isPersonal,
-    execute: async (caller) => {
+    execute: async (caller, input) => {
       await persona(caller);
-      return deps.catalog();
+      return deps.catalog({ host: optionalText(input.host) });
     },
   });
 
@@ -96,6 +103,11 @@ export function registerWorkTools(
             description:
               "Work in a new git worktree so the user's checkout stays untouched",
           },
+          host: {
+            type: "string",
+            description:
+              "Id or name of a paired computer to run the work on; workspace and agentRole then come from work_catalog with that host. Team templates are not available there.",
+          },
         },
         required: ["workspace", "prompt"],
         additionalProperties: false,
@@ -111,6 +123,7 @@ export function registerWorkTools(
         agentRole: optionalText(input.agentRole),
         teamTemplate: optionalText(input.teamTemplate),
         isolateWorktree: input.isolateWorktree === true,
+        host: optionalText(input.host),
       }),
   });
 
@@ -119,7 +132,7 @@ export function registerWorkTools(
       group: "work",
       name: "list",
       description:
-        "List the work sessions you delegated, newest first, with their state (running, completed, failed, cancelled, interrupted, idle, archived).",
+        "List the work sessions you delegated, newest first, with their state (running, completed, failed, cancelled, interrupted, idle, archived), what each waits for (permission, question, plan) when the user must answer in it, and the paired computer (host) it runs on, if any.",
       inputSchema: {
         type: "object",
         properties: {},

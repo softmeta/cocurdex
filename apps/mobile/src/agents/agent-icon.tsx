@@ -1,10 +1,12 @@
 import {
+  BUILT_IN_AGENT_BRAND_ICONS,
+  REGISTRY_AGENT_BRAND_ICONS,
+} from "@cocurdex/client-runtime";
+import {
   ACP_REGISTRY_AGENT_ID_PREFIX,
   type AgentId,
-  BUILT_IN_AGENT_BRAND_ICONS,
   type BuiltInAgentId,
   isAcpRegistryAgentId,
-  REGISTRY_AGENT_BRAND_ICONS,
 } from "@cocurdex/shared";
 import { useThemeColors } from "@/theme";
 import { brandIconXml, fallbackIconXml, tintedIconXml } from "./agent-icon-xml";

@@ -1,7 +1,7 @@
 import {
   normalizeSessionListView,
   type SessionListView,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 

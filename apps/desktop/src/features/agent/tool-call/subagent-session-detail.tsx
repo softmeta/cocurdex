@@ -2,21 +2,16 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@/components/ui";
-import { loadTurnChangeSetsAtom } from "@/features/turn-workspace-changes";
 import { desktopApi, useMountEffect, watchSessionStream } from "@/lib";
 import { ChatConversationItem } from "../view/chat-conversation-item";
 import {
   createConversationGroups,
   createTimelineGroups,
 } from "../view/chat-timeline";
-import {
-  loadSessionMessagesAtom,
-  loadTurnStatsAtom,
-  messagesLoadedBySessionAtom,
-} from "../view/message-store";
+import { messagesLoadedBySessionAtom } from "../view/message-store";
+import { applyTranscriptPageAtom } from "../view/transcript-window";
 import { useSessionMessages } from "../view/use-session-messages";
 import {
-  loadSessionToolCallsAtom,
   toolCallsBySessionAtom,
   toolCallsLoadedBySessionAtom,
 } from "./tool-call-store";
@@ -45,10 +40,7 @@ function LoadedSubagentSession({ sessionId }: { sessionId: string }) {
   const toolCallsBySession = useAtomValue(toolCallsBySessionAtom);
   const messagesLoadedBySession = useAtomValue(messagesLoadedBySessionAtom);
   const toolCallsLoadedBySession = useAtomValue(toolCallsLoadedBySessionAtom);
-  const loadSessionMessages = useSetAtom(loadSessionMessagesAtom);
-  const loadTurnStats = useSetAtom(loadTurnStatsAtom);
-  const loadTurnChangeSets = useSetAtom(loadTurnChangeSetsAtom);
-  const loadSessionToolCalls = useSetAtom(loadSessionToolCallsAtom);
+  const applyTranscriptPage = useSetAtom(applyTranscriptPageAtom);
   const messagesLoaded = Boolean(messagesLoadedBySession[sessionId]);
   const toolCallsLoaded = Boolean(toolCallsLoadedBySession[sessionId]);
 
@@ -61,37 +53,8 @@ function LoadedSubagentSession({ sessionId }: { sessionId: string }) {
 
     let cancelled = false;
 
-    void Promise.all([
-      messagesLoaded
-        ? Promise.resolve({
-            messages,
-            turnStats: {},
-            turnChangeSets: {},
-          })
-        : desktopApi.listSessionMessages(sessionId),
-      toolCallsLoaded
-        ? Promise.resolve(toolCallsBySession[sessionId] ?? [])
-        : desktopApi.listSessionToolCalls(sessionId),
-    ]).then(([messageResult, toolCalls]) => {
-      if (cancelled) {
-        return;
-      }
-
-      if (!messagesLoaded) {
-        loadSessionMessages({
-          messages: messageResult.messages,
-          sessionId,
-        });
-        loadTurnStats(messageResult.turnStats);
-        loadTurnChangeSets({
-          changeSets: messageResult.turnChangeSets ?? {},
-          sessionId,
-        });
-      }
-
-      if (!toolCallsLoaded) {
-        loadSessionToolCalls({ toolCalls, sessionId });
-      }
+    void desktopApi.getTranscriptPage(sessionId, null).then((page) => {
+      if (!cancelled) applyTranscriptPage({ sessionId, page });
     });
 
     return () => {

@@ -1,4 +1,4 @@
-import type { JumpButtonKind } from "@cocurdex/shared";
+import type { JumpButtonKind } from "@cocurdex/client-runtime";
 import { SymbolView } from "expo-symbols";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";

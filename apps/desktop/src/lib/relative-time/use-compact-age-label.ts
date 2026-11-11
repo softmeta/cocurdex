@@ -1,4 +1,7 @@
-import { formatListTime, getCompactRelativeTime } from "@cocurdex/shared";
+import {
+  formatListTime,
+  getCompactRelativeTime,
+} from "@cocurdex/client-runtime";
 import { useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { formatActivityTime } from "./activity-time-label";

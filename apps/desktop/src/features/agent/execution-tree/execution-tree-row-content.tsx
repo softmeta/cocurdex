@@ -1,5 +1,5 @@
+import { formatDurationMs } from "@cocurdex/client-runtime";
 import type { ExecutionInteraction } from "@cocurdex/shared";
-import { formatDurationMs } from "@cocurdex/shared";
 import {
   ArrowUpRight,
   ChevronDown,

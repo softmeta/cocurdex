@@ -1,4 +1,4 @@
-import type { MermaidAppearance } from "@cocurdex/shared";
+import type { MermaidAppearance } from "@cocurdex/client-runtime";
 
 export type RenderedDiagram = {
   svg: string;

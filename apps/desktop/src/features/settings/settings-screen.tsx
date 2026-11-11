@@ -42,7 +42,6 @@ import {
 } from "./settings-sections";
 import { SettingsSidebar } from "./settings-sidebar";
 import type { AppearanceSettings, ThemeMode } from "./theme";
-import { WorkflowSettingsPanel } from "./workflows";
 import {
   selectedSettingsWorkspaceIdAtom,
   WorkspaceSettingsHeading,
@@ -196,14 +195,6 @@ function SectionPanel({
     );
   }
 
-  if (sectionId === "workflows") {
-    return (
-      <div className="settings-panel-enter flex min-h-0 flex-1 flex-col">
-        <WorkflowSettingsPanel />
-      </div>
-    );
-  }
-
   if (sectionId === "environment") {
     return <NetworkProxySettingsPanel />;
   }
@@ -291,7 +282,6 @@ export function SettingsScreen({
   const isFillLayout =
     activeSection === "licenses" ||
     activeSection === "archived" ||
-    activeSection === "workflows" ||
     activeSection === "providers" ||
     isConnectionSection(activeSection);
   const [scrolledSection, setScrolledSection] =
@@ -387,7 +377,6 @@ export function SettingsScreen({
             <div
               className={cn(
                 "mx-auto flex min-h-0 w-full flex-1 flex-col px-4 pt-1 sm:px-6 lg:px-8",
-                activeSection === "workflows" && "max-w-none gap-4",
                 activeSection === "licenses" && "max-w-5xl gap-6",
                 activeSection === "providers" && "max-w-6xl gap-6",
                 isConnectionSection(activeSection) && "max-w-6xl gap-6",

@@ -1,6 +1,5 @@
 import type { AgentRoleAvatar } from "./agent-role";
 import type { AgentId, RunRecord, RunStatus } from "./contracts";
-import type { PeerMessageDelivery } from "./peer-messaging";
 
 export type TeamStatus = "active" | "stopped";
 export type TeamMemberStatus =
@@ -355,34 +354,5 @@ export function teammateRunReport(
   return {
     outcome: REPORT_OUTCOME_BY_RUN_STATUS[status],
     content: parts.filter(Boolean).join("\n\n"),
-  };
-}
-
-export type TeammateReportDelivery = PeerMessageDelivery | "hold";
-
-export type TeammateReportDecision =
-  | { kind: "skip" }
-  | { kind: "deliver"; delivery: TeammateReportDelivery };
-
-export function decideTeammateReport(input: {
-  memberStopped: boolean;
-  teamStopped: boolean;
-  leadArchived: boolean;
-  leadHasActiveRun: boolean;
-  leadSupportsSteering: boolean;
-  recovering: boolean;
-}): TeammateReportDecision {
-  if (input.memberStopped || input.teamStopped || input.leadArchived) {
-    return { kind: "skip" };
-  }
-  if (input.recovering) return { kind: "deliver", delivery: "hold" };
-  if (!input.leadHasActiveRun) {
-    return { kind: "deliver", delivery: "start-new-run" };
-  }
-  return {
-    kind: "deliver",
-    delivery: input.leadSupportsSteering
-      ? "steer-active-run"
-      : "queue-after-run",
   };
 }

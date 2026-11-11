@@ -27,7 +27,7 @@ async function fixture() {
     await service.shutdown();
   });
   const registry = createAgentRegistry().list();
-  vi.spyOn(service, "listAgents").mockResolvedValue(
+  vi.spyOn(service.agents, "listAgents").mockResolvedValue(
     registry
       .filter((agent) => agent.id === "pi" || agent.id === "codex")
       .map((agent) => ({ ...agent, availability: "available" as const })),

@@ -62,6 +62,6 @@ describe("settings sections by device scope", () => {
     expect(permittedSettingsSection("environment", HOST_ACCESS_SCOPES)).toBe(
       "environment",
     );
-    expect(permittedSettingsSection("workflows", ["read"])).toBe("workflows");
+    expect(permittedSettingsSection("about", ["read"])).toBe("about");
   });
 });

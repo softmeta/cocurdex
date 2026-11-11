@@ -3,7 +3,7 @@ import {
   parseFilePathCandidate,
   parseLocalFileHref,
   resolveCandidatePath,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 
 export const FILE_LINK_SCHEME = "cocurdex-file:";
 

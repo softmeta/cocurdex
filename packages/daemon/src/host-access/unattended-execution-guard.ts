@@ -26,6 +26,7 @@ const SESSION_DRIVING_METHODS: Readonly<Record<string, string>> = {
   "session.steerQueued": "sessionId",
   "session.sendQueuedNow": "sessionId",
   "session.sendPeerMessage": "toSessionId",
+  "delegation.remote.send": "sessionId",
 };
 
 function readString(params: Params, key: string) {

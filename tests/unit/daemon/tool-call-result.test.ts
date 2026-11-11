@@ -74,7 +74,7 @@ it("reads tool results through the named RPC and rejects invalid IDs", async () 
   }
 });
 
-it("serves externalized results through the RPC and session snapshots", async () => {
+it("serves externalized results through the RPC and keeps them out of snapshots", async () => {
   const userDataPath = tempDirs.createSync("tool-result-ext-");
   const service = new CocurdexDaemonService({
     runtimeFingerprint: "test",
@@ -134,7 +134,7 @@ it("serves externalized results through the RPC and session snapshots", async ()
     ).resolves.toEqual(result);
     const snapshot = await service.getSessionSnapshot("session-1");
     expect(snapshot?.toolCalls).toEqual([
-      expect.objectContaining({ id: "tool-1", ...result }),
+      expect.objectContaining({ id: "tool-1", content: undefined }),
     ]);
   } finally {
     await service.shutdown();

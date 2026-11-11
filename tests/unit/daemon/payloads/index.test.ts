@@ -128,7 +128,7 @@ describe("parseDaemonRequest", () => {
   });
 
   it("passes methods without a schema through unchanged", () => {
-    const original = request("workflow.start", { workflowRunId: "run-1" });
+    const original = request("memory.status", { refresh: true });
     expect(parseDaemonRequest(original)).toBe(original);
   });
   it("bounds terminal sessions to absolute directories and sane sizes", () => {

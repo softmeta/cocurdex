@@ -1,6 +1,7 @@
 import nodeCrypto from "node:crypto";
 import { SECURE_CHANNEL_WEBSOCKET_PROTOCOL } from "@cocurdex/secure-channel";
 import type { HostRelayError, HostRelayState } from "@cocurdex/shared";
+import { Effect, Fiber } from "effect";
 import WebSocket, { type RawData } from "ws";
 import { daemonNoiseCrypto, type HostKeys } from "./host-key-store";
 
@@ -161,6 +162,12 @@ function sameTarget(left: RelayTarget | null, right: RelayTarget | null) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+interface ControlSession {
+  socket: WebSocket;
+  closed: Promise<HostRelayError>;
+  dispose(): void;
+}
+
 export function createRelayConnector(options: RelayConnectorOptions) {
   let target: RelayTarget | null = null;
   let status: RelayConnectorState = {
@@ -168,10 +175,8 @@ export function createRelayConnector(options: RelayConnectorOptions) {
     error: null,
     latencyMs: null,
   };
-  let generation = 0;
   let attempt = 0;
-  let control: WebSocket | null = null;
-  let retryTimer: NodeJS.Timeout | null = null;
+  let supervisor: Fiber.Fiber<unknown, unknown> | null = null;
   const dataSockets = new Set<WebSocket>();
   const retryDelay = options.retryDelayMs ?? defaultRetryDelay;
   const probeInterval =
@@ -195,25 +200,11 @@ export function createRelayConnector(options: RelayConnectorOptions) {
   };
 
   const stop = () => {
-    generation += 1;
-    if (retryTimer) clearTimeout(retryTimer);
-    retryTimer = null;
-    control?.terminate();
-    control = null;
+    const fiber = supervisor;
+    supervisor = null;
+    if (fiber) Effect.runFork(Fiber.interrupt(fiber));
     for (const socket of dataSockets) socket.terminate();
     dataSockets.clear();
-  };
-
-  const scheduleRetry = (round: number, error: HostRelayError) => {
-    if (round !== generation) return;
-    setStatus({ state: "offline", error });
-    const delay = retryDelay(attempt, REFUSALS.has(error));
-    attempt += 1;
-    retryTimer = setTimeout(() => {
-      retryTimer = null;
-      connect(round);
-    }, delay);
-    retryTimer.unref?.();
   };
 
   const acceptSession = (active: RelayTarget, ticket: string) => {
@@ -230,21 +221,23 @@ export function createRelayConnector(options: RelayConnectorOptions) {
     );
   };
 
-  const connect = (round: number) => {
-    const active = target;
-    if (round !== generation || !active) return;
-    setStatus({ state: "connecting", error: status.error });
+  const openControl = (active: RelayTarget): ControlSession => {
     const socket = new WebSocket(relaySocketUrl(active.url, "/v1/host"), {
       handshakeTimeout: HANDSHAKE_TIMEOUT_MS,
       maxPayload: CONTROL_FRAME_LIMIT,
     });
-    control = socket;
     let failure: HostRelayError = "unreachable";
     let liveness: NodeJS.Timeout | null = null;
     let latencyTimer: NodeJS.Timeout | null = null;
     let pingSentAt: number | null = null;
     let registered = false;
     let relayVersion: string | null = null;
+    const clearTimers = () => {
+      if (liveness) clearTimeout(liveness);
+      if (latencyTimer) clearInterval(latencyTimer);
+      liveness = null;
+      latencyTimer = null;
+    };
     const probeLatency = () => {
       if (pingSentAt !== null || socket.readyState !== WebSocket.OPEN) return;
       pingSentAt = performance.now();
@@ -298,26 +291,22 @@ export function createRelayConnector(options: RelayConnectorOptions) {
     socket.on("open", alive);
     socket.on("ping", alive);
     socket.on("pong", () => {
-      if (pingSentAt === null || round !== generation) return;
+      if (pingSentAt === null) return;
       const latencyMs = Math.max(1, Math.round(performance.now() - pingSentAt));
       pingSentAt = null;
       setLatency(latencyMs);
     });
     socket.on("error", () => undefined);
     socket.on("message", (data, isBinary) => {
-      if (round !== generation) return;
       alive();
       const message = isBinary ? null : parseControlMessage(data);
       if (!message) return fail("protocol");
       handle(message);
     });
-    socket.once("close", (code, reason) => {
-      if (liveness) clearTimeout(liveness);
-      if (latencyTimer) clearInterval(latencyTimer);
-      if (control === socket) control = null;
-      const refusal = CLOSE_ERRORS[code] ?? null;
-      const error = refusal ?? failure;
-      if (round === generation) {
+    const closed = new Promise<HostRelayError>((resolve) => {
+      socket.once("close", (code, reason) => {
+        clearTimers();
+        const error = CLOSE_ERRORS[code] ?? failure;
         log("warn", "relay.disconnected", {
           url: active.url,
           code,
@@ -326,10 +315,40 @@ export function createRelayConnector(options: RelayConnectorOptions) {
           registered,
           relayVersion,
         });
-      }
-      scheduleRetry(round, error);
+        resolve(error);
+      });
     });
+    return {
+      socket,
+      closed,
+      dispose() {
+        clearTimers();
+        socket.removeAllListeners();
+        socket.on("error", () => undefined);
+        socket.terminate();
+      },
+    };
   };
+
+  const connectOnce = (active: RelayTarget) =>
+    Effect.scoped(
+      Effect.acquireRelease(
+        Effect.sync(() => openControl(active)),
+        (session) => Effect.sync(() => session.dispose()),
+      ).pipe(Effect.flatMap((session) => Effect.promise(() => session.closed))),
+    );
+
+  const supervise = (active: RelayTarget) =>
+    Effect.gen(function* () {
+      for (;;) {
+        setStatus({ state: "connecting", error: status.error });
+        const error = yield* connectOnce(active);
+        setStatus({ state: "offline", error });
+        const delay = retryDelay(attempt, REFUSALS.has(error));
+        attempt += 1;
+        yield* Effect.sleep(delay);
+      }
+    });
 
   return {
     apply(next: RelayTarget | null) {
@@ -342,7 +361,7 @@ export function createRelayConnector(options: RelayConnectorOptions) {
         return;
       }
       setStatus({ state: "connecting", error: null });
-      connect(generation);
+      supervisor = Effect.runFork(supervise(next));
     },
     state: () => status,
     close() {

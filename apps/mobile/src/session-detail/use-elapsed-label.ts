@@ -1,4 +1,4 @@
-import { formatElapsed } from "@cocurdex/shared";
+import { formatElapsed } from "@cocurdex/client-runtime";
 import { useState, useSyncExternalStore } from "react";
 
 const TICK_MS = 1000;

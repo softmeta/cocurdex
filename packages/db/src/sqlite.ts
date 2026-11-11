@@ -56,6 +56,7 @@ import type {
   SessionAttentionRepository,
   SessionRepository,
   SessionUsageRepository,
+  TimelineRepository,
   ToolCallRepository,
   TurnChangeSetRepository,
   WorkspaceRepository,
@@ -76,6 +77,7 @@ import {
   createSqliteSessionAttentionRepository,
   createSqliteSessionRepository,
   createSqliteSessionUsageRepository,
+  createSqliteTimelineRepository,
   createSqliteToolCallRepository,
   createSqliteTurnChangeSetRepository,
   createSqliteWorkspaceRepository,
@@ -92,10 +94,6 @@ import {
 import { createSqliteSearchRepository, type SearchRepository } from "./search";
 import { createSqliteSyncRepository, type SyncRepository } from "./sync";
 import { createSqliteTeamRepository, type TeamRepository } from "./team";
-import {
-  createSqliteWorkflowRepository,
-  type WorkflowRepository,
-} from "./workflow";
 
 export interface CocurdexDatabase {
   notes: NotesRepository;
@@ -110,12 +108,12 @@ export interface CocurdexDatabase {
   runs: RunRepository;
   messageTurnStats: MessageTurnStatsRepository;
   turnChangeSets: TurnChangeSetRepository;
-  workflows: WorkflowRepository;
   teams: TeamRepository;
   scriptRuns: ScriptRunRepository;
   hostAccess: HostAccessRepository;
   sessionUsage: SessionUsageRepository;
   toolCalls: ToolCallRepository;
+  timeline: TimelineRepository;
   editorViews: EditorViewRepository;
   providerSessions: ProviderSessionRepository;
   contextTransfers: ContextTransferRepository;
@@ -218,12 +216,12 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     runs: createSqliteRunRepository(database),
     messageTurnStats: createSqliteMessageTurnStatsRepository(database),
     turnChangeSets: createSqliteTurnChangeSetRepository(database),
-    workflows: createSqliteWorkflowRepository(database),
     teams: createSqliteTeamRepository(database),
     scriptRuns: createSqliteScriptRunRepository(database),
     hostAccess: createSqliteHostAccessRepository(database),
     sessionUsage: createSqliteSessionUsageRepository(database),
     toolCalls: createSqliteToolCallRepository(database),
+    timeline: createSqliteTimelineRepository(database),
     editorViews: createSqliteEditorViewRepository(database),
     providerSessions: createSqliteProviderSessionRepository(database),
     contextTransfers: createSqliteContextTransferRepository(database),

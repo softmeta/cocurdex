@@ -1,6 +1,8 @@
 import type { AgentProviderSnapshot } from "./contracts";
 import type { CompatibleProviderModel } from "./provider-contracts";
 
+export const DEFAULT_MODEL_CONTEXT_WINDOW = 128_000;
+
 export function createProviderSnapshotForModel(
   item: CompatibleProviderModel,
 ): AgentProviderSnapshot {

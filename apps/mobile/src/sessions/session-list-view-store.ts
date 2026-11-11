@@ -1,7 +1,7 @@
 import {
   normalizeSessionListView,
   type SessionListView,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 import { File, Paths } from "expo-file-system";
 import { useSyncExternalStore } from "react";
 

@@ -50,6 +50,14 @@ function isExistingDirectory(directoryPath: string) {
   }
 }
 
+async function isDirectory(directoryPath: string) {
+  try {
+    return (await stat(directoryPath)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 export function withMissingRootPaths(workspace: WorkspaceRecord) {
   return {
     ...workspace,
@@ -93,6 +101,9 @@ export class WorkspaceHost {
 
   async listWorkspaceFiles(rootPath: string) {
     if (!(await this.scanPolicy.canScan(rootPath))) {
+      return [];
+    }
+    if (!(await isDirectory(rootPath))) {
       return [];
     }
     await this.watch.ensure(rootPath);

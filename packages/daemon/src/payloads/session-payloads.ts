@@ -97,6 +97,12 @@ export const sessionPayloadSchemas = {
     }),
   ),
   "session.snapshot": exact<Payload<"session.snapshot">>()(sessionIdPayload),
+  "session.transcriptPage": exact<Payload<"session.transcriptPage">>()(
+    z.object({
+      sessionId: idSchema,
+      beforeSeq: z.number().int().positive().nullable(),
+    }),
+  ),
   "session.fork": exact<Payload<"session.fork">>()(
     z.object({
       sessionId: idSchema,

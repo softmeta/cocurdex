@@ -1,4 +1,8 @@
-import { collectDescendantPids } from "@cocurdex/agent-adapters/internal/shared/process-tree";
+import { spawn } from "node:child_process";
+import {
+  collectDescendantPids,
+  shutdownChildProcess,
+} from "@cocurdex/agent-adapters/internal/shared/process-tree";
 import { describe, expect, it } from "vitest";
 
 describe("collectDescendantPids", () => {
@@ -26,5 +30,43 @@ describe("collectDescendantPids", () => {
     );
 
     expect(collectDescendantPids(table, 100)).toEqual([200]);
+  });
+});
+
+function spawnNode(script: string) {
+  const child = spawn(process.execPath, ["-e", script], {
+    stdio: ["pipe", "pipe", "ignore"],
+  });
+  const ready = new Promise<void>((resolve) =>
+    child.stdout.once("data", () => resolve()),
+  );
+  return { child, ready };
+}
+
+const FAST = { eofGraceMs: 200, sigtermGraceMs: 200 };
+
+describe("shutdownChildProcess", () => {
+  it("lets a process exit on its own when its input closes", async () => {
+    const { child, ready } = spawnNode(
+      "process.stdin.on('end', () => process.exit(0)); process.stdin.resume(); console.log('ready')",
+    );
+    await ready;
+
+    await shutdownChildProcess(child, FAST);
+
+    expect(child.exitCode).toBe(0);
+  });
+
+  it("kills a process that ignores both its input closing and SIGTERM", async () => {
+    const { child, ready } = spawnNode(
+      "process.on('SIGTERM', () => {}); process.stdin.resume(); setInterval(() => {}, 1000); console.log('ready')",
+    );
+    await ready;
+
+    await shutdownChildProcess(child, FAST);
+
+    await expect
+      .poll(() => child.exitCode !== null || child.signalCode !== null)
+      .toBe(true);
   });
 });

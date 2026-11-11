@@ -1,5 +1,6 @@
 export { registerAudienceWindowHandlers } from "./audience-window";
 export { registerChatWindowHandlers } from "./chat-window-handlers";
+export { registerRemoteHostWindowHandlers } from "./remote-host-window";
 export {
   migrateLegacyRendererStorage,
   registerRendererProtocol,

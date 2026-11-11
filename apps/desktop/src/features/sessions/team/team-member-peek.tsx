@@ -33,8 +33,8 @@ export function TeamMemberPeek({
 
   useMountEffect(() => {
     let cancelled = false;
-    void desktopApi.listSessionMessages(member.sessionId).then((result) => {
-      if (!cancelled) setLastReply(lastReplyOf(result.messages));
+    void desktopApi.getTranscriptPage(member.sessionId, null).then((page) => {
+      if (!cancelled) setLastReply(lastReplyOf(page.messages));
     });
     return () => {
       cancelled = true;

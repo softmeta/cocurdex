@@ -1,11 +1,11 @@
 import type { HostConnection } from "@cocurdex/client-runtime";
-import {
-  type CreateSessionPayload,
-  generateLocalSessionTitle,
-  type ImageAttachment,
-  type NewSessionDefaults,
-  type SessionRecord,
-  type SessionRuntimeSelection,
+import { generateLocalSessionTitle } from "@cocurdex/client-runtime";
+import type {
+  CreateSessionPayload,
+  ImageAttachment,
+  NewSessionDefaults,
+  SessionRecord,
+  SessionRuntimeSelection,
 } from "@cocurdex/shared";
 
 export type StartConnection = Pick<HostConnection, "request" | "command">;

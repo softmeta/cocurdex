@@ -2,7 +2,7 @@ import {
   type JumpButtonKind,
   resolveJumpButton,
   type ScrollDirection,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 import type { CondensedItem } from "./transcript-activity";
 
 export interface ScrollMetrics {

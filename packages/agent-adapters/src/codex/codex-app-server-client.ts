@@ -4,8 +4,8 @@ import { createInterface, type Interface } from "node:readline";
 import { logAdapterDiagnostic } from "../diagnostics";
 import {
   buildChildProcessEnv,
+  shutdownChildProcess,
   spawnCommand,
-  stopChildProcess,
 } from "../shared";
 
 type RequestId = number;
@@ -226,7 +226,11 @@ export class CodexAppServerClient {
 
     this.#closed = true;
     this.#readline.close();
-    stopChildProcess(this.#process);
+    void shutdownChildProcess(this.#process).catch((error: unknown) =>
+      logAdapterDiagnostic("warn", "[CodexAppServer] shutdown failed", {
+        error: toErrorMessage(error),
+      }),
+    );
     this.#rejectPending(new Error("Codex app-server client disposed"));
   }
 

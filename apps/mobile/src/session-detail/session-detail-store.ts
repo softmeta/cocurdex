@@ -1,4 +1,9 @@
 import type { HostConnection } from "@cocurdex/client-runtime";
+import {
+  keepOlderPages,
+  prependTranscriptPage,
+  STREAM_RENDER_BATCH_MS,
+} from "@cocurdex/client-runtime";
 import type {
   AgentMessageDeltaEvent,
   AgentToolCallRecord,
@@ -6,7 +11,6 @@ import type {
   MessageRecord,
   SessionObservationSnapshot,
 } from "@cocurdex/shared";
-import { STREAM_RENDER_BATCH_MS } from "@cocurdex/shared";
 
 export type SessionDetailConnection = Pick<
   HostConnection,
@@ -131,10 +135,34 @@ export function createSessionDetailStore(
         loaded: true,
         failed: false,
         missing: observation === null,
-        observation,
+        observation: observation
+          ? keepOlderPages(snapshot.observation, observation)
+          : null,
       });
     } catch {
       if (current === generation) publish({ failed: !snapshot.loaded });
+    }
+  }
+
+  let loadingOlder = false;
+
+  async function loadOlder(): Promise<boolean> {
+    const beforeSeq = snapshot.observation?.olderBeforeSeq;
+    if (typeof beforeSeq !== "number" || loadingOlder) return false;
+    loadingOlder = true;
+    try {
+      const page = await connection.request("session.transcriptPage", {
+        sessionId,
+        beforeSeq,
+      });
+      updateObservation((observation) =>
+        prependTranscriptPage(observation, page),
+      );
+      return true;
+    } catch {
+      return false;
+    } finally {
+      loadingOlder = false;
     }
   }
 
@@ -235,6 +263,7 @@ export function createSessionDetailStore(
     getSnapshot: () => snapshot,
     observed: () => listeners.size > 0,
     reload: load,
+    loadOlder,
   };
 }
 

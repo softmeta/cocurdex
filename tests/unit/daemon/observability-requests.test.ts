@@ -26,7 +26,6 @@ async function observability() {
     activeWork: () => ({
       agentTurns: 1,
       queuedInputs: 0,
-      workflowActive: false,
       workspaceSearches: 0,
     }),
     connections: () => ({ total: 3, devices: 1 }),

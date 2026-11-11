@@ -104,6 +104,7 @@ export default interface Resources {
     peerMessage: {
       from: "From session {{title}}";
       fromBrief: "Today's brief";
+      fromRemote: "From {{sender}} on {{host}}";
       fromRoutine: "From routine {{name}}";
       fromScriptRun: "From script {{name}}";
     };
@@ -1654,6 +1655,7 @@ export default interface Resources {
       description: "Coordinate work, keep context, and follow through.";
       failed: "Failed";
       host: "Runs on the connected host while its background service is online.";
+      hostOffline: "{{host}} is offline";
       idle: "Idle";
       interrupted: "Interrupted";
       manageConnections: "Connect applications";
@@ -1664,6 +1666,7 @@ export default interface Resources {
       paused: "Paused";
       pausedFailures: "Paused after failures";
       pickAssistant: "Select an assistant to see its work";
+      remoteWindowUnavailable: "Open Cocurdex on this computer's desktop app to see work on {{host}}.";
       resources: "Context and resources";
       results: "Recent results";
       retryAssistant: "Assistant could not load. Retry";
@@ -1671,6 +1674,8 @@ export default interface Resources {
       retryWork: "Work could not load. Retry";
       running: "Running";
       unscheduled: "No next run scheduled";
+      waitingForYou: "Waiting for you";
+      waitingOnHost: "Waiting for you on {{host}}";
       work: "Delegated work";
     };
     roster: {
@@ -2841,6 +2846,37 @@ export default interface Resources {
         };
         saveFailed: "Could not change remote access";
       };
+      remotes: {
+        approveThere: "On {{name}}, open Settings > Devices and approve this computer when its safety code matches.";
+        description: "Computers this one can open and hand work to. Pair with a link created on the other computer.";
+        detail: "{{status}} · Safety code {{code}}";
+        empty: "No other computers paired yet.";
+        groupTitle: "Other computers";
+        link: "Pairing link";
+        linkPlaceholder: "Paste the pairing link from the other computer";
+        missingScopes: "To hand work to {{name}}, it must also allow: {{scopes}}.";
+        open: "Open";
+        openFailed: "Could not open the window";
+        openLabel: "Open {{name}} in a new window";
+        pair: "Pair";
+        pairDescription: "On the other computer, open Settings > Devices, pair a device with Start work allowed, and copy its link.";
+        pairFailed: "Could not pair with that computer";
+        pairOpen: "Pair a computer";
+        pairTitle: "Pair another computer";
+        pairedDescription: "Paired with {{name}}. Check that the safety code matches on both computers.";
+        remove: "Remove";
+        removeDescription: "This computer loses access to it, and work delegated there is no longer tracked here.";
+        removeFailed: "Could not remove the computer";
+        removeTitle: "Remove {{name}}?";
+        safetyCode: "Safety code";
+        status: {
+          connected: "Connected";
+          offline: "Offline";
+          pending: "Waiting for approval";
+          rejected: "Access removed";
+          unknown: "Checking";
+        };
+      };
       scope: {
         approvals: {
           description: "Answer permission requests, questions, and plan approvals.";
@@ -2855,7 +2891,7 @@ export default interface Resources {
           title: "Manage devices";
         };
         execute: {
-          description: "Start sessions, teams, script runs, and workflows, change or run MCP servers, and drive agents that run without approval.";
+          description: "Start sessions, teams, and script runs, change or run MCP servers, and drive agents that run without approval.";
           title: "Start work";
         };
         filesRead: {
@@ -3495,7 +3531,6 @@ export default interface Resources {
       skills: "Skills";
       teams: "Teams";
       usage: "Usage";
-      workflows: "Workflows";
       workspaces: "Workspaces";
       worktrees: "Worktrees";
     };
@@ -3892,77 +3927,6 @@ export default interface Resources {
         upToDate: "You're up to date.";
       };
       title: "Version";
-    };
-    workflows: {
-      addAgent: "Add agent";
-      addGate: "Add gate";
-      addTerminal: "Add end";
-      artifact: {
-        change_set: {
-          v1: "";
-        };
-        "change_set.v1": "Change set";
-        plan_artifact: {
-          v1: "";
-        };
-        "plan_artifact.v1": "Plan";
-        review_decision: {
-          v1: "";
-        };
-        "review_decision.v1": "Review decision";
-        validation_report: {
-          v1: "";
-        };
-        "validation_report.v1": "Validation report";
-      };
-      bindings: {
-        description: "Default planner, implementer, and reviewer roles used when creating a run from this definition.";
-        placeholder: "Select a role";
-      };
-      builtin: "Built in";
-      custom: "Custom";
-      delete: "Delete";
-      description: "Edit a labeled state machine of agent and gate steps. Duplicate the built-in template to change nodes and connections.";
-      duplicate: "Duplicate";
-      empty: "No workflow definitions yet.";
-      inspector: {
-        addInput: "Add input";
-        edge: "Transition";
-        empty: "Select a node or connection.";
-        inputs: "Inputs";
-        instruction: "Instruction";
-        maxAttempts: "Max attempts";
-        maxTraversals: "Max traversals";
-        output: "Output";
-        role: "Role";
-      };
-      node: {
-        agent: "Agent";
-        gate: "Gate";
-      };
-      readonlyHint: "The built-in definition is read-only. Duplicate it to edit.";
-      role: {
-        implementer: "Implementer";
-        planner: "Planner";
-        reviewer: "Reviewer";
-      };
-      save: "Save";
-      terminal: {
-        blocked: "Blocked";
-        cancelled: "Cancelled";
-        completed: "Completed";
-        exhausted: "Exhausted";
-        failed: "Failed";
-      };
-      toast: {
-        deleteFailed: "Could not delete this workflow.";
-        deleted: "Workflow deleted";
-        duplicateFailed: "Could not duplicate this workflow.";
-        duplicated: "Workflow duplicated";
-        loadFailed: "Could not load workflows.";
-        saveFailed: "Could not save this workflow.";
-        saved: "Workflow saved";
-      };
     };
     workspaces: {
       current: "Current";

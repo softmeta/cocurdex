@@ -1,10 +1,10 @@
 import {
-  type AgentPermissionRequestRecord,
   describePermissionRequest,
   filterDetailsCoveredByText,
   type PermissionDetail,
   type PermissionRequestSummary,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
+import type { AgentPermissionRequestRecord } from "@cocurdex/shared";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, Text, View } from "react-native";

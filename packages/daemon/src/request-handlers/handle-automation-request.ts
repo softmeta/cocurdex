@@ -10,6 +10,7 @@ import { assertLocalPrincipal } from "./principal-guards";
 const AUTOMATION_PREFIXES = [
   "agentRole.",
   "application.",
+  "delegation.",
   "inbox.",
   "memory.",
   "personalAgent.",
@@ -17,7 +18,6 @@ const AUTOMATION_PREFIXES = [
   "scriptRun.",
   "team.",
   "teamTemplate.",
-  "workflow.",
 ] as const;
 
 type AutomationMethod = Extract<
@@ -39,6 +39,24 @@ function isMemoryRequest(
   request: DaemonRequest<AutomationMethod>,
 ): request is DaemonRequest<MemoryMethod> {
   return request.method.startsWith("memory.");
+}
+
+function remoteSender(
+  service: CocurdexDaemonService,
+  context: DaemonRequestContext,
+  requesterName: string,
+) {
+  const { principal } = context;
+  const device =
+    principal.kind === "device"
+      ? service.hostAccess
+          .listDevices()
+          .find((candidate) => candidate.id === principal.deviceId)
+      : null;
+  return {
+    hostName: device?.label ?? service.hostAccess.identity().name,
+    senderName: requesterName.trim() || "Assistant",
+  };
 }
 
 export async function handleAutomationRequest(
@@ -146,29 +164,6 @@ export async function handleAutomationRequest(
       return service.scriptRuns.getSettings();
     case "scriptRun.settings.save":
       return service.scriptRuns.saveSettings(request.params);
-    case "workflow.list":
-      return service.listWorkflowRuns();
-    case "workflow.get":
-      return service.getWorkflowRun(request.params.workflowRunId);
-    case "workflow.listDefinitions":
-      return service.listWorkflowDefinitions();
-    case "workflow.getDefinition":
-      return service.getWorkflowDefinition(request.params.definitionId);
-    case "workflow.saveDefinition":
-      return service.saveWorkflowDefinition(request.params);
-    case "workflow.duplicateDefinition":
-      return service.duplicateWorkflowDefinition(request.params.definitionId);
-    case "workflow.deleteDefinition":
-      await service.deleteWorkflowDefinition(request.params.definitionId);
-      return null;
-    case "workflow.create":
-      return service.createWorkflow(request.params);
-    case "workflow.start":
-      return service.startWorkflow(request.params.workflowRunId);
-    case "workflow.decideGate":
-      return service.decideWorkflowGate(request.params);
-    case "workflow.cancel":
-      return service.cancelWorkflow(request.params.workflowRunId);
     case "personalAgent.list":
       return service.personalAgents.list();
     case "personalAgent.create":
@@ -183,7 +178,7 @@ export async function handleAutomationRequest(
       await service.personalAgents.delete(request.params.id);
       return null;
     case "personalAgent.work.catalog":
-      return service.delegations.catalog();
+      return service.delegations.catalog(request.params);
     case "personalAgent.work.list":
       return service.delegations.list(request.params.personaId);
     case "personalAgent.work.start":
@@ -192,14 +187,30 @@ export async function handleAutomationRequest(
       return service.delegations.send(request.params);
     case "personalAgent.work.stop":
       return service.delegations.stop(request.params);
+    case "delegation.remote.catalog":
+      return service.remoteWork.catalog();
+    case "delegation.remote.start":
+      return service.remoteWork.start(
+        request.params,
+        remoteSender(service, context, request.params.requesterName),
+      );
+    case "delegation.remote.status":
+      return service.remoteWork.status(request.params.sessionIds);
+    case "delegation.remote.send":
+      return service.remoteWork.send(
+        request.params,
+        remoteSender(service, context, request.params.requesterName),
+      );
+    case "delegation.remote.stop":
+      return service.remoteWork.stop(request.params);
     case "inbox.list":
-      return service.listInbox();
+      return service.inbox.list();
     case "inbox.brief":
-      return service.getBrief(request.params.timeZone);
+      return service.inbox.getBrief(request.params.timeZone);
     case "inbox.postBrief":
-      return service.postBrief(request.params);
+      return service.inbox.postBrief(request.params);
     case "inbox.read":
-      await service.readInboxItem(request.params.id);
+      await service.inbox.readItem(request.params.id);
       return null;
     case "routine.list":
       return service.routines.list(request.params.agentId);

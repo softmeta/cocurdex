@@ -37,6 +37,11 @@ import {
 import type { AgentToolSessionBinding } from "./agent-tools";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { createEventBroadcastCoalescer } from "./event-broadcast-coalescer";
+import {
+  type ReclaimCandidate,
+  RuntimeReclaimer,
+  type RuntimeReclaimerDependencies,
+} from "./runtime-reclaim";
 
 export interface RuntimePersistence {
   providerSession: AgentProviderSessionRecord | null;
@@ -52,6 +57,8 @@ interface SessionRuntime {
   workspaceRootPaths: string[];
   runtime: AgentSession;
   injectsContextHandoff: boolean;
+  external: boolean;
+  lastActiveAt: number;
 }
 
 function deliverContextHandoff(
@@ -101,6 +108,7 @@ interface AgentRuntimeManagerOptions {
   userDataPath?: string;
   agentTools?: AgentToolsProvider;
   resolveMcpServers?(agentId: AgentId): Promise<AgentMcpServer[]>;
+  reclaim?: Pick<RuntimeReclaimerDependencies, "policy" | "intervalMs" | "now">;
 }
 
 type TurnTracker = {
@@ -150,6 +158,8 @@ export class AgentRuntimeManager {
   private readonly resolveMcpServers:
     | ((agentId: AgentId) => Promise<AgentMcpServer[]>)
     | null;
+  private readonly reclaimer: RuntimeReclaimer | null;
+  private readonly now: () => number;
 
   get liveSessionCount() {
     return this.sessionRuntimes.size;
@@ -165,6 +175,58 @@ export class AgentRuntimeManager {
     this.resolveMcpServers = options.resolveMcpServers ?? null;
     this.activeRunId = options.activeRunId ?? (() => null);
     this.onProviderEvent = options.onProviderEvent ?? (() => undefined);
+    this.now = options.reclaim?.now ?? Date.now;
+    this.reclaimer = options.reclaim
+      ? new RuntimeReclaimer({
+          ...options.reclaim,
+          candidates: () => this.reclaimCandidates(),
+          isBusy: (sessionId) =>
+            !this.sessionRuntimes.has(sessionId) ||
+            this.hasPendingSessionWork(sessionId),
+          reclaim: (sessionId) => this.disposeSessionRuntime(sessionId),
+          onFailed: (sessionId, error) =>
+            logDaemonDiagnostic("warn", "runtime.reclaimFailed", {
+              error,
+              sessionId,
+            }),
+        })
+      : null;
+    this.reclaimer?.start();
+  }
+
+  reclaimIdleRuntimes() {
+    return this.reclaimer?.sweep() ?? Promise.resolve();
+  }
+
+  private reclaimCandidates(): ReclaimCandidate[] {
+    return [...this.sessionRuntimes.entries()].map(([sessionId, entry]) => ({
+      sessionId,
+      lastActiveAt: entry.lastActiveAt,
+      busy: this.hasPendingSessionWork(sessionId),
+      external: entry.external,
+    }));
+  }
+
+  private hasPendingSessionWork(sessionId: string) {
+    if (this.activeTurnTrackers.has(sessionId)) return true;
+    const ownedBySession = (record: { sessionId: string }) =>
+      record.sessionId === sessionId;
+    return (
+      [...this.pendingPermissions.values()].some((pending) =>
+        ownedBySession(pending.request),
+      ) ||
+      [...this.pendingQuestions.values()].some((pending) =>
+        ownedBySession(pending.question),
+      ) ||
+      [...this.pendingPlanApprovals.values()].some((pending) =>
+        ownedBySession(pending.approval),
+      )
+    );
+  }
+
+  private touchSessionRuntime(sessionId: string) {
+    const entry = this.sessionRuntimes.get(sessionId);
+    if (entry) entry.lastActiveAt = this.now();
   }
 
   private mcpServersFor(agentId: AgentId) {
@@ -492,6 +554,7 @@ export class AgentRuntimeManager {
       const updated: SessionRuntime = {
         ...existingRuntime,
         session: { ...existingRuntime.session, ...payload.session },
+        lastActiveAt: this.now(),
       };
       this.sessionRuntimes.set(payload.session.id, updated);
       return updated;
@@ -556,9 +619,12 @@ export class AgentRuntimeManager {
       workspaceRootPaths,
       runtime: createdRuntime,
       injectsContextHandoff: adapter.injectsContextHandoff === true,
+      external: adapter.runsInProcess !== true,
+      lastActiveAt: this.now(),
     };
 
     this.sessionRuntimes.set(payload.session.id, nextRuntime);
+    if (nextRuntime.external) void this.reclaimIdleRuntimes();
     return nextRuntime;
   }
 
@@ -677,6 +743,7 @@ export class AgentRuntimeManager {
       if (this.activeTurnTrackers.get(payload.session.id) === turnTracker) {
         this.activeTurnTrackers.delete(payload.session.id);
       }
+      this.touchSessionRuntime(payload.session.id);
       const stoppedByUser =
         this.cancelledTurnTrackers.get(payload.session.id) === turnTracker;
       if (stoppedByUser) {
@@ -727,6 +794,7 @@ export class AgentRuntimeManager {
 
     this.sessionRuntimes.delete(sessionId);
     this.agentTools?.revoke(sessionId);
+    this.emitAgentEvent({ type: "session.runtime.released", sessionId });
     const failures: unknown[] = [];
     try {
       await sessionRuntime.runtime.stop();
@@ -763,6 +831,7 @@ export class AgentRuntimeManager {
   }
 
   async shutdown() {
+    await this.reclaimer?.dispose();
     const failures: unknown[] = [];
     for (const sessionId of Array.from(this.sessionRuntimes.keys())) {
       try {

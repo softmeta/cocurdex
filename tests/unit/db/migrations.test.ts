@@ -1290,6 +1290,51 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds remote delegation columns from version 45 and keeps delegations", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-11-11T00:00:00.000Z";
+    database.exec(`
+      DROP TABLE delegations;
+      CREATE TABLE delegations (
+        work_session_id TEXT PRIMARY KEY,
+        persona_id TEXT NOT NULL,
+        requester_session_id TEXT NOT NULL,
+        team_template_id TEXT,
+        created_at TEXT NOT NULL
+      );
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Personal', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Coach', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO delegations (work_session_id, persona_id, requester_session_id, team_template_id, created_at)
+      VALUES ('s2', 'p1', 's1', NULL, '${now}');
+      PRAGMA user_version = 45;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT work_session_id, persona_id, remote_host_id, remote_json FROM delegations",
+        )
+        .all(),
+    ).toEqual([
+      {
+        work_session_id: "s2",
+        persona_id: "p1",
+        remote_host_id: null,
+        remote_json: null,
+      },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
   it("adds delegations from version 43 and keeps user data", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

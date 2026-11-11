@@ -1,8 +1,8 @@
 import {
-  type AgentToolCallRecord,
   summarizeToolActions,
   type ToolActionSummary,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
+import type { AgentToolCallRecord } from "@cocurdex/shared";
 import type { TranscriptItem } from "./transcript";
 
 type UserItem = Extract<TranscriptItem, { kind: "user" }>;

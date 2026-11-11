@@ -33,7 +33,6 @@ export const COMMAND_CATEGORIES: CommandCategory[] = [
       { name: "routine", summary: "Scheduled persona routines" },
       { name: "inbox", summary: "Persona inbox and daily brief" },
       { name: "role", summary: "Agent roles" },
-      { name: "workflow", summary: "Planner/implementer/reviewer runs" },
     ],
   },
   {

@@ -1,4 +1,5 @@
 import type { MessageRecord } from "@cocurdex/shared";
+import type { TimelineSeqRange } from "./timeline-repository";
 
 export interface MessageRepository {
   list(): Promise<MessageRecord[]>;
@@ -6,6 +7,10 @@ export interface MessageRepository {
   listChangedSince(
     sessionId: string,
     changeSeq: number,
+  ): Promise<MessageRecord[]>;
+  listBySessionIdInSeqRange(
+    sessionId: string,
+    range: TimelineSeqRange,
   ): Promise<MessageRecord[]>;
   getById(messageId: string): Promise<MessageRecord | null>;
   latestReplyBySessionId(sessionId: string): Promise<MessageRecord | null>;

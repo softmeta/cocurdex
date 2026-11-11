@@ -3,7 +3,7 @@ import { useEffectEvent } from "react";
 import { toast } from "sonner";
 import { composerPendingOperationsAtom } from "@/features/composer";
 import { editorPanelOpenAtom } from "@/features/editor";
-import { desktopApi, useMountEffect } from "@/lib";
+import { desktopApi, hasChatWindows, useMountEffect } from "@/lib";
 import type { ChatWindowTransfer } from "@/lib/chat-window-types";
 import { appBootstrappedAtom } from "../app-shell/app-bootstrap-store";
 import {
@@ -72,7 +72,7 @@ export function useMainChatWindow(
   const revealChat = useEffectEvent(onReturn);
   const store = useStore();
   useMountEffect(() => {
-    if (!window.desktopApi?.chatWindow) return;
+    if (!hasChatWindows()) return;
     let disposed = false;
     let receivedState = false;
     const applying = new Set<string>();

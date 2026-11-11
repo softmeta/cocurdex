@@ -1,13 +1,15 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
 import {
-  defaultOrderDirection,
   SESSION_ENVIRONMENTS,
   SESSION_GROUPINGS,
-  SESSION_ORDER_DIRECTIONS,
-  SESSION_ORDERINGS,
   SESSION_ROOT_LIMITS,
   SESSION_STATUS_BUCKETS,
   type SessionListView,
+} from "@cocurdex/client-runtime";
+import {
+  defaultOrderDirection,
+  SESSION_ORDER_DIRECTIONS,
+  SESSION_ORDERINGS,
 } from "@cocurdex/shared";
 import { Stack, useRouter } from "expo-router";
 import type { ReactElement, ReactNode } from "react";

@@ -17,6 +17,7 @@
   "dependencies": {
     "@cocurdex/agent-adapters": "workspace:*",
     "@cocurdex/agent-core": "workspace:*",
+    "@cocurdex/client-runtime": "workspace:*",
     "@cocurdex/db": "workspace:*",
     "@cocurdex/deck": "workspace:*",
     "@cocurdex/note-doc": "workspace:*",

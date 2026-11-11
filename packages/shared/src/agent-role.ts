@@ -1,4 +1,3 @@
-import { getFallbackAgentPermissionModes } from "./agent-permission-modes";
 import {
   AGENT_ROLE_AVATAR_FACES,
   AGENT_ROLE_AVATAR_SHAPES,
@@ -8,16 +7,10 @@ import {
 import {
   type AgentId,
   type AgentPermissionMode,
-  type AgentProviderSnapshot,
   type AgentThinkingLevel,
   isAgentId,
   type ReasoningEffort,
 } from "./contracts";
-import type {
-  WorkflowExecutorBinding,
-  WorkflowPermissionProfile,
-  WorkflowRole,
-} from "./workflow/types";
 
 export const AGENT_ROLE_NAME_MAX_LENGTH = 80;
 export const AGENT_ROLE_DESCRIPTION_MAX_LENGTH = 500;
@@ -45,20 +38,6 @@ export type AgentRoleAvatar =
       face: AgentRoleAvatarFace;
       color: AgentRoleAvatarColor;
     };
-
-const API_BY_AGENT: Partial<Record<AgentId, AgentProviderSnapshot["api"]>> = {
-  "claude-agent": "anthropic-messages",
-  codex: "openai-responses",
-  opencode: "openai-completions",
-  pi: "openai-completions",
-};
-
-const WORKFLOW_ROLE_PROFILES: Record<WorkflowRole, WorkflowPermissionProfile> =
-  {
-    planner: "read_only",
-    implementer: "workspace_write",
-    reviewer: "read_only",
-  };
 
 export interface AgentRoleDraft {
   agentId: AgentId;
@@ -158,63 +137,6 @@ export function normalizeAgentRoleAvatar(
   return { kind, emoji: firstGrapheme, color };
 }
 
-export function workflowPermissionProfileForAgentRole(
-  role: Pick<AgentRoleDraft, "agentId" | "permissionMode">,
-): WorkflowPermissionProfile | null {
-  if (!role.permissionMode) {
-    return role.agentId === "pi" ? "read_only" : null;
-  }
-
-  if (role.permissionMode === "claude-plan") {
-    return "read_only";
-  }
-  if (role.permissionMode === "claude-auto") {
-    return "workspace_write";
-  }
-
-  const option = getFallbackAgentPermissionModes(role.agentId).find(
-    (mode) => mode.id === role.permissionMode,
-  );
-  if (option?.risk === "normal") {
-    return "read_only";
-  }
-  if (option?.risk === "elevated") {
-    return "workspace_write";
-  }
-  return null;
-}
-
-export function projectAgentRoleToExecutorBinding(
-  role: AgentRoleRecord,
-  workflowRole: WorkflowRole,
-): WorkflowExecutorBinding {
-  const permissionProfile = workflowPermissionProfileForAgentRole(role);
-  const requiredProfile = WORKFLOW_ROLE_PROFILES[workflowRole];
-  if (permissionProfile !== requiredProfile) {
-    throw new Error(
-      `Agent role '${role.name}' cannot bind workflow role '${workflowRole}'.`,
-    );
-  }
-
-  return {
-    agentId: role.agentId,
-    agentRoleId: role.id,
-    model: role.modelId ?? undefined,
-    permissionProfile,
-    providerSnapshot: providerSnapshotForAgentRole(role),
-    runtime: {
-      permissionMode: role.permissionMode,
-      sessionModeId: null,
-      reasoningEffort: role.reasoningEffort,
-      thinkingLevel: role.thinkingLevel,
-      serviceTier: role.serviceTier,
-      fastMode: role.fastMode,
-      openCodeAgent: role.openCodeAgent,
-      openCodeVariant: role.openCodeVariant,
-    },
-  };
-}
-
 export function agentRoleMatchesDraft(
   role: AgentRoleDraft,
   draft: AgentRoleDraft,
@@ -232,29 +154,6 @@ export function agentRoleMatchesDraft(
     sameOptional(role.openCodeAgent, draft.openCodeAgent) &&
     sameOptional(role.openCodeVariant, draft.openCodeVariant)
   );
-}
-
-function providerSnapshotForAgentRole(
-  role: AgentRoleDraft,
-): AgentProviderSnapshot | undefined {
-  if (!role.providerId || !role.modelId) {
-    return undefined;
-  }
-
-  return {
-    providerId: role.providerId,
-    providerName: role.agentId,
-    modelId: role.modelId,
-    modelName: role.modelId,
-    api: API_BY_AGENT[role.agentId] ?? "openai-responses",
-    baseUrl: "",
-    reasoningEffort: role.reasoningEffort,
-    thinkingLevel: role.thinkingLevel,
-    serviceTier: role.serviceTier,
-    fastMode: role.fastMode,
-    openCodeAgent: role.openCodeAgent,
-    openCodeVariant: role.openCodeVariant,
-  };
 }
 
 function sameOptional(

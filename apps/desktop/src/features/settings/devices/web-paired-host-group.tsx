@@ -1,23 +1,30 @@
-import { type SavedHost, savedHostSafetyCode } from "@cocurdex/client-runtime";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SettingRow, SettingsGroup } from "@/components/app";
 import { Button, Text } from "@/components/ui";
-import { removePairedHost, requestDaemon } from "@/lib";
+import { requestDaemon } from "@/lib";
 import { useFormatDateTime } from "./host-access-labels";
 
-export function WebPairedHostGroup({ host }: { host: SavedHost }) {
+export interface PairedHostSummary {
+  name: string;
+  safetyCode: string;
+  pairedAt: string;
+  forget?: () => Promise<void>;
+}
+
+export function WebPairedHostGroup({ host }: { host: PairedHostSummary }) {
   const { t } = useTranslation("settings");
   const formatDateTime = useFormatDateTime();
   const [unpairing, setUnpairing] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const unpair = async () => {
+  const { forget } = host;
+  const unpair = async (forgetHost: () => Promise<void>) => {
     setUnpairing(true);
     setFailed(false);
     await requestDaemon("host.devices.revokeSelf").catch(() => null);
     try {
-      await removePairedHost(host.hostId);
+      await forgetHost();
       window.location.reload();
     } catch {
       setFailed(true);
@@ -38,7 +45,7 @@ export function WebPairedHostGroup({ host }: { host: SavedHost }) {
         title={t("devices.webPaired.safetyCode")}
       >
         <Text className="font-mono" size="body">
-          {savedHostSafetyCode(host)}
+          {host.safetyCode}
         </Text>
       </SettingRow>
       <SettingRow title={t("devices.webPaired.pairedAt")}>
@@ -46,27 +53,29 @@ export function WebPairedHostGroup({ host }: { host: SavedHost }) {
           {formatDateTime(host.pairedAt)}
         </Text>
       </SettingRow>
-      <SettingRow
-        description={t("devices.webPaired.unpairDescription")}
-        title={t("devices.webPaired.unpair")}
-      >
-        <div className="flex flex-col items-end gap-1">
-          <Button
-            disabled={unpairing}
-            size="sm"
-            type="button"
-            variant="outline"
-            onClick={() => void unpair()}
-          >
-            {t("devices.webPaired.unpair")}
-          </Button>
-          {failed ? (
-            <Text size="meta" tone="destructive">
-              {t("devices.webPaired.unpairFailed")}
-            </Text>
-          ) : null}
-        </div>
-      </SettingRow>
+      {forget ? (
+        <SettingRow
+          description={t("devices.webPaired.unpairDescription")}
+          title={t("devices.webPaired.unpair")}
+        >
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              disabled={unpairing}
+              size="sm"
+              type="button"
+              variant="outline"
+              onClick={() => void unpair(forget)}
+            >
+              {t("devices.webPaired.unpair")}
+            </Button>
+            {failed ? (
+              <Text size="meta" tone="destructive">
+                {t("devices.webPaired.unpairFailed")}
+              </Text>
+            ) : null}
+          </div>
+        </SettingRow>
+      ) : null}
     </SettingsGroup>
   );
 }

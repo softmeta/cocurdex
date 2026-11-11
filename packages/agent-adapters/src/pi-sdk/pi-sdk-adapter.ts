@@ -21,6 +21,7 @@ import type {
 import {
   aggregateTurnFileChanges,
   createUnifiedDiff,
+  DEFAULT_MODEL_CONTEXT_WINDOW,
   errorKindForLog,
   hashLogValue,
   hostForLog,
@@ -293,7 +294,8 @@ async function registerRuntimeProvider(
         ),
         input: buildModelInput(providerConfig.modelCapabilities),
         cost: buildModelCost(providerConfig.modelCostJson),
-        contextWindow: providerConfig.modelContextWindow ?? 0,
+        contextWindow:
+          providerConfig.modelContextWindow || DEFAULT_MODEL_CONTEXT_WINDOW,
         maxTokens: providerConfig.modelMaxTokens ?? 0,
         compat,
       },
@@ -374,6 +376,7 @@ export function createPiSdkAdapter(
     getDescriptor() {
       return descriptor;
     },
+    runsInProcess: true,
     listSlashCommands(payload: ListSlashCommandsPayload) {
       return listPiSlashCommands(payload);
     },

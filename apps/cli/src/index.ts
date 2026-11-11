@@ -7,12 +7,6 @@ import {
   type AgentPermissionMode,
   isAgentEvent,
   isFormWorkspaceId,
-  primaryWorkspaceRootPath,
-  projectAgentRoleToExecutorBinding,
-  type WorkflowAggregate,
-  type WorkflowExecutorBinding,
-  type WorkflowExecutorBindings,
-  type WorkflowRole,
   type WorkspaceRecord,
 } from "@cocurdex/shared";
 import { agentAuthUsageLines, handleAgentCommand } from "./agent-auth-commands";
@@ -92,7 +86,6 @@ import { taskApi } from "./task-client";
 import { handleTeamCommand, teamUsageLines } from "./team-commands";
 import { getCliVersion } from "./version";
 import { handleWebCommand, webUsageLines } from "./web-command";
-import { assertWorkflowTuiAvailable, runWorkflowTui } from "./workflow-tui";
 import { handleWorktreeCommand, worktreeUsageLines } from "./worktree-commands";
 
 const [, , ...argv] = process.argv;
@@ -476,122 +469,6 @@ async function main(rawArgs: string[]) {
     return;
   }
 
-  if (resource === "workflow" && action === "definitions") {
-    const definitions = await withDaemon(() =>
-      requestDaemon("workflow.listDefinitions"),
-    );
-    printResult(definitions, parsed);
-    return;
-  }
-
-  if (resource === "workflow" && action === "list") {
-    const runs = await withDaemon(() => requestDaemon("workflow.list"));
-    printRows(
-      runs,
-      ["id", "definitionId", "definitionVersion", "status", "createdAt"],
-      parsed,
-    );
-    return;
-  }
-
-  if (resource === "workflow" && action === "tui") {
-    if (parsed.flags.has("json")) {
-      throw new Error("Workflow TUI does not support --json.");
-    }
-
-    assertWorkflowTuiAvailable();
-    const aggregate = await resolveWorkflowTuiRun(args[0], parsed);
-    const workflowRunId = aggregate.run.id;
-    await runWorkflowTui(aggregate, {
-      get: () => requestDaemon("workflow.get", { workflowRunId }),
-      start: () => requestDaemon("workflow.start", { workflowRunId }),
-      decideGate: (stepId, decision) =>
-        requestDaemon("workflow.decideGate", {
-          workflowRunId,
-          stepId,
-          decision,
-          actor: "user",
-        }),
-      cancel: () => requestDaemon("workflow.cancel", { workflowRunId }),
-    });
-    return;
-  }
-
-  if (resource === "workflow" && (action === "show" || action === "get")) {
-    const [workflowRunId] = args;
-
-    if (!workflowRunId) {
-      throw new Error("Usage: cocurdex workflow show <run-id>");
-    }
-
-    const aggregate = await withDaemon(() =>
-      requestDaemon("workflow.get", { workflowRunId }),
-    );
-
-    if (!aggregate) {
-      throw new Error("Workflow run not found");
-    }
-
-    printWorkflow(aggregate, parsed);
-    return;
-  }
-
-  if (resource === "workflow" && action === "create") {
-    const aggregate = await createWorkflow(parsed);
-    printWorkflow(aggregate, parsed);
-    return;
-  }
-
-  if (resource === "workflow" && action === "start") {
-    const [workflowRunId] = args;
-
-    if (!workflowRunId) {
-      throw new Error("Usage: cocurdex workflow start <run-id>");
-    }
-
-    const aggregate = await withDaemon(() =>
-      requestDaemon("workflow.start", { workflowRunId }),
-    );
-    printWorkflow(aggregate, parsed);
-    return;
-  }
-
-  if (
-    resource === "workflow" &&
-    (action === "approve" || action === "reject")
-  ) {
-    const [workflowRunId] = args;
-
-    if (!workflowRunId) {
-      throw new Error(`Usage: cocurdex workflow ${action} <run-id>`);
-    }
-
-    const aggregate = await withDaemon(() =>
-      requestDaemon("workflow.decideGate", {
-        workflowRunId,
-        stepId: stringFlag(parsed, "step") ?? "approve_plan",
-        decision: action === "approve" ? "approved" : "rejected",
-        reason: stringFlag(parsed, "reason"),
-      }),
-    );
-    printWorkflow(aggregate, parsed);
-    return;
-  }
-
-  if (resource === "workflow" && action === "cancel") {
-    const [workflowRunId] = args;
-
-    if (!workflowRunId) {
-      throw new Error("Usage: cocurdex workflow cancel <run-id>");
-    }
-
-    const aggregate = await withDaemon(() =>
-      requestDaemon("workflow.cancel", { workflowRunId }),
-    );
-    printWorkflow(aggregate, parsed);
-    return;
-  }
-
   if (
     resource &&
     action === undefined &&
@@ -673,16 +550,7 @@ function usageLines(): string[] {
     ...agentAuthUsageLines(),
     ...mcpUsageLines(),
     ...applicationUsageLines(),
-    "  cocurdex workflow list",
-    "  cocurdex workflow definitions",
-    "  cocurdex workflow tui [run-id]",
     "  cocurdex role list",
-    "  cocurdex workflow tui --workspace <id|path> --prompt <prompt> [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
-    "  cocurdex workflow create --workspace <id|path> --prompt <prompt> [--definition <id>] [--planner codex] [--implementer grok-build] [--reviewer codex] [--planner-role <id>] [--implementer-role <id>] [--reviewer-role <id>]",
-    "  cocurdex workflow show <run-id>",
-    "  cocurdex workflow start <run-id>",
-    "  cocurdex workflow approve|reject <run-id> [--reason <text>]",
-    "  cocurdex workflow cancel <run-id>",
   ];
 }
 
@@ -781,143 +649,6 @@ async function sendSessionMessage(sessionId: string, prompt: string) {
   );
 }
 
-async function createWorkflow(parsed: ParsedArgs) {
-  const workspaceValue = getRequiredFlag(parsed, "workspace");
-  const prompt = getRequiredFlag(parsed, "prompt");
-  const [workspaces, bindings] = await withDaemon(async () =>
-    Promise.all([
-      requestDaemon("workspace.list"),
-      resolveWorkflowBindings(parsed),
-    ]),
-  );
-  const workspace = workspaces.find(
-    (item) =>
-      item.id === workspaceValue || item.rootPaths.includes(workspaceValue),
-  );
-
-  if (!workspace) {
-    await access(workspaceValue);
-  }
-
-  const now = new Date().toISOString();
-  const targetWorkspace =
-    workspace ??
-    createWorkspaceFromPath(
-      path.resolve(workspaceValue),
-      now,
-      workspaces.reduce((max, item) => Math.max(max, item.sortOrder), 0) + 1000,
-    );
-
-  return withDaemon(async () => {
-    if (!workspace) {
-      await requestDaemon("workspace.save", { workspace: targetWorkspace });
-    }
-
-    return requestDaemon("workflow.create", {
-      workspaceId: targetWorkspace.id,
-      workspaceRootPath: primaryWorkspaceRootPath(targetWorkspace),
-      prompt,
-      bindings,
-      definitionId: stringFlag(parsed, "definition"),
-    });
-  });
-}
-
-async function resolveWorkflowTuiRun(
-  workflowRunId: string | undefined,
-  parsed: ParsedArgs,
-) {
-  if (workflowRunId) {
-    const aggregate = await withDaemon(() =>
-      requestDaemon("workflow.get", { workflowRunId }),
-    );
-    if (!aggregate) throw new Error("Workflow run not found");
-    return aggregate;
-  }
-
-  const shouldCreate =
-    parsed.flags.has("workspace") || parsed.flags.has("prompt");
-  if (shouldCreate) {
-    const created = await createWorkflow(parsed);
-    return withDaemon(() =>
-      requestDaemon("workflow.start", { workflowRunId: created.run.id }),
-    );
-  }
-
-  const runs = await withDaemon(() => requestDaemon("workflow.list"));
-  const latestRun = [...runs].sort((left, right) =>
-    right.updatedAt.localeCompare(left.updatedAt),
-  )[0];
-  if (!latestRun) {
-    throw new Error(
-      "No workflow runs found. Pass --workspace and --prompt to create one.",
-    );
-  }
-
-  const aggregate = await requestDaemon("workflow.get", {
-    workflowRunId: latestRun.id,
-  });
-  if (!aggregate) throw new Error("Latest workflow run not found");
-  return aggregate;
-}
-
-async function resolveWorkflowBindings(
-  parsed: ParsedArgs,
-): Promise<WorkflowExecutorBindings> {
-  return {
-    planner: await resolveWorkflowRoleBinding(
-      parsed,
-      "planner",
-      "codex",
-      "read_only",
-    ),
-    implementer: await resolveWorkflowRoleBinding(
-      parsed,
-      "implementer",
-      "acp:grok-build",
-      "workspace_write",
-    ),
-    reviewer: await resolveWorkflowRoleBinding(
-      parsed,
-      "reviewer",
-      "codex",
-      "read_only",
-    ),
-  };
-}
-
-async function resolveWorkflowRoleBinding(
-  parsed: ParsedArgs,
-  role: WorkflowRole,
-  defaultAgentId: AgentId,
-  permissionProfile: "read_only" | "workspace_write",
-): Promise<WorkflowExecutorBinding> {
-  const roleId = stringFlag(parsed, `${role}-role`);
-  if (!roleId) {
-    return workflowBinding(parsed, role, defaultAgentId, permissionProfile);
-  }
-
-  const agentRole = await requestDaemon("agentRole.get", { id: roleId });
-  if (!agentRole) {
-    throw new Error(`Agent role '${roleId}' not found.`);
-  }
-  return projectAgentRoleToExecutorBinding(agentRole, role);
-}
-
-function workflowBinding(
-  parsed: ParsedArgs,
-  role: WorkflowRole,
-  defaultAgentId: AgentId,
-  permissionProfile: "read_only" | "workspace_write",
-): WorkflowExecutorBinding {
-  const model = stringFlag(parsed, `${role}-model`);
-  return {
-    agentId: (stringFlag(parsed, role) ?? defaultAgentId) as AgentId,
-    ...(model ? { model } : {}),
-    permissionProfile,
-  };
-}
-
 function createWorkspaceFromPath(
   rootPath: string,
   now: string,
@@ -932,31 +663,4 @@ function createWorkspaceFromPath(
     lastOpenedAt: now,
     sortOrder,
   };
-}
-
-function printWorkflow(aggregate: WorkflowAggregate, parsed: ParsedArgs) {
-  if (parsed.flags.has("json")) {
-    printResult(aggregate, parsed);
-    return;
-  }
-
-  const { run } = aggregate;
-  console.log(`id: ${run.id}`);
-  console.log(`definition: ${run.definitionId}@${run.definitionVersion}`);
-  console.log(`status: ${run.status}`);
-  console.log(`currentStepId: ${run.currentStepId ?? "none"}`);
-  console.log(`workspaceRootPath: ${run.workspaceRootPath}`);
-  console.log(`createdAt: ${run.createdAt}`);
-  console.log("steps:");
-  for (const step of aggregate.steps) {
-    console.log(
-      [
-        `  ${step.stepId}`,
-        step.kind,
-        step.role ?? "system",
-        step.status,
-        `attempts=${step.attemptCount}`,
-      ].join("  "),
-    );
-  }
 }

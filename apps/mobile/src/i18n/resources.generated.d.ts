@@ -278,7 +278,7 @@ export default interface Resources {
     };
     scopeDetail: {
       approvals: "Answer permission requests, questions, and plan approvals.";
-      execute: "Start sessions, teams, script runs, and workflows, and drive agents that run without approval.";
+      execute: "Start sessions, teams, and script runs, and drive agents that run without approval.";
       filesRead: "Read workspace files, diffs, and Git status.";
       filesWrite: "Edit workspace files, stage, and commit.";
       gitDestructive: "Discard changes, switch branches, and push.";

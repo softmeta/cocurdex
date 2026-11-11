@@ -10,6 +10,7 @@ import {
   toNullableNumber,
   toNullableString,
 } from "../sqlite-types";
+import { seqRangeClause } from "./timeline-seq-range";
 import type { TurnChangeSetRepository } from "./turn-change-set-repository";
 
 function mapTurnChangeSet(row: SqliteRow): TurnChangeSet {
@@ -55,6 +56,15 @@ function changeSetLookupKey(changeSet: TurnChangeSet) {
   return changeSet.messageId || changeSet.userMessageId;
 }
 
+function keyedChangeSets(rows: SqliteRow[]) {
+  return Object.fromEntries(
+    rows.map((row) => {
+      const changeSet = mapTurnChangeSet(row);
+      return [changeSetLookupKey(changeSet), changeSet];
+    }),
+  );
+}
+
 export function createSqliteTurnChangeSetRepository(
   database: DatabaseSync,
 ): TurnChangeSetRepository {
@@ -68,13 +78,31 @@ export function createSqliteTurnChangeSetRepository(
            ORDER BY created_at ASC`,
         )
         .all(sessionId) as SqliteRow[];
-
-      return Object.fromEntries(
-        rows.map((row) => {
-          const changeSet = mapTurnChangeSet(row);
-          return [changeSetLookupKey(changeSet), changeSet];
-        }),
-      );
+      return keyedChangeSets(rows);
+    },
+    async listByUserMessageSeqRange(sessionId, range) {
+      const clause = seqRangeClause("m.seq", range);
+      const rows = database
+        .prepare(
+          `SELECT t.*
+           FROM turn_change_sets t
+           JOIN messages m ON m.id = t.user_message_id
+           WHERE t.session_id = ? AND ${clause.sql}
+           ORDER BY t.created_at ASC`,
+        )
+        .all(sessionId, ...clause.params) as SqliteRow[];
+      return keyedChangeSets(rows);
+    },
+    async listChangedSince(sessionId, changeSeq) {
+      const rows = database
+        .prepare(
+          `SELECT *
+           FROM turn_change_sets
+           WHERE session_id = ? AND change_seq > ?
+           ORDER BY created_at ASC`,
+        )
+        .all(sessionId, changeSeq) as SqliteRow[];
+      return keyedChangeSets(rows);
     },
     async getByMessageId(sessionId, messageId) {
       const row = database

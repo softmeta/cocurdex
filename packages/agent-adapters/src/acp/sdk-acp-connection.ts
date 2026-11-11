@@ -1,4 +1,3 @@
-import type { ChildProcess } from "node:child_process";
 import { Readable, Writable } from "node:stream";
 import {
   client,
@@ -6,36 +5,11 @@ import {
   ndJsonStream,
 } from "@agentclientprotocol/sdk/unstable";
 import { buildChildProcessEnv } from "../shared/process-env";
-import { killProcessTree, spawnCommand } from "../shared/process-tree";
+import { shutdownChildProcess, spawnCommand } from "../shared/process-tree";
 import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
 import { AcpProcessExitError } from "./acp-errors";
 import { appendStderrTail, sanitizeStderrExcerpt } from "./acp-stderr";
 import { traceAcpStreams } from "./acp-trace";
-
-const EOF_GRACE_MS = 3_000;
-const SIGTERM_GRACE_MS = 1_500;
-
-function hasExited(child: ChildProcess) {
-  return child.exitCode !== null || child.signalCode !== null;
-}
-
-function waitForExit(child: ChildProcess, timeoutMs: number) {
-  if (hasExited(child)) {
-    return Promise.resolve(true);
-  }
-
-  return new Promise<boolean>((resolve) => {
-    const timeout = setTimeout(() => {
-      child.off("close", handleClose);
-      resolve(false);
-    }, timeoutMs);
-    const handleClose = () => {
-      clearTimeout(timeout);
-      resolve(true);
-    };
-    child.once("close", handleClose);
-  });
-}
 
 export const createSdkAcpConnection: AcpConnectionFactory = async ({
   args,
@@ -160,26 +134,7 @@ export const createSdkAcpConnection: AcpConnectionFactory = async ({
       connection.agent.notify(methods.agent.session.cancel, request),
     async close() {
       connection.close();
-      if (hasExited(child)) {
-        return;
-      }
-      if (child.stdin && !child.stdin.writableEnded) {
-        child.stdin.end();
-      }
-      if (await waitForExit(child, EOF_GRACE_MS)) {
-        return;
-      }
-      if (process.platform !== "win32") {
-        child.kill("SIGTERM");
-        if (await waitForExit(child, SIGTERM_GRACE_MS)) {
-          return;
-        }
-      }
-      if (child.pid === undefined) {
-        child.kill("SIGKILL");
-        return;
-      }
-      await killProcessTree(child.pid);
+      await shutdownChildProcess(child);
     },
   } satisfies AcpConnection;
 };

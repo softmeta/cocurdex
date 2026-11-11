@@ -2,6 +2,7 @@ import type {
   AgentToolCallRecord,
   AgentToolCallResult,
 } from "@cocurdex/shared";
+import type { TimelineSeqRange } from "./timeline-repository";
 
 export interface StoredToolCallResult {
   result: AgentToolCallResult;
@@ -22,6 +23,10 @@ export interface ToolCallRepository {
   listSummariesChangedSince(
     sessionId: string,
     changeSeq: number,
+  ): Promise<AgentToolCallRecord[]>;
+  listSummariesInSeqRange(
+    sessionId: string,
+    range: TimelineSeqRange,
   ): Promise<AgentToolCallRecord[]>;
   getResultById(toolCallId: string): Promise<StoredToolCallResult | null>;
   listResultRefsBySessionId(sessionId: string): Promise<Map<string, string>>;

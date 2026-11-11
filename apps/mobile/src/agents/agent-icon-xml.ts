@@ -1,4 +1,4 @@
-import type { AgentBrandIcon } from "@cocurdex/shared";
+import type { AgentBrandIcon } from "@cocurdex/client-runtime";
 
 function attribute(name: string, value: string | number | undefined) {
   return value === undefined ? "" : ` ${name}="${value}"`;

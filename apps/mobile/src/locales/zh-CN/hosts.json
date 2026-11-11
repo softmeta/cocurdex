@@ -89,7 +89,7 @@
   },
   "scopeDetail": {
     "approvals": "处理权限请求、问题和计划审批。",
-    "execute": "启动会话、团队、脚本运行和工作流，并驱动无需批准即可执行的 agent。",
+    "execute": "启动会话、团队和脚本运行，并驱动无需批准即可执行的 agent。",
     "filesRead": "读取工作区文件、差异和 Git 状态。",
     "filesWrite": "编辑工作区文件、暂存和提交。",
     "gitDestructive": "丢弃更改、切换分支和推送。",

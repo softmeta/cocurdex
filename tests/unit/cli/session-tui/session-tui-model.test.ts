@@ -45,6 +45,7 @@ function message(
 
 function createSnapshot(): SessionObservationSnapshot {
   return {
+    olderBeforeSeq: null,
     session: createSession(),
     messages: [message("user-1", "Hello", { role: "user" })],
     activeMessages: [message("assistant-1", "Par")],

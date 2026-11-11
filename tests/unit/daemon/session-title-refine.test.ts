@@ -32,7 +32,7 @@ async function createService() {
     .list()
     .find((agent) => agent.id === "pi");
   if (!pi) throw new Error("Pi descriptor not found");
-  vi.spyOn(service, "listAgents").mockResolvedValue([
+  vi.spyOn(service.agents, "listAgents").mockResolvedValue([
     { ...pi, availability: "available" },
   ]);
   await service.workspaces.saveWorkspace({

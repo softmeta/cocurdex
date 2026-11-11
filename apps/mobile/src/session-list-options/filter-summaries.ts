@@ -1,4 +1,4 @@
-import type { SessionListView } from "@cocurdex/shared";
+import type { SessionListView } from "@cocurdex/client-runtime";
 import { useTranslation } from "react-i18next";
 import { updateSessionListView, useSessionListLabels } from "@/sessions";
 import { useSessionAgentChoices } from "./session-agents";

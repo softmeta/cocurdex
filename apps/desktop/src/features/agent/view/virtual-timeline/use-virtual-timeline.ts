@@ -37,6 +37,7 @@ import {
 export interface ChatTimelineScrollHandle {
   readPosition(): ChatReadingPosition | null;
   restorePosition(position: ChatReadingPosition): boolean;
+  keepPositionAcrossPrepend(): void;
   cancelNavigation(): void;
   hasNavigationTarget(): boolean;
   holdScrollPosition(durationMs: number): void;
@@ -55,6 +56,7 @@ type PendingReveal = {
 };
 
 const MAX_REVEAL_ATTEMPTS = 8;
+const MAX_PREPEND_RESTORE_ATTEMPTS = 8;
 
 function measureMountedRows(virtualizer: TimelineVirtualizer) {
   for (const item of virtualizer.getVirtualItems()) {
@@ -111,6 +113,10 @@ export function useVirtualTimeline({
   const holdUntilRef = useRef(0);
   const offsetCallbackRef = useRef<OffsetCallback | null>(null);
   const pendingRevealRef = useRef<PendingReveal | null>(null);
+  const pendingPrependRef = useRef<{
+    attempts: number;
+    position: ChatReadingPosition;
+  } | null>(null);
   const lookup = useMemo(() => createConversationLookup(groups), [groups]);
   const { focusedId, selectedIds, updateFocus } =
     usePinnedConversations(rootRef);
@@ -125,6 +131,8 @@ export function useVirtualTimeline({
         groups.length - 1,
         lookup.byMessageId.get(targetId ?? "") ?? -1,
         lookup.byId.get(focusedId ?? "") ?? -1,
+        lookup.byId.get(pendingPrependRef.current?.position.anchorId ?? "") ??
+          -1,
       ];
       const start = lookup.byId.get(selectedIds?.[0] ?? "");
       const end = lookup.byId.get(selectedIds?.[1] ?? "");
@@ -201,6 +209,44 @@ export function useVirtualTimeline({
       viewport.scrollTop = nextTop;
   }, [userMessageRefs, viewportElement]);
 
+  const restoreReadingPosition = useCallback(
+    (position: ChatReadingPosition) => {
+      const viewport = viewportElement;
+      if (!viewport || !groups.length) return false;
+      const index = lookup.byId.get(position.anchorId ?? "");
+      if (index === undefined) {
+        viewport.scrollTop = position.scrollTop;
+        return true;
+      }
+      const node = rootRef.current?.querySelector<HTMLElement>(
+        `[data-index="${index}"]`,
+      );
+      if (!node) {
+        const offset = virtualizer.getOffsetForIndex(index, "start");
+        if (offset) viewport.scrollTop = offset[0];
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      viewport.scrollTop +=
+        rect.top -
+        viewport.getBoundingClientRect().top +
+        rect.height * (position.anchorFraction ?? 0);
+      return true;
+    },
+    [groups.length, lookup, viewportElement, virtualizer],
+  );
+
+  const attemptPrependRestore = useCallback(() => {
+    const pending = pendingPrependRef.current;
+    if (!pending) return;
+    if (!lookup.byId.has(pending.position.anchorId ?? "")) return;
+    pending.attempts += 1;
+    const restored = restoreReadingPosition(pending.position);
+    if (restored || pending.attempts >= MAX_PREPEND_RESTORE_ATTEMPTS) {
+      pendingPrependRef.current = null;
+    }
+  }, [lookup, restoreReadingPosition]);
+
   useImperativeHandle(
     scrollRef,
     () => ({
@@ -219,28 +265,26 @@ export function useVirtualTimeline({
               : 0,
         };
       },
-      restorePosition(position) {
+      restorePosition: restoreReadingPosition,
+      keepPositionAcrossPrepend() {
         const viewport = viewportElement;
-        if (!viewport || !groups.length) return false;
-        const index = lookup.byId.get(position.anchorId ?? "");
-        if (index === undefined) {
-          viewport.scrollTop = position.scrollTop;
-          return true;
-        }
-        const node = rootRef.current?.querySelector<HTMLElement>(
-          `[data-index="${index}"]`,
-        );
-        if (!node) {
-          const offset = virtualizer.getOffsetForIndex(index, "start");
-          if (offset) viewport.scrollTop = offset[0];
-          return false;
-        }
-        const rect = node.getBoundingClientRect();
-        viewport.scrollTop +=
-          rect.top -
-          viewport.getBoundingClientRect().top +
-          rect.height * (position.anchorFraction ?? 0);
-        return true;
+        if (!viewport) return;
+        const item = virtualizer.getVirtualItemForOffset(viewport.scrollTop);
+        const anchorId = item ? groups[item.index]?.id : undefined;
+        if (!item || !anchorId) return;
+        pendingPrependRef.current = {
+          attempts: 0,
+          position: {
+            atBottom: false,
+            scrollTop: viewport.scrollTop,
+            messageId: null,
+            anchorId,
+            anchorFraction:
+              item.size > 0
+                ? Math.max(0, (viewport.scrollTop - item.start) / item.size)
+                : 0,
+          },
+        };
       },
       cancelNavigation() {
         targetRef.current = null;
@@ -320,6 +364,7 @@ export function useVirtualTimeline({
       correctTargetPosition,
       groups,
       lookup,
+      restoreReadingPosition,
       userMessageRefs,
       viewportElement,
       virtualizer,
@@ -350,6 +395,7 @@ export function useVirtualTimeline({
   useLayoutEffect(() => {
     measureMountedRows(virtualizer);
     positionMountedRows(virtualizer);
+    attemptPrependRestore();
     attemptReveal();
   });
 

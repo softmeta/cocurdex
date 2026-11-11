@@ -1,7 +1,7 @@
 import {
   type CompactRelativeUnit,
   getCompactRelativeTime,
-} from "@cocurdex/shared";
+} from "@cocurdex/client-runtime";
 
 export interface ActivityTimeLabel {
   absolute: string;

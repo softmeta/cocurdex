@@ -400,9 +400,11 @@ export function TranscriptView({
   userBubble,
   sentMessageId,
   bottomInset,
+  onReachOldest,
   ref,
 }: {
   bottomInset?: number;
+  onReachOldest?: () => void;
   items: readonly CondensedItem[];
   footer?: React.ReactElement;
   actions: TranscriptActions;
@@ -453,6 +455,7 @@ export function TranscriptView({
       footer={footer}
       sentMessageId={sentMessageId}
       bottomInset={bottomInset}
+      onReachOldest={onReachOldest}
       renderRow={renderRow}
     />
   );

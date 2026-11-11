@@ -77,7 +77,6 @@ async function fixture() {
         activeWork: {
           agentTurns: busy ? 1 : 0,
           queuedInputs: 0,
-          workflowActive: false,
           workspaceSearches: 0,
         },
       };
@@ -240,7 +239,6 @@ describe("daemon runtime replacement", () => {
           activeWork: {
             agentTurns: 0,
             queuedInputs: 0,
-            workflowActive: false,
             workspaceSearches: 0,
           },
         };

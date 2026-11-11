@@ -1,5 +1,5 @@
 export {
   applyTurnChangesEventAtom,
-  loadTurnChangeSetsAtom,
+  mergeTurnChangeSetsAtom,
   useTurnChangeSet,
 } from "./turn-changes-store";

@@ -17,7 +17,7 @@ import {
   useScopeLabels,
 } from "./host-access-labels";
 
-function ListRow({
+export function ListRow({
   title,
   detail,
   action,

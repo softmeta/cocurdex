@@ -2,20 +2,18 @@ import crypto from "node:crypto";
 import type { DelegationRepository, DelegationRow } from "@cocurdex/db";
 import {
   type AgentEvent,
-  type AgentInputDelivery,
   type AgentRoleRecord,
-  type CreateSessionPayload,
   type DelegatedWorkRecord,
-  type DelegatedWorkState,
+  type DelegatedWorkWaitingFor,
   type DelegationCatalog,
-  decideTeammateReport,
+  type DelegationCatalogQuery,
+  decideRequesterReport,
   delegatedWorkOutcome,
   delegatedWorkReportMessageId,
-  isChatWorkspaceId,
-  isPersonalWorkspaceId,
   type MessageOrigin,
   type MessageRecord,
   type RunRecord,
+  type RunStatus,
   renderDelegatedWorkBriefing,
   renderDelegatedWorkReport,
   type SendDelegatedWorkPayload,
@@ -25,27 +23,26 @@ import {
   type TeamTemplateRecord,
   type WorkspaceRecord,
 } from "@cocurdex/shared";
+import type { RemoteWorkGateway } from "./remote-work-gateway";
+import { RemoteWorkWatcher } from "./remote-work-watcher";
+import {
+  createWorkSession,
+  followUpDelivery,
+  type WorkSessionDependencies,
+} from "./work-session";
+import {
+  buildCatalog,
+  DelegationError,
+  requirePrompt,
+  resolveHost,
+  resolveRole,
+  resolveTemplate,
+  resolveWorkspace,
+  workState,
+  workTitle,
+} from "./work-targets";
 
-export type DelegationErrorCode =
-  | "persona_not_found"
-  | "workspace_not_found"
-  | "workspace_ambiguous"
-  | "role_not_found"
-  | "template_not_found"
-  | "role_and_template"
-  | "work_not_found"
-  | "empty_prompt";
-
-export class DelegationError extends Error {
-  override readonly name = "DelegationError";
-
-  constructor(
-    readonly code: DelegationErrorCode,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+export { DelegationError } from "./work-targets";
 
 export interface DelegationPersona {
   id: string;
@@ -53,12 +50,10 @@ export interface DelegationPersona {
   homeSessionId: string;
 }
 
-export interface DelegationModuleDependencies {
+export interface DelegationModuleDependencies extends WorkSessionDependencies {
   repository: DelegationRepository;
   getPersona(personaId: string): Promise<DelegationPersona | null>;
   getSession(sessionId: string): Promise<SessionRecord | null>;
-  saveSession(session: SessionRecord): Promise<void>;
-  createSession(input: CreateSessionPayload): Promise<SessionRecord>;
   listWorkspaces(): Promise<WorkspaceRecord[]>;
   listRoles(): Promise<AgentRoleRecord[]>;
   listTemplates(): Promise<TeamTemplateRecord[]>;
@@ -66,104 +61,96 @@ export interface DelegationModuleDependencies {
     leadSessionId: string;
     templateId: string;
   }): Promise<unknown>;
-  createWorktree(input: {
-    workspaceId: string;
-    branch: string;
-  }): Promise<{ path: string }>;
-  sendSessionMessage(command: SendSessionCommand): Promise<MessageRecord>;
   submitReport(
     command: SendSessionCommand,
     options: { hold: boolean },
   ): Promise<MessageRecord>;
   stopSession(sessionId: string): Promise<unknown>;
-  hasActiveRun(sessionId: string): boolean;
-  supportsSteering(session: SessionRecord): Promise<boolean>;
   latestRun(sessionId: string): RunRecord | null;
   getRunReply(sessionId: string, runId: string): Promise<MessageRecord | null>;
   getMessage(messageId: string): Promise<MessageRecord | null>;
+  waitingFor(sessionId: string): DelegatedWorkWaitingFor | null;
+  remote?: RemoteWorkGateway;
+  remotePollIntervalMs?: number;
   track(work: Promise<unknown>): void;
   onReportFailed(error: unknown): void;
   announceChanged(): void;
   now?(): string;
 }
 
+interface FinishedTurn {
+  workSessionId: string;
+  title: string;
+  run: { id: string; status: RunStatus; error: string | null };
+  reply: string | null;
+  origin: MessageOrigin;
+}
+
 const LIST_LIMIT = 50;
-
-function matchesName(name: string, query: string) {
-  return name.trim().toLowerCase() === query.trim().toLowerCase();
-}
-
-function findByIdOrName<T extends { id: string; name: string }>(
-  items: readonly T[],
-  query: string,
-) {
-  return (
-    items.find((item) => item.id === query) ??
-    items.find((item) => matchesName(item.name, query)) ??
-    null
-  );
-}
-
-function isWorkWorkspace(workspace: WorkspaceRecord) {
-  return (
-    !isChatWorkspaceId(workspace.id) && !isPersonalWorkspaceId(workspace.id)
-  );
-}
-
-function branchSlug(title: string) {
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 32);
-  return slug || "task";
-}
+const LIST_REFRESH_WAIT_MS = 3_000;
 
 export class DelegationModule {
   private reports: Promise<void> = Promise.resolve();
+  private readonly watcher: RemoteWorkWatcher | null;
 
-  constructor(private readonly deps: DelegationModuleDependencies) {}
+  constructor(private readonly deps: DelegationModuleDependencies) {
+    const remote = deps.remote;
+    this.watcher = remote
+      ? new RemoteWorkWatcher({
+          rows: () => deps.repository.listRemote(),
+          fetch: (hostId, sessionIds) => remote.status(hostId, sessionIds),
+          report: (row, status) =>
+            this.report(
+              row,
+              {
+                workSessionId: row.workSessionId,
+                title: status.title,
+                run: status.latestRun ?? {
+                  id: "",
+                  status: "interrupted",
+                  error: null,
+                },
+                reply: status.reply,
+                origin: this.remoteOrigin(row, status.title),
+              },
+              false,
+            ),
+          onChanged: () => deps.announceChanged(),
+          onFailed: (error) => deps.onReportFailed(error),
+          intervalMs: deps.remotePollIntervalMs,
+        })
+      : null;
+  }
 
-  async catalog(): Promise<DelegationCatalog> {
+  async catalog(
+    query: DelegationCatalogQuery = {},
+  ): Promise<DelegationCatalog> {
+    const hosts = this.hosts();
+    if (query.host) {
+      const host = this.requireHost(query.host);
+      const catalog = await this.remoteCall(host, (remote) =>
+        remote.catalog(host.hostId),
+      );
+      return { ...catalog, hosts };
+    }
     const [workspaces, roles, templates] = await Promise.all([
       this.deps.listWorkspaces(),
       this.deps.listRoles(),
       this.deps.listTemplates(),
     ]);
-    const roleNames = new Map(roles.map((role) => [role.id, role.name]));
     return {
-      workspaces: workspaces.filter(isWorkWorkspace).map((workspace) => ({
-        id: workspace.id,
-        name: workspace.name,
-        rootPaths: workspace.rootPaths,
-      })),
-      agentRoles: roles.map((role) => ({
-        id: role.id,
-        name: role.name,
-        description: role.description,
-        agentType: role.agentId,
-      })),
-      teamTemplates: templates.map((template) => ({
-        id: template.id,
-        name: template.name,
-        description: template.description,
-        members: template.members.map(
-          (member) => roleNames.get(member.agentRoleId) ?? member.agentRoleId,
-        ),
-      })),
+      ...buildCatalog(workspaces, roles, templates),
+      ...(hosts.length > 0 ? { hosts } : {}),
     };
   }
 
   async start(
     payload: StartDelegatedWorkPayload,
   ): Promise<DelegatedWorkRecord> {
-    const prompt = payload.prompt.trim();
-    if (!prompt) {
-      throw new DelegationError(
-        "empty_prompt",
-        "Describe the task to delegate.",
-      );
-    }
+    const prompt = requirePrompt(
+      payload.prompt,
+      "Describe the task to delegate.",
+    );
     if (payload.agentRole && payload.teamTemplate) {
       throw new DelegationError(
         "role_and_template",
@@ -171,22 +158,23 @@ export class DelegationModule {
       );
     }
     const persona = await this.requirePersona(payload.personaId);
-    const workspace = await this.resolveWorkspace(payload.workspace);
+    if (payload.host) return this.startRemote(payload, persona, prompt);
+    const workspace = resolveWorkspace(
+      await this.deps.listWorkspaces(),
+      payload.workspace,
+    );
     const role = payload.agentRole
-      ? await this.resolveRole(payload.agentRole)
+      ? resolveRole(await this.deps.listRoles(), payload.agentRole)
       : null;
     const template = payload.teamTemplate
-      ? await this.resolveTemplate(payload.teamTemplate)
+      ? resolveTemplate(await this.deps.listTemplates(), payload.teamTemplate)
       : null;
-    const title = payload.title?.trim() || prompt.split("\n")[0].slice(0, 80);
-    const created = await this.deps.createSession({
+    const session = await createWorkSession(this.deps, {
       workspaceId: workspace.id,
       agentRoleId: role?.id ?? template?.members[0]?.agentRoleId ?? null,
-      title,
+      title: workTitle(prompt, payload.title),
+      isolateWorktree: payload.isolateWorktree === true,
     });
-    const session = payload.isolateWorktree
-      ? await this.isolate(created, title)
-      : created;
     if (template) {
       await this.deps.createTeam({
         leadSessionId: session.id,
@@ -199,6 +187,7 @@ export class DelegationModule {
       requesterSessionId: persona.homeSessionId,
       teamTemplateId: template?.id ?? null,
       createdAt: this.now(),
+      remote: null,
     };
     this.deps.repository.insert(row);
     await this.deps.sendSessionMessage({
@@ -214,12 +203,17 @@ export class DelegationModule {
 
   async list(personaId: string): Promise<DelegatedWorkRecord[]> {
     await this.requirePersona(personaId);
+    await this.refreshRemote();
     const workspaces = await this.deps.listWorkspaces();
     const records: DelegatedWorkRecord[] = [];
     for (const row of this.deps.repository.listByPersona(
       personaId,
       LIST_LIMIT,
     )) {
+      if (row.remote) {
+        records.push(this.describeRemote(row));
+        continue;
+      }
       const session = await this.deps.getSession(row.workSessionId);
       if (!session) {
         this.deps.repository.delete(row.workSessionId);
@@ -231,17 +225,27 @@ export class DelegationModule {
   }
 
   async send(payload: SendDelegatedWorkPayload): Promise<DelegatedWorkRecord> {
-    const message = payload.message.trim();
-    if (!message) {
-      throw new DelegationError("empty_prompt", "The message is empty.");
-    }
-    const { row, session } = await this.requireWork(payload);
+    const message = requirePrompt(payload.message, "The message is empty.");
+    const row = this.requireRow(payload);
     const persona = await this.requirePersona(payload.personaId);
+    if (row.remote) {
+      const host = this.requireHost(row.remote.hostId);
+      const status = await this.remoteCall(host, (remote) =>
+        remote.send(host.hostId, {
+          sessionId: row.workSessionId,
+          message,
+          requesterName: persona.name,
+        }),
+      );
+      this.watcher?.remember(status);
+      return this.describeRemote(row);
+    }
+    const session = await this.requireSession(row);
     await this.deps.sendSessionMessage({
       sessionId: session.id,
       messageId: crypto.randomUUID(),
       content: renderDelegatedWorkBriefing(persona.name, message),
-      delivery: await this.followUpDelivery(session),
+      delivery: await followUpDelivery(this.deps, session),
       origin: this.personaOrigin(persona),
     });
     return this.describe(row, session, await this.deps.listWorkspaces());
@@ -251,10 +255,17 @@ export class DelegationModule {
     personaId: string;
     sessionId: string;
   }): Promise<DelegatedWorkRecord> {
-    const { row } = await this.requireWork(target);
+    const row = this.requireRow(target);
+    if (row.remote) {
+      const host = this.requireHost(row.remote.hostId);
+      const status = await this.remoteCall(host, (remote) =>
+        remote.stop(host.hostId, { sessionId: row.workSessionId }),
+      );
+      this.watcher?.remember(status);
+      return this.describeRemote(row);
+    }
     await this.deps.stopSession(target.sessionId);
-    const session = await this.deps.getSession(target.sessionId);
-    if (!session) throw this.workNotFound();
+    const session = await this.requireSession(row);
     return this.describe(row, session, await this.deps.listWorkspaces());
   }
 
@@ -262,20 +273,94 @@ export class DelegationModule {
     this.deps.repository.deleteByPersona(personaId);
   }
 
+  forgetHost(hostId: string) {
+    this.deps.repository.deleteByRemoteHost(hostId);
+    this.watcher?.forgetHost(hostId);
+  }
+
   async onAgentEvent(event: AgentEvent) {
     if (event.type !== "run.updated" || event.run.status === "running") return;
     const row = this.deps.repository.get(event.sessionId);
-    if (!row) return;
+    if (!row || row.remote) return;
     const run = event.run;
-    this.enqueue(() => this.report(row, run, false));
+    this.enqueue(async () => {
+      const turn = await this.localTurn(row, run);
+      if (turn) await this.report(row, turn, false);
+    });
   }
 
   async recoverReports() {
     for (const row of this.deps.repository.list()) {
+      if (row.remote) continue;
       const run = this.deps.latestRun(row.workSessionId);
       if (!run || run.status === "running") continue;
-      await this.report(row, run, true).catch(() => undefined);
+      const turn = await this.localTurn(row, run).catch(() => null);
+      if (turn) await this.report(row, turn, true).catch(() => undefined);
     }
+    this.watcher?.start();
+  }
+
+  pollRemote() {
+    return this.watcher?.poll({ force: true }) ?? Promise.resolve();
+  }
+
+  private async refreshRemote() {
+    if (!this.watcher) return;
+    let timer: NodeJS.Timeout | undefined;
+    const waited = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, LIST_REFRESH_WAIT_MS);
+    });
+    await Promise.race([this.watcher.poll({ force: true }), waited]);
+    clearTimeout(timer);
+  }
+
+  async dispose() {
+    await this.watcher?.dispose();
+  }
+
+  private async startRemote(
+    payload: StartDelegatedWorkPayload,
+    persona: DelegationPersona,
+    prompt: string,
+  ) {
+    if (payload.teamTemplate) {
+      throw new DelegationError(
+        "remote_team",
+        "Team templates run only on this computer; pick an agent role for a paired computer.",
+      );
+    }
+    const host = this.requireHost(payload.host ?? "");
+    const started = await this.remoteCall(host, (remote) =>
+      remote.start(host.hostId, {
+        workspace: payload.workspace,
+        prompt,
+        requesterName: persona.name,
+        title: payload.title,
+        agentRole: payload.agentRole,
+        isolateWorktree: payload.isolateWorktree === true,
+      }),
+    );
+    const { sessionId, ...snapshot } = started;
+    const row: DelegationRow = {
+      workSessionId: sessionId,
+      personaId: persona.id,
+      requesterSessionId: persona.homeSessionId,
+      teamTemplateId: null,
+      createdAt: this.now(),
+      remote: { ...snapshot, hostId: host.hostId, hostName: host.name },
+    };
+    this.deps.repository.insert(row);
+    this.watcher?.remember({
+      sessionId,
+      title: started.title,
+      state: "running",
+      waitingFor: null,
+      updatedAt: row.createdAt,
+      latestRun: null,
+      reply: null,
+    });
+    this.deps.announceChanged();
+    return this.describeRemote(row);
   }
 
   private enqueue(work: () => Promise<void>) {
@@ -286,69 +371,92 @@ export class DelegationModule {
     this.deps.track(next);
   }
 
-  private async report(
+  private async localTurn(
     row: DelegationRow,
     run: RunRecord,
+  ): Promise<FinishedTurn | null> {
+    const work = await this.deps.getSession(row.workSessionId);
+    if (!work) return null;
+    const reply = await this.deps.getRunReply(work.id, run.id);
+    return {
+      workSessionId: work.id,
+      title: work.title,
+      run: { id: run.id, status: run.status, error: run.error ?? null },
+      reply: reply?.content ?? null,
+      origin: { kind: "peer", sessionId: work.id, sessionTitle: work.title },
+    };
+  }
+
+  private async report(
+    row: DelegationRow,
+    turn: FinishedTurn,
     recovering: boolean,
   ) {
-    const messageId = delegatedWorkReportMessageId(run.id);
+    if (!turn.run.id) return;
+    const messageId = delegatedWorkReportMessageId(turn.run.id);
     if (await this.deps.getMessage(messageId)) return;
-    const [work, home] = await Promise.all([
-      this.deps.getSession(row.workSessionId),
-      this.deps.getSession(row.requesterSessionId),
-    ]);
-    if (!work) return;
-    const decision = decideTeammateReport({
-      memberStopped: false,
-      teamStopped: false,
-      leadArchived: !home || Boolean(home.archivedAt),
-      leadHasActiveRun: this.deps.hasActiveRun(row.requesterSessionId),
-      leadSupportsSteering: home
+    const home = await this.deps.getSession(row.requesterSessionId);
+    const decision = decideRequesterReport({
+      dropped: false,
+      requesterArchived: !home || Boolean(home.archivedAt),
+      requesterHasActiveRun: this.deps.hasActiveRun(row.requesterSessionId),
+      requesterSupportsSteering: home
         ? await this.deps.supportsSteering(home)
         : false,
       recovering,
     });
     if (decision.kind === "skip") return;
-    const reply = await this.deps.getRunReply(work.id, run.id);
     await this.deps.submitReport(
       {
         sessionId: row.requesterSessionId,
         messageId,
         content: renderDelegatedWorkReport({
-          title: work.title,
-          outcome: delegatedWorkOutcome(run.status),
-          error: run.error ?? null,
-          reply: reply?.content ?? null,
+          title: turn.title,
+          outcome: delegatedWorkOutcome(turn.run.status),
+          error: turn.run.error,
+          reply: turn.reply,
         }),
         delivery:
           decision.delivery === "hold" ? "queue-after-run" : decision.delivery,
-        origin: {
-          kind: "peer",
-          sessionId: work.id,
-          sessionTitle: work.title,
-        },
+        origin: turn.origin,
       },
       { hold: decision.delivery === "hold" },
     );
   }
 
-  private async followUpDelivery(
-    session: SessionRecord,
-  ): Promise<AgentInputDelivery> {
-    if (!this.deps.hasActiveRun(session.id)) return "start-new-run";
-    return (await this.deps.supportsSteering(session))
-      ? "steer-active-run"
-      : "queue-after-run";
+  private hosts() {
+    return (this.deps.remote?.hosts() ?? []).map((host) => ({
+      id: host.hostId,
+      name: host.name,
+      status: host.status,
+    }));
   }
 
-  private async isolate(session: SessionRecord, title: string) {
-    const { path } = await this.deps.createWorktree({
-      workspaceId: session.workspaceId,
-      branch: `assistant/${branchSlug(title)}-${session.id.slice(0, 6)}`,
-    });
-    const isolated = { ...session, worktreePath: path };
-    await this.deps.saveSession(isolated);
-    return isolated;
+  private requireHost(query: string) {
+    if (!this.deps.remote) {
+      throw new DelegationError(
+        "host_not_found",
+        "This computer cannot reach paired computers.",
+      );
+    }
+    return resolveHost(this.deps.remote.hosts(), query);
+  }
+
+  private async remoteCall<T>(
+    host: { hostId: string; name: string },
+    call: (remote: RemoteWorkGateway) => Promise<T>,
+  ) {
+    const remote = this.deps.remote;
+    if (!remote) throw this.workNotFound();
+    try {
+      return await call(remote);
+    } catch (error) {
+      if (!remote.isUnreachable(error)) throw error;
+      throw new DelegationError(
+        "host_unreachable",
+        `${host.name} is not reachable right now: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   private personaOrigin(persona: DelegationPersona): MessageOrigin {
@@ -356,6 +464,16 @@ export class DelegationModule {
       kind: "peer",
       sessionId: persona.homeSessionId,
       sessionTitle: persona.name,
+    };
+  }
+
+  private remoteOrigin(row: DelegationRow, title: string): MessageOrigin {
+    return {
+      kind: "remoteHost",
+      hostName: row.remote?.hostName ?? "",
+      senderName: title,
+      hostId: row.remote?.hostId,
+      sessionId: row.workSessionId,
     };
   }
 
@@ -377,16 +495,46 @@ export class DelegationModule {
       agentRoleId: session.agentRoleId ?? null,
       teamTemplateId: row.teamTemplateId,
       worktreePath: session.worktreePath ?? null,
-      state: this.stateOf(session),
+      state: workState(
+        session,
+        this.deps.hasActiveRun(session.id),
+        this.deps.latestRun(session.id),
+      ),
+      waitingFor: this.deps.waitingFor(session.id),
+      host: null,
       createdAt: row.createdAt,
       updatedAt: session.updatedAt,
     };
   }
 
-  private stateOf(session: SessionRecord): DelegatedWorkState {
-    if (session.archivedAt) return "archived";
-    if (this.deps.hasActiveRun(session.id)) return "running";
-    return this.deps.latestRun(session.id)?.status ?? "idle";
+  private describeRemote(row: DelegationRow): DelegatedWorkRecord {
+    const remote = row.remote;
+    if (!remote) throw this.workNotFound();
+    const status = this.watcher?.status(row.workSessionId) ?? null;
+    const known = this.deps.remote
+      ?.hosts()
+      .find((host) => host.hostId === remote.hostId);
+    return {
+      sessionId: row.workSessionId,
+      personaId: row.personaId,
+      title: status?.title || remote.title,
+      workspaceId: remote.workspaceId,
+      workspaceName: remote.workspaceName,
+      agentType: remote.agentType,
+      agentRoleId: remote.agentRoleId,
+      teamTemplateId: null,
+      worktreePath: remote.worktreePath,
+      state: status?.state ?? "idle",
+      waitingFor: status?.waitingFor ?? null,
+      host: {
+        id: remote.hostId,
+        name: known?.name ?? remote.hostName,
+        reachable:
+          Boolean(known) && !this.watcher?.isUnreachable(remote.hostId),
+      },
+      createdAt: row.createdAt,
+      updatedAt: status?.updatedAt ?? row.createdAt,
+    };
   }
 
   private async requirePersona(personaId: string) {
@@ -397,12 +545,16 @@ export class DelegationModule {
     return persona;
   }
 
-  private async requireWork(target: { personaId: string; sessionId: string }) {
+  private requireRow(target: { personaId: string; sessionId: string }) {
     const row = this.deps.repository.get(target.sessionId);
     if (!row || row.personaId !== target.personaId) throw this.workNotFound();
-    const session = await this.deps.getSession(target.sessionId);
+    return row;
+  }
+
+  private async requireSession(row: DelegationRow) {
+    const session = await this.deps.getSession(row.workSessionId);
     if (!session) throw this.workNotFound();
-    return { row, session };
+    return session;
   }
 
   private workNotFound() {
@@ -410,50 +562,6 @@ export class DelegationModule {
       "work_not_found",
       "No work session you delegated has this id.",
     );
-  }
-
-  private async resolveWorkspace(query: string) {
-    const workspaces = (await this.deps.listWorkspaces()).filter(
-      isWorkWorkspace,
-    );
-    const byId = workspaces.find((workspace) => workspace.id === query);
-    if (byId) return byId;
-    const byName = workspaces.filter((workspace) =>
-      matchesName(workspace.name, query),
-    );
-    if (byName.length === 1) return byName[0];
-    if (byName.length > 1) {
-      throw new DelegationError(
-        "workspace_ambiguous",
-        `Several workspaces are named "${query}"; pass its id.`,
-      );
-    }
-    throw new DelegationError(
-      "workspace_not_found",
-      `No workspace matches "${query}". List the workspaces first.`,
-    );
-  }
-
-  private async resolveRole(query: string) {
-    const role = findByIdOrName(await this.deps.listRoles(), query);
-    if (!role) {
-      throw new DelegationError(
-        "role_not_found",
-        `No agent role matches "${query}".`,
-      );
-    }
-    return role;
-  }
-
-  private async resolveTemplate(query: string) {
-    const template = findByIdOrName(await this.deps.listTemplates(), query);
-    if (!template) {
-      throw new DelegationError(
-        "template_not_found",
-        `No team template matches "${query}".`,
-      );
-    }
-    return template;
   }
 
   private now() {

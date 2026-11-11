@@ -1,10 +1,12 @@
 import {
-  type AgentPermissionOption,
-  type AgentPermissionRequestRecord,
   describePermissionRequest,
   filterDetailsCoveredByText,
   type PermissionDetail,
   type PermissionRequestSummary,
+} from "@cocurdex/client-runtime";
+import type {
+  AgentPermissionOption,
+  AgentPermissionRequestRecord,
 } from "@cocurdex/shared";
 import { Check, ShieldAlert, X } from "lucide-react";
 import { useCallback, useState } from "react";

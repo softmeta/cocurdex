@@ -1,4 +1,4 @@
-import { formatElapsed } from "@cocurdex/shared";
+import { formatElapsed } from "@cocurdex/client-runtime";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";

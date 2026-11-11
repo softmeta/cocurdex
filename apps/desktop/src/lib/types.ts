@@ -21,7 +21,6 @@ import type {
   AgentSessionMode,
   AgentSessionRuntimeState,
   AgentSlashCommand,
-  AgentToolCallRecord,
   AgentToolCallResult,
   AppBootstrapData,
   ArchiveSessionPayload,
@@ -124,10 +123,11 @@ import type {
   RefineSessionTitlePayload,
   RelaySettingsUpdate,
   RemoteAccessSettingsUpdate,
+  RemoteHostEndpoint,
+  RemoteHostRecord,
   RendererLogPayload,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
-  SaveWorkflowDefinitionPayload,
   ScriptRunRecord,
   ScriptRunSettings,
   ScriptRunSnapshot,
@@ -136,8 +136,8 @@ import type {
   SessionAttentionSnapshot,
   SessionExecutionTree,
   SessionIdsPayload,
-  SessionMessagesResult,
   SessionRecord,
+  SessionTranscriptPage,
   SetSessionPinnedPayload,
   StartScriptRunPayload,
   SyncPullInput,
@@ -165,7 +165,6 @@ import type {
   ViewColumnRecord,
   ViewFull,
   ViewSummary,
-  WorkflowDefinitionRecord,
   WorkspaceAction,
   WorkspaceEntry,
   WorkspaceFileRecord,
@@ -320,6 +319,7 @@ export interface HostCapabilities {
   localFilePaths: boolean;
   localDaemonControl: boolean;
   windowMaterial: boolean;
+  remoteHostWindows: boolean;
   scopes?: readonly HostAccessScope[];
 }
 
@@ -346,17 +346,6 @@ export interface ProductApi {
   listAgentRoles(): Promise<AgentRoleRecord[]>;
   saveAgentRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
   deleteAgentRole(id: string): Promise<void>;
-  listWorkflowDefinitions(): Promise<WorkflowDefinitionRecord[]>;
-  getWorkflowDefinition(
-    definitionId: string,
-  ): Promise<WorkflowDefinitionRecord | null>;
-  saveWorkflowDefinition(
-    payload: SaveWorkflowDefinitionPayload,
-  ): Promise<WorkflowDefinitionRecord>;
-  duplicateWorkflowDefinition(
-    definitionId: string,
-  ): Promise<WorkflowDefinitionRecord>;
-  deleteWorkflowDefinition(definitionId: string): Promise<void>;
   readAdapterRateLimits(
     agentIds: AgentId[],
   ): Promise<Partial<Record<AgentId, AgentRateLimitsReadResult>>>;
@@ -664,8 +653,10 @@ export interface ProductApi {
     scopes: HostAccessScope[],
   ): Promise<PairedDeviceRecord | null>;
   listHostAudit(limit: number): Promise<HostAccessAuditEntry[]>;
-  listSessionMessages(sessionId: string): Promise<SessionMessagesResult>;
-  listSessionToolCalls(sessionId: string): Promise<AgentToolCallRecord[]>;
+  getTranscriptPage(
+    sessionId: string,
+    beforeSeq: number | null,
+  ): Promise<SessionTranscriptPage>;
   getToolCallResult(toolCallId: string): Promise<AgentToolCallResult | null>;
   undoTurnChanges(
     payload: UndoTurnChangesInput,
@@ -835,6 +826,20 @@ export interface HostApi {
     channel: string;
   }): Promise<PresentationWindowResult>;
   closePresentationWindow(request: { channel: string }): Promise<void>;
+  openRemoteHostWindow(request: RemoteHostWindowRequest): Promise<void>;
+  getRemoteHostWindow(): Promise<RemoteHostWindowTarget | null>;
+  consumeRemoteHostSession(): Promise<string | null>;
+  onRemoteHostSession(listener: () => void): () => void;
+}
+
+export interface RemoteHostWindowRequest {
+  hostId: string;
+  sessionId?: string;
+}
+
+export interface RemoteHostWindowTarget {
+  host: RemoteHostRecord;
+  endpoint: RemoteHostEndpoint;
 }
 
 export interface PresentationWindowResult {

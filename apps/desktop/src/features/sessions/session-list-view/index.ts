@@ -1,14 +1,11 @@
 export {
   countActiveSessionFilters,
-  defaultOrderDirection,
   filterSessionsByView,
   groupSessionsByView,
   isCustomizedSessionListView,
   resolveRootLimit,
   SESSION_ENVIRONMENTS,
   SESSION_GROUPINGS,
-  SESSION_ORDER_DIRECTIONS,
-  SESSION_ORDERINGS,
   SESSION_PROPERTIES,
   SESSION_ROOT_LIMITS,
   SESSION_SOURCES,
@@ -18,8 +15,6 @@ export {
   type SessionGrouping,
   type SessionListFacts,
   type SessionListView,
-  type SessionOrderDirection,
-  type SessionOrdering,
   type SessionProperty,
   type SessionRootLimit,
   type SessionSource,
@@ -27,6 +22,13 @@ export {
   type SessionUpdatedBucket,
   splitPinnedSessions,
   visibleSessionProperties,
+} from "@cocurdex/client-runtime";
+export {
+  defaultOrderDirection,
+  SESSION_ORDER_DIRECTIONS,
+  SESSION_ORDERINGS,
+  type SessionOrderDirection,
+  type SessionOrdering,
 } from "@cocurdex/shared";
 export {
   collapsedSessionGroupKeysAtom,

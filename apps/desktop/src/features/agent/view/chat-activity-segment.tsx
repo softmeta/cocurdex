@@ -1,4 +1,4 @@
-import { formatDurationMs } from "@cocurdex/shared";
+import { formatDurationMs } from "@cocurdex/client-runtime";
 import { CircleStop } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";

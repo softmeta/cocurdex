@@ -2,13 +2,14 @@ import { ExternalLink, PanelLeftClose } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AppDropdownItem } from "@/components";
 import { Button, Text } from "@/components/ui";
+import { hasChatWindows } from "@/lib";
 import { TitlebarIconButton } from "../titlebar-icon-button";
 import { useChatWindowActions } from "./use-chat-window";
 
 export function ChatWindowMenuItem() {
   const { t } = useTranslation("sessions");
   const { busy, canMove, move, isDetachedChatWindow } = useChatWindowActions();
-  if (!window.desktopApi?.chatWindow) return null;
+  if (!hasChatWindows()) return null;
   return (
     <AppDropdownItem disabled={busy || !canMove} onClick={() => void move()}>
       <ExternalLink className="size-4" />
@@ -20,7 +21,7 @@ export function ChatWindowMenuItem() {
 export function ChatWindowButton() {
   const { t } = useTranslation("sessions");
   const { busy, canMove, move, isDetachedChatWindow } = useChatWindowActions();
-  if (!window.desktopApi?.chatWindow) return null;
+  if (!hasChatWindows()) return null;
   const label = isDetachedChatWindow ? t("window.return") : t("window.detach");
   return (
     <TitlebarIconButton

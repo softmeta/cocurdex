@@ -34,7 +34,8 @@ export type SessionRuntimeEvent = Extract<
       | "commands.updated"
       | "provider.runtime.updated"
       | "session.config.updated"
-      | "session.mode.updated";
+      | "session.mode.updated"
+      | "session.runtime.released";
   }
 >;
 
@@ -44,6 +45,7 @@ const RUNTIME_EVENT_TYPES = new Set<string>([
   "provider.runtime.updated",
   "session.config.updated",
   "session.mode.updated",
+  "session.runtime.released",
 ]);
 
 export function isSessionRuntimeEvent(event: {
@@ -65,6 +67,8 @@ export function applySessionRuntimeEvent(
       return { ...state, runtime: event.runtime };
     case "session.config.updated":
       return { ...state, configOptions: event.configOptions };
+    case "session.runtime.released":
+      return EMPTY_AGENT_SESSION_RUNTIME_STATE;
     case "session.mode.updated":
       return {
         ...state,

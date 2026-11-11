@@ -36,7 +36,6 @@
       "@cocurdex/deck/markdown": ["./packages/deck/src/markdown.ts"],
       "@cocurdex/deck/pptx": ["./packages/deck/src/pptx.ts"],
       "@cocurdex/product-skills": ["./packages/product-skills/src/index.ts"],
-      "@cocurdex/api": ["./apps/api/src/index.ts"],
       "@cocurdex/agent-adapters/internal/*": [
         "./packages/agent-adapters/src/*"
       ],
@@ -57,8 +56,7 @@
         "./packages/secure-channel/src/*"
       ],
       "@cocurdex/shared/internal/*": ["./packages/shared/src/*"],
-      "@cocurdex/cli/internal/*": ["./apps/cli/src/*"],
-      "@cocurdex/api/internal/*": ["./apps/api/src/*"]
+      "@cocurdex/cli/internal/*": ["./apps/cli/src/*"]
     }
   }
 }

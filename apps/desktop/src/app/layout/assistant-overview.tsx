@@ -36,6 +36,7 @@ import {
 import { openSettings } from "@/features/settings";
 import { requestDaemon } from "@/lib";
 import { OverviewRow, OverviewSection } from "./assistant-overview-sections";
+import { AssistantWorkRow } from "./assistant-work-row";
 import {
   type RightPanelView,
   rightPanelResolvedActiveViewAtom,
@@ -206,13 +207,11 @@ function AssistantOverviewContent({
               </Text>
             ) : null}
             {activeWork.map((item) => (
-              <OverviewRow
+              <AssistantWorkRow
+                item={item}
                 key={item.sessionId}
-                sessionId={item.sessionId}
-                title={item.title}
-                detail={`${item.workspaceName} · ${stateLabels[item.state]}`}
-                icon={<Briefcase className="size-3.5 shrink-0" />}
-                onClick={() => openSession(item.sessionId)}
+                stateLabel={stateLabels[item.state]}
+                onOpenLocal={(id) => void openSession(id)}
               />
             ))}
           </OverviewSection>
@@ -221,13 +220,11 @@ function AssistantOverviewContent({
               title={t("overview.results", { defaultValue: "Recent results" })}
             >
               {results.map((item) => (
-                <OverviewRow
+                <AssistantWorkRow
+                  item={item}
                   key={item.sessionId}
-                  sessionId={item.sessionId}
-                  title={item.title}
-                  detail={`${item.workspaceName} · ${stateLabels[item.state]}`}
-                  icon={<Briefcase className="size-3.5 shrink-0" />}
-                  onClick={() => openSession(item.sessionId)}
+                  stateLabel={stateLabels[item.state]}
+                  onOpenLocal={(id) => void openSession(id)}
                 />
               ))}
             </OverviewSection>

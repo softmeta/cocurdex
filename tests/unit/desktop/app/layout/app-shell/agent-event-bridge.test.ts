@@ -108,8 +108,10 @@ describe("agent state during a window handoff", () => {
           ],
           turnStats: {},
           turnChangeSets: {},
+          deletedTurnChangeSetIds: [],
           toolCalls: [],
           plan: null,
+          olderBeforeSeq: null,
         },
       },
     });
@@ -204,9 +206,11 @@ function transcript(complete: boolean, messages: ReturnType<typeof message>[]) {
     deletedMessageIds: [],
     activeMessages: [],
     turnStats: {},
-    turnChangeSets: null,
+    turnChangeSets: {},
+    deletedTurnChangeSetIds: [],
     toolCalls: [],
     plan: null,
+    olderBeforeSeq: null,
   };
 }
 

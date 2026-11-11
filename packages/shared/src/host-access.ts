@@ -427,3 +427,40 @@ export type HostDeviceApprovalFailure =
 export type HostDeviceApproval =
   | { ok: true; device: PairedDeviceRecord }
   | { ok: false; reason: HostDeviceApprovalFailure };
+
+export interface RemoteHostEndpoint {
+  kind: "paired";
+  baseUrl: string;
+  hostId: string;
+  hostKey: string;
+  deviceId: string;
+  deviceSecretKey: string;
+}
+
+export type RemoteHostStatus =
+  | "unknown"
+  | "connected"
+  | "pending"
+  | "offline"
+  | "rejected";
+
+export interface RemoteHostRecord {
+  hostId: string;
+  name: string;
+  baseUrl: string;
+  deviceId: string;
+  scopes: HostAccessScope[];
+  pairedAt: string;
+  safetyCode: string;
+  status: RemoteHostStatus;
+  error: string | null;
+}
+
+export type RemoteHostPairPayload =
+  | { link: string; label?: string | null }
+  | { baseUrl: string; code: string; hostKey: string; label?: string | null };
+
+export interface RemoteHostPairing {
+  host: RemoteHostRecord;
+  missingScopes: HostAccessScope[];
+}

@@ -3,7 +3,9 @@ import type {
   DaemonRequest,
   DaemonResultByMethod,
 } from "@cocurdex/rpc";
+import type { DelegationModule } from "../delegation";
 import type { PushService } from "../push";
+import type { RemoteHosts } from "../remote-hosts";
 import type { HostAccessService } from "./host-access-service";
 import type { DaemonRequestContext } from "./request-context";
 import type { TrafficMeter } from "./traffic-meter";
@@ -22,13 +24,16 @@ export interface HostRequestServices {
   hostAccess: HostAccessService;
   push: PushService;
   remoteTraffic: TrafficMeter;
+  remoteHosts: RemoteHosts;
+  delegations: Pick<DelegationModule, "forgetHost" | "pollRemote">;
 }
 
 export async function handleHostRequest(
-  { hostAccess, push, remoteTraffic }: HostRequestServices,
+  services: HostRequestServices,
   request: DaemonRequest<HostMethod>,
   context: DaemonRequestContext,
 ): Promise<DaemonResultByMethod[HostMethod]> {
+  const { hostAccess, push, remoteTraffic, remoteHosts } = services;
   switch (request.method) {
     case "host.identity":
       return hostAccess.identity();
@@ -88,6 +93,23 @@ export async function handleHostRequest(
       return push.register(context.principal, request.params);
     case "host.push.unregister":
       return push.unregister(context.principal);
+    case "host.remotes.list":
+      return remoteHosts.list();
+    case "host.remotes.pair":
+      return remoteHosts.pair(request.params);
+    case "host.remotes.remove": {
+      const removed = await remoteHosts.remove(request.params.hostId);
+      if (removed) services.delegations.forgetHost(request.params.hostId);
+      return removed;
+    }
+    case "host.remotes.endpoint":
+      return remoteHosts.endpoint(request.params.hostId);
+    case "host.remotes.workspaces":
+      return remoteHosts.request(
+        request.params.hostId,
+        "delegation.remote.catalog",
+        undefined,
+      );
     default: {
       const exhaustive: never = request;
       throw new Error(`Unsupported host method: ${JSON.stringify(exhaustive)}`);

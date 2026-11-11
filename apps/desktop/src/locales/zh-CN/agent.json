@@ -91,6 +91,7 @@
   "peerMessage": {
     "from": "来自会话 {{title}}",
     "fromBrief": "今日简报",
+    "fromRemote": "来自 {{host}} 上的 {{sender}}",
     "fromRoutine": "来自例行任务 {{name}}",
     "fromScriptRun": "来自脚本 {{name}}"
   },

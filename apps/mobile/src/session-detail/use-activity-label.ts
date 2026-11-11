@@ -1,4 +1,4 @@
-import type { ActivityAction } from "@cocurdex/shared";
+import type { ActivityAction } from "@cocurdex/client-runtime";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import type { CondensedItem } from "./transcript-activity";

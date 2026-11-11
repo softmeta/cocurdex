@@ -36,6 +36,7 @@ const OBSERVATION: SessionObservationSnapshot = {
   turnChangeSets: {},
   interactions: { permissions: [], questions: [], planApprovals: [] },
   plan: null,
+  olderBeforeSeq: null,
 };
 
 const TOOL: AgentToolCallRecord = {

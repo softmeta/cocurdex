@@ -37,6 +37,11 @@ export async function handleSessionRequest(
       return service.listSessions();
     case "session.snapshot":
       return service.getSessionSnapshot(request.params.sessionId);
+    case "session.transcriptPage":
+      return service.getSessionTranscriptPage(
+        request.params.sessionId,
+        request.params.beforeSeq,
+      );
     case "session.executionTree":
       return service.getSessionExecutionTree(
         request.params.sessionId,
@@ -162,9 +167,9 @@ export async function handleSessionRequest(
     case "session.getToolCallResult":
       return service.getToolCallResult(request.params);
     case "assistant.session.create":
-      return service.createAssistantSession(request.params.workspaceId);
+      return service.assistant.create(request.params.workspaceId);
     case "assistant.session.getOrCreate":
-      return service.getOrCreateAssistantSession(request.params);
+      return service.assistant.getOrCreate(request.params);
     case "attention.list":
       return service.listSessionAttention();
     case "attention.update":

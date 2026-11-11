@@ -28,15 +28,6 @@ export const daemonProductApi: ProductRequestApi = {
   deleteAgentRole: async (id) => {
     await rpc("agentRole.delete", { id });
   },
-  listWorkflowDefinitions: () => rpc("workflow.listDefinitions"),
-  getWorkflowDefinition: (definitionId) =>
-    rpc("workflow.getDefinition", { definitionId }),
-  saveWorkflowDefinition: (payload) => rpc("workflow.saveDefinition", payload),
-  duplicateWorkflowDefinition: (definitionId) =>
-    rpc("workflow.duplicateDefinition", { definitionId }),
-  deleteWorkflowDefinition: async (definitionId) => {
-    await rpc("workflow.deleteDefinition", { definitionId });
-  },
   readAdapterRateLimits: (agentIds) =>
     rpc("agent.rateLimits.read", { agentIds }),
   readAgentSessionModes: (agentId) =>
@@ -318,10 +309,8 @@ export const daemonProductApi: ProductRequestApi = {
   updateHostDeviceScopes: (deviceId, scopes) =>
     rpc("host.devices.updateScopes", { deviceId, scopes }),
   listHostAudit: (limit) => rpc("host.audit.list", { limit }),
-  listSessionMessages: (sessionId) =>
-    rpc("session.listMessages", { sessionId }),
-  listSessionToolCalls: (sessionId) =>
-    rpc("session.listToolCalls", { sessionId }),
+  getTranscriptPage: (sessionId, beforeSeq) =>
+    rpc("session.transcriptPage", { sessionId, beforeSeq }),
   getToolCallResult: (toolCallId) =>
     rpc("session.getToolCallResult", { toolCallId }),
   undoTurnChanges: (payload) => rpc("session.undoTurnChanges", payload),

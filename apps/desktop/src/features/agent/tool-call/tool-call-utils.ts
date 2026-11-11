@@ -1,15 +1,17 @@
 import {
-  type AgentToolCallContent,
-  type AgentToolCallRecord,
   getCommandPreview,
   getDisplayDirectory,
   getLineRangeLabel,
   getToolCallInputSummary,
+  sanitizeCommand,
+  truncateMiddle,
+} from "@cocurdex/client-runtime";
+import {
+  type AgentToolCallContent,
+  type AgentToolCallRecord,
   isContextCompactionToolCall,
   pathBaseName,
-  sanitizeCommand,
   toolCallResourceLinkPath,
-  truncateMiddle,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 import { i18n } from "@/i18n";

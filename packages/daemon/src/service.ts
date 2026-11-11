@@ -1,20 +1,10 @@
 import { EventEmitter } from "node:events";
 import os, { homedir } from "node:os";
-import {
-  deleteOpenCodeSession,
-  readAdapterRateLimits as probeAdapterRateLimits,
-  resetAcpProviderModelsCache,
-} from "@cocurdex/agent-adapters";
+import { deleteOpenCodeSession } from "@cocurdex/agent-adapters";
 import { loginPiProvider } from "@cocurdex/agent-adapters/provider-auth";
-import {
-  AgentSteeringUnavailableError,
-  createAgentRegistry,
-  getAgentRuntimeOwnership,
-} from "@cocurdex/agent-core";
+import { AgentSteeringUnavailableError } from "@cocurdex/agent-core";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type {
-  AcpRegistryAgentId,
-  AgentDescriptor,
   AgentEvent,
   AgentId,
   AgentPlanApprovalDecision,
@@ -25,7 +15,6 @@ import type {
   CocurdexDaemonEvent,
   ContextTransferRecord,
   CreateSessionPayload,
-  CreateWorkflowPayload,
   ForkSessionPayload,
   GetToolCallResultInput,
   MessageRecord,
@@ -33,12 +22,10 @@ import type {
   RefineSessionTitlePayload,
   RoutineRunRecord,
   SaveAgentRolePayload,
-  SaveWorkflowDefinitionPayload,
   SendSessionCommand,
   SessionConfiguration,
   SessionRecord,
   SetSessionPinnedPayload,
-  SupportedLocale,
   SyncPullInput,
   SyncPullResult,
   TurnChangeDiffRequest,
@@ -53,14 +40,10 @@ import {
   buildContextHandoffText,
   buildPolicy,
   CHAT_WORKSPACE_ID,
-  canDisableAgent,
   contextHandoffBudget,
-  DISABLED_AGENTS_SETTING_KEY,
   type HostPrincipal,
-  isAcpRegistryAgentId,
   isAgentEvent,
   isAgentId,
-  isAssistantSessionId,
   isChatSession,
   isChatWorkspaceId,
   isFeatureEnabled,
@@ -68,19 +51,13 @@ import {
   isPersonalSession,
   isPersonalWorkspaceId,
   isSessionRuntimeEvent,
-  isSupportedLocale,
   isToolCallId,
-  type MessageOrigin,
-  matchSupportedLocale,
   messageAgentLookup,
-  newAssistantSessionId,
   normalizeAgentRoleAvatar,
   normalizeAgentRoleDescription,
   normalizeAgentRoleName,
   normalizeWorkspaceRootPaths,
   PERSONAL_WORKSPACE_ID,
-  PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
-  parseDisabledAgentIds,
   primaryWorkspaceRootPath,
   principalHasScope,
   resolveSessionWorkingPath,
@@ -103,20 +80,21 @@ import {
   registerWorkTools,
 } from "./agent-tools";
 import { registerApplicationTools } from "./agent-tools/groups/applications";
-import {
-  createAgentInstallationProbes,
-  discoverAgentSessionModes,
-  discoverInstalledAgentCapabilities,
-} from "./agents";
+import { AgentCatalog } from "./agents";
 import { resolveApplicationPrincipal } from "./application-principal";
 import { ApplicationService } from "./application-service";
+import { AssistantSessions } from "./assistant/assistant-sessions";
 import { DaemonAttachmentStore } from "./attachment-store";
 import { DaemonBackgroundService } from "./background";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonSettingsService } from "./daemon-settings";
 import { DaemonDataService } from "./data-service";
 import { DaemonDeckService, DeckAssetStore } from "./decks";
-import { DelegationModule } from "./delegation";
+import {
+  DelegationModule,
+  pendingInteractionKind,
+  RemoteWorkHost,
+} from "./delegation";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { loadExecutionTree } from "./execution-tree";
 import {
@@ -131,9 +109,7 @@ import {
   daemonNoiseCrypto,
   type HostKeyStore,
 } from "./host-access/host-key-store";
-import { briefMarkdown } from "./inbox/brief-text";
-import { buildBrief } from "./inbox/build-brief";
-import { buildInbox } from "./inbox/build-inbox";
+import { InboxService } from "./inbox/inbox-service";
 import { DaemonMcpService } from "./mcp-service";
 import { MemoryService } from "./memory";
 import { OutboxService, routineRunAlert } from "./outbox";
@@ -163,13 +139,16 @@ import {
 } from "./provider-credentials";
 import { PushService, pushTriggerForEvent } from "./push";
 import {
+  createRemoteHostStore,
+  RemoteHosts,
+  remoteWorkGateway,
+} from "./remote-hosts";
+import {
   createRoutineSessions,
-  isValidTimeZone,
   ROUTINE_RUN_SECTION,
   RoutineService,
   routineRunPolicy,
   routineRunSection,
-  zonedDayStart,
 } from "./routines";
 import { SLOW_REQUEST_THRESHOLD_MS } from "./rpc-request-log";
 import { AgentRuntimeManager, type RuntimePersistence } from "./runtime";
@@ -210,14 +189,6 @@ import { createKeepAwake } from "./system";
 import { TeamModule, type TeammateReportCommand } from "./team";
 import { TerminalService } from "./terminal";
 import {
-  DaemonWorkflowAgentTurnRunner,
-  type DecideWorkflowGateInput,
-  RuntimeWorkflowActionExecutor,
-  WorkflowModule,
-  WorkflowWorker,
-  WorkflowWorkerScheduler,
-} from "./workflow";
-import {
   createWorkspaceChangeCoordinator,
   type WorkspaceChangeCoordinator,
 } from "./workspace-changes";
@@ -249,21 +220,23 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 const CHECKPOINT_RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const BRIEF_POSTED_SETTING_KEY = "personal.briefPostedAt";
-const BRIEF_LOCALE_SETTING_KEY = "personal.briefLocale";
 
 export class CocurdexDaemonService {
   readonly events = new EventEmitter();
-  private readonly agentInstallationProbes = createAgentInstallationProbes();
+  readonly agents: AgentCatalog;
   readonly agentTools: AgentToolBridge;
   readonly peerMessaging: PeerMessagingService;
   readonly team: TeamModule;
   readonly delegations: DelegationModule;
+  readonly remoteHosts: RemoteHosts;
+  readonly remoteWork: RemoteWorkHost;
   readonly scriptRuns: ScriptRunModule;
   readonly dataService: DaemonDataService;
   readonly decks: DaemonDeckService;
   readonly personalAgents: PersonalAgentService;
   readonly routines: RoutineService;
+  readonly inbox: InboxService;
+  readonly assistant: AssistantSessions;
   private readonly outbox: OutboxService;
   readonly providerService: DaemonProviderService;
   readonly acpRegistry: AcpRegistryService;
@@ -299,7 +272,6 @@ export class CocurdexDaemonService {
   private keepAwakeSync: Promise<void> = Promise.resolve();
   readonly remoteTraffic: TrafficMeter = createTrafficMeter();
   readonly hostAccessReady: Promise<void>;
-  readonly workflows: WorkflowModule;
   readonly workspaceChanges: WorkspaceChangeCoordinator;
   private readonly runtimeFingerprint: string;
   private readonly socketPath: string;
@@ -312,7 +284,6 @@ export class CocurdexDaemonService {
   private readonly queuedFollowUps: SessionFollowUpQueue;
   private readonly sessionRuntimeStates = new SessionRuntimeStates();
   private readonly runCapacity: RunCapacity;
-  private readonly workflowWorkerScheduler: WorkflowWorkerScheduler;
   private shutdownPromise: Promise<void> | null = null;
   private readonly checkpointReconcileTimer: NodeJS.Timeout;
 
@@ -322,6 +293,24 @@ export class CocurdexDaemonService {
     this.startedAt = options.startedAt ?? new Date().toISOString();
     this.userDataPath = options.userDataPath;
     this.state = new DaemonState(options.userDataPath);
+    this.inbox = new InboxService({
+      state: this.state,
+      runtime: {
+        getPendingInteractions: () => this.runtime.getPendingInteractions(),
+      },
+      routines: () => this.routines,
+      announceSessionsChanged: () => this.announceSessionsChanged(),
+    });
+    this.assistant = new AssistantSessions({
+      state: this.state,
+      agents: {
+        readDisabledAgentIds: () => this.agents.readDisabledAgentIds(),
+        detectAgents: () => this.agents.detectAgents(),
+      },
+      saveSessionConfiguration: (configuration) =>
+        this.saveSessionConfiguration(configuration),
+      announceSessionsChanged: () => this.announceSessionsChanged(),
+    });
     this.queuedFollowUps = new SessionFollowUpQueue(this.state);
     this.hostKeys = createHostKeyStore(options.userDataPath);
     this.hostAccess = new HostAccessService({
@@ -338,6 +327,12 @@ export class CocurdexDaemonService {
       },
     });
     this.hostAccessReady = this.hostAccess.initialize();
+    this.remoteHosts = new RemoteHosts({
+      store: createRemoteHostStore(options.userDataPath),
+      crypto: daemonNoiseCrypto,
+      deviceLabel: () => os.hostname(),
+    });
+    this.remoteHosts.onChanged(() => this.settings.announceChanged());
     this.push = new PushService({
       repository: this.state.hostAccessStore.repository,
       settings: this.state.hostAccessStore.settings,
@@ -358,7 +353,6 @@ export class CocurdexDaemonService {
           }
         : null,
     });
-    this.workflows = new WorkflowModule(this.state.workflows);
     this.dataService = new DaemonDataService(this.state, this.events);
     this.decks = new DaemonDeckService(
       this.state.data.decks,
@@ -395,7 +389,9 @@ export class CocurdexDaemonService {
         );
       },
       greet: async (sessionId, content) => {
-        await this.postToSession(sessionId, content, { kind: "greeting" });
+        await this.inbox.postToSession(sessionId, content, {
+          kind: "greeting",
+        });
       },
       removeDependents: async (agentId) => {
         this.delegations.forgetPersona(agentId);
@@ -424,13 +420,15 @@ export class CocurdexDaemonService {
       ensureSession: routineSessions.ensureSession,
       runTurn: routineSessions.runTurn,
       deliverResult: (routine, run, content) =>
-        this.postToHomeThread(routine.agentId, content, {
-          kind: "routine",
-          routineId: routine.id,
-          routineName: routine.name,
-          runId: run.id,
-          ...(run.sessionId ? { sessionId: run.sessionId } : {}),
-        }).then(() => undefined),
+        this.inbox
+          .postToHomeThread(routine.agentId, content, {
+            kind: "routine",
+            routineId: routine.id,
+            routineName: routine.name,
+            runId: run.id,
+            ...(run.sessionId ? { sessionId: run.sessionId } : {}),
+          })
+          .then(() => undefined),
       alertRun: (run) => this.alertRoutineRun(run),
       announceChanged: () =>
         this.events.emit("daemon.event", {
@@ -455,6 +453,14 @@ export class CocurdexDaemonService {
       (providerId) => this.providerCredentials.setApiKey(providerId, null),
     );
     this.acpRegistry = new AcpRegistryService(this.state, options.userDataPath);
+    this.agents = new AgentCatalog({
+      state: this.state,
+      acpRegistry: this.acpRegistry,
+      cancelLogin: (agentId) => this.agentAuth.cancelLogin(agentId),
+      liveSessionIds: (agentId) => this.runtime.liveSessionIdsForAgent(agentId),
+      disposeSession: (sessionId) => this.disposeSessionRuntime(sessionId),
+      emit: (event) => this.events.emit("daemon.event", event),
+    });
     this.agentAuth = new AgentAuthService({
       registry: this.acpRegistry,
       liveSessionIds: (agentId) => this.runtime.liveSessionIdsForAgent(agentId),
@@ -490,7 +496,8 @@ export class CocurdexDaemonService {
       commitMessages: this.commitMessageService,
       getWorktreeEnvironment: (workspaceId) =>
         this.workspaces.getWorktreeEnvironment(workspaceId),
-      setDisabledAgentIds: (agentIds) => this.replaceDisabledAgentIds(agentIds),
+      setDisabledAgentIds: (agentIds) =>
+        this.agents.replaceDisabledAgentIds(agentIds),
       emit: (event) => this.events.emit("daemon.event", event),
     });
     this.worktrees = new WorktreeLifecycle(
@@ -546,7 +553,7 @@ export class CocurdexDaemonService {
       getSession: (sessionId) => this.state.getSession(sessionId),
       listSessions: () => this.state.listSessions(),
       hasActiveTurn: (sessionId) => this.runs.hasActiveRun(sessionId),
-      supportsSteering: (session) => this.agentSupportsSteering(session),
+      supportsSteering: (session) => this.agents.supportsSteering(session),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       broadcast: (event) => this.events.emit("daemon.event", event),
       peerScope: (sessionId) => this.team.peerScope(sessionId),
@@ -564,7 +571,7 @@ export class CocurdexDaemonService {
         this.peerMessaging.send(payload, render),
       deliverReport: (report) => this.deliverTeammateReport(report),
       hasActiveRun: (sessionId) => this.runs.hasActiveRun(sessionId),
-      supportsSteering: (session) => this.agentSupportsSteering(session),
+      supportsSteering: (session) => this.agents.supportsSteering(session),
       getRunReply: (sessionId, runId) =>
         this.state.getRunReply(sessionId, runId),
       latestRun: (sessionId) => this.state.getLatestRun(sessionId),
@@ -592,7 +599,35 @@ export class CocurdexDaemonService {
       sendPeerMessage: (payload) => this.peerMessaging.send(payload),
     });
     registerTeamTools(this.agentTools.registry, this.team);
+    const workSessions = {
+      createSession: (input: CreateSessionPayload) => this.createSession(input),
+      saveSession: (session: SessionRecord) => this.state.saveSession(session),
+      createWorktree: (input: { workspaceId: string; branch: string }) =>
+        this.worktrees.createWorktree(input),
+      sendSessionMessage: (command: SendSessionCommand) =>
+        this.sendSessionMessage(command),
+      hasActiveRun: (sessionId: string) => this.runs.hasActiveRun(sessionId),
+      supportsSteering: (session: SessionRecord) =>
+        this.agents.supportsSteering(session),
+    };
+    const waitingFor = (sessionId: string) =>
+      pendingInteractionKind(this.runtime.getPendingInteractions(), sessionId);
+    this.remoteWork = new RemoteWorkHost({
+      ...workSessions,
+      listWorkspaces: () => this.state.listWorkspaces(),
+      listRoles: () => this.listAgentRoles(),
+      getSession: (sessionId) => this.state.getSession(sessionId),
+      stopSession: (sessionId) => this.stopSession(sessionId),
+      latestRun: (sessionId) => this.state.getLatestRun(sessionId),
+      getRunReply: (sessionId, runId) =>
+        this.state.getRunReply(sessionId, runId),
+      waitingFor,
+      announceChanged: () => this.announceSessionsChanged(),
+    });
     this.delegations = new DelegationModule({
+      ...workSessions,
+      waitingFor,
+      remote: remoteWorkGateway(this.remoteHosts),
       repository: this.state.data.delegations,
       getPersona: async (personaId) => {
         const row = this.state.data.personalAgents.getById(personaId);
@@ -605,19 +640,13 @@ export class CocurdexDaemonService {
         };
       },
       getSession: (sessionId) => this.state.getSession(sessionId),
-      saveSession: (session) => this.state.saveSession(session),
-      createSession: (input) => this.createSession(input),
       listWorkspaces: () => this.state.listWorkspaces(),
       listRoles: () => this.listAgentRoles(),
       listTemplates: () => this.team.listTemplates(),
       createTeam: (input) => this.team.create(input),
-      createWorktree: (input) => this.worktrees.createWorktree(input),
-      sendSessionMessage: (command) => this.sendSessionMessage(command),
       submitReport: (command, options) =>
         this.submitSessionMessage(command, options),
       stopSession: (sessionId) => this.stopSession(sessionId),
-      hasActiveRun: (sessionId) => this.runs.hasActiveRun(sessionId),
-      supportsSteering: (session) => this.agentSupportsSteering(session),
       latestRun: (sessionId) => this.state.getLatestRun(sessionId),
       getRunReply: (sessionId, runId) =>
         this.state.getRunReply(sessionId, runId),
@@ -673,6 +702,7 @@ export class CocurdexDaemonService {
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
       hasActiveTurn: (sessionId) => this.runs.hasActiveRun(sessionId),
+      supportsSteering: (session) => this.agents.supportsSteering(session),
       stopSession: (sessionId) => this.stopSession(sessionId),
       broadcast: (event) => {
         this.events.emit("daemon.event", event);
@@ -717,7 +747,7 @@ export class CocurdexDaemonService {
     );
     registerWorkTools(this.agentTools.registry, {
       personaOf,
-      catalog: () => this.delegations.catalog(),
+      catalog: (query) => this.delegations.catalog(query),
       start: (payload) => this.delegations.start(payload),
       list: (personaId) => this.delegations.list(personaId),
       send: (payload) => this.delegations.send(payload),
@@ -774,9 +804,10 @@ export class CocurdexDaemonService {
       userDataPath: options.userDataPath,
       agentTools: this.agentTools,
       resolveMcpServers: async (agentId) =>
-        (await this.isAgentDisabled(agentId))
+        (await this.agents.isAgentDisabled(agentId))
           ? []
           : this.mcp.serversForAgent(agentId),
+      reclaim: {},
     });
     this.workspaceChanges = createWorkspaceChangeCoordinator({
       userDataPath: options.userDataPath,
@@ -857,37 +888,9 @@ export class CocurdexDaemonService {
       }
       return persisted;
     });
-    const workflowExecutor = new RuntimeWorkflowActionExecutor(
-      new DaemonWorkflowAgentTurnRunner(
-        this.state,
-        this.runtime,
-        this.runs,
-        this.providerCredentials,
-      ),
-    );
-    const workflowWorker = new WorkflowWorker(
-      this.state.workflows,
-      workflowExecutor,
-      {
-        workerId: `${this.runtimeFingerprint}:${process.pid}`,
-        leaseDurationMs: 60_000,
-        now: () => new Date().toISOString(),
-        createId: () => crypto.randomUUID(),
-      },
-    );
-    this.workflowWorkerScheduler = new WorkflowWorkerScheduler(workflowWorker, {
-      concurrency: 4,
-    });
-    this.wakeWorkflowWorker();
     if (options.autoStartMemory === true) {
       void this.memory.initializeOnStartup();
     }
-  }
-
-  private async agentSupportsSteering(session: SessionRecord) {
-    const agents = await this.listAgents(session.agentType);
-    const agent = agents.find((item) => item.id === session.agentType);
-    return agent?.capabilities.supportsSteering ?? false;
   }
 
   startBackgroundRecovery() {
@@ -1071,7 +1074,6 @@ export class CocurdexDaemonService {
     return {
       agentTurns: this.runs.activeWorkCount,
       queuedInputs: this.queuedFollowUps.size,
-      workflowActive: this.workflowWorkerScheduler.isActive,
       workspaceSearches: this.searchService.activeCount,
     };
   }
@@ -1104,327 +1106,12 @@ export class CocurdexDaemonService {
     };
   }
 
-  private async readDisabledAgentIds(): Promise<Set<AgentId>> {
-    return parseDisabledAgentIds(
-      await this.state.getAppSetting(DISABLED_AGENTS_SETTING_KEY),
-    );
-  }
-
-  async isAgentDisabled(agentId: AgentId): Promise<boolean> {
-    if (!canDisableAgent(agentId)) {
-      return false;
-    }
-    return (await this.readDisabledAgentIds()).has(agentId);
-  }
-
-  async assertAgentEnabled(agentId: AgentId): Promise<void> {
-    if (await this.isAgentDisabled(agentId)) {
-      const descriptor = createAgentRegistry()
-        .list()
-        .find((item) => item.id === agentId);
-      throw new Error(`${descriptor?.label ?? agentId} is disabled.`);
-    }
-  }
-
-  async setAgentEnabled(agentId: AgentId, enabled: boolean) {
-    if (!enabled && !canDisableAgent(agentId)) {
-      throw new Error("Built-in agent Pi cannot be disabled.");
-    }
-    const disabledIds = await this.readDisabledAgentIds();
-    if (enabled) {
-      disabledIds.delete(agentId);
-    } else {
-      disabledIds.add(agentId);
-    }
-    await this.replaceDisabledAgentIds([...disabledIds]);
-    return this.listAgents();
-  }
-
-  private async replaceDisabledAgentIds(nextAgentIds: readonly AgentId[]) {
-    const previous = await this.readDisabledAgentIds();
-    const next = new Set(nextAgentIds.filter(canDisableAgent));
-    await this.state.setAppSetting(
-      DISABLED_AGENTS_SETTING_KEY,
-      JSON.stringify([...next]),
-    );
-    const newlyDisabled = [...next].filter((id) => !previous.has(id));
-    for (const agentId of newlyDisabled) {
-      await this.agentAuth.cancelLogin(agentId);
-      await Promise.all(
-        this.runtime
-          .liveSessionIdsForAgent(agentId)
-          .map((sessionId) => this.disposeSessionRuntime(sessionId)),
-      );
-      if (isAcpRegistryAgentId(agentId)) {
-        resetAcpProviderModelsCache(agentId);
-      }
-    }
-    this.events.emit("daemon.event", {
-      type: "data.changed",
-      areas: ["agent", "settings"],
-    });
-  }
-
-  private async detectAgents(only?: AgentId) {
-    await this.acpRegistry.ready;
-    const disabledIds = await this.readDisabledAgentIds();
-    const listDescriptors = () =>
-      createAgentRegistry()
-        .list()
-        .filter((descriptor) => !only || descriptor.id === only);
-    const enabledDescriptors = () =>
-      listDescriptors().filter((descriptor) => !disabledIds.has(descriptor.id));
-    const pathBefore = process.env.PATH;
-    let detectedEnabled = await this.agentInstallationProbes.detect(
-      enabledDescriptors(),
-    );
-    if (process.env.PATH !== pathBefore) {
-      await this.acpRegistry.refreshLocalClis();
-      detectedEnabled = await this.agentInstallationProbes.detect(
-        enabledDescriptors(),
-      );
-    }
-    this.state.recordAgentVersions(detectedEnabled);
-    const detectedById = new Map(
-      detectedEnabled.map((agent) => [agent.id, agent]),
-    );
-    return listDescriptors().map((descriptor): AgentDescriptor => {
-      if (disabledIds.has(descriptor.id)) {
-        const ownership = getAgentRuntimeOwnership(descriptor.id);
-        return {
-          ...descriptor,
-          enabled: false,
-          availability: "missing",
-          installation: {
-            executableName:
-              ownership.kind === "external" ? ownership.executableName : null,
-            executablePath: null,
-            version:
-              ownership.kind === "external"
-                ? (ownership.version ?? null)
-                : null,
-          },
-        };
-      }
-      const detected = detectedById.get(descriptor.id) ?? descriptor;
-      return { ...detected, enabled: true };
-    });
-  }
-
-  async listAgents(only?: AgentId) {
-    const agents = await this.detectAgents(only);
-    return this.discoverAgentCapabilities(agents);
-  }
-
-  async listAcpRegistryUpdates(options: { forceRefresh?: boolean } = {}) {
-    if (options.forceRefresh) {
-      this.agentInstallationProbes.invalidate();
-    }
-    const [updates, disabledIds] = await Promise.all([
-      this.acpRegistry.listUpdates(options),
-      this.readDisabledAgentIds(),
-    ]);
-    return updates.filter((update) => !disabledIds.has(update.agentId));
-  }
-
-  private discoverAgentCapabilities(agents: AgentDescriptor[]) {
-    return discoverInstalledAgentCapabilities(agents, {
-      cache: this.state.agentCapabilityCache,
-    });
-  }
-
-  installAcpRegistryAgent(registryId: string) {
-    return this.acpRegistry.install(registryId).then((agent) => {
-      this.agentInstallationProbes.invalidate();
-      resetAcpProviderModelsCache(agent.agentId);
-      return agent;
-    });
-  }
-
-  installAcpRegistryCommand(params: {
-    registryId: string;
-    command: string;
-    args: string[];
-  }) {
-    return this.acpRegistry
-      .installCommand(params.registryId, params.command, params.args)
-      .then((agent) => {
-        this.agentInstallationProbes.invalidate();
-        resetAcpProviderModelsCache(agent.agentId);
-        return agent;
-      });
-  }
-
-  async updateAcpRegistryAgent(agentId: AcpRegistryAgentId) {
-    const agent = await this.acpRegistry.update(agentId);
-    this.agentInstallationProbes.invalidate();
-    resetAcpProviderModelsCache(agent.agentId);
-    return agent;
-  }
-
-  async uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId) {
-    await this.acpRegistry.uninstall(agentId);
-    const disabledIds = await this.readDisabledAgentIds();
-    if (disabledIds.delete(agentId)) {
-      await this.state.setAppSetting(
-        DISABLED_AGENTS_SETTING_KEY,
-        JSON.stringify([...disabledIds]),
-      );
-    }
-    this.agentInstallationProbes.invalidate();
-    resetAcpProviderModelsCache(agentId);
-    return null;
-  }
-
-  async readAgentSessionModes(agentId: AgentId) {
-    if (await this.isAgentDisabled(agentId)) {
-      return [];
-    }
-    const agents = await this.detectAgents(agentId);
-    return discoverAgentSessionModes(agents, {
-      agentId,
-      cache: this.state.agentCapabilityCache,
-    });
-  }
-
-  async readAdapterRateLimits(agentIds: AgentId[]) {
-    const disabledIds = await this.readDisabledAgentIds();
-    const enabledIds = agentIds.filter((id) => !disabledIds.has(id));
-    if (enabledIds.length === 0) {
-      return {};
-    }
-    return probeAdapterRateLimits(enabledIds);
-  }
-
   listSessionAttention() {
     return this.state.sessionAttention.list();
   }
 
   updateSessionAttention(payload: UpdateSessionAttentionPayload) {
     return this.state.sessionAttention.update(payload);
-  }
-
-  async listInbox() {
-    const pending = this.runtime.getPendingInteractions();
-    return buildInbox({
-      sessions: await this.state.listSessions(),
-      delegatedSessionIds: new Set(
-        this.state.data.delegations.list().map((row) => row.workSessionId),
-      ),
-      attention: await this.state.sessionAttention.list(),
-      pending: {
-        permissions: pending.permissions.map((request) => ({
-          sessionId: request.sessionId,
-          detail: request.title,
-          createdAt: request.createdAt,
-        })),
-        questions: pending.questions.map((question) => ({
-          sessionId: question.sessionId,
-          detail: question.question,
-          createdAt: question.createdAt,
-        })),
-        planApprovals: pending.planApprovals.map((approval) => ({
-          sessionId: approval.sessionId,
-          detail: null,
-          createdAt: approval.createdAt,
-        })),
-      },
-      routines: this.routines.list(),
-      latestRuns: this.routines.latestRuns(),
-    });
-  }
-
-  async getBrief(timeZone?: string | null) {
-    const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (!isValidTimeZone(zone)) throw new Error(`Unknown time zone: ${zone}`);
-    const { day, start } = zonedDayStart(new Date(), zone);
-    return buildBrief({
-      day,
-      timeZone: zone,
-      inbox: await this.listInbox(),
-      routines: this.routines.list(),
-      runsToday: this.routines.runsFinishedSince(start.toISOString()),
-    });
-  }
-
-  async postBrief(payload: {
-    timeZone?: string | null;
-    locale?: SupportedLocale | null;
-  }) {
-    const brief = await this.getBrief(payload.timeZone);
-    const locale = await this.briefLocale(payload.locale ?? null);
-    if (!brief) return null;
-    const posted = await this.state.getAppSetting(BRIEF_POSTED_SETTING_KEY);
-    if (posted && JSON.parse(posted) >= brief.updatedAt) return null;
-    const message = await this.postToHomeThread(
-      null,
-      briefMarkdown(brief, locale),
-      { kind: "brief", day: brief.day },
-    );
-    if (message) {
-      await this.state.setAppSetting(
-        BRIEF_POSTED_SETTING_KEY,
-        JSON.stringify(brief.updatedAt),
-      );
-    }
-    return message;
-  }
-
-  private async briefLocale(requested: SupportedLocale | null) {
-    if (requested) {
-      await this.state.setAppSetting(
-        BRIEF_LOCALE_SETTING_KEY,
-        JSON.stringify(requested),
-      );
-      return requested;
-    }
-    const stored = await this.state.getAppSetting(BRIEF_LOCALE_SETTING_KEY);
-    const parsed = stored ? (JSON.parse(stored) as string) : null;
-    if (isSupportedLocale(parsed)) return parsed;
-    return matchSupportedLocale([
-      Intl.DateTimeFormat().resolvedOptions().locale,
-    ]);
-  }
-
-  private async postToHomeThread(
-    agentId: string | null,
-    content: string,
-    origin: MessageOrigin,
-  ) {
-    const persona = agentId
-      ? this.state.data.personalAgents.getById(agentId)
-      : this.state.data.personalAgents.getDefault();
-    if (!persona) return null;
-    return this.postToSession(persona.homeSessionId, content, origin);
-  }
-
-  private async postToSession(
-    sessionId: string,
-    content: string,
-    origin: MessageOrigin,
-  ) {
-    const message = await this.state.appendMessage({
-      id: crypto.randomUUID(),
-      sessionId,
-      role: "assistant",
-      kind: "response",
-      content,
-      attachments: [],
-      createdAt: new Date().toISOString(),
-      origin,
-    });
-    this.announceSessionsChanged();
-    return message;
-  }
-
-  async readInboxItem(id: string) {
-    const item = (await this.listInbox()).find((entry) => entry.id === id);
-    if (!item?.sessionId) return;
-    await this.state.sessionAttention.update({
-      sessionId: item.sessionId,
-      action: "visited",
-      at: new Date().toISOString(),
-    });
   }
 
   private async reconcileWorkspaceChanges() {
@@ -1439,118 +1126,6 @@ export class CocurdexDaemonService {
       });
     }
     await this.state.maintainStorage();
-  }
-
-  async getOrCreateAssistantSession(input: { workspaceId: string }) {
-    const existing = await this.mostRecentAssistantSession(input.workspaceId);
-    if (!existing) {
-      return this.createAssistantSession(input.workspaceId);
-    }
-    const snapshotSource = await this.assistantSnapshotSource(
-      input.workspaceId,
-      existing.agentType,
-    );
-    if (!existing.providerSnapshot && snapshotSource) {
-      const updated: SessionRecord = {
-        ...existing,
-        providerSnapshot: snapshotSource,
-        updatedAt: new Date().toISOString(),
-      };
-      await this.state.saveSession(updated);
-      this.events.emit("daemon.event", {
-        type: "data.changed",
-        areas: ["agent"],
-      });
-      return updated;
-    }
-    return existing;
-  }
-
-  async createAssistantSession(workspaceId: string) {
-    const agentType =
-      (await this.mostRecentAssistantSession(workspaceId))?.agentType ??
-      (await this.recentSessionAgentType(workspaceId)) ??
-      (await this.defaultAssistantAgentId());
-    return this.saveSessionConfiguration({
-      id: newAssistantSessionId(),
-      workspaceId,
-      title: "Assistant",
-      agentType,
-      writeMode: "read-only",
-      sessionModeId: null,
-      permissionMode: undefined,
-      agentRoleId: null,
-      providerSnapshot: await this.assistantSnapshotSource(
-        workspaceId,
-        agentType,
-      ),
-      worktreePath: null,
-      peerInbound: "refuse",
-    });
-  }
-
-  private async mostRecentAssistantSession(
-    workspaceId: string,
-  ): Promise<SessionRecord | null> {
-    const workspace = (await this.state.listWorkspaces()).find(
-      (candidate) => candidate.id === workspaceId,
-    );
-    if (!workspace) {
-      throw new Error(`Workspace ${workspaceId} not found`);
-    }
-    const [sessions, disabledIds] = await Promise.all([
-      this.state.listSessions(),
-      this.readDisabledAgentIds(),
-    ]);
-    return (
-      sessions.find(
-        (session) =>
-          session.workspaceId === workspaceId &&
-          isAssistantSessionId(session.id) &&
-          !disabledIds.has(session.agentType),
-      ) ?? null
-    );
-  }
-
-  private async recentSessionAgentType(
-    workspaceId: string,
-  ): Promise<AgentId | null> {
-    const [sessions, disabledIds] = await Promise.all([
-      this.state.listSessions(),
-      this.readDisabledAgentIds(),
-    ]);
-    return (
-      sessions.find(
-        (session) =>
-          session.workspaceId === workspaceId &&
-          !disabledIds.has(session.agentType),
-      )?.agentType ?? null
-    );
-  }
-
-  private async assistantSnapshotSource(
-    workspaceId: string,
-    agentType: AgentId,
-  ) {
-    const sessions = await this.state.listSessions();
-    return (
-      sessions.find(
-        (session) =>
-          session.workspaceId === workspaceId &&
-          session.agentType === agentType &&
-          session.providerSnapshot,
-      )?.providerSnapshot ?? null
-    );
-  }
-
-  private async defaultAssistantAgentId(): Promise<AgentId> {
-    const agent = (await this.detectAgents()).find(
-      (item) => item.enabled !== false && item.availability === "available",
-    );
-    if (!agent) {
-      throw new Error("No agent is available on this machine.");
-    }
-    return agent.id;
   }
 
   listSessions() {
@@ -1604,34 +1179,30 @@ export class CocurdexDaemonService {
       return null;
     }
 
-    const [
-      messages,
-      activeMessages,
-      toolCalls,
-      queuedAgentInputs,
-      usage,
-      turnChangeSets,
-    ] = await Promise.all([
-      this.state.listMessagesBySessionId(sessionId),
-      this.state.listActiveMessagesBySessionId(sessionId),
-      this.state.listToolCallsBySessionId(sessionId),
+    const [page, queuedAgentInputs, usage] = await Promise.all([
+      this.state.readTranscriptPage(sessionId, null),
       this.state.listQueuedAgentInputs(sessionId),
       this.state.getSessionUsage(sessionId),
-      this.state.listTurnChangeSets(sessionId),
     ]);
 
     return {
       session,
-      messages,
-      activeMessages,
-      toolCalls,
+      messages: page.messages,
+      activeMessages: this.state.listActiveMessagesBySessionId(sessionId),
+      toolCalls: page.toolCalls,
       queuedAgentInputs,
       activeRun: this.state.getActiveRun(sessionId),
       usage,
-      turnChangeSets,
+      turnChangeSets: page.turnChangeSets,
       interactions: this.runtime.getSessionInteractions(sessionId),
       plan: this.runtime.getSessionPlan(sessionId),
+      olderBeforeSeq: page.olderBeforeSeq,
     };
+  }
+
+  async getSessionTranscriptPage(sessionId: string, beforeSeq: number | null) {
+    validateSessionId(sessionId);
+    return this.state.readTranscriptPage(sessionId, beforeSeq);
   }
 
   getSessionExecutionTree(sessionId: string, maxDepth?: number) {
@@ -1646,14 +1217,6 @@ export class CocurdexDaemonService {
       sessionId,
       maxDepth,
     );
-  }
-
-  listWorkflowRuns() {
-    return this.workflows.listRuns();
-  }
-
-  getWorkflowRun(workflowRunId: string) {
-    return this.workflows.get(workflowRunId);
   }
 
   async listAgentRoles() {
@@ -1788,77 +1351,6 @@ export class CocurdexDaemonService {
     await this.state.deleteAgentRole(id);
   }
 
-  listWorkflowDefinitions() {
-    return this.workflows.listDefinitions();
-  }
-
-  getWorkflowDefinition(definitionId: string) {
-    return this.workflows.getDefinition(definitionId);
-  }
-
-  saveWorkflowDefinition(payload: SaveWorkflowDefinitionPayload) {
-    return this.workflows.saveDefinition(payload);
-  }
-
-  duplicateWorkflowDefinition(definitionId: string) {
-    return this.workflows.duplicateDefinition(definitionId);
-  }
-
-  async deleteWorkflowDefinition(definitionId: string) {
-    await this.workflows.deleteDefinition(definitionId);
-  }
-
-  async createWorkflow(payload: CreateWorkflowPayload) {
-    const definitionId =
-      payload.definitionId ?? PLAN_EXECUTE_REVIEW_WORKFLOW_ID;
-    const definition = await this.workflows.getDefinition(definitionId);
-    const bindings = payload.bindings ?? definition?.defaultBindings;
-    if (!bindings) {
-      throw new Error("Workflow executor bindings are required.");
-    }
-    for (const binding of Object.values(bindings)) {
-      const agent = await this.ensureAgentAvailable(binding.agentId);
-      const requiredWriteMode =
-        binding.permissionProfile === "read_only"
-          ? "read-only"
-          : "native-write";
-      if (!agent.capabilities.writeModes.includes(requiredWriteMode)) {
-        throw new Error(
-          `${agent.label} cannot satisfy workflow permission profile '${binding.permissionProfile}'.`,
-        );
-      }
-    }
-    return this.workflows.create({ ...payload, bindings });
-  }
-
-  async startWorkflow(workflowRunId: string) {
-    const aggregate = await this.workflows.start(workflowRunId);
-    this.wakeWorkflowWorker();
-    return aggregate;
-  }
-
-  async decideWorkflowGate(input: DecideWorkflowGateInput) {
-    const aggregate = await this.workflows.decideGate(input);
-    this.wakeWorkflowWorker();
-    return aggregate;
-  }
-
-  async cancelWorkflow(workflowRunId: string) {
-    const current = await this.workflows.get(workflowRunId);
-    const aggregate = await this.workflows.cancel(workflowRunId);
-    const activeSessionIds = new Set(
-      current?.attempts
-        .filter((attempt) => attempt.status === "running" && attempt.sessionId)
-        .map((attempt) => attempt.sessionId as string) ?? [],
-    );
-    await Promise.all(
-      Array.from(activeSessionIds, (sessionId) =>
-        this.runtime.cancelSessionTurn(sessionId),
-      ),
-    );
-    return aggregate;
-  }
-
   async saveSessionConfiguration(
     input: SessionConfiguration,
     principal: HostPrincipal = LOCAL_REQUEST_CONTEXT.principal,
@@ -1888,9 +1380,11 @@ export class CocurdexDaemonService {
     const { workspaceId } = input;
     return {
       role,
-      agents: await this.detectAgents(input.agentType ?? role?.agentId),
+      agents: await this.agents.detectAgents(input.agentType ?? role?.agentId),
       discoverCapabilities: async (agent) => {
-        const [discovered] = await this.discoverAgentCapabilities([agent]);
+        const [discovered] = await this.agents.discoverAgentCapabilities([
+          agent,
+        ]);
         return discovered ?? agent;
       },
       workspaceSessions: sessions
@@ -1918,7 +1412,7 @@ export class CocurdexDaemonService {
   ) {
     const session = await this.state.getSession(input.sessionId);
     if (!session) throw new Error(`Session ${input.sessionId} was not found.`);
-    const agent = (await this.listAgents(session.agentType)).find(
+    const agent = (await this.agents.listAgents(session.agentType)).find(
       (candidate) => candidate.id === session.agentType,
     );
     const configuration = resolveRuntimeUpdate(session, input, {
@@ -1970,7 +1464,7 @@ export class CocurdexDaemonService {
   }
 
   private async configureSession(input: SessionConfiguration) {
-    await this.ensureAgentAvailable(input.agentType);
+    await this.agents.ensureAvailable(input.agentType);
     if (isChatWorkspaceId(input.workspaceId)) {
       await this.workspaces.ensureFormWorkspace(CHAT_WORKSPACE_ID, "Chat");
     }
@@ -2233,7 +1727,7 @@ export class CocurdexDaemonService {
       if (this.runs.hasActiveRun(sessionId)) {
         throw new Error("Stop the session before switching its agent");
       }
-      await this.ensureAgentAvailable(agentType);
+      await this.agents.ensureAvailable(agentType);
       const updated: SessionRecord = {
         ...session,
         agentType,
@@ -2349,7 +1843,7 @@ export class CocurdexDaemonService {
     agentType: AgentId,
     workspaceRootPath: string,
   ) {
-    if (await this.isAgentDisabled(agentType)) {
+    if (await this.agents.isAgentDisabled(agentType)) {
       return [];
     }
     return this.runtime.listSessionSlashCommands(agentType, workspaceRootPath);
@@ -2492,7 +1986,9 @@ export class CocurdexDaemonService {
       (await this.runCapacity.mustWait(payload.session));
 
     if (decision.kind === "steer") {
-      const agent = await this.ensureAgentAvailable(payload.session.agentType);
+      const agent = await this.agents.ensureAvailable(
+        payload.session.agentType,
+      );
       if (!agent.capabilities.supportsSteering) {
         throw new Error(
           `${agent.label} does not support steering active turns.`,
@@ -2512,7 +2008,7 @@ export class CocurdexDaemonService {
     }
 
     if (decision.kind === "queue" || heldForCapacity) {
-      await this.ensureAgentAvailable(payload.session.agentType);
+      await this.agents.ensureAvailable(payload.session.agentType);
       if (!hold) await this.queuedFollowUps.load(sessionId);
       payload = await this.refreshSessionWorkingPath(payload);
       const createdMessage = this.createUserMessage(payload);
@@ -2539,7 +2035,7 @@ export class CocurdexDaemonService {
       return userMessage;
     }
 
-    await this.ensureAgentAvailable(payload.session.agentType);
+    await this.agents.ensureAvailable(payload.session.agentType);
     payload = await this.refreshSessionWorkingPath(payload);
     const createdMessage = this.createUserMessage(payload);
     if (dequeued) {
@@ -2658,7 +2154,7 @@ export class CocurdexDaemonService {
     const { item, message: queuedMessage } =
       await this.queuedFollowUps.requireInput(sessionId, messageId);
 
-    const agent = await this.ensureAgentAvailable(
+    const agent = await this.agents.ensureAvailable(
       item.payload.session.agentType,
     );
     if (!agent.capabilities.supportsSteering) {
@@ -2826,23 +2322,6 @@ export class CocurdexDaemonService {
     return this.runtime.resolveAgentPermission(requestId, optionId);
   }
 
-  private async ensureAgentAvailable(agentId: AgentId) {
-    const agents = await this.listAgents(agentId);
-    const agent = agents.find((item) => item.id === agentId);
-
-    if (agent?.enabled === false) {
-      throw new Error(`${agent.label} is disabled.`);
-    }
-
-    if (agent?.availability === "available") {
-      return agent;
-    }
-
-    throw new Error(
-      `${agent?.label ?? agentId} is not available on this machine.`,
-    );
-  }
-
   resolveQuestion(questionId: string, answer: string) {
     return this.runtime.resolveAgentQuestion(questionId, answer);
   }
@@ -2886,11 +2365,11 @@ export class CocurdexDaemonService {
     );
     this.queuedFollowUps.clear();
     await this.scriptRuns.shutdown();
-    const schedulerClose = this.workflowWorkerScheduler.close();
+    await this.delegations.dispose();
+    this.remoteHosts.dispose();
     try {
       const results = await Promise.allSettled([
         this.runtime.shutdown(),
-        schedulerClose,
         this.acpRegistry.ready,
         Promise.resolve().then(() => this.searchService.dispose()),
         this.applications.dispose(),
@@ -2909,12 +2388,6 @@ export class CocurdexDaemonService {
       this.state.close();
       this.events.removeAllListeners();
     }
-  }
-
-  private wakeWorkflowWorker() {
-    void this.workflowWorkerScheduler.wake().catch((error: unknown) => {
-      logDaemonDiagnostic("error", "workflow.workerFailed", { error });
-    });
   }
 
   private async refreshSessionWorkingPath(

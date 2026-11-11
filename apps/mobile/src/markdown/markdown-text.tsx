@@ -1,4 +1,4 @@
-import { hidePendingTableStart } from "@cocurdex/shared";
+import { hidePendingTableStart } from "@cocurdex/client-runtime";
 import { useRouter } from "expo-router";
 import { memo, useCallback, useMemo, useState } from "react";
 import { Linking, View } from "react-native";

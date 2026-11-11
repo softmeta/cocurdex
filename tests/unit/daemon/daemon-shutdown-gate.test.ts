@@ -5,23 +5,17 @@ import { describe, expect, it } from "vitest";
 const idle: DaemonActiveWork = {
   agentTurns: 0,
   queuedInputs: 0,
-  workflowActive: false,
   workspaceSearches: 0,
 };
 
 describe("safe daemon shutdown admission", () => {
-  it.each([
-    "agentTurns",
-    "queuedInputs",
-    "workflowActive",
-    "workspaceSearches",
-  ] as const)("preserves %s", (kind) => {
-    const gate = new DaemonShutdownGate();
-    expect(
-      gate.prepare({ ...idle, [kind]: kind === "workflowActive" ? true : 1 })
-        .status,
-    ).toBe("busy");
-  });
+  it.each(["agentTurns", "queuedInputs", "workspaceSearches"] as const)(
+    "preserves %s",
+    (kind) => {
+      const gate = new DaemonShutdownGate();
+      expect(gate.prepare({ ...idle, [kind]: 1 }).status).toBe("busy");
+    },
+  );
   it("counts accepted requests until their work settles, then atomically rejects new work", async () => {
     const gate = new DaemonShutdownGate();
     let settle!: () => void;

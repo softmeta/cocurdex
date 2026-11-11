@@ -105,7 +105,8 @@ describe("sync.pull", () => {
       messages: [{ id: "m1", content: "hello again" }],
       deletedMessageIds: ["m2"],
       toolCalls: [],
-      turnChangeSets: null,
+      turnChangeSets: {},
+      deletedTurnChangeSetIds: [],
     });
 
     const idle = await service.pullSync({
@@ -160,31 +161,84 @@ describe("sync.pull", () => {
     await service.shutdown();
   });
 
-  it("returns the full change set map when a turn change set changes", async () => {
+  it("returns only changed turn change sets and the ids of deleted ones", async () => {
     const { service } = await createService();
     const database = await seed(service);
-    const start = await service.pullSync({ sessionIds: ["session-1"] });
-    await database.turnChangeSets.upsert({
-      id: "change-1",
+    const changeSet = (id: string, messageId: string) => ({
+      id,
       sessionId: "session-1",
-      messageId: "m1",
-      userMessageId: "u1",
-      source: "git-checkpoint",
-      coverage: "workspace",
-      status: "ready",
-      files: [{ path: "src/cart.ts", operation: "modify", reviewKind: "text" }],
+      messageId,
+      userMessageId: `u-${messageId}`,
+      source: "git-checkpoint" as const,
+      coverage: "workspace" as const,
+      status: "ready" as const,
+      files: [
+        {
+          path: "src/cart.ts",
+          operation: "modify" as const,
+          reviewKind: "text" as const,
+        },
+      ],
       createdAt: now,
       updatedAt: now,
     });
+    await database.turnChangeSets.upsert(changeSet("change-1", "m1"));
+    const start = await service.pullSync({ sessionIds: ["session-1"] });
+    await database.turnChangeSets.upsert(changeSet("change-2", "m2"));
+    await database.turnChangeSets.deleteById("change-1");
 
     const delta = await service.pullSync({
       sessionIds: ["session-1"],
       hydratedSessionIds: ["session-1"],
       cursor: start.cursor,
     });
-    expect(
-      Object.keys(transcriptOf(delta, "session-1")?.turnChangeSets ?? {}),
-    ).toEqual(["m1"]);
+    const transcript = transcriptOf(delta, "session-1");
+    expect(Object.keys(transcript?.turnChangeSets ?? {})).toEqual(["m2"]);
+    expect(transcript?.deletedTurnChangeSetIds).toEqual(["change-1"]);
+    await service.shutdown();
+  });
+
+  it("sends the newest whole turns first and pages older turns exactly once", async () => {
+    const { service } = await createService();
+    const database = await seed(service);
+    const reply = "x".repeat(40 * 1024);
+    const ids: string[] = [];
+    for (let turn = 0; turn < 20; turn += 1) {
+      for (const [role, content] of [
+        ["user", `prompt ${turn}`],
+        ["assistant", reply],
+      ] as const) {
+        const id = `t${turn}-${role}`;
+        ids.push(id);
+        await database.messages.append({
+          ...message(id, "session-1", content),
+          role,
+        });
+      }
+    }
+
+    const full = await service.pullSync({ sessionIds: ["session-1"] });
+    const window = transcriptOf(full, "session-1");
+    expect(window?.complete).toBe(true);
+    expect(window?.olderBeforeSeq).not.toBeNull();
+    expect(window?.messages[0]?.role).toBe("user");
+    expect(window?.messages.at(-1)?.id).toBe("t19-assistant");
+    expect(window?.messages.length).toBeLessThan(ids.length);
+
+    const seen = [...(window?.messages ?? [])];
+    let beforeSeq = window?.olderBeforeSeq ?? null;
+    while (beforeSeq !== null) {
+      const page = await service.getSessionTranscriptPage(
+        "session-1",
+        beforeSeq,
+      );
+      if (page.olderBeforeSeq !== null) {
+        expect(page.messages[0]?.role).toBe("user");
+      }
+      seen.unshift(...page.messages);
+      beforeSeq = page.olderBeforeSeq;
+    }
+    expect(seen.map((m) => m.id)).toEqual(["m1", "m2", ...ids]);
     await service.shutdown();
   });
 

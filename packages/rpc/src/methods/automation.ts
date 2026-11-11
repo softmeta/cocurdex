@@ -8,10 +8,10 @@ import type {
   CreateRoutinePayload,
   CreateScriptRunPayload,
   CreateTeamPayload,
-  CreateWorkflowPayload,
   DelegatedWorkRecord,
   DelegatedWorkTarget,
   DelegationCatalog,
+  DelegationCatalogQuery,
   DuplicatePersonalAgentPayload,
   GreetPersonalAgentPayload,
   InboxItem,
@@ -38,11 +38,15 @@ import type {
   MemoryUpdateInput,
   MessageRecord,
   PersonalAgentRecord,
+  RemoteWorkSendPayload,
+  RemoteWorkStarted,
+  RemoteWorkStartPayload,
+  RemoteWorkStatus,
+  RemoteWorkTarget,
   RoutineRecord,
   RoutineRunRecord,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
-  SaveWorkflowDefinitionPayload,
   ScriptRunRecord,
   ScriptRunSettings,
   ScriptRunSnapshot,
@@ -59,10 +63,6 @@ import type {
   UpdateApplicationPayload,
   UpdatePersonalAgentPayload,
   UpdateRoutinePayload,
-  WorkflowAggregate,
-  WorkflowDefinitionRecord,
-  WorkflowGateDecisionRecord,
-  WorkflowRunRecord,
 } from "@cocurdex/shared";
 
 export type AutomationRequests = {
@@ -130,23 +130,6 @@ export type AutomationRequests = {
     tool: string;
     args: Record<string, unknown>;
   };
-  "workflow.list": undefined;
-  "workflow.get": { workflowRunId: string };
-  "workflow.listDefinitions": undefined;
-  "workflow.getDefinition": { definitionId: string };
-  "workflow.saveDefinition": SaveWorkflowDefinitionPayload;
-  "workflow.duplicateDefinition": { definitionId: string };
-  "workflow.deleteDefinition": { definitionId: string };
-  "workflow.create": CreateWorkflowPayload;
-  "workflow.start": { workflowRunId: string };
-  "workflow.decideGate": {
-    workflowRunId: string;
-    stepId: string;
-    decision: WorkflowGateDecisionRecord["decision"];
-    actor?: WorkflowGateDecisionRecord["actor"];
-    reason?: string;
-  };
-  "workflow.cancel": { workflowRunId: string };
   "agentRole.list": undefined;
   "agentRole.get": { id: string };
   "agentRole.save": SaveAgentRolePayload;
@@ -157,11 +140,16 @@ export type AutomationRequests = {
   "personalAgent.update": UpdatePersonalAgentPayload;
   "personalAgent.duplicate": DuplicatePersonalAgentPayload;
   "personalAgent.delete": { id: string };
-  "personalAgent.work.catalog": undefined;
+  "personalAgent.work.catalog": DelegationCatalogQuery;
   "personalAgent.work.list": { personaId: string };
   "personalAgent.work.start": StartDelegatedWorkPayload;
   "personalAgent.work.send": SendDelegatedWorkPayload;
   "personalAgent.work.stop": DelegatedWorkTarget;
+  "delegation.remote.catalog": undefined;
+  "delegation.remote.start": RemoteWorkStartPayload;
+  "delegation.remote.status": { sessionIds: string[] };
+  "delegation.remote.send": RemoteWorkSendPayload;
+  "delegation.remote.stop": RemoteWorkTarget;
   "inbox.list": undefined;
   "inbox.read": { id: string };
   "inbox.brief": { timeZone?: string | null };
@@ -231,17 +219,6 @@ export type AutomationResults = {
   "application.tools": ApplicationTool[];
   "application.read": unknown;
   "application.call": unknown;
-  "workflow.list": WorkflowRunRecord[];
-  "workflow.get": WorkflowAggregate | null;
-  "workflow.listDefinitions": WorkflowDefinitionRecord[];
-  "workflow.getDefinition": WorkflowDefinitionRecord | null;
-  "workflow.saveDefinition": WorkflowDefinitionRecord;
-  "workflow.duplicateDefinition": WorkflowDefinitionRecord;
-  "workflow.deleteDefinition": null;
-  "workflow.create": WorkflowAggregate;
-  "workflow.start": WorkflowAggregate;
-  "workflow.decideGate": WorkflowAggregate;
-  "workflow.cancel": WorkflowAggregate;
   "agentRole.list": AgentRoleRecord[];
   "agentRole.get": AgentRoleRecord | null;
   "agentRole.save": AgentRoleRecord;
@@ -257,6 +234,11 @@ export type AutomationResults = {
   "personalAgent.work.start": DelegatedWorkRecord;
   "personalAgent.work.send": DelegatedWorkRecord;
   "personalAgent.work.stop": DelegatedWorkRecord;
+  "delegation.remote.catalog": DelegationCatalog;
+  "delegation.remote.start": RemoteWorkStarted;
+  "delegation.remote.status": RemoteWorkStatus[];
+  "delegation.remote.send": RemoteWorkStatus;
+  "delegation.remote.stop": RemoteWorkStatus;
   "inbox.list": InboxItem[];
   "inbox.read": null;
   "inbox.brief": Brief | null;

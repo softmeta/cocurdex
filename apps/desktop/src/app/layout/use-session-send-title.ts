@@ -1,7 +1,5 @@
-import {
-  generateLocalSessionTitle,
-  type SessionRecord,
-} from "@cocurdex/shared";
+import { generateLocalSessionTitle } from "@cocurdex/client-runtime";
+import type { SessionRecord } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import {
   applyRefinedSessionTitleAtom,
