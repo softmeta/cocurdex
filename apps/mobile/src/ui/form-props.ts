@@ -7,7 +7,6 @@ export interface FormProps {
 
 export interface FormSectionProps {
   title?: string;
-  header?: ReactNode;
   footer?: ReactNode;
   children?: ReactNode;
 }

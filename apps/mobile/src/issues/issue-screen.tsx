@@ -217,29 +217,25 @@ export function IssueScreen({
         ]}
       />
       <Form>
-        <FormSection
-          header={
-            <View style={styles.header}>
-              <Text
-                accessibilityRole="header"
-                selectable
-                style={[styles.title, { color: colors.foreground }]}
-              >
-                {issue.title}
-              </Text>
-              <IssueFields host={host} issue={issue} view={view ?? undefined} />
-              {description ? (
-                <MarkdownText
-                  markdown={description}
-                  reading
-                  selectable
-                  hostId={host.hostId}
-                  testID="issue-description"
-                />
-              ) : null}
-            </View>
-          }
-        />
+        <View style={styles.header}>
+          <Text
+            accessibilityRole="header"
+            selectable
+            style={[styles.title, { color: colors.foreground }]}
+          >
+            {issue.title}
+          </Text>
+          <IssueFields host={host} issue={issue} view={view ?? undefined} />
+          {description ? (
+            <MarkdownText
+              markdown={description}
+              reading
+              selectable
+              hostId={host.hostId}
+              testID="issue-description"
+            />
+          ) : null}
+        </View>
         {sessions.length > 0 ? (
           <FormSection title={t("sessions")}>
             {sessions.map((session) => (

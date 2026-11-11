@@ -87,7 +87,12 @@ export async function showPanelView(session, view) {
     role: "button",
     name: await translate(session, "editor:actions.moreViews"),
   });
-  if (more && view === "files")
+  const [overview] = await queryAllByRole(session, {
+    role: "button",
+    name: await translate(session, PANEL_VIEW_KEYS.overview),
+    within: group,
+  });
+  if (overview && view === "files")
     name = await translate(session, "editor:actions.conversationFiles");
   const [tab] = await queryAllByRole(session, {
     role: "button",

@@ -1,4 +1,4 @@
-import { isPersonalSession } from "@cocurdex/shared";
+import { isChatSession, isPersonalSession } from "@cocurdex/shared";
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { openPdfsAtom } from "@/features/pdf-reader/pdf-reader-store";
@@ -8,33 +8,28 @@ import {
   rightPanelHandledRevealClockAtom,
   rightPanelRevealIntentAtom,
 } from "./right-panel-reveal";
+import {
+  isRightPanelViewInMode,
+  type RightPanelMode,
+  type RightPanelView,
+  rightPanelTabSet,
+} from "./right-panel-tab-sets";
 import { sidebarTabAtom } from "./sidebar/sidebar-tab-store";
 
-export type RightPanelView =
-  | "overview"
-  | "editor"
-  | "notes"
-  | "decks"
-  | "issues"
-  | "memory"
-  | "routines"
-  | "git"
-  | "browser"
-  | "pdf"
-  | "terminal";
+export type { RightPanelView } from "./right-panel-tab-sets";
 
 export const DEFAULT_TAB_ORDER: RightPanelView[] = [
-  "overview",
   "editor",
   "git",
-  "notes",
-  "decks",
+  "terminal",
   "issues",
+  "notes",
+  "browser",
+  "decks",
   "memory",
   "routines",
-  "browser",
+  "overview",
   "pdf",
-  "terminal",
 ];
 
 const VALID_VIEWS = new Set<string>(DEFAULT_TAB_ORDER);
@@ -98,13 +93,21 @@ function hasStoredActiveView(): boolean {
   }
 }
 
-export const rightPanelPersonalContextAtom = atom((get) => {
+export const rightPanelModeAtom = atom<RightPanelMode>((get) => {
   const sessionId = get(activeSessionIdAtom);
   const session = get(sessionsAtom).find((item) => item.id === sessionId);
-  return session
-    ? isPersonalSession(session)
-    : get(sidebarTabAtom) === "personal";
+  if (session) {
+    if (isPersonalSession(session)) return "personal";
+    return isChatSession(session) ? "chat" : "work";
+  }
+  const tab = get(sidebarTabAtom);
+  if (tab === "personal") return "personal";
+  return tab === "chat" ? "chat" : "work";
 });
+
+export const rightPanelPersonalContextAtom = atom(
+  (get) => get(rightPanelModeAtom) === "personal",
+);
 
 const personalActiveViewAtom = atomWithStorage<RightPanelView>(
   "cocurdex.right-panel-personal-active-view",
@@ -182,18 +185,22 @@ export function isRightPanelViewAvailable(
 
 function availableView(
   view: RightPanelView,
-  personal: boolean,
+  mode: RightPanelMode,
 ): RightPanelView {
-  if (personal && (view === "git" || view === "terminal")) return "overview";
-  if (!personal && view === "overview") return "editor";
-  if (isRightPanelViewAvailable(view, desktopApi.capabilities)) return view;
-  return personal ? "overview" : "editor";
+  if (
+    isRightPanelViewInMode(view, mode) &&
+    isRightPanelViewAvailable(view, desktopApi.capabilities)
+  ) {
+    return view;
+  }
+  return rightPanelTabSet(mode).fallback;
 }
 
 export const rightPanelResolvedActiveViewAtom = atom(
   (get) => {
     const openPdfCount = get(openPdfsAtom).length;
-    const personal = get(rightPanelPersonalContextAtom);
+    const mode = get(rightPanelModeAtom);
+    const fallbackView = rightPanelTabSet(mode).fallback;
 
     const intent = get(rightPanelRevealIntentAtom);
     if (
@@ -201,7 +208,7 @@ export const rightPanelResolvedActiveViewAtom = atom(
       intent.clock !== get(rightPanelHandledRevealClockAtom)
     ) {
       if (intent.view !== "pdf" || openPdfCount > 0) {
-        return availableView(intent.view, personal);
+        return availableView(intent.view, mode);
       }
     }
 
@@ -209,16 +216,16 @@ export const rightPanelResolvedActiveViewAtom = atom(
     if (activeView === "pdf" && openPdfCount === 0) {
       const fallback = get(rightPanelLastNonTerminalViewAtom);
       if (fallback === "pdf" || fallback === "terminal") {
-        return personal ? "overview" : "editor";
+        return fallbackView;
       }
-      return availableView(fallback, personal);
+      return availableView(fallback, mode);
     }
 
-    if (!personal && !get(rightPanelViewTouchedAtom)) {
-      return "editor";
+    if (mode !== "personal" && !get(rightPanelViewTouchedAtom)) {
+      return fallbackView;
     }
 
-    return availableView(activeView, personal);
+    return availableView(activeView, mode);
   },
   (get, set, view: RightPanelView) => {
     set(rightPanelActiveViewAtom, view);
