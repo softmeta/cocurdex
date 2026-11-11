@@ -52,7 +52,7 @@ import {
   fileTreeWidthAtom,
   type RightPanelView,
   rightPanelLastNonTerminalViewAtom,
-  rightPanelPersonalContextAtom,
+  rightPanelModeAtom,
   rightPanelResolvedActiveViewAtom,
   rightPanelTerminalEverActiveAtom,
   rightPanelViewTouchedAtom,
@@ -112,7 +112,7 @@ export function RightEditorPanel({
   const { t } = useTranslation("editor");
   const { t: tSearch } = useTranslation("search");
   const store = useStore();
-  const personal = useAtomValue(rightPanelPersonalContextAtom);
+  const conversationFiles = useAtomValue(rightPanelModeAtom) !== "work";
   const openRoutineSession = useOpenPersonalSession();
   const [fileTreeWidth, setFileTreeWidth] = useAtom(fileTreeWidthAtom);
   const [fileTreeVisible, setFileTreeVisible] = useAtom(fileTreeVisibleAtom);
@@ -181,7 +181,7 @@ export function RightEditorPanel({
 
   useAppShortcuts({
     toggleWorkspaceSearch: () => {
-      if (personal) return;
+      if (conversationFiles) return;
       setActiveView("editor");
       setSearchPanelVisible((prev) => {
         const next = !prev;
@@ -341,7 +341,7 @@ export function RightEditorPanel({
             open={fileTreeVisible && !searchPanelVisible}
             onToggle={showFileTreePanel}
           />
-          {!personal ? (
+          {!conversationFiles ? (
             <TitlebarIconButton
               active={searchPanelVisible}
               aria-label={tSearch("searchFiles")}
@@ -386,8 +386,8 @@ export function RightEditorPanel({
                       data-testid="editor-sidebar-pane"
                       style={{ width: sidebarWidth }}
                     >
-                      {personal ? <ConversationFiles /> : null}
-                      {!personal && searchPanelVisible ? (
+                      {conversationFiles ? <ConversationFiles /> : null}
+                      {!conversationFiles && searchPanelVisible ? (
                         <div className="flex min-h-0 flex-1 flex-col">
                           <div className="border-b border-editor-border p-2">
                             <SearchPanel
@@ -407,7 +407,9 @@ export function RightEditorPanel({
                           />
                         </div>
                       ) : null}
-                      {!personal && !searchPanelVisible ? <FileTree /> : null}
+                      {!conversationFiles && !searchPanelVisible ? (
+                        <FileTree />
+                      ) : null}
                     </div>
                     <ResizeSeparator
                       ariaLabel={t("actions.resizeExplorer")}

@@ -116,6 +116,13 @@ const personalActiveViewAtom = atomWithStorage<RightPanelView>(
   { getOnInit: true },
 );
 
+const chatActiveViewAtom = atomWithStorage<RightPanelView>(
+  "cocurdex.right-panel-chat-active-view",
+  "notes",
+  undefined,
+  { getOnInit: true },
+);
+
 const storedActiveViewAtom = atomWithStorage<RightPanelView>(
   RIGHT_PANEL_ACTIVE_VIEW_KEY,
   "editor",
@@ -123,40 +130,29 @@ const storedActiveViewAtom = atomWithStorage<RightPanelView>(
   { getOnInit: true },
 );
 
+const ACTIVE_VIEW_ATOMS = {
+  work: storedActiveViewAtom,
+  chat: chatActiveViewAtom,
+  personal: personalActiveViewAtom,
+} satisfies Record<RightPanelMode, unknown>;
+
 export const rightPanelActiveViewAtom = atom(
-  (get) =>
-    normalizeView(
-      get(
-        get(rightPanelPersonalContextAtom)
-          ? personalActiveViewAtom
-          : storedActiveViewAtom,
-      ),
-    ),
+  (get) => normalizeView(get(ACTIVE_VIEW_ATOMS[get(rightPanelModeAtom)])),
   (get, set, next: RightPanelView) => {
-    set(
-      get(rightPanelPersonalContextAtom)
-        ? personalActiveViewAtom
-        : storedActiveViewAtom,
-      normalizeView(next),
-    );
+    set(ACTIVE_VIEW_ATOMS[get(rightPanelModeAtom)], normalizeView(next));
   },
 );
-const workLastViewAtom = atom<RightPanelView>("editor");
-const personalLastViewAtom = atom<RightPanelView>("overview");
+
+const LAST_VIEW_ATOMS = {
+  work: atom<RightPanelView>("editor"),
+  chat: atom<RightPanelView>("notes"),
+  personal: atom<RightPanelView>("overview"),
+} satisfies Record<RightPanelMode, unknown>;
+
 export const rightPanelLastNonTerminalViewAtom = atom(
-  (get) =>
-    get(
-      get(rightPanelPersonalContextAtom)
-        ? personalLastViewAtom
-        : workLastViewAtom,
-    ),
+  (get) => get(LAST_VIEW_ATOMS[get(rightPanelModeAtom)]),
   (get, set, next: RightPanelView) =>
-    set(
-      get(rightPanelPersonalContextAtom)
-        ? personalLastViewAtom
-        : workLastViewAtom,
-      next,
-    ),
+    set(LAST_VIEW_ATOMS[get(rightPanelModeAtom)], next),
 );
 export const rightPanelViewTouchedAtom = atom(hasStoredActiveView());
 export const rightPanelTerminalEverActiveAtom = atom(false);
@@ -169,7 +165,7 @@ export const freezeRightPanelViewAtom = atom(null, (get, set) => {
 
   set(
     rightPanelActiveViewAtom,
-    get(rightPanelPersonalContextAtom) ? "overview" : "editor",
+    rightPanelTabSet(get(rightPanelModeAtom)).fallback,
   );
   set(rightPanelViewTouchedAtom, true);
 });

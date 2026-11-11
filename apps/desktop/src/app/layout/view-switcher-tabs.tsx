@@ -119,7 +119,7 @@ export function ViewSwitcherTabs({
   const [tabOrder, setTabOrder] = useAtom(rightPanelTabOrderAtom);
 
   const mode = useAtomValue(rightPanelModeAtom);
-  const personal = mode === "personal";
+  const conversationFiles = mode !== "work";
   const tabSet = rightPanelTabSet(mode);
   const available = (id: RightPanelView) =>
     isRightPanelViewAvailable(id, desktopApi.capabilities);
@@ -129,7 +129,9 @@ export function ViewSwitcherTabs({
   const overflowTabs = tabSet.overflow.filter(available);
   const visibleTabs = [
     ...primaryTabs,
-    ...overflowTabs.filter((id) => id === activeView),
+    ...[...overflowTabs, ...tabSet.revealOnly].filter(
+      (id) => id === activeView,
+    ),
     ...(hasPdfsOpen ? (["pdf"] as const) : []),
   ].filter(available);
 
@@ -320,7 +322,7 @@ export function ViewSwitcherTabs({
             const def = TAB_REGISTRY[id];
             const Icon = def.icon;
             const label =
-              personal && id === "editor"
+              conversationFiles && id === "editor"
                 ? t("actions.conversationFiles", {
                     defaultValue: "Conversation files",
                   })
@@ -341,7 +343,7 @@ export function ViewSwitcherTabs({
                     value={id}
                     onClick={() => {
                       if (
-                        personal &&
+                        conversationFiles &&
                         id === "editor" &&
                         activeView === "editor"
                       )
@@ -383,7 +385,7 @@ export function ViewSwitcherTabs({
                 return (
                   <AppDropdownItem key={id} onClick={() => onViewChange(id)}>
                     <Icon className="size-3.5" />
-                    {personal && id === "editor"
+                    {conversationFiles && id === "editor"
                       ? t("actions.conversationFiles", {
                           defaultValue: "Conversation files",
                         })
