@@ -4,7 +4,7 @@ import {
   savedHostEndpoint,
 } from "@cocurdex/client-runtime";
 import type { DaemonConnectionInfo } from "@cocurdex/rpc";
-import { offlineApi } from "./offline-api";
+import { offlineHostApi } from "./offline-api";
 import type { HostBridge, HostCapabilities } from "./types";
 
 const TOKEN_STORAGE_KEY = "cocurdex.daemonToken";
@@ -177,7 +177,7 @@ export function installWebHostBridge(): WebHostAccess | null {
   });
   dropFragmentCredentials();
   const bridge: HostBridge = {
-    ...offlineApi,
+    ...offlineHostApi,
     capabilities: webHostCapabilities(access),
     getDaemonConnection: async () =>
       access.kind === "local" ? access.connection : null,
