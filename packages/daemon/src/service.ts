@@ -135,6 +135,7 @@ import {
 } from "./provider/session-title";
 import {
   createCredentialVault,
+  headlessCredentialStore,
   ProviderCredentials,
   ProviderLoginSessions,
 } from "./provider-credentials";
@@ -451,7 +452,10 @@ export class CocurdexDaemonService {
       this.state,
       options.userDataPath,
       createCredentialVault(options.userDataPath, {
-        fileFallback: runtime.kind === "headless",
+        store:
+          runtime.kind === "headless"
+            ? headlessCredentialStore(process.platform)
+            : "keyring",
       }),
     );
     this.providerLogins = new ProviderLoginSessions(

@@ -1,3 +1,4 @@
+import { userInfo } from "node:os";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import type { DaemonBackgroundStatus } from "@cocurdex/rpc";
 import { withDaemon } from "./daemon-command";
@@ -9,7 +10,10 @@ export function daemonBackgroundUsageLines() {
   return ["  cocurdex daemon background on|off|status [--json]"];
 }
 
-function describe(status: DaemonBackgroundStatus) {
+function describeDaemonBackground(
+  status: DaemonBackgroundStatus,
+  platform: NodeJS.Platform = process.platform,
+) {
   if (!status.available) {
     return "Background mode is not available for this daemon (source build)";
   }
@@ -22,7 +26,11 @@ function describe(status: DaemonBackgroundStatus) {
   if (status.startsAt === "boot") {
     return "Background mode is on: the daemon keeps running after Cocurdex quits and starts when this computer boots";
   }
-  return "Background mode is on: the daemon keeps running after Cocurdex quits and starts when you sign in. To have it running after a restart without signing in, turn on automatic login for this account";
+  const bootHint =
+    platform === "linux"
+      ? `run \`sudo loginctl enable-linger ${userInfo().username}\``
+      : "turn on automatic login for this account";
+  return `Background mode is on: the daemon keeps running after Cocurdex quits and starts when you sign in. To have it running after a restart without signing in, ${bootHint}`;
 }
 
 function backgroundRequest(mode: string | undefined) {
@@ -45,5 +53,5 @@ export async function handleDaemonBackgroundCommand(
     printResult(status, parsed);
     return;
   }
-  console.log(describe(status));
+  console.log(describeDaemonBackground(status));
 }

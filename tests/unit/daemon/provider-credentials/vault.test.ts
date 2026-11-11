@@ -5,6 +5,7 @@ import {
   CREDENTIAL_FILE_NAME,
   createCredentialVault,
   credentialStoreUnavailableMessage,
+  headlessCredentialStore,
 } from "@cocurdex/daemon/internal/provider-credentials/vault";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -67,7 +68,7 @@ describe("headless credential vault", () => {
 
   it("keeps keys in an owner-only file while the system keyring is unavailable", async () => {
     const userData = await dirs.create("vault-");
-    const vault = createCredentialVault(userData, { fileFallback: true });
+    const vault = createCredentialVault(userData, { store: "keyring-or-file" });
     read.mockImplementation(unavailable);
     write.mockImplementation(unavailable);
     remove.mockImplementation(unavailable);
@@ -88,7 +89,7 @@ describe("headless credential vault", () => {
 
   it("moves a key out of the file once the keyring accepts it", async () => {
     const userData = await dirs.create("vault-");
-    const vault = createCredentialVault(userData, { fileFallback: true });
+    const vault = createCredentialVault(userData, { store: "keyring-or-file" });
     write.mockImplementationOnce(unavailable);
     await vault.write("openai", "old-key");
 
@@ -97,5 +98,32 @@ describe("headless credential vault", () => {
     await expect(vault.backend()).resolves.toBe("keyring");
     read.mockResolvedValueOnce("new-key");
     await expect(vault.read("openai")).resolves.toBe("new-key");
+  });
+
+  it("keeps keys only in the owner-only file when the store is the file", async () => {
+    const userData = await dirs.create("vault-");
+    const vault = createCredentialVault(userData, { store: "file" });
+    write.mockResolvedValue(undefined);
+
+    await vault.write("openai", "test-key");
+
+    expect(write).not.toHaveBeenCalled();
+    await expect(vault.read("openai")).resolves.toBe("test-key");
+    expect(read).not.toHaveBeenCalled();
+    await expect(vault.backend()).resolves.toBe("file");
+    await vault.remove("openai");
+    expect(remove).not.toHaveBeenCalled();
+    await expect(vault.read("openai")).resolves.toBeNull();
+  });
+});
+
+describe("headless credential store", () => {
+  it("uses the file on Linux, where the keyring that accepts a key without a Secret Service is the kernel one, cleared on reboot", () => {
+    expect(headlessCredentialStore("linux")).toBe("file");
+  });
+
+  it("prefers the persistent system keyring on macOS and Windows", () => {
+    expect(headlessCredentialStore("darwin")).toBe("keyring-or-file");
+    expect(headlessCredentialStore("win32")).toBe("keyring-or-file");
   });
 });

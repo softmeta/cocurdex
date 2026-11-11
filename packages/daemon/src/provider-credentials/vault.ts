@@ -15,8 +15,18 @@ export interface CredentialVault {
   backend(): Promise<CredentialBackend>;
 }
 
+export type CredentialStore = "keyring" | "keyring-or-file" | "file";
+
 export interface CredentialVaultOptions {
-  fileFallback?: boolean;
+  store?: CredentialStore;
+}
+
+export function headlessCredentialStore(
+  platform: NodeJS.Platform,
+): CredentialStore {
+  // Without a Secret Service, @napi-rs/keyring on Linux stores keys in the
+  // kernel keyring (keyutils), which a reboot clears.
+  return platform === "linux" ? "file" : "keyring-or-file";
 }
 
 export function credentialStoreUnavailableMessage(
@@ -121,8 +131,13 @@ export function createCredentialVault(
   userDataPath: string,
   options: CredentialVaultOptions = {},
 ): CredentialVault {
+  const store = options.store ?? "keyring";
+  if (store === "file") {
+    const { isEmpty: _isEmpty, ...file } = credentialFile(userDataPath);
+    return { ...file, backend: async () => "file" };
+  }
   const keyring = keyringVault(userDataPath);
-  if (!options.fileFallback) {
+  if (store === "keyring") {
     return { ...keyring, backend: async () => "keyring" };
   }
   const file = credentialFile(userDataPath);

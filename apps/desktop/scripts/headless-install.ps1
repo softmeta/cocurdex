@@ -8,9 +8,10 @@ $ProgressPreference = 'SilentlyContinue'
 
 $repository = 'softmeta/cocurdex'
 
-$arch = switch ($env:PROCESSOR_ARCHITECTURE) {
-  'AMD64' { 'x64' }
-  default { throw "cocurdex install: unsupported architecture $env:PROCESSOR_ARCHITECTURE" }
+$osArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+$arch = switch ($osArch) {
+  'X64' { 'x64' }
+  default { throw "cocurdex install: unsupported architecture $osArch" }
 }
 $name = "cocurdex-headless-win32-$arch"
 $asset = "$name.zip"
