@@ -54,6 +54,20 @@ describe("rightPanelResolvedActiveViewAtom reveal", () => {
     expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("editor");
   });
 
+  it("refuses repository surfaces in chat context and restores them in work", () => {
+    const store = createStore();
+    store.set(rightPanelResolvedActiveViewAtom, "git");
+    store.set(sidebarTabAtom, "chat");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("editor");
+    store.set(rightPanelActiveViewAtom, "terminal");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("editor");
+    store.set(rightPanelActiveViewAtom, "memory");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("memory");
+    store.set(rightPanelActiveViewAtom, "git");
+    store.set(sidebarTabAtom, "workspaces");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("git");
+  });
+
   it("switches to pdf after opening a non-pdf file then a pdf (last open wins)", () => {
     const store = createStore();
     store.set(rightPanelActiveViewAtom, "editor");

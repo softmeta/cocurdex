@@ -38,9 +38,10 @@ import {
 import {
   isRightPanelViewAvailable,
   type RightPanelView,
-  rightPanelPersonalContextAtom,
+  rightPanelModeAtom,
   rightPanelTabOrderAtom,
 } from "./right-editor-panel-store";
+import { rightPanelTabSet } from "./right-panel-tab-sets";
 import {
   TitlebarIconButton,
   titlebarIconButtonClassName,
@@ -117,28 +118,20 @@ export function ViewSwitcherTabs({
   const { t } = useTranslation("editor");
   const [tabOrder, setTabOrder] = useAtom(rightPanelTabOrderAtom);
 
-  const personal = useAtomValue(rightPanelPersonalContextAtom);
-  const personalPrimary: RightPanelView[] = [
-    "overview",
-    "memory",
-    "notes",
-    "issues",
-    "routines",
-  ];
-  const personalSecondary: RightPanelView[] = ["editor", "browser", "decks"];
-  const orderedTabs = personal
-    ? [...personalPrimary, ...personalSecondary, "pdf" as const]
-    : tabOrder;
-  const secondaryTabs = personalSecondary.filter((id) =>
-    isRightPanelViewAvailable(id, desktopApi.capabilities),
-  );
-  const visibleTabs = orderedTabs.filter(
-    (id) =>
-      (personal || id !== "overview") &&
-      (id !== "pdf" || hasPdfsOpen) &&
-      (!personal || !personalSecondary.includes(id) || id === activeView) &&
-      isRightPanelViewAvailable(id, desktopApi.capabilities),
-  );
+  const mode = useAtomValue(rightPanelModeAtom);
+  const personal = mode === "personal";
+  const tabSet = rightPanelTabSet(mode);
+  const available = (id: RightPanelView) =>
+    isRightPanelViewAvailable(id, desktopApi.capabilities);
+  const primaryTabs = tabSet.reorderable
+    ? tabOrder.filter((id) => tabSet.primary.includes(id))
+    : tabSet.primary;
+  const overflowTabs = tabSet.overflow.filter(available);
+  const visibleTabs = [
+    ...primaryTabs,
+    ...overflowTabs.filter((id) => id === activeView),
+    ...(hasPdfsOpen ? (["pdf"] as const) : []),
+  ].filter(available);
 
   const dragState = useRef<{
     tabId: RightPanelView;
@@ -355,7 +348,9 @@ export function ViewSwitcherTabs({
                         onViewChange("editor");
                     }}
                     onPointerDown={
-                      personal ? undefined : (e) => handlePointerDown(e, id)
+                      tabSet.reorderable
+                        ? (e) => handlePointerDown(e, id)
+                        : undefined
                     }
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
@@ -370,7 +365,7 @@ export function ViewSwitcherTabs({
             );
           })}
         </ToggleGroup>
-        {personal ? (
+        {overflowTabs.length > 0 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <TitlebarIconButton
@@ -382,13 +377,13 @@ export function ViewSwitcherTabs({
               </TitlebarIconButton>
             </DropdownMenuTrigger>
             <AppDropdownContent align="start" side="bottom">
-              {secondaryTabs.map((id) => {
+              {overflowTabs.map((id) => {
                 const def = TAB_REGISTRY[id];
                 const Icon = def.icon;
                 return (
                   <AppDropdownItem key={id} onClick={() => onViewChange(id)}>
                     <Icon className="size-3.5" />
-                    {id === "editor"
+                    {personal && id === "editor"
                       ? t("actions.conversationFiles", {
                           defaultValue: "Conversation files",
                         })
