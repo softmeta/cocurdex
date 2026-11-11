@@ -237,8 +237,17 @@ async function installLaunchers(binDir) {
 async function archive() {
   const file = path.join(outDir, `${name}${isWindows ? ".zip" : ".tar.gz"}`);
   await rm(file, { force: true });
-  const tarArgs = isWindows ? ["-a", "-cf", file, name] : ["-czf", file, name];
-  run("tar", tarArgs, { cwd: outDir });
+  if (isWindows) {
+    // Git for Windows puts GNU tar on PATH, which cannot write zip archives.
+    const systemTar = path.join(
+      process.env.SystemRoot ?? "C:\\Windows",
+      "System32",
+      "tar.exe",
+    );
+    run(systemTar, ["-a", "-cf", file, name], { cwd: outDir });
+  } else {
+    run("tar", ["-czf", file, name], { cwd: outDir });
+  }
   run(process.execPath, [
     path.join(__dirname, "write-artifact-sha256.mjs"),
     file,

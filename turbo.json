@@ -61,7 +61,9 @@
         "helpers/**",
         "$TURBO_ROOT$/apps/desktop/scripts/build-headless.mjs",
         "$TURBO_ROOT$/apps/desktop/scripts/build-cli.mjs",
-        "$TURBO_ROOT$/apps/desktop/scripts/pe-subsystem.mjs"
+        "$TURBO_ROOT$/apps/desktop/scripts/pe-subsystem.mjs",
+        "$TURBO_ROOT$/apps/desktop/scripts/headless-install.sh",
+        "$TURBO_ROOT$/apps/desktop/scripts/headless-install.ps1"
       ]
     },
     "@cocurdex/unit-scripts#test": {
