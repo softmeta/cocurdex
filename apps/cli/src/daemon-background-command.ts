@@ -19,7 +19,10 @@ function describe(status: DaemonBackgroundStatus) {
   if (!status.registered) {
     return "Background mode is on, but the login item is missing; run `cocurdex daemon background on` to restore it";
   }
-  return "Background mode is on: the daemon keeps running after Cocurdex quits and starts at login";
+  if (status.startsAt === "boot") {
+    return "Background mode is on: the daemon keeps running after Cocurdex quits and starts when this computer boots";
+  }
+  return "Background mode is on: the daemon keeps running after Cocurdex quits and starts when you sign in. To have it running after a restart without signing in, turn on automatic login for this account";
 }
 
 function backgroundRequest(mode: string | undefined) {

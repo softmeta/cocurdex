@@ -9,6 +9,7 @@ const WINDOWS_BARE_ARG = /^[\w.=-]+$/;
 
 export interface LoginItemTarget {
   platform: NodeJS.Platform;
+  runtime: "app" | "headless";
   launchCommand: readonly string[];
   userDataPath: string;
   defaultUserDataPath: string;
@@ -18,6 +19,7 @@ export interface LoginItemTarget {
 
 export type LoginItem =
   | { kind: "file"; path: string; content: string }
+  | { kind: "systemd"; path: string; content: string; unit: string }
   | { kind: "registry"; key: string; name: string; value: string };
 
 function profileId(userDataPath: string) {
@@ -135,11 +137,48 @@ function runKeyEntry(target: LoginItemTarget): LoginItem {
   };
 }
 
+function systemdArg(arg: string) {
+  const escaped = arg
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', '\\"')
+    .replaceAll("%", "%%")
+    .replaceAll("$", "$$$$");
+  return `"${escaped}"`;
+}
+
+function systemdUserUnit(target: LoginItemTarget): LoginItem {
+  const configHome =
+    target.xdgConfigHome || path.posix.join(target.homeDir, ".config");
+  const unit = `cocurdex-daemon-${profileId(target.userDataPath)}.service`;
+  const content = [
+    "[Unit]",
+    "Description=Cocurdex daemon",
+    "",
+    "[Service]",
+    "Type=simple",
+    `ExecStart=${backgroundLaunchArgs(target).map(systemdArg).join(" ")}`,
+    "Restart=on-failure",
+    "RestartSec=5",
+    "",
+    "[Install]",
+    "WantedBy=default.target",
+    "",
+  ].join("\n");
+  return {
+    kind: "systemd",
+    path: path.posix.join(configHome, "systemd", "user", unit),
+    content,
+    unit,
+  };
+}
+
 export function loginItemFor(target: LoginItemTarget): LoginItem | null {
   if (target.platform === "darwin") return launchAgent(target);
   if (target.platform === "win32") return runKeyEntry(target);
   if (target.platform === "linux" || target.platform === "freebsd") {
-    return autostartEntry(target);
+    return target.runtime === "headless" && target.platform === "linux"
+      ? systemdUserUnit(target)
+      : autostartEntry(target);
   }
   return null;
 }

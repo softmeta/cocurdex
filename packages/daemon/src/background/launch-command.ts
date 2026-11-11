@@ -1,8 +1,16 @@
-import { APP_LAUNCH_COMMAND_ENV } from "./launch-args";
+import path from "node:path";
+import { APP_LAUNCH_COMMAND_ENV, HEADLESS_DAEMON_ENTRY } from "./launch-args";
 
-interface LaunchCommandSource {
+export type DaemonRuntime =
+  | { kind: "app"; launchCommand: string[] }
+  | { kind: "headless"; launchCommand: string[] }
+  | { kind: "source" };
+
+interface DaemonRuntimeSource {
   env: NodeJS.ProcessEnv;
   execPath: string;
+  execArgv: readonly string[];
+  scriptPath: string | undefined;
   electronVersion: string | undefined;
 }
 
@@ -22,13 +30,30 @@ function parseLaunchCommand(value: string) {
   return null;
 }
 
-export function resolveAppLaunchCommand({
+export function resolveDaemonRuntime({
   env,
   execPath,
+  execArgv,
+  scriptPath,
   electronVersion,
-}: LaunchCommandSource): string[] | null {
+}: DaemonRuntimeSource): DaemonRuntime {
   const configured = env[APP_LAUNCH_COMMAND_ENV];
-  if (configured) return parseLaunchCommand(configured);
-  if (!electronVersion) return null;
-  return [env.APPIMAGE || execPath];
+  if (configured) {
+    const launchCommand = parseLaunchCommand(configured);
+    return launchCommand ? { kind: "app", launchCommand } : { kind: "source" };
+  }
+  if (electronVersion) {
+    return { kind: "app", launchCommand: [env.APPIMAGE || execPath] };
+  }
+  if (scriptPath && path.basename(scriptPath) === HEADLESS_DAEMON_ENTRY) {
+    return {
+      kind: "headless",
+      launchCommand: [execPath, ...execArgv, scriptPath],
+    };
+  }
+  return { kind: "source" };
+}
+
+export function runtimeLaunchCommand(runtime: DaemonRuntime) {
+  return runtime.kind === "source" ? null : runtime.launchCommand;
 }

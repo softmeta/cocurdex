@@ -8,5 +8,9 @@ export {
   BACKGROUND_USER_DATA_ARG,
   parseBackgroundLaunch,
 } from "./launch-args";
-export { resolveAppLaunchCommand } from "./launch-command";
+export {
+  type DaemonRuntime,
+  resolveDaemonRuntime,
+  runtimeLaunchCommand,
+} from "./launch-command";
 export type { LoginItemTarget } from "./login-item";

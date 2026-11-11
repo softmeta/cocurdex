@@ -31,6 +31,7 @@ export function formatDaemonHealthLines(health: DaemonHealth) {
     `runtimes       ${health.agentRuntimes} agent sessions, ${health.terminals} terminals`,
     `connections    ${health.connections.total} (${health.connections.devices} devices)`,
     `database       schema ${health.database.schemaVersion}, ${mebibytes(health.database.sizeBytes)} + wal ${mebibytes(health.database.walBytes)}`,
+    `credentials    ${health.credentialStore === "file" ? "file in the data directory (system keyring unavailable)" : "system keyring"}`,
     `logs           ${health.logs.level}${health.logs.directory ? ` at ${health.logs.directory}` : ""}`,
   ];
 }

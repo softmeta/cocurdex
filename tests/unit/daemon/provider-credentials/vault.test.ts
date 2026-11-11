@@ -1,9 +1,16 @@
+import { readFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import path from "node:path";
 import {
+  CREDENTIAL_FILE_NAME,
   createCredentialVault,
   credentialStoreUnavailableMessage,
 } from "@cocurdex/daemon/internal/provider-credentials/vault";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const dirs = createTempDirs();
+afterAll(() => dirs.cleanup());
 
 const read = vi.hoisted(() => vi.fn());
 const write = vi.hoisted(() => vi.fn());
@@ -52,5 +59,43 @@ describe("system credential vault", () => {
     expect(credentialStoreUnavailableMessage("darwin")).toBe(
       "System credential store is unavailable",
     );
+  });
+});
+
+describe("headless credential vault", () => {
+  const unavailable = () => Promise.reject(new Error("no Secret Service"));
+
+  it("keeps keys in an owner-only file while the system keyring is unavailable", async () => {
+    const userData = await dirs.create("vault-");
+    const vault = createCredentialVault(userData, { fileFallback: true });
+    read.mockImplementation(unavailable);
+    write.mockImplementation(unavailable);
+    remove.mockImplementation(unavailable);
+
+    await vault.write("openai", "test-key");
+    await expect(vault.read("openai")).resolves.toBe("test-key");
+    await expect(vault.backend()).resolves.toBe("file");
+    const file = path.join(userData, CREDENTIAL_FILE_NAME);
+    if (process.platform !== "win32") {
+      expect((await stat(file)).mode & 0o777).toBe(0o600);
+    }
+
+    await vault.remove("openai");
+    await expect(vault.read("openai")).resolves.toBeNull();
+    await expect(readFile(file)).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(vault.backend()).resolves.toBe("keyring");
+  });
+
+  it("moves a key out of the file once the keyring accepts it", async () => {
+    const userData = await dirs.create("vault-");
+    const vault = createCredentialVault(userData, { fileFallback: true });
+    write.mockImplementationOnce(unavailable);
+    await vault.write("openai", "old-key");
+
+    write.mockResolvedValueOnce(undefined);
+    await vault.write("openai", "new-key");
+    await expect(vault.backend()).resolves.toBe("keyring");
+    read.mockResolvedValueOnce("new-key");
+    await expect(vault.read("openai")).resolves.toBe("new-key");
   });
 });

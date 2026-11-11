@@ -11,6 +11,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 const mac: LoginItemTarget = {
+  runtime: "app",
   platform: "darwin",
   launchCommand: [
     "/Applications/R&D Tools/Cocurdex.app/Contents/MacOS/Cocurdex",
@@ -21,6 +22,7 @@ const mac: LoginItemTarget = {
 };
 
 const linux: LoginItemTarget = {
+  runtime: "app",
   platform: "linux",
   launchCommand: ["/home/ada/Apps/Cocurdex 100%.AppImage"],
   userDataPath: "/home/ada/.config/Cocurdex",
@@ -29,6 +31,7 @@ const linux: LoginItemTarget = {
 };
 
 const windows: LoginItemTarget = {
+  runtime: "app",
   platform: "win32",
   launchCommand: [
     "C:\\Users\\Ada\\AppData\\Local\\Programs\\Cocurdex\\Cocurdex.exe",
@@ -95,6 +98,40 @@ describe("login item for the background daemon", () => {
 
     expect(item.path.startsWith("/home/ada/.config/autostart/")).toBe(true);
     expect(item.content).toContain('Exec="/opt/Co\\\\"cur\\\\$dex/cocurdex"');
+  });
+
+  it("runs a headless Linux daemon as a systemd user unit that restarts after a crash", () => {
+    const item = loginItemFor({
+      ...linux,
+      runtime: "headless",
+      launchCommand: ["/opt/co cur$dex 100%/node", '/opt/a"b/lib/daemon.cjs'],
+      userDataPath: "/home/ada/.config/Cocurdex-alt",
+      xdgConfigHome: "/home/ada/.xdg",
+    });
+
+    if (item?.kind !== "systemd") throw new Error("expected a systemd unit");
+    expect(item.path).toBe(`/home/ada/.xdg/systemd/user/${item.unit}`);
+    expect(item.unit).toMatch(/^cocurdex-daemon-[0-9a-f]{8}\.service$/);
+    expect(item.content).toContain(
+      `ExecStart="/opt/co cur$$dex 100%%/node" "/opt/a\\"b/lib/daemon.cjs" "${BACKGROUND_DAEMON_ARG}" "${BACKGROUND_USER_DATA_ARG}=/home/ada/.config/Cocurdex-alt"\n`,
+    );
+    expect(item.content).toContain("Restart=on-failure\n");
+    expect(item.content).toContain("WantedBy=default.target\n");
+  });
+
+  it("keeps the login launch agent for a headless macOS daemon", () => {
+    const item = fileItem({
+      ...mac,
+      runtime: "headless",
+      launchCommand: [
+        "/opt/cocurdex/runtime/node",
+        "/opt/cocurdex/lib/daemon.cjs",
+      ],
+    });
+
+    expect(item.content).toContain(
+      "<string>/opt/cocurdex/lib/daemon.cjs</string>",
+    );
   });
 
   it("adds a quoted command to the current user's Run key on Windows", () => {

@@ -62,6 +62,7 @@ export interface DaemonHealth {
     sizeBytes: number | null;
     walBytes: number | null;
   };
+  credentialStore: "keyring" | "file";
   logs: { level: LogLevel; directory: string | null };
 }
 
@@ -87,6 +88,7 @@ export interface DaemonBackgroundStatus {
   enabled: boolean;
   available: boolean;
   registered: boolean;
+  startsAt: "boot" | "login";
 }
 
 export interface DaemonError {

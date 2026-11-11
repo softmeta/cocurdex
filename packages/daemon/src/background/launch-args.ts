@@ -1,3 +1,4 @@
+export const HEADLESS_DAEMON_ENTRY = "daemon.cjs";
 export const BACKGROUND_DAEMON_ARG = "--background-daemon";
 export const BACKGROUND_USER_DATA_ARG = "--background-daemon-user-data";
 export const APP_LAUNCH_COMMAND_ENV = "COCURDEX_APP_LAUNCH_COMMAND";

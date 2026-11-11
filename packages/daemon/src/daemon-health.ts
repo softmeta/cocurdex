@@ -20,6 +20,7 @@ export interface DaemonHealthSources {
   pid: number;
   startedAt: string;
   databasePath: string;
+  credentialStore(): Promise<"keyring" | "file">;
   activeRequests(): number;
   activeWork(): DaemonActiveWork;
   connections(): { total: number; devices: number };
@@ -147,9 +148,10 @@ export function createDaemonHealthMonitor(
 
   return {
     async snapshot(snapshotOptions = { includePaths: false }) {
-      const [sizeBytes, walBytes] = await Promise.all([
+      const [sizeBytes, walBytes, credentialStore] = await Promise.all([
         fileSize(sources.databasePath),
         fileSize(`${sources.databasePath}-wal`),
+        sources.credentialStore().catch(() => "keyring" as const),
       ]);
       return {
         pid: sources.pid,
@@ -166,6 +168,7 @@ export function createDaemonHealthMonitor(
           sizeBytes,
           walBytes,
         },
+        credentialStore,
         logs: {
           level: sources.logLevel(),
           directory: snapshotOptions.includePaths ? sources.logDirectory : null,

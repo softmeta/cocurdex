@@ -26,6 +26,7 @@ function fixture() {
   };
   const secrets = new Map<string, string>();
   const vault = {
+    backend: async () => "keyring" as const,
     read: vi.fn(async (id: string) => secrets.get(id) ?? null),
     write: vi.fn(async (id: string, value: string) => {
       secrets.set(id, value);

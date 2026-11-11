@@ -30,6 +30,10 @@ export class ProviderCredentials {
     registerBundledPiProviderOAuthFlows();
   }
 
+  credentialStore() {
+    return this.vault.backend();
+  }
+
   async setApiKey(providerId: string, apiKey: string | null) {
     if (typeof providerId !== "string" || !providerId.trim())
       throw new Error("Invalid provider ID");
