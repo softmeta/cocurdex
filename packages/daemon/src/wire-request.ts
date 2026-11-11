@@ -114,8 +114,9 @@ function unattendedExecutionLookup(
     session: (sessionId) => service.getSession(sessionId),
     runtimeState: (sessionId) => service.getSessionRuntimeState(sessionId),
     permissionModes: async (agentId) =>
-      (await service.listAgents(agentId)).find((agent) => agent.id === agentId)
-        ?.capabilities.permissionModes ?? [],
+      (await service.agents.listAgents(agentId)).find(
+        (agent) => agent.id === agentId,
+      )?.capabilities.permissionModes ?? [],
   };
 }
 

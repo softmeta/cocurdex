@@ -28,7 +28,7 @@ async function fixture() {
     .list()
     .find((agent) => agent.id === "pi");
   if (!pi) throw new Error("Missing Pi descriptor");
-  vi.spyOn(service, "listAgents").mockResolvedValue([
+  vi.spyOn(service.agents, "listAgents").mockResolvedValue([
     { ...pi, availability: "available" },
   ]);
   const now = new Date().toISOString();

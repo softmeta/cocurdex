@@ -1,8 +1,8 @@
 import { createAgentRegistry } from "@cocurdex/agent-core";
+import { AgentCatalog } from "@cocurdex/daemon/internal/agents/agent-catalog";
 import { requestDaemon } from "@cocurdex/daemon/internal/client";
 import { ProviderCredentials } from "@cocurdex/daemon/internal/provider-credentials/service";
 import { AgentRuntimeManager } from "@cocurdex/daemon/internal/runtime";
-import { CocurdexDaemonService } from "@cocurdex/daemon/internal/service";
 import { startDaemonServer } from "@cocurdex/daemon/internal/wire";
 import type { MessageRecord } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
@@ -34,7 +34,7 @@ beforeEach(() => {
     .list()
     .find((agent) => agent.id === "pi");
   if (!pi) throw new Error("Missing Pi descriptor");
-  vi.spyOn(CocurdexDaemonService.prototype, "listAgents").mockResolvedValue([
+  vi.spyOn(AgentCatalog.prototype, "listAgents").mockResolvedValue([
     { ...pi, availability: "available" },
   ]);
 });

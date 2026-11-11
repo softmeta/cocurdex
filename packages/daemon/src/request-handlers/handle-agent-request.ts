@@ -53,16 +53,16 @@ export async function handleAgentRequest(
   }
   switch (request.method) {
     case "agent.list":
-      return service.listAgents();
+      return service.agents.listAgents();
     case "agent.setEnabled":
-      return service.setAgentEnabled(
+      return service.agents.setAgentEnabled(
         request.params.agentId,
         request.params.enabled,
       );
     case "agent.sessionModes.read":
-      return service.readAgentSessionModes(request.params.agentId);
+      return service.agents.readAgentSessionModes(request.params.agentId);
     case "agent.login":
-      await service.assertAgentEnabled(request.params.agentId);
+      await service.agents.assertAgentEnabled(request.params.agentId);
       return service.agentAuth.login(request.params);
     case "agent.login.cancel":
       return service.agentAuth.cancelLogin(request.params.agentId);
@@ -71,7 +71,7 @@ export async function handleAgentRequest(
     case "agent.auth.read":
       return service.agentAuth.read(request.params.agentId);
     case "agent.rateLimits.read":
-      return service.readAdapterRateLimits(request.params.agentIds);
+      return service.agents.readAdapterRateLimits(request.params.agentIds);
     case "agent.runLimits.get":
       return service.settings.readAgentRunLimits();
     case "agent.runLimits.set":
@@ -79,17 +79,17 @@ export async function handleAgentRequest(
     case "acpRegistry.catalog":
       return service.acpRegistry.listCatalog(request.params);
     case "acpRegistry.install":
-      return service.installAcpRegistryAgent(request.params.registryId);
+      return service.agents.installAcpRegistryAgent(request.params.registryId);
     case "acpRegistry.installCommand":
-      return service.installAcpRegistryCommand(request.params);
+      return service.agents.installAcpRegistryCommand(request.params);
     case "acpRegistry.uninstall":
-      return service.uninstallAcpRegistryAgent(request.params.agentId);
+      return service.agents.uninstallAcpRegistryAgent(request.params.agentId);
     case "acpRegistry.updates":
-      return service.listAcpRegistryUpdates(request.params);
+      return service.agents.listAcpRegistryUpdates(request.params);
     case "acpRegistry.update":
-      return service.updateAcpRegistryAgent(request.params.agentId);
+      return service.agents.updateAcpRegistryAgent(request.params.agentId);
     case "codex.account.read":
-      if (await service.isAgentDisabled("codex")) {
+      if (await service.agents.isAgentDisabled("codex")) {
         return {
           method: null,
           email: null,
@@ -99,7 +99,7 @@ export async function handleAgentRequest(
       }
       return readCodexAccount();
     case "codex.login.start":
-      await service.assertAgentEnabled("codex");
+      await service.agents.assertAgentEnabled("codex");
       return service.codexLogins.start();
     case "codex.login.wait":
       return service.codexLogins.wait(request.params.loginId);

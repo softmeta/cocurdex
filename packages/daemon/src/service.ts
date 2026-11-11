@@ -1,20 +1,10 @@
 import { EventEmitter } from "node:events";
 import os, { homedir } from "node:os";
-import {
-  deleteOpenCodeSession,
-  readAdapterRateLimits as probeAdapterRateLimits,
-  resetAcpProviderModelsCache,
-} from "@cocurdex/agent-adapters";
+import { deleteOpenCodeSession } from "@cocurdex/agent-adapters";
 import { loginPiProvider } from "@cocurdex/agent-adapters/provider-auth";
-import {
-  AgentSteeringUnavailableError,
-  createAgentRegistry,
-  getAgentRuntimeOwnership,
-} from "@cocurdex/agent-core";
+import { AgentSteeringUnavailableError } from "@cocurdex/agent-core";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
 import type {
-  AcpRegistryAgentId,
-  AgentDescriptor,
   AgentEvent,
   AgentId,
   AgentPlanApprovalDecision,
@@ -51,11 +41,8 @@ import {
   buildContextHandoffText,
   buildPolicy,
   CHAT_WORKSPACE_ID,
-  canDisableAgent,
   contextHandoffBudget,
-  DISABLED_AGENTS_SETTING_KEY,
   type HostPrincipal,
-  isAcpRegistryAgentId,
   isAgentEvent,
   isAgentId,
   isAssistantSessionId,
@@ -77,7 +64,6 @@ import {
   normalizeAgentRoleName,
   normalizeWorkspaceRootPaths,
   PERSONAL_WORKSPACE_ID,
-  parseDisabledAgentIds,
   primaryWorkspaceRootPath,
   principalHasScope,
   resolveSessionWorkingPath,
@@ -100,11 +86,7 @@ import {
   registerWorkTools,
 } from "./agent-tools";
 import { registerApplicationTools } from "./agent-tools/groups/applications";
-import {
-  createAgentInstallationProbes,
-  discoverAgentSessionModes,
-  discoverInstalledAgentCapabilities,
-} from "./agents";
+import { AgentCatalog } from "./agents";
 import { resolveApplicationPrincipal } from "./application-principal";
 import { ApplicationService } from "./application-service";
 import { DaemonAttachmentStore } from "./attachment-store";
@@ -243,7 +225,7 @@ const BRIEF_LOCALE_SETTING_KEY = "personal.briefLocale";
 
 export class CocurdexDaemonService {
   readonly events = new EventEmitter();
-  private readonly agentInstallationProbes = createAgentInstallationProbes();
+  readonly agents: AgentCatalog;
   readonly agentTools: AgentToolBridge;
   readonly peerMessaging: PeerMessagingService;
   readonly team: TeamModule;
@@ -441,6 +423,14 @@ export class CocurdexDaemonService {
       (providerId) => this.providerCredentials.setApiKey(providerId, null),
     );
     this.acpRegistry = new AcpRegistryService(this.state, options.userDataPath);
+    this.agents = new AgentCatalog({
+      state: this.state,
+      acpRegistry: this.acpRegistry,
+      cancelLogin: (agentId) => this.agentAuth.cancelLogin(agentId),
+      liveSessionIds: (agentId) => this.runtime.liveSessionIdsForAgent(agentId),
+      disposeSession: (sessionId) => this.disposeSessionRuntime(sessionId),
+      emit: (event) => this.events.emit("daemon.event", event),
+    });
     this.agentAuth = new AgentAuthService({
       registry: this.acpRegistry,
       liveSessionIds: (agentId) => this.runtime.liveSessionIdsForAgent(agentId),
@@ -476,7 +466,8 @@ export class CocurdexDaemonService {
       commitMessages: this.commitMessageService,
       getWorktreeEnvironment: (workspaceId) =>
         this.workspaces.getWorktreeEnvironment(workspaceId),
-      setDisabledAgentIds: (agentIds) => this.replaceDisabledAgentIds(agentIds),
+      setDisabledAgentIds: (agentIds) =>
+        this.agents.replaceDisabledAgentIds(agentIds),
       emit: (event) => this.events.emit("daemon.event", event),
     });
     this.worktrees = new WorktreeLifecycle(
@@ -532,7 +523,7 @@ export class CocurdexDaemonService {
       getSession: (sessionId) => this.state.getSession(sessionId),
       listSessions: () => this.state.listSessions(),
       hasActiveTurn: (sessionId) => this.runs.hasActiveRun(sessionId),
-      supportsSteering: (session) => this.agentSupportsSteering(session),
+      supportsSteering: (session) => this.agents.supportsSteering(session),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       broadcast: (event) => this.events.emit("daemon.event", event),
       peerScope: (sessionId) => this.team.peerScope(sessionId),
@@ -550,7 +541,7 @@ export class CocurdexDaemonService {
         this.peerMessaging.send(payload, render),
       deliverReport: (report) => this.deliverTeammateReport(report),
       hasActiveRun: (sessionId) => this.runs.hasActiveRun(sessionId),
-      supportsSteering: (session) => this.agentSupportsSteering(session),
+      supportsSteering: (session) => this.agents.supportsSteering(session),
       getRunReply: (sessionId, runId) =>
         this.state.getRunReply(sessionId, runId),
       latestRun: (sessionId) => this.state.getLatestRun(sessionId),
@@ -603,7 +594,7 @@ export class CocurdexDaemonService {
         this.submitSessionMessage(command, options),
       stopSession: (sessionId) => this.stopSession(sessionId),
       hasActiveRun: (sessionId) => this.runs.hasActiveRun(sessionId),
-      supportsSteering: (session) => this.agentSupportsSteering(session),
+      supportsSteering: (session) => this.agents.supportsSteering(session),
       latestRun: (sessionId) => this.state.getLatestRun(sessionId),
       getRunReply: (sessionId, runId) =>
         this.state.getRunReply(sessionId, runId),
@@ -659,7 +650,7 @@ export class CocurdexDaemonService {
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
       hasActiveTurn: (sessionId) => this.runs.hasActiveRun(sessionId),
-      supportsSteering: (session) => this.agentSupportsSteering(session),
+      supportsSteering: (session) => this.agents.supportsSteering(session),
       stopSession: (sessionId) => this.stopSession(sessionId),
       broadcast: (event) => {
         this.events.emit("daemon.event", event);
@@ -761,7 +752,7 @@ export class CocurdexDaemonService {
       userDataPath: options.userDataPath,
       agentTools: this.agentTools,
       resolveMcpServers: async (agentId) =>
-        (await this.isAgentDisabled(agentId))
+        (await this.agents.isAgentDisabled(agentId))
           ? []
           : this.mcp.serversForAgent(agentId),
     });
@@ -847,12 +838,6 @@ export class CocurdexDaemonService {
     if (options.autoStartMemory === true) {
       void this.memory.initializeOnStartup();
     }
-  }
-
-  private async agentSupportsSteering(session: SessionRecord) {
-    const agents = await this.listAgents(session.agentType);
-    const agent = agents.find((item) => item.id === session.agentType);
-    return agent?.capabilities.supportsSteering ?? false;
   }
 
   startBackgroundRecovery() {
@@ -1068,198 +1053,6 @@ export class CocurdexDaemonService {
     };
   }
 
-  private async readDisabledAgentIds(): Promise<Set<AgentId>> {
-    return parseDisabledAgentIds(
-      await this.state.getAppSetting(DISABLED_AGENTS_SETTING_KEY),
-    );
-  }
-
-  async isAgentDisabled(agentId: AgentId): Promise<boolean> {
-    if (!canDisableAgent(agentId)) {
-      return false;
-    }
-    return (await this.readDisabledAgentIds()).has(agentId);
-  }
-
-  async assertAgentEnabled(agentId: AgentId): Promise<void> {
-    if (await this.isAgentDisabled(agentId)) {
-      const descriptor = createAgentRegistry()
-        .list()
-        .find((item) => item.id === agentId);
-      throw new Error(`${descriptor?.label ?? agentId} is disabled.`);
-    }
-  }
-
-  async setAgentEnabled(agentId: AgentId, enabled: boolean) {
-    if (!enabled && !canDisableAgent(agentId)) {
-      throw new Error("Built-in agent Pi cannot be disabled.");
-    }
-    const disabledIds = await this.readDisabledAgentIds();
-    if (enabled) {
-      disabledIds.delete(agentId);
-    } else {
-      disabledIds.add(agentId);
-    }
-    await this.replaceDisabledAgentIds([...disabledIds]);
-    return this.listAgents();
-  }
-
-  private async replaceDisabledAgentIds(nextAgentIds: readonly AgentId[]) {
-    const previous = await this.readDisabledAgentIds();
-    const next = new Set(nextAgentIds.filter(canDisableAgent));
-    await this.state.setAppSetting(
-      DISABLED_AGENTS_SETTING_KEY,
-      JSON.stringify([...next]),
-    );
-    const newlyDisabled = [...next].filter((id) => !previous.has(id));
-    for (const agentId of newlyDisabled) {
-      await this.agentAuth.cancelLogin(agentId);
-      await Promise.all(
-        this.runtime
-          .liveSessionIdsForAgent(agentId)
-          .map((sessionId) => this.disposeSessionRuntime(sessionId)),
-      );
-      if (isAcpRegistryAgentId(agentId)) {
-        resetAcpProviderModelsCache(agentId);
-      }
-    }
-    this.events.emit("daemon.event", {
-      type: "data.changed",
-      areas: ["agent", "settings"],
-    });
-  }
-
-  private async detectAgents(only?: AgentId) {
-    await this.acpRegistry.ready;
-    const disabledIds = await this.readDisabledAgentIds();
-    const listDescriptors = () =>
-      createAgentRegistry()
-        .list()
-        .filter((descriptor) => !only || descriptor.id === only);
-    const enabledDescriptors = () =>
-      listDescriptors().filter((descriptor) => !disabledIds.has(descriptor.id));
-    const pathBefore = process.env.PATH;
-    let detectedEnabled = await this.agentInstallationProbes.detect(
-      enabledDescriptors(),
-    );
-    if (process.env.PATH !== pathBefore) {
-      await this.acpRegistry.refreshLocalClis();
-      detectedEnabled = await this.agentInstallationProbes.detect(
-        enabledDescriptors(),
-      );
-    }
-    this.state.recordAgentVersions(detectedEnabled);
-    const detectedById = new Map(
-      detectedEnabled.map((agent) => [agent.id, agent]),
-    );
-    return listDescriptors().map((descriptor): AgentDescriptor => {
-      if (disabledIds.has(descriptor.id)) {
-        const ownership = getAgentRuntimeOwnership(descriptor.id);
-        return {
-          ...descriptor,
-          enabled: false,
-          availability: "missing",
-          installation: {
-            executableName:
-              ownership.kind === "external" ? ownership.executableName : null,
-            executablePath: null,
-            version:
-              ownership.kind === "external"
-                ? (ownership.version ?? null)
-                : null,
-          },
-        };
-      }
-      const detected = detectedById.get(descriptor.id) ?? descriptor;
-      return { ...detected, enabled: true };
-    });
-  }
-
-  async listAgents(only?: AgentId) {
-    const agents = await this.detectAgents(only);
-    return this.discoverAgentCapabilities(agents);
-  }
-
-  async listAcpRegistryUpdates(options: { forceRefresh?: boolean } = {}) {
-    if (options.forceRefresh) {
-      this.agentInstallationProbes.invalidate();
-    }
-    const [updates, disabledIds] = await Promise.all([
-      this.acpRegistry.listUpdates(options),
-      this.readDisabledAgentIds(),
-    ]);
-    return updates.filter((update) => !disabledIds.has(update.agentId));
-  }
-
-  private discoverAgentCapabilities(agents: AgentDescriptor[]) {
-    return discoverInstalledAgentCapabilities(agents, {
-      cache: this.state.agentCapabilityCache,
-    });
-  }
-
-  installAcpRegistryAgent(registryId: string) {
-    return this.acpRegistry.install(registryId).then((agent) => {
-      this.agentInstallationProbes.invalidate();
-      resetAcpProviderModelsCache(agent.agentId);
-      return agent;
-    });
-  }
-
-  installAcpRegistryCommand(params: {
-    registryId: string;
-    command: string;
-    args: string[];
-  }) {
-    return this.acpRegistry
-      .installCommand(params.registryId, params.command, params.args)
-      .then((agent) => {
-        this.agentInstallationProbes.invalidate();
-        resetAcpProviderModelsCache(agent.agentId);
-        return agent;
-      });
-  }
-
-  async updateAcpRegistryAgent(agentId: AcpRegistryAgentId) {
-    const agent = await this.acpRegistry.update(agentId);
-    this.agentInstallationProbes.invalidate();
-    resetAcpProviderModelsCache(agent.agentId);
-    return agent;
-  }
-
-  async uninstallAcpRegistryAgent(agentId: AcpRegistryAgentId) {
-    await this.acpRegistry.uninstall(agentId);
-    const disabledIds = await this.readDisabledAgentIds();
-    if (disabledIds.delete(agentId)) {
-      await this.state.setAppSetting(
-        DISABLED_AGENTS_SETTING_KEY,
-        JSON.stringify([...disabledIds]),
-      );
-    }
-    this.agentInstallationProbes.invalidate();
-    resetAcpProviderModelsCache(agentId);
-    return null;
-  }
-
-  async readAgentSessionModes(agentId: AgentId) {
-    if (await this.isAgentDisabled(agentId)) {
-      return [];
-    }
-    const agents = await this.detectAgents(agentId);
-    return discoverAgentSessionModes(agents, {
-      agentId,
-      cache: this.state.agentCapabilityCache,
-    });
-  }
-
-  async readAdapterRateLimits(agentIds: AgentId[]) {
-    const disabledIds = await this.readDisabledAgentIds();
-    const enabledIds = agentIds.filter((id) => !disabledIds.has(id));
-    if (enabledIds.length === 0) {
-      return {};
-    }
-    return probeAdapterRateLimits(enabledIds);
-  }
-
   listSessionAttention() {
     return this.state.sessionAttention.list();
   }
@@ -1464,7 +1257,7 @@ export class CocurdexDaemonService {
     }
     const [sessions, disabledIds] = await Promise.all([
       this.state.listSessions(),
-      this.readDisabledAgentIds(),
+      this.agents.readDisabledAgentIds(),
     ]);
     return (
       sessions.find(
@@ -1481,7 +1274,7 @@ export class CocurdexDaemonService {
   ): Promise<AgentId | null> {
     const [sessions, disabledIds] = await Promise.all([
       this.state.listSessions(),
-      this.readDisabledAgentIds(),
+      this.agents.readDisabledAgentIds(),
     ]);
     return (
       sessions.find(
@@ -1508,7 +1301,7 @@ export class CocurdexDaemonService {
   }
 
   private async defaultAssistantAgentId(): Promise<AgentId> {
-    const agent = (await this.detectAgents()).find(
+    const agent = (await this.agents.detectAgents()).find(
       (item) => item.enabled !== false && item.availability === "available",
     );
     if (!agent) {
@@ -1769,9 +1562,11 @@ export class CocurdexDaemonService {
     const { workspaceId } = input;
     return {
       role,
-      agents: await this.detectAgents(input.agentType ?? role?.agentId),
+      agents: await this.agents.detectAgents(input.agentType ?? role?.agentId),
       discoverCapabilities: async (agent) => {
-        const [discovered] = await this.discoverAgentCapabilities([agent]);
+        const [discovered] = await this.agents.discoverAgentCapabilities([
+          agent,
+        ]);
         return discovered ?? agent;
       },
       workspaceSessions: sessions
@@ -1799,7 +1594,7 @@ export class CocurdexDaemonService {
   ) {
     const session = await this.state.getSession(input.sessionId);
     if (!session) throw new Error(`Session ${input.sessionId} was not found.`);
-    const agent = (await this.listAgents(session.agentType)).find(
+    const agent = (await this.agents.listAgents(session.agentType)).find(
       (candidate) => candidate.id === session.agentType,
     );
     const configuration = resolveRuntimeUpdate(session, input, {
@@ -1851,7 +1646,7 @@ export class CocurdexDaemonService {
   }
 
   private async configureSession(input: SessionConfiguration) {
-    await this.ensureAgentAvailable(input.agentType);
+    await this.agents.ensureAvailable(input.agentType);
     if (isChatWorkspaceId(input.workspaceId)) {
       await this.workspaces.ensureFormWorkspace(CHAT_WORKSPACE_ID, "Chat");
     }
@@ -2114,7 +1909,7 @@ export class CocurdexDaemonService {
       if (this.runs.hasActiveRun(sessionId)) {
         throw new Error("Stop the session before switching its agent");
       }
-      await this.ensureAgentAvailable(agentType);
+      await this.agents.ensureAvailable(agentType);
       const updated: SessionRecord = {
         ...session,
         agentType,
@@ -2230,7 +2025,7 @@ export class CocurdexDaemonService {
     agentType: AgentId,
     workspaceRootPath: string,
   ) {
-    if (await this.isAgentDisabled(agentType)) {
+    if (await this.agents.isAgentDisabled(agentType)) {
       return [];
     }
     return this.runtime.listSessionSlashCommands(agentType, workspaceRootPath);
@@ -2373,7 +2168,9 @@ export class CocurdexDaemonService {
       (await this.runCapacity.mustWait(payload.session));
 
     if (decision.kind === "steer") {
-      const agent = await this.ensureAgentAvailable(payload.session.agentType);
+      const agent = await this.agents.ensureAvailable(
+        payload.session.agentType,
+      );
       if (!agent.capabilities.supportsSteering) {
         throw new Error(
           `${agent.label} does not support steering active turns.`,
@@ -2393,7 +2190,7 @@ export class CocurdexDaemonService {
     }
 
     if (decision.kind === "queue" || heldForCapacity) {
-      await this.ensureAgentAvailable(payload.session.agentType);
+      await this.agents.ensureAvailable(payload.session.agentType);
       if (!hold) await this.queuedFollowUps.load(sessionId);
       payload = await this.refreshSessionWorkingPath(payload);
       const createdMessage = this.createUserMessage(payload);
@@ -2420,7 +2217,7 @@ export class CocurdexDaemonService {
       return userMessage;
     }
 
-    await this.ensureAgentAvailable(payload.session.agentType);
+    await this.agents.ensureAvailable(payload.session.agentType);
     payload = await this.refreshSessionWorkingPath(payload);
     const createdMessage = this.createUserMessage(payload);
     if (dequeued) {
@@ -2539,7 +2336,7 @@ export class CocurdexDaemonService {
     const { item, message: queuedMessage } =
       await this.queuedFollowUps.requireInput(sessionId, messageId);
 
-    const agent = await this.ensureAgentAvailable(
+    const agent = await this.agents.ensureAvailable(
       item.payload.session.agentType,
     );
     if (!agent.capabilities.supportsSteering) {
@@ -2705,23 +2502,6 @@ export class CocurdexDaemonService {
 
   resolvePermission(requestId: string, optionId: string) {
     return this.runtime.resolveAgentPermission(requestId, optionId);
-  }
-
-  private async ensureAgentAvailable(agentId: AgentId) {
-    const agents = await this.listAgents(agentId);
-    const agent = agents.find((item) => item.id === agentId);
-
-    if (agent?.enabled === false) {
-      throw new Error(`${agent.label} is disabled.`);
-    }
-
-    if (agent?.availability === "available") {
-      return agent;
-    }
-
-    throw new Error(
-      `${agent?.label ?? agentId} is not available on this machine.`,
-    );
   }
 
   resolveQuestion(questionId: string, answer: string) {
