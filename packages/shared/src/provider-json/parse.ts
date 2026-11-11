@@ -7,9 +7,9 @@ import type {
   ProviderConfigRecord,
   ProviderModelRecord,
 } from "../provider-contracts";
+import { DEFAULT_MODEL_CONTEXT_WINDOW } from "../provider-snapshot";
 
 const SUPPORTED_APIS = new Set<string>(providerApis);
-const DEFAULT_CONTEXT_WINDOW = 128_000;
 const DEFAULT_MAX_TOKENS = 16_384;
 
 export type ProviderImportWarningCode =
@@ -187,7 +187,7 @@ function parseModel(
     typeof modelDef.contextWindow === "number" &&
     Number.isFinite(modelDef.contextWindow)
       ? modelDef.contextWindow
-      : DEFAULT_CONTEXT_WINDOW;
+      : DEFAULT_MODEL_CONTEXT_WINDOW;
 
   const outputLimit =
     typeof modelDef.maxTokens === "number" &&
