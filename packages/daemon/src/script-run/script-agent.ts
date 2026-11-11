@@ -10,6 +10,7 @@ import {
 } from "@cocurdex/shared";
 import { AjvJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/ajv";
 import { Context, Effect, type Semaphore } from "effect";
+import { buildChildSession } from "../child-session";
 import type { SessionTurnOutcome } from "../session-control";
 
 export type ScriptRunAbortReason =
@@ -100,30 +101,16 @@ async function createAgentSession(
         ).path
       : (requester.worktreePath ?? null);
   const agentType = role?.agentId ?? requester.agentType;
-  const now = deps.now();
-  const session: SessionRecord = {
+  const session = buildChildSession({
     id,
-    workspaceId: requester.workspaceId,
+    parent: requester,
+    sessionKind: "subagent",
     title: label,
     agentType,
-    sessionKind: "subagent",
-    parentSessionId: requester.id,
-    parentToolCallId: null,
-    status: "idle",
-    writeMode: requester.writeMode,
-    sessionModeId: role?.sessionModeId ?? null,
-    permissionMode: role?.permissionMode ?? requester.permissionMode,
-    agentRoleId: role?.id ?? null,
-    providerSnapshot:
-      agentType === requester.agentType
-        ? (requester.providerSnapshot ?? null)
-        : null,
-    createdAt: now,
-    updatedAt: now,
-    lastMessageAt: null,
-    archivedAt: null,
+    role,
     worktreePath,
-  };
+    now: deps.now(),
+  });
   await deps.saveSession(session);
   return session;
 }

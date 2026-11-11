@@ -659,6 +659,7 @@ export class CocurdexDaemonService {
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
       hasActiveTurn: (sessionId) => this.runs.hasActiveRun(sessionId),
+      supportsSteering: (session) => this.agentSupportsSteering(session),
       stopSession: (sessionId) => this.stopSession(sessionId),
       broadcast: (event) => {
         this.events.emit("daemon.event", event);

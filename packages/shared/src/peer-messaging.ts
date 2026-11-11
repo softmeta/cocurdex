@@ -49,6 +49,30 @@ export function choosePeerDelivery(target: {
   return target.supportsSteering ? "steer-active-run" : "queue-after-run";
 }
 
+export type RequesterReportDelivery = PeerMessageDelivery | "hold";
+
+export type RequesterReportDecision =
+  | { kind: "skip" }
+  | { kind: "deliver"; delivery: RequesterReportDelivery };
+
+export function decideRequesterReport(input: {
+  dropped: boolean;
+  requesterArchived: boolean;
+  requesterHasActiveRun: boolean;
+  requesterSupportsSteering: boolean;
+  recovering: boolean;
+}): RequesterReportDecision {
+  if (input.dropped || input.requesterArchived) return { kind: "skip" };
+  if (input.recovering) return { kind: "deliver", delivery: "hold" };
+  return {
+    kind: "deliver",
+    delivery: choosePeerDelivery({
+      hasActiveTurn: input.requesterHasActiveRun,
+      supportsSteering: input.requesterSupportsSteering,
+    }),
+  };
+}
+
 export function renderPeerEnvelope(origin: PeerMessageOrigin, content: string) {
   return `[Message from session "${origin.sessionTitle}" (${origin.sessionId})]\n${content}`;
 }

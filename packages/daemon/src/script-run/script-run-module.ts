@@ -3,6 +3,7 @@ import type { ScriptRunRepository } from "@cocurdex/db";
 import {
   type CreateScriptRunPayload,
   clampScriptRunMaxAgents,
+  decideRequesterReport,
   isScriptRunTerminal,
   parseScriptRunSettings,
   renderScriptRunReport,
@@ -28,6 +29,7 @@ import {
   ManagedRuntime,
   Semaphore,
 } from "effect";
+import { logDaemonDiagnostic } from "../diagnostics";
 import {
   runScriptAgent,
   type ScriptAgentDeps,
@@ -64,6 +66,7 @@ export interface ScriptRunModuleDeps extends ScriptAgentDeps {
   repository: ScriptRunRepository;
   getSession(sessionId: string): Promise<SessionRecord | null>;
   hasActiveTurn(sessionId: string): boolean;
+  supportsSteering(session: SessionRecord): Promise<boolean>;
   getSetting(key: string): Promise<string | null>;
   setSetting(key: string, value: string): Promise<void>;
   broadcast(event: ScriptRunChangedEvent): void;
@@ -313,20 +316,34 @@ export class ScriptRunModule {
   }
 
   private async report(run: ScriptRunRecord) {
+    if (!isScriptRunTerminal(run.status)) return;
     const requester = await this.deps.getSession(run.requesterSessionId);
-    if (!requester || requester.archivedAt || !isScriptRunTerminal(run.status))
-      return;
-    await this.deps
-      .sendSessionMessage({
-        sessionId: requester.id,
+    const decision = decideRequesterReport({
+      dropped: false,
+      requesterArchived: !requester || Boolean(requester.archivedAt),
+      requesterHasActiveRun: this.deps.hasActiveTurn(run.requesterSessionId),
+      requesterSupportsSteering: requester
+        ? await this.deps.supportsSteering(requester)
+        : false,
+      recovering: false,
+    });
+    if (decision.kind === "skip") return;
+    try {
+      await this.deps.sendSessionMessage({
+        sessionId: run.requesterSessionId,
         messageId: crypto.randomUUID(),
         content: renderScriptRunReport(run),
-        delivery: this.deps.hasActiveTurn(requester.id)
-          ? "queue-after-run"
-          : "start-new-run",
+        delivery:
+          decision.delivery === "hold" ? "queue-after-run" : decision.delivery,
         origin: { kind: "scriptRun", runId: run.id, runName: run.name },
-      })
-      .catch(() => {});
+      });
+    } catch (error) {
+      logDaemonDiagnostic("warn", "scriptRun.reportFailed", {
+        runId: run.id,
+        requesterSessionId: run.requesterSessionId,
+        error,
+      });
+    }
   }
 
   private async requireRequester(sessionId: string) {

@@ -85,6 +85,7 @@ function harness(
     saveAgent: (agent) => repository.saveAgent(agent),
     getAgentRole: async () => null,
     hasActiveTurn: () => false,
+    supportsSteering: async () => true,
     getSetting: async () => JSON.stringify(settings),
     setSetting: async () => {},
     sendSessionMessage: async (command) => {

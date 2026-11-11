@@ -2,7 +2,6 @@ import {
   buildTeamRosterMembers,
   canSpawnTeammate,
   checkTeamTaskUpdate,
-  decideTeammateReport,
   normalizeTeamTemplateMembers,
   TEAM_MAX_MEMBERS,
   type TeamMemberRecord,
@@ -332,56 +331,5 @@ describe("teammateRunReport", () => {
     );
     expect(interrupted.outcome).toBe("interrupted");
     expect(interrupted.content).not.toBe("");
-  });
-});
-
-describe("decideTeammateReport", () => {
-  const base = {
-    memberStopped: false,
-    teamStopped: false,
-    leadArchived: false,
-    leadHasActiveRun: false,
-    leadSupportsSteering: true,
-    recovering: false,
-  };
-
-  it("starts a new lead run when the lead is idle", () => {
-    expect(decideTeammateReport(base)).toEqual({
-      kind: "deliver",
-      delivery: "start-new-run",
-    });
-  });
-
-  it("steers a running lead that supports steering and queues otherwise", () => {
-    expect(decideTeammateReport({ ...base, leadHasActiveRun: true })).toEqual({
-      kind: "deliver",
-      delivery: "steer-active-run",
-    });
-    expect(
-      decideTeammateReport({
-        ...base,
-        leadHasActiveRun: true,
-        leadSupportsSteering: false,
-      }),
-    ).toEqual({ kind: "deliver", delivery: "queue-after-run" });
-  });
-
-  it("holds reports recovered after a restart without waking the lead", () => {
-    expect(decideTeammateReport({ ...base, recovering: true })).toEqual({
-      kind: "deliver",
-      delivery: "hold",
-    });
-  });
-
-  it("drops reports from runs the team or member was stopped out of", () => {
-    expect(decideTeammateReport({ ...base, memberStopped: true })).toEqual({
-      kind: "skip",
-    });
-    expect(decideTeammateReport({ ...base, teamStopped: true })).toEqual({
-      kind: "skip",
-    });
-    expect(
-      decideTeammateReport({ ...base, leadArchived: true, recovering: true }),
-    ).toEqual({ kind: "skip" });
   });
 });

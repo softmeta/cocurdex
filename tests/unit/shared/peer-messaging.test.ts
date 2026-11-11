@@ -1,6 +1,7 @@
 import type { SessionRecord } from "@cocurdex/shared/internal/contracts";
 import {
   choosePeerDelivery,
+  decideRequesterReport,
   isPeerReachable,
   renderPeerEnvelope,
   stripPeerEnvelope,
@@ -97,5 +98,55 @@ describe("stripPeerEnvelope", () => {
 
   it("keeps content without an envelope", () => {
     expect(stripPeerEnvelope("[x] done\nnext")).toBe("[x] done\nnext");
+  });
+});
+
+describe("decideRequesterReport", () => {
+  const base = {
+    dropped: false,
+    requesterArchived: false,
+    requesterHasActiveRun: false,
+    requesterSupportsSteering: true,
+    recovering: false,
+  };
+
+  it("starts a new requester run when the requester is idle", () => {
+    expect(decideRequesterReport(base)).toEqual({
+      kind: "deliver",
+      delivery: "start-new-run",
+    });
+  });
+
+  it("steers a running requester that supports steering and queues otherwise", () => {
+    expect(
+      decideRequesterReport({ ...base, requesterHasActiveRun: true }),
+    ).toEqual({ kind: "deliver", delivery: "steer-active-run" });
+    expect(
+      decideRequesterReport({
+        ...base,
+        requesterHasActiveRun: true,
+        requesterSupportsSteering: false,
+      }),
+    ).toEqual({ kind: "deliver", delivery: "queue-after-run" });
+  });
+
+  it("holds reports recovered after a restart without waking the requester", () => {
+    expect(decideRequesterReport({ ...base, recovering: true })).toEqual({
+      kind: "deliver",
+      delivery: "hold",
+    });
+  });
+
+  it("drops reports of stopped work and reports to an archived requester", () => {
+    expect(decideRequesterReport({ ...base, dropped: true })).toEqual({
+      kind: "skip",
+    });
+    expect(
+      decideRequesterReport({
+        ...base,
+        requesterArchived: true,
+        recovering: true,
+      }),
+    ).toEqual({ kind: "skip" });
   });
 });

@@ -7,11 +7,12 @@ import {
   type CreateTeamPayload,
   canSpawnTeammate,
   checkTeamTaskUpdate,
-  decideTeammateReport,
+  decideRequesterReport,
   findRosterMember,
   type MessageRecord,
   normalizeAgentRoleAvatar,
   normalizeTeamTemplateMembers,
+  type RequesterReportDelivery,
   type RunRecord,
   renderTeammateBriefing,
   renderTeammateReport,
@@ -31,7 +32,6 @@ import {
   TEAM_TEMPLATES_SETTING_KEY,
   type TeamChangedEvent,
   type TeamMemberRecord,
-  type TeammateReportDelivery,
   type TeammateReportOutcome,
   type TeamRecord,
   type TeamRoster,
@@ -47,6 +47,7 @@ import {
   transitionTeamMember,
   validateSessionId,
 } from "@cocurdex/shared";
+import { buildChildSession } from "../child-session";
 
 export type TeamErrorCode =
   | SpawnTeammateRejection
@@ -79,7 +80,7 @@ export interface TeammateReportCommand {
   toSessionId: string;
   messageId: string;
   content: string;
-  delivery: TeammateReportDelivery;
+  delivery: RequesterReportDelivery;
 }
 
 export interface TeamModuleDependencies {
@@ -292,27 +293,16 @@ export class TeamModule {
             })
           ).path
         : null;
-    const session: SessionRecord = {
+    const session = buildChildSession({
       id: this.createId(),
-      workspaceId: lead.workspaceId,
+      parent: lead,
+      sessionKind: "teammate",
       title: payload.title?.trim() || payload.name,
       agentType,
-      sessionKind: "teammate",
-      parentSessionId: lead.id,
-      parentToolCallId: null,
-      status: "idle",
-      writeMode: lead.writeMode,
-      sessionModeId: role?.sessionModeId ?? null,
-      permissionMode: role?.permissionMode ?? lead.permissionMode,
-      agentRoleId: role?.id ?? null,
-      providerSnapshot:
-        agentType === lead.agentType ? (lead.providerSnapshot ?? null) : null,
-      createdAt: now,
-      updatedAt: now,
-      lastMessageAt: null,
-      archivedAt: null,
+      role,
       worktreePath,
-    };
+      now,
+    });
     await this.deps.saveSession(session);
     const member: TeamMemberRecord = {
       teamId: team.id,
@@ -715,12 +705,11 @@ export class TeamModule {
     const messageId = teammateReportMessageId(run.id);
     if (await this.deps.getMessage(messageId)) return;
     const lead = await this.deps.getSession(team.leadSessionId);
-    const decision = decideTeammateReport({
-      memberStopped: member.status === "stopped",
-      teamStopped: team.status === "stopped",
-      leadArchived: !lead || Boolean(lead.archivedAt),
-      leadHasActiveRun: this.deps.hasActiveRun(team.leadSessionId),
-      leadSupportsSteering: lead
+    const decision = decideRequesterReport({
+      dropped: member.status === "stopped" || team.status === "stopped",
+      requesterArchived: !lead || Boolean(lead.archivedAt),
+      requesterHasActiveRun: this.deps.hasActiveRun(team.leadSessionId),
+      requesterSupportsSteering: lead
         ? await this.deps.supportsSteering(lead)
         : false,
       recovering,

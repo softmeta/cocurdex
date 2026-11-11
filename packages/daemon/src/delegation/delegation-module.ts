@@ -8,7 +8,7 @@ import {
   type DelegatedWorkRecord,
   type DelegatedWorkState,
   type DelegationCatalog,
-  decideTeammateReport,
+  decideRequesterReport,
   delegatedWorkOutcome,
   delegatedWorkReportMessageId,
   isChatWorkspaceId,
@@ -298,12 +298,11 @@ export class DelegationModule {
       this.deps.getSession(row.requesterSessionId),
     ]);
     if (!work) return;
-    const decision = decideTeammateReport({
-      memberStopped: false,
-      teamStopped: false,
-      leadArchived: !home || Boolean(home.archivedAt),
-      leadHasActiveRun: this.deps.hasActiveRun(row.requesterSessionId),
-      leadSupportsSteering: home
+    const decision = decideRequesterReport({
+      dropped: false,
+      requesterArchived: !home || Boolean(home.archivedAt),
+      requesterHasActiveRun: this.deps.hasActiveRun(row.requesterSessionId),
+      requesterSupportsSteering: home
         ? await this.deps.supportsSteering(home)
         : false,
       recovering,
