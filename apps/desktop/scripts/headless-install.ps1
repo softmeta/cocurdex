@@ -51,9 +51,13 @@ try {
 
   $wasRunning = $false
   if (Test-Path $launcher) {
-    $stopResult = & $launcher daemon stop --json
-    if ($LASTEXITCODE -ne 0) {
-      throw 'cocurdex install: could not stop the running daemon; retry when it is idle'
+    # Windows PowerShell turns redirected native stderr into terminating errors under 'Stop'.
+    $ErrorActionPreference = 'Continue'
+    $stopResult = (& $launcher daemon stop --json 2>&1 | Out-String).Trim()
+    $stopExit = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($stopExit -ne 0) {
+      throw "cocurdex install: could not stop the running daemon; retry when it is idle`n$stopResult"
     }
     $wasRunning = "$stopResult" -match '"stopped"'
   }
