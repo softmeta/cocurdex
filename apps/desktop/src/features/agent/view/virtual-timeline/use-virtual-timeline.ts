@@ -131,6 +131,8 @@ export function useVirtualTimeline({
         groups.length - 1,
         lookup.byMessageId.get(targetId ?? "") ?? -1,
         lookup.byId.get(focusedId ?? "") ?? -1,
+        lookup.byId.get(pendingPrependRef.current?.position.anchorId ?? "") ??
+          -1,
       ];
       const start = lookup.byId.get(selectedIds?.[0] ?? "");
       const end = lookup.byId.get(selectedIds?.[1] ?? "");

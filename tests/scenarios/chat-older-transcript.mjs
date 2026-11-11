@@ -97,7 +97,7 @@ function nearTopAndWatch(anchorText) {
     active = false;
     return frames;
   };
-  viewport.scrollTop = Math.max(0, viewport.clientHeight / 2);
+  viewport.scrollTop = viewport.clientHeight;
   requestAnimationFrame(sample);
   return { scrollHeight: viewport.scrollHeight };
 }
@@ -149,7 +149,7 @@ runScenario("chat-older-transcript", {
       async ({ session }) => {
         await session.run(() => {
           const viewport = window.__olderViewport;
-          viewport.scrollTop = viewport.clientHeight * 2;
+          viewport.scrollTop = viewport.clientHeight * 1.5;
         });
         await session.run(waitForIdle);
         const anchor = await session.run(anchorRow);
