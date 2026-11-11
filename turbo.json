@@ -35,12 +35,34 @@
     "@cocurdex/e2e#test": {
       "dependsOn": ["^transit"],
       "outputs": [],
-      "inputs": ["$TURBO_DEFAULT$", "!desktop/**", "!vitest.desktop.config.ts"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!desktop/**",
+        "!vitest.desktop.config.ts",
+        "!headless/**",
+        "!vitest.headless.config.ts"
+      ]
     },
     "@cocurdex/e2e#test:desktop": {
       "dependsOn": ["^transit", "@cocurdex/desktop#build"],
       "cache": false,
       "inputs": ["desktop/**", "vitest.desktop.config.ts", "helpers/**"]
+    },
+    "@cocurdex/desktop#build:headless": {
+      "dependsOn": ["@cocurdex/desktop#build"],
+      "cache": false
+    },
+    "@cocurdex/e2e#test:headless": {
+      "dependsOn": ["^transit", "@cocurdex/desktop#build:headless"],
+      "cache": false,
+      "inputs": [
+        "headless/**",
+        "vitest.headless.config.ts",
+        "helpers/**",
+        "$TURBO_ROOT$/apps/desktop/scripts/build-headless.mjs",
+        "$TURBO_ROOT$/apps/desktop/scripts/build-cli.mjs",
+        "$TURBO_ROOT$/apps/desktop/scripts/pe-subsystem.mjs"
+      ]
     },
     "@cocurdex/unit-scripts#test": {
       "dependsOn": ["transit"],

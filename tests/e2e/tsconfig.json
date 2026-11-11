@@ -4,5 +4,5 @@
     "lib": ["ES2023"],
     "types": ["node"]
   },
-  "include": ["helpers", "*.ts"]
+  "include": ["helpers", "headless", "*.ts"]
 }

@@ -5,7 +5,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json",
-    "test:desktop": "vitest run --config vitest.desktop.config.ts"
+    "test:desktop": "vitest run --config vitest.desktop.config.ts",
+    "test:headless": "vitest run --config vitest.headless.config.ts"
   },
   "dependencies": {
     "@cocurdex/agent-adapters": "workspace:*",

@@ -3,7 +3,7 @@ import { configDefaults, defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     setupFiles: ["./helpers/setup.ts"],
-    exclude: [...configDefaults.exclude, "desktop/**"],
+    exclude: [...configDefaults.exclude, "desktop/**", "headless/**"],
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },
