@@ -103,6 +103,17 @@ function formatServiceTiers(model: ProviderModelRecord) {
   return model.serviceTiers.map((tier) => tier.name || tier.id).join(", ");
 }
 
+function modelsEmptyText(options: {
+  builtIn: boolean;
+  hasModels: boolean;
+  noMatches: string;
+  authenticateToLoad: string;
+  empty: string;
+}) {
+  if (options.hasModels) return options.noMatches;
+  return options.builtIn ? options.authenticateToLoad : options.empty;
+}
+
 interface ProviderModelsSectionProps {
   draftModel: ProviderModelRecord;
   draftProvider: ProviderConfigRecord;
@@ -146,6 +157,14 @@ export function ProviderModelsSection({
         first.modelId.localeCompare(second.modelId),
     );
 
+  const emptyText = modelsEmptyText({
+    builtIn,
+    hasModels: selectedModels.length > 0,
+    noMatches: t("providers.models.noMatches"),
+    authenticateToLoad: t("providers.models.authenticateToLoad"),
+    empty: t("providers.models.empty", { provider: draftProvider.name }),
+  });
+
   return (
     <div className="flex min-w-0 flex-col gap-4 py-4">
       <div className="flex items-center gap-2">
@@ -186,9 +205,7 @@ export function ProviderModelsSection({
       <div className="overflow-hidden rounded-control bg-muted">
         {visibleModels.length === 0 ? (
           <div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
-            {builtIn
-              ? t("providers.models.authenticateToLoad")
-              : t("providers.models.empty", { provider: draftProvider.name })}
+            {emptyText}
           </div>
         ) : (
           <Table
