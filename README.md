@@ -88,10 +88,14 @@ Markdown is an explicit import/export format, never a second writable store.
 | `apps/cli` | `cocurdex` CLI |
 | `packages/daemon` | Local daemon (owns SQLite and agent runtimes) |
 | `packages/rpc` | Desktop/CLI ↔ daemon contract (internal; no compatibility promise yet) |
-| `apps/api` | Team HTTP API (early; self-hosting comes later) |
+| `apps/mobile` | iOS and Android app |
+| `apps/web` | Web client, reached through the relay |
+| `services/relay` | Self-hostable relay that forwards end-to-end encrypted traffic |
+| `services/push` | Push gateway for approvals and alerts |
 
-The desktop works without `apps/api`. Team sync and a self-hosted control plane
-are planned; they will use the same source-available terms.
+The desktop works without the relay or the push gateway. Team sync and a
+self-hosted control plane are planned; they will use the same source-available
+terms.
 
 User-facing docs: [cocurdex.com/docs](https://cocurdex.com/docs/) (site source
 lives in the private `cocurdex-sites` repository).

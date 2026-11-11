@@ -49,7 +49,7 @@ pnpm --filter @cocurdex/desktop dev
 ```
 
 The desktop app starts the local daemon. The desktop does not require a Cocurdex
-cloud account or `apps/api`.
+cloud account, the relay, or the push gateway.
 
 After changing TypeScript, run typecheck on the touched packages and
 `pnpm exec biome check --write` on the changed files.

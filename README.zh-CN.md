@@ -80,9 +80,12 @@ pnpm --filter @cocurdex/desktop dev
 | `apps/cli` | `cocurdex` CLI |
 | `packages/daemon` | 本地守护进程（持有 SQLite 和智能体运行时） |
 | `packages/rpc` | 桌面端/CLI ↔ 守护进程的契约（内部接口，暂不承诺兼容性） |
-| `apps/api` | 团队 HTTP API（早期；自托管后续推出） |
+| `apps/mobile` | iOS 和 Android 应用 |
+| `apps/web` | Web 客户端，经由 relay 访问 |
+| `services/relay` | 可自托管的 relay，只转发端到端加密的流量 |
+| `services/push` | 审批和提醒的推送网关 |
 
-桌面端不依赖 `apps/api` 即可运行。团队同步和自托管控制面在规划中，
+桌面端不依赖 relay 或推送网关即可运行。团队同步和自托管控制面在规划中，
 将采用同样的源码可用条款。
 
 面向用户的文档见 [cocurdex.com/docs](https://cocurdex.com/docs/)（站点源码
