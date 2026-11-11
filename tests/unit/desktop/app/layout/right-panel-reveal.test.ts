@@ -54,16 +54,23 @@ describe("rightPanelResolvedActiveViewAtom reveal", () => {
     expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("editor");
   });
 
-  it("refuses repository surfaces in chat context and restores them in work", () => {
+  it("keeps chat to its own surfaces, reveals opened files, and restores work", () => {
     const store = createStore();
-    store.set(rightPanelResolvedActiveViewAtom, "git");
+    store.set(rightPanelResolvedActiveViewAtom, "editor");
     store.set(sidebarTabAtom, "chat");
-    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("editor");
-    store.set(rightPanelActiveViewAtom, "terminal");
-    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("editor");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("notes");
+    for (const view of ["terminal", "decks", "git"] as const) {
+      store.set(rightPanelActiveViewAtom, view);
+      expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("notes");
+    }
     store.set(rightPanelActiveViewAtom, "memory");
     expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("memory");
-    store.set(rightPanelActiveViewAtom, "git");
+    store.set(openFileAtom, "/chat/attachment.md");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("editor");
+    store.set(sidebarTabAtom, "workspaces");
+    expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("editor");
+    store.set(rightPanelResolvedActiveViewAtom, "git");
+    store.set(sidebarTabAtom, "chat");
     store.set(sidebarTabAtom, "workspaces");
     expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("git");
   });
