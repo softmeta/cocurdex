@@ -1,6 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
 import { createDecksSchemaSql } from "./decks/deck-schema";
-import { createDelegationsSchemaSql } from "./delegation/schema";
+import {
+  createDelegationsSchemaSql,
+  DELEGATION_REMOTE_COLUMNS,
+} from "./delegation/schema";
 import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
 import {
   ADD_HOST_DEVICE_APPROVED_AT_SQL,
@@ -34,7 +37,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 45;
+export const CURRENT_SCHEMA_VERSION = 46;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -461,6 +464,14 @@ function createDelegationsTable(database: DatabaseSync): void {
   database.exec(createDelegationsSchemaSql());
 }
 
+function addRemoteDelegations(database: DatabaseSync): void {
+  for (const [column, type] of DELEGATION_REMOTE_COLUMNS) {
+    if (!hasColumn(database, "delegations", column)) {
+      database.exec(`ALTER TABLE delegations ADD COLUMN ${column} ${type}`);
+    }
+  }
+}
+
 function createRoutinesTables(database: DatabaseSync): void {
   database.exec(createRoutinesSchemaSql());
 }
@@ -659,6 +670,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [42, createPushOutboxTable],
   [43, createDelegationsTable],
   [44, invalidateAntigravityContextUsage],
+  [45, addRemoteDelegations],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

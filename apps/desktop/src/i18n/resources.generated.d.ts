@@ -104,6 +104,7 @@ export default interface Resources {
     peerMessage: {
       from: "From session {{title}}";
       fromBrief: "Today's brief";
+      fromRemote: "From {{sender}} on {{host}}";
       fromRoutine: "From routine {{name}}";
       fromScriptRun: "From script {{name}}";
     };
@@ -1654,6 +1655,7 @@ export default interface Resources {
       description: "Coordinate work, keep context, and follow through.";
       failed: "Failed";
       host: "Runs on the connected host while its background service is online.";
+      hostOffline: "{{host}} is offline";
       idle: "Idle";
       interrupted: "Interrupted";
       manageConnections: "Connect applications";
@@ -1664,6 +1666,7 @@ export default interface Resources {
       paused: "Paused";
       pausedFailures: "Paused after failures";
       pickAssistant: "Select an assistant to see its work";
+      remoteWindowUnavailable: "Open Cocurdex on this computer's desktop app to see work on {{host}}.";
       resources: "Context and resources";
       results: "Recent results";
       retryAssistant: "Assistant could not load. Retry";
@@ -1671,6 +1674,8 @@ export default interface Resources {
       retryWork: "Work could not load. Retry";
       running: "Running";
       unscheduled: "No next run scheduled";
+      waitingForYou: "Waiting for you";
+      waitingOnHost: "Waiting for you on {{host}}";
       work: "Delegated work";
     };
     roster: {
@@ -2840,6 +2845,37 @@ export default interface Resources {
           title: "Port";
         };
         saveFailed: "Could not change remote access";
+      };
+      remotes: {
+        approveThere: "On {{name}}, open Settings > Devices and approve this computer when its safety code matches.";
+        description: "Computers this one can open and hand work to. Pair with a link created on the other computer.";
+        detail: "{{status}} · Safety code {{code}}";
+        empty: "No other computers paired yet.";
+        groupTitle: "Other computers";
+        link: "Pairing link";
+        linkPlaceholder: "Paste the pairing link from the other computer";
+        missingScopes: "To hand work to {{name}}, it must also allow: {{scopes}}.";
+        open: "Open";
+        openFailed: "Could not open the window";
+        openLabel: "Open {{name}} in a new window";
+        pair: "Pair";
+        pairDescription: "On the other computer, open Settings > Devices, pair a device with Start work allowed, and copy its link.";
+        pairFailed: "Could not pair with that computer";
+        pairOpen: "Pair a computer";
+        pairTitle: "Pair another computer";
+        pairedDescription: "Paired with {{name}}. Check that the safety code matches on both computers.";
+        remove: "Remove";
+        removeDescription: "This computer loses access to it, and work delegated there is no longer tracked here.";
+        removeFailed: "Could not remove the computer";
+        removeTitle: "Remove {{name}}?";
+        safetyCode: "Safety code";
+        status: {
+          connected: "Connected";
+          offline: "Offline";
+          pending: "Waiting for approval";
+          rejected: "Access removed";
+          unknown: "Checking";
+        };
       };
       scope: {
         approvals: {

@@ -37,6 +37,11 @@ export function useAppPersistence() {
     selectSession(null);
   });
 
+  const showRequestedRemoteSession = useEffectEvent(async () => {
+    const sessionId = await desktopApi.consumeRemoteHostSession();
+    if (sessionId) selectSession(sessionId);
+  });
+
   useMountEffect(() => {
     let cancelled = false;
 
@@ -80,6 +85,13 @@ export function useAppPersistence() {
           );
         }
 
+        await showRequestedRemoteSession().catch((error) => {
+          console.error(
+            "[AppPersistence] consumeRemoteHostSession failed",
+            error,
+          );
+        });
+
         setAppBootstrapped(true);
       })
       .catch((error) => {
@@ -95,6 +107,12 @@ export function useAppPersistence() {
   useMountEffect(() =>
     desktopApi.onOpenWorkspaceFromCli(({ rootPath }) => {
       activateWorkspaceFromPath(rootPath);
+    }),
+  );
+
+  useMountEffect(() =>
+    desktopApi.onRemoteHostSession(() => {
+      void showRequestedRemoteSession();
     }),
   );
 

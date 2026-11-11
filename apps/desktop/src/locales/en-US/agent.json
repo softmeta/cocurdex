@@ -102,6 +102,7 @@
   "peerMessage": {
     "from": "From session {{title}}",
     "fromBrief": "Today's brief",
+    "fromRemote": "From {{sender}} on {{host}}",
     "fromRoutine": "From routine {{name}}",
     "fromScriptRun": "From script {{name}}"
   },

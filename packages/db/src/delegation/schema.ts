@@ -5,10 +5,17 @@ export function createDelegationsSchemaSql(): string {
       persona_id TEXT NOT NULL,
       requester_session_id TEXT NOT NULL,
       team_template_id TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      remote_host_id TEXT,
+      remote_json TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_delegations_persona
       ON delegations(persona_id, created_at);
   `;
 }
+
+export const DELEGATION_REMOTE_COLUMNS = [
+  ["remote_host_id", "TEXT"],
+  ["remote_json", "TEXT"],
+] as const;

@@ -11,6 +11,7 @@ import type {
   DelegatedWorkRecord,
   DelegatedWorkTarget,
   DelegationCatalog,
+  DelegationCatalogQuery,
   DuplicatePersonalAgentPayload,
   GreetPersonalAgentPayload,
   InboxItem,
@@ -37,6 +38,11 @@ import type {
   MemoryUpdateInput,
   MessageRecord,
   PersonalAgentRecord,
+  RemoteWorkSendPayload,
+  RemoteWorkStarted,
+  RemoteWorkStartPayload,
+  RemoteWorkStatus,
+  RemoteWorkTarget,
   RoutineRecord,
   RoutineRunRecord,
   SaveAgentRolePayload,
@@ -134,11 +140,16 @@ export type AutomationRequests = {
   "personalAgent.update": UpdatePersonalAgentPayload;
   "personalAgent.duplicate": DuplicatePersonalAgentPayload;
   "personalAgent.delete": { id: string };
-  "personalAgent.work.catalog": undefined;
+  "personalAgent.work.catalog": DelegationCatalogQuery;
   "personalAgent.work.list": { personaId: string };
   "personalAgent.work.start": StartDelegatedWorkPayload;
   "personalAgent.work.send": SendDelegatedWorkPayload;
   "personalAgent.work.stop": DelegatedWorkTarget;
+  "delegation.remote.catalog": undefined;
+  "delegation.remote.start": RemoteWorkStartPayload;
+  "delegation.remote.status": { sessionIds: string[] };
+  "delegation.remote.send": RemoteWorkSendPayload;
+  "delegation.remote.stop": RemoteWorkTarget;
   "inbox.list": undefined;
   "inbox.read": { id: string };
   "inbox.brief": { timeZone?: string | null };
@@ -223,6 +234,11 @@ export type AutomationResults = {
   "personalAgent.work.start": DelegatedWorkRecord;
   "personalAgent.work.send": DelegatedWorkRecord;
   "personalAgent.work.stop": DelegatedWorkRecord;
+  "delegation.remote.catalog": DelegationCatalog;
+  "delegation.remote.start": RemoteWorkStarted;
+  "delegation.remote.status": RemoteWorkStatus[];
+  "delegation.remote.send": RemoteWorkStatus;
+  "delegation.remote.stop": RemoteWorkStatus;
   "inbox.list": InboxItem[];
   "inbox.read": null;
   "inbox.brief": Brief | null;

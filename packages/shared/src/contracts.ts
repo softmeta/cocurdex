@@ -296,6 +296,14 @@ export interface PeerMessageOrigin {
   sessionTitle: string;
 }
 
+export interface RemoteHostMessageOrigin {
+  kind: "remoteHost";
+  hostName: string;
+  senderName: string;
+  hostId?: string;
+  sessionId?: string;
+}
+
 export interface ScriptRunMessageOrigin {
   kind: "scriptRun";
   runId: string;
@@ -321,6 +329,7 @@ export interface GreetingMessageOrigin {
 
 export type MessageOrigin =
   | PeerMessageOrigin
+  | RemoteHostMessageOrigin
   | ScriptRunMessageOrigin
   | RoutineMessageOrigin
   | BriefMessageOrigin

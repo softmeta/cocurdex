@@ -2,6 +2,25 @@ import type { AgentId, RunStatus } from "./contracts";
 
 export type DelegatedWorkState = RunStatus | "idle" | "archived";
 
+export type DelegatedWorkWaitingFor = "permission" | "question" | "plan";
+
+export interface DelegatedWorkHost {
+  id: string;
+  name: string;
+  reachable: boolean;
+}
+
+export interface RemoteWorkSnapshot {
+  hostId: string;
+  hostName: string;
+  title: string;
+  workspaceId: string;
+  workspaceName: string;
+  agentType: AgentId;
+  agentRoleId: string | null;
+  worktreePath: string | null;
+}
+
 export interface DelegatedWorkRecord {
   sessionId: string;
   personaId: string;
@@ -13,11 +32,14 @@ export interface DelegatedWorkRecord {
   teamTemplateId: string | null;
   worktreePath: string | null;
   state: DelegatedWorkState;
+  waitingFor: DelegatedWorkWaitingFor | null;
+  host: DelegatedWorkHost | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface DelegationCatalog {
+  hosts?: { id: string; name: string; status: string }[];
   workspaces: { id: string; name: string; rootPaths: string[] }[];
   agentRoles: {
     id: string;
@@ -33,6 +55,10 @@ export interface DelegationCatalog {
   }[];
 }
 
+export interface DelegationCatalogQuery {
+  host?: string | null;
+}
+
 export interface StartDelegatedWorkPayload {
   personaId: string;
   workspace: string;
@@ -41,6 +67,40 @@ export interface StartDelegatedWorkPayload {
   agentRole?: string | null;
   teamTemplate?: string | null;
   isolateWorktree?: boolean;
+  host?: string | null;
+}
+
+export interface RemoteWorkStartPayload {
+  workspace: string;
+  prompt: string;
+  requesterName: string;
+  title?: string | null;
+  agentRole?: string | null;
+  isolateWorktree?: boolean;
+}
+
+export type RemoteWorkStarted = Omit<
+  RemoteWorkSnapshot,
+  "hostId" | "hostName"
+> & { sessionId: string };
+
+export interface RemoteWorkTarget {
+  sessionId: string;
+}
+
+export interface RemoteWorkSendPayload extends RemoteWorkTarget {
+  message: string;
+  requesterName: string;
+}
+
+export interface RemoteWorkStatus {
+  sessionId: string;
+  title: string;
+  state: DelegatedWorkState;
+  waitingFor: DelegatedWorkWaitingFor | null;
+  updatedAt: string;
+  latestRun: { id: string; status: RunStatus; error: string | null } | null;
+  reply: string | null;
 }
 
 export interface SendDelegatedWorkPayload {

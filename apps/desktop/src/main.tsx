@@ -5,9 +5,11 @@ import { TooltipProvider } from "@/components/ui";
 import { i18n } from "@/i18n";
 import {
   applyPlatformAttribute,
+  connectRemoteHostWindow,
   connectWebHostBridge,
   desktopApi,
   installWebHostBridge,
+  isRemoteHostWindow,
   listPairedHosts,
 } from "@/lib";
 
@@ -47,6 +49,7 @@ async function loadRoot(): Promise<ComponentType> {
     const { DeckAudienceApp } = await import("./features/decks/audience");
     return DeckAudienceApp;
   }
+  if (!webHostAccess && isRemoteHostWindow()) return loadRemoteHostWindow();
   if (webHostAccess?.kind !== "unlinked") return loadApp();
   const [pairedHost] = await listPairedHosts().catch(() => []);
   if (!pairedHost) {
@@ -54,12 +57,27 @@ async function loadRoot(): Promise<ComponentType> {
     return WebPairScreen;
   }
   connectWebHostBridge(pairedHost);
-  const { reachPairedHost, WebHostUnreachableScreen } = await import(
-    "./features/web-pair"
-  );
+  const { reachPairedHost, savedUnreachableHost, WebHostUnreachableScreen } =
+    await import("./features/web-pair");
   const [failure] = await Promise.all([reachPairedHost(), import("./app/App")]);
   if (!failure) return loadApp();
-  return () => <WebHostUnreachableScreen failure={failure} host={pairedHost} />;
+  const host = savedUnreachableHost(pairedHost);
+  return () => <WebHostUnreachableScreen failure={failure} host={host} />;
+}
+
+async function loadRemoteHostWindow(): Promise<ComponentType> {
+  const [remoteHost, { reachPairedHost, WebHostUnreachableScreen }] =
+    await Promise.all([
+      connectRemoteHostWindow(),
+      import("./features/web-pair"),
+    ]);
+  const failure = remoteHost ? await reachPairedHost() : "revoked";
+  if (!failure) return loadApp();
+  const host = {
+    name: remoteHost?.name ?? "",
+    safetyCode: remoteHost?.safetyCode ?? "",
+  };
+  return () => <WebHostUnreachableScreen failure={failure} host={host} />;
 }
 
 const rootElement = document.getElementById("root");

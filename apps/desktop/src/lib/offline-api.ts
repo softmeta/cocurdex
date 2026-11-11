@@ -12,6 +12,7 @@ export const offlineHostApi: HostApi = {
     localFilePaths: false,
     localDaemonControl: false,
     windowMaterial: false,
+    remoteHostWindows: false,
   },
   getAppUpdateState: async () => ({
     availableVersion: null,
@@ -98,4 +99,8 @@ export const offlineHostApi: HostApi = {
     externalDisplay: false,
   }),
   closePresentationWindow: async () => {},
+  openRemoteHostWindow: async () => {},
+  getRemoteHostWindow: async () => null,
+  consumeRemoteHostSession: async () => null,
+  onRemoteHostSession: () => () => {},
 };

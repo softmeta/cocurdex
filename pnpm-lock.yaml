@@ -790,6 +790,9 @@ importers:
       '@cocurdex/agent-core':
         specifier: workspace:*
         version: link:../agent-core
+      '@cocurdex/client-runtime':
+        specifier: workspace:*
+        version: link:../client-runtime
       '@cocurdex/db':
         specifier: workspace:*
         version: link:../db

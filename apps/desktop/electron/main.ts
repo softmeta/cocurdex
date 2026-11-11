@@ -78,6 +78,7 @@ import {
   migrateLegacyRendererStorage,
   registerAudienceWindowHandlers,
   registerChatWindowHandlers,
+  registerRemoteHostWindowHandlers,
   registerRendererProtocol,
   rendererPageUrl,
   rendererScheme,
@@ -591,6 +592,7 @@ app
       createPrimaryWindow: createWindow,
     });
     registerAudienceWindowHandlers(ipcMain, { preloadPath });
+    registerRemoteHostWindowHandlers(ipcMain, { preloadPath, rendererRootDir });
     startAppUpdater({
       currentVersion: app.getVersion(),
       packaged: app.isPackaged && buildPolicy.updates,

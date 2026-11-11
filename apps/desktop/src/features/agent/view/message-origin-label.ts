@@ -15,5 +15,11 @@ export function messageOriginLabel(
   if (origin.kind === "scriptRun") {
     return t("peerMessage.fromScriptRun", { name: origin.runName });
   }
+  if (origin.kind === "remoteHost") {
+    return t("peerMessage.fromRemote", {
+      sender: origin.senderName,
+      host: origin.hostName,
+    });
+  }
   return t("peerMessage.from", { title: origin.sessionTitle });
 }

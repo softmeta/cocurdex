@@ -2,7 +2,13 @@ import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { type CustomScheme, net, protocol, WebContentsView } from "electron";
+import {
+  type CustomScheme,
+  net,
+  protocol,
+  type Session,
+  WebContentsView,
+} from "electron";
 import {
   RENDERER_HOST,
   RENDERER_SCHEME,
@@ -24,8 +30,12 @@ export const rendererScheme: CustomScheme = {
   },
 };
 
-export function registerRendererProtocol(rootDir: string) {
-  protocol.handle(RENDERER_SCHEME, (request) => {
+export function registerRendererProtocol(
+  rootDir: string,
+  target: Pick<Session, "protocol"> = { protocol },
+) {
+  if (target.protocol.isProtocolHandled(RENDERER_SCHEME)) return;
+  target.protocol.handle(RENDERER_SCHEME, (request) => {
     const filePath = resolveRendererAssetPath(rootDir, request.url);
     if (!filePath) {
       return new Response(null, { status: 404 });

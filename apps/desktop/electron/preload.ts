@@ -7,6 +7,7 @@ import type {
   BrowserAnnotationEvent,
   BrowserViewBounds,
   HostBridge,
+  RemoteHostWindowRequest,
 } from "../src/lib/types";
 import { chatWindowApi } from "./window/chat-window-preload";
 import { WINDOW_MATERIAL_ARGUMENT } from "./window/window-material";
@@ -22,6 +23,7 @@ const hostBridge: HostBridge = {
     localFilePaths: true,
     localDaemonControl: true,
     windowMaterial: process.argv.includes(WINDOW_MATERIAL_ARGUMENT),
+    remoteHostWindows: true,
   },
   getAppUpdateState: () => ipcRenderer.invoke("app:update:getState"),
   checkForAppUpdate: () => ipcRenderer.invoke("app:update:check"),
@@ -162,6 +164,18 @@ const hostBridge: HostBridge = {
   getDaemonStatus: () => ipcRenderer.invoke("daemon:getStatus"),
   getDaemonConnection: () => ipcRenderer.invoke("daemon:connection"),
   restartDaemon: () => ipcRenderer.invoke("daemon:restart"),
+  openRemoteHostWindow: (request: RemoteHostWindowRequest) =>
+    ipcRenderer.invoke("remoteHost:openWindow", request),
+  getRemoteHostWindow: () => ipcRenderer.invoke("remoteHost:target"),
+  consumeRemoteHostSession: () =>
+    ipcRenderer.invoke("remoteHost:consumeSession"),
+  onRemoteHostSession: (listener: () => void) => {
+    const handler = () => listener();
+    ipcRenderer.on("remoteHost:session", handler);
+    return () => {
+      ipcRenderer.removeListener("remoteHost:session", handler);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld("desktopApi", hostBridge);

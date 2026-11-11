@@ -496,6 +496,37 @@
       },
       "saveFailed": "无法更改远程访问"
     },
+    "remotes": {
+      "approveThere": "在 {{name}} 上打开 设置 > 设备，确认安全码一致后批准这台电脑。",
+      "description": "这台电脑可以打开并派活的其他电脑。用另一台电脑生成的配对链接来配对。",
+      "detail": "{{status}} · 安全码 {{code}}",
+      "empty": "还没有配对其他电脑。",
+      "groupTitle": "其他电脑",
+      "link": "配对链接",
+      "linkPlaceholder": "粘贴另一台电脑上的配对链接",
+      "missingScopes": "要把工作交给 {{name}}，它还需要允许：{{scopes}}。",
+      "open": "打开",
+      "openFailed": "无法打开窗口",
+      "openLabel": "在新窗口中打开 {{name}}",
+      "pair": "配对",
+      "pairDescription": "在另一台电脑上打开 设置 > 设备，配对设备时勾选“启动任务”，然后复制配对链接。",
+      "pairedDescription": "已与 {{name}} 配对。请确认两台电脑上的安全码一致。",
+      "pairFailed": "无法与该电脑配对",
+      "pairOpen": "配对电脑",
+      "pairTitle": "配对另一台电脑",
+      "remove": "移除",
+      "removeDescription": "这台电脑将失去对它的访问，派到那里的工作也不再在这里跟踪。",
+      "removeFailed": "无法移除该电脑",
+      "removeTitle": "移除 {{name}}？",
+      "safetyCode": "安全码",
+      "status": {
+        "connected": "已连接",
+        "offline": "离线",
+        "pending": "等待批准",
+        "rejected": "访问已撤销",
+        "unknown": "检查中"
+      }
+    },
     "scope": {
       "approvals": {
         "description": "处理权限请求、问题和计划审批。",

@@ -123,6 +123,8 @@ import type {
   RefineSessionTitlePayload,
   RelaySettingsUpdate,
   RemoteAccessSettingsUpdate,
+  RemoteHostEndpoint,
+  RemoteHostRecord,
   RendererLogPayload,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
@@ -317,6 +319,7 @@ export interface HostCapabilities {
   localFilePaths: boolean;
   localDaemonControl: boolean;
   windowMaterial: boolean;
+  remoteHostWindows: boolean;
   scopes?: readonly HostAccessScope[];
 }
 
@@ -823,6 +826,20 @@ export interface HostApi {
     channel: string;
   }): Promise<PresentationWindowResult>;
   closePresentationWindow(request: { channel: string }): Promise<void>;
+  openRemoteHostWindow(request: RemoteHostWindowRequest): Promise<void>;
+  getRemoteHostWindow(): Promise<RemoteHostWindowTarget | null>;
+  consumeRemoteHostSession(): Promise<string | null>;
+  onRemoteHostSession(listener: () => void): () => void;
+}
+
+export interface RemoteHostWindowRequest {
+  hostId: string;
+  sessionId?: string;
+}
+
+export interface RemoteHostWindowTarget {
+  host: RemoteHostRecord;
+  endpoint: RemoteHostEndpoint;
 }
 
 export interface PresentationWindowResult {

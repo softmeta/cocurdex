@@ -1,6 +1,7 @@
 import type {
   CreatedHostPairing,
   CreateHostPairingPayload,
+  DelegationCatalog,
   DevicePushRegistrationResult,
   HostAccessAuditEntry,
   HostAccessScope,
@@ -17,6 +18,10 @@ import type {
   PushSettingsUpdate,
   RelaySettingsUpdate,
   RemoteAccessSettingsUpdate,
+  RemoteHostEndpoint,
+  RemoteHostPairing,
+  RemoteHostPairPayload,
+  RemoteHostRecord,
 } from "@cocurdex/shared";
 
 export type HostRequests = {
@@ -40,6 +45,11 @@ export type HostRequests = {
   "host.push.set": PushSettingsUpdate;
   "host.push.register": PushRegistration;
   "host.push.unregister": undefined;
+  "host.remotes.list": undefined;
+  "host.remotes.pair": RemoteHostPairPayload;
+  "host.remotes.remove": { hostId: string };
+  "host.remotes.endpoint": { hostId: string };
+  "host.remotes.workspaces": { hostId: string };
 };
 
 export type HostResults = {
@@ -63,4 +73,9 @@ export type HostResults = {
   "host.push.set": HostPushStatus;
   "host.push.register": DevicePushRegistrationResult;
   "host.push.unregister": DevicePushRegistrationResult;
+  "host.remotes.list": RemoteHostRecord[];
+  "host.remotes.pair": RemoteHostPairing;
+  "host.remotes.remove": boolean;
+  "host.remotes.endpoint": RemoteHostEndpoint;
+  "host.remotes.workspaces": DelegationCatalog;
 };

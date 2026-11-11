@@ -34,6 +34,12 @@ export {
   useScrollIntoViewWhenActive,
 } from "./react-hooks";
 export {
+  connectRemoteHostWindow,
+  hasChatWindows,
+  isRemoteHostWindow,
+  remoteWindowHost,
+} from "./remote-host-window";
+export {
   onSessionStreamResumed,
   watchSessionStream,
 } from "./session-stream";

@@ -1,6 +1,7 @@
 import {
   type MessageOrigin,
   type MessageRecord,
+  type RemoteHostMessageOrigin,
   stripPeerEnvelope,
 } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -8,13 +9,16 @@ import {
   AlarmClock,
   ArrowUpRight,
   Bot,
+  Laptop,
   Newspaper,
   Workflow,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { CollapsibleUserMessageBody, MarkdownRenderer } from "@/components";
 import { Avatar, AvatarFallback } from "@/components/ui";
 import { selectSessionAtom, sessionsAtom } from "@/features/sessions";
+import { desktopApi } from "@/lib";
 import { messageOriginLabel } from "./message-origin-label";
 
 const ORIGIN_ICONS = {
@@ -23,6 +27,7 @@ const ORIGIN_ICONS = {
   routine: AlarmClock,
   brief: Newspaper,
   greeting: Bot,
+  remoteHost: Laptop,
 } satisfies Record<MessageOrigin["kind"], unknown>;
 
 function PeerOriginAvatar({ origin }: { origin: MessageOrigin }) {
@@ -45,6 +50,10 @@ function PeerOriginHeader({
 }) {
   const { t } = useTranslation("agent");
   const selectSession = useSetAtom(selectSessionAtom);
+
+  if (origin.kind === "remoteHost") {
+    return <RemoteOriginHeader origin={origin} />;
+  }
 
   if (origin.kind !== "peer") {
     return (
@@ -69,6 +78,38 @@ function PeerOriginHeader({
       <span className="min-w-0 truncate">
         {fromLead ? t("team.lead") : origin.sessionTitle}
       </span>
+      <ArrowUpRight className="size-3.5 shrink-0 opacity-0 transition-opacity group-hover/peer:opacity-100" />
+    </button>
+  );
+}
+
+function RemoteOriginHeader({ origin }: { origin: RemoteHostMessageOrigin }) {
+  const { t } = useTranslation("agent");
+  const label = messageOriginLabel(t, origin);
+  const { hostId, sessionId } = origin;
+  if (!hostId || !desktopApi.capabilities.remoteHostWindows) {
+    return (
+      <div className="flex max-w-full flex-row-reverse items-center gap-2 text-meta text-chat-fg-muted">
+        <PeerOriginAvatar origin={origin} />
+        <span className="min-w-0 truncate">{label}</span>
+      </div>
+    );
+  }
+  const open = () =>
+    void desktopApi
+      .openRemoteHostWindow({ hostId, sessionId })
+      .catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : String(error)),
+      );
+  return (
+    <button
+      aria-label={label ?? undefined}
+      className="group/peer flex max-w-full flex-row-reverse items-center gap-2 rounded-dense text-meta text-chat-fg-muted hover:text-chat-fg"
+      onClick={open}
+      type="button"
+    >
+      <PeerOriginAvatar origin={origin} />
+      <span className="min-w-0 truncate">{label}</span>
       <ArrowUpRight className="size-3.5 shrink-0 opacity-0 transition-opacity group-hover/peer:opacity-100" />
     </button>
   );

@@ -68,7 +68,7 @@ function createHostKeyFile(): HostKeyFile {
   };
 }
 
-function writePrivateFile(filePath: string, contents: string) {
+export function writePrivateFile(filePath: string, contents: string) {
   const temporary = `${filePath}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, contents, { encoding: "utf8", mode: 0o600 });
   fs.chmodSync(temporary, 0o600);

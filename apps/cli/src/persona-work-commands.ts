@@ -12,14 +12,14 @@ import { findPersonaByRef } from "./persona-commands";
 
 const LIST_USAGE = "cocurdex persona work list <persona> [--json]";
 const START_USAGE =
-  "cocurdex persona work start <persona> --workspace <id|name> --prompt <text>|--prompt-file <path> [--title <title>] [--role <role>|--team <template>] [--worktree] [--json]";
+  "cocurdex persona work start <persona> --workspace <id|name> --prompt <text>|--prompt-file <path> [--title <title>] [--role <role>|--team <template>] [--worktree] [--host <paired computer>] [--json]";
 const SEND_USAGE =
   "cocurdex persona work send <persona> <session-id> <message> [--json]";
 const STOP_USAGE = "cocurdex persona work stop <persona> <session-id> [--json]";
 
 export function personaWorkUsageLines() {
   return [
-    "  cocurdex persona work catalog [--json]",
+    "  cocurdex persona work catalog [--host <paired computer>] [--json]",
     `  ${LIST_USAGE}`,
     `  ${START_USAGE}`,
     `  ${SEND_USAGE}`,
@@ -50,7 +50,11 @@ export async function handlePersonaWorkCommand(
   const [action, personaRef, ...rest] = args;
   if (action === "catalog") {
     printResult(
-      await withDaemon(() => requestDaemon("personalAgent.work.catalog")),
+      await withDaemon(() =>
+        requestDaemon("personalAgent.work.catalog", {
+          host: stringFlag(parsed, "host") ?? null,
+        }),
+      ),
       parsed,
     );
     return;
@@ -61,9 +65,25 @@ export async function handlePersonaWorkCommand(
         personaId: await personaId(personaRef, LIST_USAGE),
       }),
     );
+    if (parsed.flags.has("json")) {
+      printResult(works, parsed);
+      return;
+    }
     printRows(
-      works,
-      ["sessionId", "title", "workspaceName", "agentType", "state"],
+      works.map((work) => ({
+        ...work,
+        host: work.host?.name ?? "",
+        waitingFor: work.waitingFor ?? "",
+      })),
+      [
+        "sessionId",
+        "title",
+        "host",
+        "workspaceName",
+        "agentType",
+        "state",
+        "waitingFor",
+      ],
       parsed,
     );
     return;
@@ -79,6 +99,7 @@ export async function handlePersonaWorkCommand(
         agentRole: stringFlag(parsed, "role") ?? null,
         teamTemplate: stringFlag(parsed, "team") ?? null,
         isolateWorktree: parsed.flags.get("worktree") === true,
+        host: stringFlag(parsed, "host") ?? null,
       }),
     );
     printResult(work, parsed);

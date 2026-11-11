@@ -171,6 +171,14 @@ function validateMessageOrigin(value: unknown) {
     text(value.routineName, "origin routine name", 4096, true);
     return;
   }
+  if (value.kind === "remoteHost") {
+    keys(value, ["kind", "hostName", "senderName", "hostId", "sessionId"]);
+    text(value.hostName, "origin host name", 4096, true);
+    text(value.senderName, "origin sender name", 4096, true);
+    if (value.hostId !== undefined) validateRecordId(value.hostId, "host ID");
+    if (value.sessionId !== undefined) validateSessionId(value.sessionId);
+    return;
+  }
   keys(value, ["kind", "sessionId", "sessionTitle"]);
   if (value.kind !== "peer") throw new Error("Invalid message origin");
   validateSessionId(value.sessionId);

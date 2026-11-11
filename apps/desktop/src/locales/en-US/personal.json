@@ -117,6 +117,7 @@
     "description": "Coordinate work, keep context, and follow through.",
     "failed": "Failed",
     "host": "Runs on the connected host while its background service is online.",
+    "hostOffline": "{{host}} is offline",
     "idle": "Idle",
     "interrupted": "Interrupted",
     "manageConnections": "Connect applications",
@@ -127,6 +128,7 @@
     "paused": "Paused",
     "pausedFailures": "Paused after failures",
     "pickAssistant": "Select an assistant to see its work",
+    "remoteWindowUnavailable": "Open Cocurdex on this computer's desktop app to see work on {{host}}.",
     "resources": "Context and resources",
     "results": "Recent results",
     "retryAssistant": "Assistant could not load. Retry",
@@ -134,6 +136,8 @@
     "retryWork": "Work could not load. Retry",
     "running": "Running",
     "unscheduled": "No next run scheduled",
+    "waitingForYou": "Waiting for you",
+    "waitingOnHost": "Waiting for you on {{host}}",
     "work": "Delegated work"
   },
   "roster": {

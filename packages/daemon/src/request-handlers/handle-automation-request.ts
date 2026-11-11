@@ -10,6 +10,7 @@ import { assertLocalPrincipal } from "./principal-guards";
 const AUTOMATION_PREFIXES = [
   "agentRole.",
   "application.",
+  "delegation.",
   "inbox.",
   "memory.",
   "personalAgent.",
@@ -38,6 +39,24 @@ function isMemoryRequest(
   request: DaemonRequest<AutomationMethod>,
 ): request is DaemonRequest<MemoryMethod> {
   return request.method.startsWith("memory.");
+}
+
+function remoteSender(
+  service: CocurdexDaemonService,
+  context: DaemonRequestContext,
+  requesterName: string,
+) {
+  const { principal } = context;
+  const device =
+    principal.kind === "device"
+      ? service.hostAccess
+          .listDevices()
+          .find((candidate) => candidate.id === principal.deviceId)
+      : null;
+  return {
+    hostName: device?.label ?? service.hostAccess.identity().name,
+    senderName: requesterName.trim() || "Assistant",
+  };
 }
 
 export async function handleAutomationRequest(
@@ -159,7 +178,7 @@ export async function handleAutomationRequest(
       await service.personalAgents.delete(request.params.id);
       return null;
     case "personalAgent.work.catalog":
-      return service.delegations.catalog();
+      return service.delegations.catalog(request.params);
     case "personalAgent.work.list":
       return service.delegations.list(request.params.personaId);
     case "personalAgent.work.start":
@@ -168,6 +187,22 @@ export async function handleAutomationRequest(
       return service.delegations.send(request.params);
     case "personalAgent.work.stop":
       return service.delegations.stop(request.params);
+    case "delegation.remote.catalog":
+      return service.remoteWork.catalog();
+    case "delegation.remote.start":
+      return service.remoteWork.start(
+        request.params,
+        remoteSender(service, context, request.params.requesterName),
+      );
+    case "delegation.remote.status":
+      return service.remoteWork.status(request.params.sessionIds);
+    case "delegation.remote.send":
+      return service.remoteWork.send(
+        request.params,
+        remoteSender(service, context, request.params.requesterName),
+      );
+    case "delegation.remote.stop":
+      return service.remoteWork.stop(request.params);
     case "inbox.list":
       return service.inbox.list();
     case "inbox.brief":

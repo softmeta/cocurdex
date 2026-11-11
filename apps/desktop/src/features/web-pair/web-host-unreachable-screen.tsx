@@ -1,14 +1,18 @@
-import { type SavedHost, savedHostSafetyCode } from "@cocurdex/client-runtime";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";
 import { Button, Text } from "@/components/ui";
-import { removePairedHost } from "@/lib";
 import type { PairedHostFailure } from "./paired-host-reach";
 import { useApprovalPoll } from "./use-approval-poll";
 
+export interface UnreachableHost {
+  name: string;
+  safetyCode: string;
+  forget?: () => Promise<void>;
+}
+
 interface WebHostUnreachableScreenProps {
-  host: SavedHost;
+  host: UnreachableHost;
   failure: PairedHostFailure;
 }
 
@@ -24,10 +28,9 @@ export function WebHostUnreachableScreen({
   return <WebHostFailureScreen failure={failure} host={host} />;
 }
 
-function WebHostPendingScreen({ host }: { host: SavedHost }) {
+function WebHostPendingScreen({ host }: { host: UnreachableHost }) {
   const { t } = useTranslation();
   useApprovalPoll(reloadPage);
-  const code = savedHostSafetyCode(host);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-app px-4 text-app-foreground">
@@ -50,22 +53,24 @@ function WebHostPendingScreen({ host }: { host: SavedHost }) {
           size="display"
           weight="medium"
         >
-          {code}
+          {host.safetyCode}
         </Text>
         <Text size="meta" tone="muted">
           {t("webHostPending.waiting")}
         </Text>
-        <ForgetHostButton host={host} variant="outline" />
+        {host.forget ? (
+          <ForgetHostButton forget={host.forget} variant="outline" />
+        ) : null}
       </div>
     </main>
   );
 }
 
 function ForgetHostButton({
-  host,
+  forget: forgetHost,
   variant,
 }: {
-  host: SavedHost;
+  forget: () => Promise<void>;
   variant: "default" | "outline";
 }) {
   const { t } = useTranslation();
@@ -76,7 +81,7 @@ function ForgetHostButton({
     setForgetting(true);
     setForgetFailed(false);
     try {
-      await removePairedHost(host.hostId);
+      await forgetHost();
       window.location.reload();
     } catch {
       setForgetFailed(true);
@@ -106,7 +111,7 @@ function WebHostFailureScreen({
   host,
   failure,
 }: {
-  host: SavedHost;
+  host: UnreachableHost;
   failure: Exclude<PairedHostFailure, "pending">;
 }) {
   const { t } = useTranslation();
@@ -136,10 +141,12 @@ function WebHostFailureScreen({
               {t("webHostUnreachable.retry")}
             </Button>
           )}
-          <ForgetHostButton
-            host={host}
-            variant={failure === "revoked" ? "default" : "outline"}
-          />
+          {host.forget ? (
+            <ForgetHostButton
+              forget={host.forget}
+              variant={failure === "revoked" ? "default" : "outline"}
+            />
+          ) : null}
         </div>
       </div>
     </main>

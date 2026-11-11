@@ -502,6 +502,37 @@
       },
       "saveFailed": "Could not change remote access"
     },
+    "remotes": {
+      "approveThere": "On {{name}}, open Settings > Devices and approve this computer when its safety code matches.",
+      "description": "Computers this one can open and hand work to. Pair with a link created on the other computer.",
+      "detail": "{{status}} · Safety code {{code}}",
+      "empty": "No other computers paired yet.",
+      "groupTitle": "Other computers",
+      "link": "Pairing link",
+      "linkPlaceholder": "Paste the pairing link from the other computer",
+      "missingScopes": "To hand work to {{name}}, it must also allow: {{scopes}}.",
+      "open": "Open",
+      "openFailed": "Could not open the window",
+      "openLabel": "Open {{name}} in a new window",
+      "pair": "Pair",
+      "pairDescription": "On the other computer, open Settings > Devices, pair a device with Start work allowed, and copy its link.",
+      "pairedDescription": "Paired with {{name}}. Check that the safety code matches on both computers.",
+      "pairFailed": "Could not pair with that computer",
+      "pairOpen": "Pair a computer",
+      "pairTitle": "Pair another computer",
+      "remove": "Remove",
+      "removeDescription": "This computer loses access to it, and work delegated there is no longer tracked here.",
+      "removeFailed": "Could not remove the computer",
+      "removeTitle": "Remove {{name}}?",
+      "safetyCode": "Safety code",
+      "status": {
+        "connected": "Connected",
+        "offline": "Offline",
+        "pending": "Waiting for approval",
+        "rejected": "Access removed",
+        "unknown": "Checking"
+      }
+    },
     "scope": {
       "approvals": {
         "description": "Answer permission requests, questions, and plan approvals.",

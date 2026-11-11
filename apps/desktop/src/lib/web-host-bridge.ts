@@ -161,6 +161,7 @@ export function webHostCapabilities(access: WebHostAccess): HostCapabilities {
     localFilePaths: false,
     localDaemonControl: false,
     windowMaterial: false,
+    remoteHostWindows: false,
     scopes,
   };
 }

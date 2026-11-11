@@ -115,6 +115,7 @@
     "description": "协调工作、保留上下文并跟进结果。",
     "failed": "失败",
     "host": "由当前连接的主机执行，需要其后台服务在线。",
+    "hostOffline": "{{host}} 离线",
     "idle": "空闲",
     "interrupted": "已中断",
     "manageConnections": "连接应用",
@@ -125,6 +126,7 @@
     "paused": "已暂停",
     "pausedFailures": "因连续失败已暂停",
     "pickAssistant": "选择助理以查看其工作",
+    "remoteWindowUnavailable": "请在这台电脑的桌面应用中查看 {{host}} 上的工作。",
     "resources": "上下文与资料",
     "results": "最近结果",
     "retryAssistant": "助理加载失败，重试",
@@ -132,6 +134,8 @@
     "retryWork": "工作加载失败，重试",
     "running": "执行中",
     "unscheduled": "暂无下次运行时间",
+    "waitingForYou": "等你确认",
+    "waitingOnHost": "在 {{host}} 等你确认",
     "work": "委派工作"
   },
   "roster": {
