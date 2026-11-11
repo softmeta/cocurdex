@@ -37,7 +37,6 @@ export interface AnchoredMenuItem {
 }
 
 export interface AnchoredMenuRequest {
-  title?: string | null;
   preferredWidth?: number;
   items: readonly AnchoredMenuItem[];
 }
@@ -176,14 +175,6 @@ function MenuPanel({
       ]}
       testID={testID}
     >
-      {request.title ? (
-        <Text
-          numberOfLines={2}
-          style={[styles.title, { color: colors.mutedForeground }]}
-        >
-          {request.title}
-        </Text>
-      ) : null}
       {request.items.map((item, index) => {
         const previous = request.items[index - 1];
         const divided = previous !== undefined && previous.group !== item.group;
@@ -292,13 +283,6 @@ const styles = StyleSheet.create({
     paddingVertical: space.xs,
   },
   measuring: { opacity: 0 },
-  title: {
-    fontSize: 13,
-    lineHeight: 18,
-    paddingHorizontal: space.lg,
-    paddingTop: space.sm,
-    paddingBottom: space.xs,
-  },
   row: {
     minHeight: 44,
     flexDirection: "row",

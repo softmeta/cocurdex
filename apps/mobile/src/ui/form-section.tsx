@@ -25,17 +25,11 @@ function SectionFooter({ footer }: { footer: ReactNode }) {
   );
 }
 
-export function FormSection({
-  title,
-  header,
-  footer,
-  children,
-}: FormSectionProps) {
+export function FormSection({ title, footer, children }: FormSectionProps) {
   const hasRows = Children.toArray(children).length > 0;
   return (
     <View>
-      {header ? <View style={styles.header}>{header}</View> : null}
-      {title && !header ? <SectionTitle title={title} /> : null}
+      {title ? <SectionTitle title={title} /> : null}
       {hasRows ? (
         <View style={styles.group}>
           <View style={styles.rows}>{children}</View>
@@ -47,10 +41,6 @@ export function FormSection({
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: formMetrics.pagePadding,
-    paddingBottom: formMetrics.titleGap,
-  },
   title: {
     fontSize: formMetrics.titleSize,
     lineHeight: formMetrics.titleLineHeight,

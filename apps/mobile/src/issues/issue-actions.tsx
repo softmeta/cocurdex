@@ -89,7 +89,6 @@ export function useIssueActions(host: SavedHost) {
 
   const openStatus = (issue: IssueRecord, anchor: MenuAnchor) =>
     menu.open(anchor, {
-      title: t("field.status"),
       items: (view.data?.statusOptions ?? []).map((status) => ({
         key: status.id,
         label: status.title,
@@ -106,7 +105,6 @@ export function useIssueActions(host: SavedHost) {
 
   const openPriority = (issue: IssueRecord, anchor: MenuAnchor) =>
     menu.open(anchor, {
-      title: t("field.priority"),
       items: (view.data?.priorityOptions ?? []).map((priority) => ({
         key: priority.id,
         label: priority.title,

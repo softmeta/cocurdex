@@ -113,9 +113,11 @@ export function useIssueFieldChips({
 
   const pick = async (field: IssueField, chip: HostInstance | null) => {
     await beforePick();
-    const request = { title: titles[field], items: choiceItems(field) };
-    if (choices[field].length > MENU_LIMIT) return openSheet(request);
-    measureAnchor(chip, (anchor) => menu.open(anchor, request));
+    const items = choiceItems(field);
+    if (choices[field].length > MENU_LIMIT) {
+      return openSheet({ title: titles[field], items });
+    }
+    measureAnchor(chip, (anchor) => menu.open(anchor, { items }));
   };
 
   const chipMarkOf = (field: IssueField) =>
