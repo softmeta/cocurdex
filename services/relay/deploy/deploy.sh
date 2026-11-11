@@ -115,7 +115,6 @@ deploy() {
   tar -xzf "$incoming/$package_name.tar.gz" -C "$incoming" --no-same-owner
   package="$incoming/$package_name"
   [ -x "$package/cocurdex-relay" ] || fail "package has no cocurdex-relay binary"
-  [ -d "$package/web" ] || fail "package has no web directory"
   rm -rf -- "${ROOT:?}/$version"
   chown -R root:root "$package"
   mv -T "$package" "$ROOT/$version"

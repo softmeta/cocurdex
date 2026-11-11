@@ -33,6 +33,8 @@ function facts(overrides: {
   latestCommit?: string;
   appPending?: Change[];
   relayPending?: Change[];
+  webLast?: string | null;
+  webPending?: Change[];
   missingAtStable?: string[];
   missingAtBeta?: string[];
   pushLast?: string | null;
@@ -59,6 +61,10 @@ function facts(overrides: {
     relay: {
       last: "relay-v0.2.2",
       pending: overrides.relayPending ?? [],
+    },
+    web: {
+      last: overrides.webLast === undefined ? "web-v0.1.0" : overrides.webLast,
+      pending: overrides.webPending ?? [],
       missingMethodsAt: {
         [STABLE_COMMIT]: overrides.missingAtStable ?? [],
         [BETA_COMMIT]: overrides.missingAtBeta ?? [],
@@ -141,50 +147,84 @@ describe("buildPlan", () => {
     expect(plan.blockers.join()).toContain("already stable");
   });
 
-  it("holds the relay while its web client needs methods the stable app lacks", () => {
+  it("holds the web client while it needs methods the stable app lacks", () => {
     const plan = buildPlan(
       facts({
-        relayPending: [change("#3 web change")],
+        webPending: [change("#3 web change")],
         missingAtStable: ["issue.views.list"],
         missingAtBeta: [],
       }),
     );
     expect(plan.steps).toEqual([]);
-    const relay = plan.held.find((h) => h.line === "relay");
-    expect(relay?.reason).toContain("issue.views.list");
-    expect(relay?.reason).toContain(
+    const web = plan.held.find((h) => h.line === "web");
+    expect(web?.reason).toContain("issue.views.list");
+    expect(web?.reason).toContain(
       "promoting v0.1.103-beta.12 would unblock it",
     );
   });
 
-  it("releases and deploys the relay after the promotion that serves its methods", () => {
+  it("releases and deploys the web client after the promotion that serves its methods", () => {
     const plan = buildPlan(
       facts({
         promote: true,
-        relayPending: [change("#3 web change")],
+        webPending: [change("#3 web change")],
         missingAtStable: ["issue.views.list"],
         missingAtBeta: [],
       }),
     );
     expect(stepSummary(plan)).toEqual([
       "tag:app:v0.1.103",
+      "tag:web:web-v0.1.1",
+      "deploy:web:web-v0.1.1",
+    ]);
+  });
+
+  it("releases the web client and the relay with the app", () => {
+    const plan = buildPlan(
+      facts({
+        appPending: [change("#1 fix")],
+        webPending: [change("#1 fix")],
+        relayPending: [change("#2 relay fix")],
+      }),
+    );
+    expect(stepSummary(plan)).toEqual([
+      "tag:app:v0.1.103-beta.13",
+      "tag:web:web-v0.1.1",
+      "deploy:web:web-v0.1.1",
       "tag:relay:relay-v0.2.3",
       "deploy:relay:relay-v0.2.3",
     ]);
   });
 
-  it("releases the relay with the app when the stable app already serves it", () => {
+  it("releases the relay regardless of the methods the web client needs", () => {
     const plan = buildPlan(
       facts({
-        appPending: [change("#1 fix")],
-        relayPending: [change("#1 fix")],
+        relayPending: [change("#2 relay fix")],
+        webPending: [change("#3 web change")],
+        missingAtStable: ["issue.views.list"],
       }),
     );
     expect(stepSummary(plan)).toEqual([
-      "tag:app:v0.1.103-beta.13",
       "tag:relay:relay-v0.2.3",
       "deploy:relay:relay-v0.2.3",
     ]);
+  });
+
+  it("never cuts the first web release, and holds the relay that stopped serving it", () => {
+    const plan = buildPlan(
+      facts({
+        webLast: null,
+        webPending: [change("#3 web change")],
+        relayPending: [change("#2 relay fix")],
+      }),
+    );
+    expect(plan.steps).toEqual([]);
+    expect(plan.held.find((h) => h.line === "web")?.reason).toContain(
+      "never released",
+    );
+    expect(plan.held.find((h) => h.line === "relay")?.reason).toContain(
+      "first web release",
+    );
   });
 
   it("never cuts the first push gateway release", () => {
@@ -233,7 +273,7 @@ describe("buildPlan with skipped lines", () => {
       facts({
         skip: ["relay"],
         appPending: [change("#1 fix")],
-        relayPending: [change("#1 fix")],
+        relayPending: [change("#2 relay fix")],
       }),
     );
     expect(stepSummary(plan)).toEqual(["tag:app:v0.1.103-beta.13"]);

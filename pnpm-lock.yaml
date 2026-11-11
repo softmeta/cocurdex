@@ -731,6 +731,8 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
+  apps/web: {}
+
   packages/agent-adapters:
     dependencies:
       '@agentclientprotocol/sdk':
@@ -1043,6 +1045,9 @@ importers:
       '@cocurdex/test-harness':
         specifier: workspace:*
         version: link:../harness
+      '@cocurdex/web':
+        specifier: workspace:*
+        version: link:../../apps/web
     devDependencies:
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.1

@@ -1,16 +1,16 @@
 import { spawnSync } from "node:child_process";
 import { gh, git, pushTag, ROOT } from "./git.mjs";
+import { lineByName } from "./lines.mjs";
 
 const RUN_APPEAR_TIMEOUT_MS = 5 * 60 * 1000;
 const POLL_MS = 10 * 1000;
-const RELAY_HOST = "cocurdex-relay";
 
 function describeStep(step) {
   if (step.kind === "ios-flows") {
     return `run the iOS mobile flows on ${step.commit.slice(0, 7)}`;
   }
   if (step.kind === "deploy") {
-    return `deploy ${step.tag} on ${RELAY_HOST}`;
+    return `deploy ${step.tag} on ${lineByName(step.line).deploy.host}`;
   }
   return `tag ${step.tag} at ${step.commit.slice(0, 7)} → ${step.workflow}`;
 }
@@ -130,7 +130,8 @@ const EXECUTORS = {
     verifyRelease(step);
   },
   deploy: (step) => {
-    inherit("ssh", [RELAY_HOST, "deploy-cocurdex-relay", "deploy", step.tag]);
+    const { host, command } = lineByName(step.line).deploy;
+    inherit("ssh", [host, command, "deploy", step.tag]);
   },
 };
 

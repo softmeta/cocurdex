@@ -1,0 +1,12 @@
+{
+  "name": "@cocurdex/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "package": "node scripts/package.mjs"
+  },
+  "exports": {
+    "./package.json": "./package.json"
+  }
+}

@@ -14,15 +14,24 @@ import {
   _electron as electron,
 } from "@playwright/test";
 import { afterAll, describe, expect, it } from "vitest";
+import { runProcess } from "../helpers/go-service";
 import {
   buildRelay,
   freePort,
   type RelayProcess,
   startRelay,
 } from "../helpers/relay";
+import { type StaticSite, serveStaticSite } from "../helpers/static-site";
 
 const desktopRoot = path.join(repoRoot, "apps", "desktop");
-const webRoot = path.join(desktopRoot, "out", "renderer");
+const rendererRoot = path.join(desktopRoot, "out", "renderer");
+const packageWebScript = path.join(
+  path.dirname(
+    createRequire(import.meta.url).resolve("@cocurdex/web/package.json"),
+  ),
+  "scripts",
+  "package.mjs",
+);
 const browserMain = createRequire(import.meta.url).resolve(
   "../helpers/web-browser-main.mjs",
 );
@@ -45,6 +54,24 @@ async function relayEndpoint(daemon: DaemonProcess) {
   }
 }
 
+async function serveWebClient() {
+  const out = path.join(tempDirs.createSync("web-site-"), "site");
+  await runProcess(
+    process.execPath,
+    [
+      packageWebScript,
+      "--renderer",
+      rendererRoot,
+      "--out",
+      out,
+      "--connect-src",
+      "ws://127.0.0.1:*",
+    ],
+    repoRoot,
+  );
+  return serveStaticSite(out);
+}
+
 async function pairingLink(daemon: DaemonProcess) {
   const endpoint = await relayEndpoint(daemon);
   const { code, hostKey } = await requestDaemon(
@@ -59,20 +86,21 @@ describe("web client through the relay", () => {
   let relay: RelayProcess | undefined;
   let daemon: DaemonProcess | undefined;
   let browser: ElectronApplication | undefined;
+  let site: StaticSite | undefined;
 
   afterAll(async () => {
     await browser?.close();
+    await site?.close();
     await daemon?.dispose();
     await relay?.stop();
     await tempDirs.cleanup();
   });
 
-  it("pairs from the page the relay serves, waits for approval, keeps the pairing across reloads, explains an offline computer, and unpairs", async () => {
+  it("pairs from the web client on its own origin, waits for approval, keeps the pairing across reloads, explains an offline computer, and unpairs", async () => {
     const relayBinary = await buildRelay(tempDirs.createSync("relay-bin-"));
-    relay = await startRelay(relayBinary, tempDirs.createSync("relay-data-"), [
-      "--web-root",
-      webRoot,
-    ]);
+    relay = await startRelay(relayBinary, tempDirs.createSync("relay-data-"));
+    site = await serveWebClient();
+    expect(new URL(site.url).origin).not.toBe(new URL(relay.url).origin);
     daemon = await spawnDaemon();
     const now = new Date().toISOString();
     await requestDaemon(
@@ -106,7 +134,7 @@ describe("web client through the relay", () => {
     env.COCURDEX_WEB_BROWSER_PROFILE = tempDirs.createSync("web-profile-");
     browser = await electron.launch({
       executablePath: electronExecutable(),
-      args: ["--no-sandbox", "--lang=en-US", browserMain, `${relay.url}/`],
+      args: ["--no-sandbox", "--lang=en-US", browserMain, `${site.url}/`],
       env,
     });
     const page = await browser.firstWindow();
