@@ -27,7 +27,7 @@ export function formatDaemonHealthLines(health: DaemonHealth) {
     `pid            ${health.pid} (up ${health.uptimeSeconds}s, ${health.platform}-${health.arch}, node ${health.nodeVersion})`,
     `memory         rss ${mebibytes(health.memory.rssBytes)}, heap ${mebibytes(health.memory.heapUsedBytes)} / ${mebibytes(health.memory.heapTotalBytes)}`,
     `event loop     p50 ${loop.delayP50Ms} ms, p99 ${loop.delayP99Ms} ms, max ${loop.delayMaxMs} ms, utilization ${Math.round(loop.utilization * 100)}% over ${loop.windowSeconds}s`,
-    `work           ${health.activeRequests} requests, ${work.agentTurns} agent turns, ${work.queuedInputs} queued inputs, ${work.workspaceSearches} searches${work.workflowActive ? ", workflow active" : ""}`,
+    `work           ${health.activeRequests} requests, ${work.agentTurns} agent turns, ${work.queuedInputs} queued inputs, ${work.workspaceSearches} searches`,
     `runtimes       ${health.agentRuntimes} agent sessions, ${health.terminals} terminals`,
     `connections    ${health.connections.total} (${health.connections.devices} devices)`,
     `database       schema ${health.database.schemaVersion}, ${mebibytes(health.database.sizeBytes)} + wal ${mebibytes(health.database.walBytes)}`,

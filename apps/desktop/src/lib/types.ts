@@ -126,7 +126,6 @@ import type {
   RendererLogPayload,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
-  SaveWorkflowDefinitionPayload,
   ScriptRunRecord,
   ScriptRunSettings,
   ScriptRunSnapshot,
@@ -164,7 +163,6 @@ import type {
   ViewColumnRecord,
   ViewFull,
   ViewSummary,
-  WorkflowDefinitionRecord,
   WorkspaceAction,
   WorkspaceEntry,
   WorkspaceFileRecord,
@@ -345,17 +343,6 @@ export interface ProductApi {
   listAgentRoles(): Promise<AgentRoleRecord[]>;
   saveAgentRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
   deleteAgentRole(id: string): Promise<void>;
-  listWorkflowDefinitions(): Promise<WorkflowDefinitionRecord[]>;
-  getWorkflowDefinition(
-    definitionId: string,
-  ): Promise<WorkflowDefinitionRecord | null>;
-  saveWorkflowDefinition(
-    payload: SaveWorkflowDefinitionPayload,
-  ): Promise<WorkflowDefinitionRecord>;
-  duplicateWorkflowDefinition(
-    definitionId: string,
-  ): Promise<WorkflowDefinitionRecord>;
-  deleteWorkflowDefinition(definitionId: string): Promise<void>;
   readAdapterRateLimits(
     agentIds: AgentId[],
   ): Promise<Partial<Record<AgentId, AgentRateLimitsReadResult>>>;

@@ -6,5 +6,4 @@ export * from "./provider";
 export * from "./runtime";
 export * from "./service";
 export * from "./wire";
-export * from "./workflow";
 export * from "./workspace-service";

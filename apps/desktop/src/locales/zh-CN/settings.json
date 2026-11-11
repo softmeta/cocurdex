@@ -510,7 +510,7 @@
         "title": "管理设备"
       },
       "execute": {
-        "description": "启动会话、团队、脚本运行和工作流，修改或运行 MCP 服务器，并驱动无需批准即可执行的 agent。",
+        "description": "启动会话、团队和脚本运行，修改或运行 MCP 服务器，并驱动无需批准即可执行的 agent。",
         "title": "启动任务"
       },
       "filesRead": {
@@ -1144,7 +1144,6 @@
     "skills": "Skills",
     "teams": "团队",
     "usage": "使用情况",
-    "workflows": "工作流",
     "workspaces": "工作区",
     "worktrees": "工作树"
   },
@@ -1541,77 +1540,6 @@
       "upToDate": "已是最新版本。"
     },
     "title": "版本"
-  },
-  "workflows": {
-    "addAgent": "添加 Agent",
-    "addGate": "添加审批",
-    "addTerminal": "添加终点",
-    "artifact": {
-      "change_set": {
-        "v1": ""
-      },
-      "change_set.v1": "变更集",
-      "plan_artifact": {
-        "v1": ""
-      },
-      "plan_artifact.v1": "计划",
-      "review_decision": {
-        "v1": ""
-      },
-      "review_decision.v1": "评审结论",
-      "validation_report": {
-        "v1": ""
-      },
-      "validation_report.v1": "验证报告"
-    },
-    "bindings": {
-      "description": "从这份定义创建运行时使用的默认 planner / implementer / reviewer 角色。",
-      "placeholder": "选择角色"
-    },
-    "builtin": "内置",
-    "custom": "自定义",
-    "delete": "删除",
-    "description": "编辑由 Agent 步骤和审批门组成的状态机。复制内置模板后即可改节点和连线。",
-    "duplicate": "复制",
-    "empty": "还没有工作流定义。",
-    "inspector": {
-      "addInput": "添加输入",
-      "edge": "转移",
-      "empty": "选择一个节点或连线。",
-      "inputs": "输入",
-      "instruction": "指令",
-      "maxAttempts": "最大尝试次数",
-      "maxTraversals": "最大回边次数",
-      "output": "输出",
-      "role": "角色"
-    },
-    "node": {
-      "agent": "Agent",
-      "gate": "审批"
-    },
-    "readonlyHint": "内置定义只读。复制后再编辑。",
-    "role": {
-      "implementer": "实施",
-      "planner": "规划",
-      "reviewer": "评审"
-    },
-    "save": "保存",
-    "terminal": {
-      "blocked": "阻塞",
-      "cancelled": "已取消",
-      "completed": "完成",
-      "exhausted": "次数用尽",
-      "failed": "失败"
-    },
-    "toast": {
-      "deleted": "工作流已删除",
-      "deleteFailed": "无法删除此工作流。",
-      "duplicated": "工作流已复制",
-      "duplicateFailed": "无法复制此工作流。",
-      "loadFailed": "无法加载工作流。",
-      "saved": "工作流已保存",
-      "saveFailed": "无法保存此工作流。"
-    }
   },
   "workspaces": {
     "current": "当前",

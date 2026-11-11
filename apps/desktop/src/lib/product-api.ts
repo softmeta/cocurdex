@@ -28,15 +28,6 @@ export const daemonProductApi: ProductRequestApi = {
   deleteAgentRole: async (id) => {
     await rpc("agentRole.delete", { id });
   },
-  listWorkflowDefinitions: () => rpc("workflow.listDefinitions"),
-  getWorkflowDefinition: (definitionId) =>
-    rpc("workflow.getDefinition", { definitionId }),
-  saveWorkflowDefinition: (payload) => rpc("workflow.saveDefinition", payload),
-  duplicateWorkflowDefinition: (definitionId) =>
-    rpc("workflow.duplicateDefinition", { definitionId }),
-  deleteWorkflowDefinition: async (definitionId) => {
-    await rpc("workflow.deleteDefinition", { definitionId });
-  },
   readAdapterRateLimits: (agentIds) =>
     rpc("agent.rateLimits.read", { agentIds }),
   readAgentSessionModes: (agentId) =>

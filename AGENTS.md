@@ -54,7 +54,7 @@ Reusable product capabilities belong in `packages/daemon`, exposed through `@coc
 
 | Layer | Responsibilities |
 | --- | --- |
-| Daemon | Sessions, worktrees, notes, issues, workflows, providers, agent roles, product settings, permissions, plan approvals, headless workspace Git/filesystem operations, and all persistence. SQLite is owned exclusively by the daemon. |
+| Daemon | Sessions, worktrees, notes, issues, providers, agent roles, product settings, permissions, plan approvals, headless workspace Git/filesystem operations, and all persistence. SQLite is owned exclusively by the daemon. |
 | Shared contracts | Types and invariants in `@cocurdex/shared`; named product RPC methods in `@cocurdex/rpc`. Do not add product behavior to `storage.call`. |
 | Electron host (`apps/desktop/electron`) | Windows, menus, native dialogs, system appearance/fonts, protocols, BrowserView, PTY, file watching that requires `BrowserWindow`, updates, and thin daemon forwarding. Forwarding handlers only validate and call `requestDaemon(...)`. |
 | Clients (renderer, CLI, future web/mobile) | UI and navigation orchestration; read and write product state through daemon contracts. No duplicate business protocols or client-owned product policies. |

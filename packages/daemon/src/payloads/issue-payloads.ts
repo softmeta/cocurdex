@@ -18,7 +18,6 @@ import {
   type LoadViewPayload,
   type MoveColumnPayload,
   type MoveIssuePayload,
-  type SaveWorkflowDefinitionPayload,
   type SearchDocumentsPayload,
   type UpdateColumnPayload,
   type UpdateIssueLabelPayload,
@@ -32,7 +31,6 @@ import {
 } from "@cocurdex/shared";
 import { z } from "zod";
 import {
-  agentIdSchema,
   idSchema,
   isoTimestampSchema,
   noNullByte,
@@ -206,95 +204,6 @@ const commentIssuePayloadSchema = z.object({
   actor: issueActorSchema.optional(),
 }) satisfies z.ZodType<CommentIssuePayload>;
 
-const workflowDefinitionIdSchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[A-Za-z0-9_.:@-]+$/);
-
-const workflowStepSchema = z.object({
-  id: workflowDefinitionIdSchema,
-  kind: z.enum(["agent", "gate", "validation"]),
-  role: z.enum(["planner", "implementer", "reviewer"]).optional(),
-  permissionProfile: z.enum(["read_only", "workspace_write", "validation"]),
-  instruction: z.string().max(8_000).optional(),
-  inputSchemas: z.array(
-    z.enum([
-      "plan_artifact.v1",
-      "change_set.v1",
-      "validation_report.v1",
-      "review_decision.v1",
-    ]),
-  ),
-  outputSchema: z
-    .enum([
-      "plan_artifact.v1",
-      "change_set.v1",
-      "validation_report.v1",
-      "review_decision.v1",
-    ])
-    .optional(),
-  maxAttempts: z.number().int().min(1).max(20),
-});
-
-const workflowTransitionSchema = z.object({
-  from: workflowDefinitionIdSchema,
-  outcome: z.enum([
-    "completed",
-    "approved",
-    "rejected",
-    "passed",
-    "failed",
-    "accepted",
-    "changes_requested",
-    "blocked",
-  ]),
-  to: workflowDefinitionIdSchema.optional(),
-  terminalStatus: z
-    .enum(["completed", "failed", "cancelled", "blocked", "exhausted"])
-    .optional(),
-  maxTraversals: z.number().int().min(1).max(20).optional(),
-});
-
-const workflowExecutorBindingSchema = z.object({
-  agentId: agentIdSchema,
-  agentRoleId: z.string().min(1).max(128).optional(),
-  model: z.string().max(256).optional(),
-  permissionProfile: z.enum(["read_only", "workspace_write", "validation"]),
-});
-
-const workflowDefinitionIdPayloadSchema = z.object({
-  definitionId: workflowDefinitionIdSchema,
-});
-
-const saveWorkflowDefinitionPayloadSchema = z.object({
-  id: workflowDefinitionIdSchema,
-  name: z.string().min(1).max(200),
-  revision: z.object({
-    definitionId: workflowDefinitionIdSchema,
-    version: z.number().int().min(1),
-    initialStepId: workflowDefinitionIdSchema,
-    steps: z.array(workflowStepSchema).min(1).max(40),
-    transitions: z.array(workflowTransitionSchema).max(80),
-  }),
-  layout: z.object({
-    nodes: z.record(
-      z.string(),
-      z.object({
-        x: z.number().finite(),
-        y: z.number().finite(),
-      }),
-    ),
-  }),
-  defaultBindings: z
-    .object({
-      planner: workflowExecutorBindingSchema,
-      implementer: workflowExecutorBindingSchema,
-      reviewer: workflowExecutorBindingSchema,
-    })
-    .nullable(),
-}) satisfies z.ZodType<SaveWorkflowDefinitionPayload>;
-
 const searchDocumentsPayloadSchema = z.object({
   query: z.string().max(2_000),
   kinds: z
@@ -335,8 +244,4 @@ export const issuePayloadSchemas = {
   "issue.comment": commentIssuePayloadSchema,
   "search.documents": searchDocumentsPayloadSchema,
   "attention.update": updateSessionAttentionPayloadSchema,
-  "workflow.getDefinition": workflowDefinitionIdPayloadSchema,
-  "workflow.saveDefinition": saveWorkflowDefinitionPayloadSchema,
-  "workflow.duplicateDefinition": workflowDefinitionIdPayloadSchema,
-  "workflow.deleteDefinition": workflowDefinitionIdPayloadSchema,
 } satisfies PayloadSchemas;

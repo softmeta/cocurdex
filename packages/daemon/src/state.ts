@@ -5,7 +5,6 @@ import {
   createCocurdexDatabase,
   type ScriptRunRepository,
   type TeamRepository,
-  type WorkflowRepository,
 } from "@cocurdex/db";
 import type {
   AgentDescriptor,
@@ -76,7 +75,6 @@ function applyStoredNetworkProxy(raw: string | null) {
 
 export class DaemonState {
   readonly sessionAttention: SessionAttentionProjection;
-  readonly workflows: WorkflowRepository;
   readonly teams: TeamRepository;
   readonly scriptRuns: ScriptRunRepository;
   readonly agentCapabilityCache: AgentCapabilityCacheRepository;
@@ -101,7 +99,6 @@ export class DaemonState {
       reclaimFreePages: (maxPages) => this.database.reclaimFreePages(maxPages),
       isClosed: () => this.closed,
     });
-    this.workflows = this.database.workflows;
     this.teams = this.database.teams;
     this.scriptRuns = this.database.scriptRuns;
     this.agentCapabilityCache = this.database.agentCapabilityCache;

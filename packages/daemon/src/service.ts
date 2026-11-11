@@ -25,7 +25,6 @@ import type {
   CocurdexDaemonEvent,
   ContextTransferRecord,
   CreateSessionPayload,
-  CreateWorkflowPayload,
   ForkSessionPayload,
   GetToolCallResultInput,
   MessageRecord,
@@ -33,7 +32,6 @@ import type {
   RefineSessionTitlePayload,
   RoutineRunRecord,
   SaveAgentRolePayload,
-  SaveWorkflowDefinitionPayload,
   SendSessionCommand,
   SessionConfiguration,
   SessionRecord,
@@ -79,7 +77,6 @@ import {
   normalizeAgentRoleName,
   normalizeWorkspaceRootPaths,
   PERSONAL_WORKSPACE_ID,
-  PLAN_EXECUTE_REVIEW_WORKFLOW_ID,
   parseDisabledAgentIds,
   primaryWorkspaceRootPath,
   principalHasScope,
@@ -210,14 +207,6 @@ import { createKeepAwake } from "./system";
 import { TeamModule, type TeammateReportCommand } from "./team";
 import { TerminalService } from "./terminal";
 import {
-  DaemonWorkflowAgentTurnRunner,
-  type DecideWorkflowGateInput,
-  RuntimeWorkflowActionExecutor,
-  WorkflowModule,
-  WorkflowWorker,
-  WorkflowWorkerScheduler,
-} from "./workflow";
-import {
   createWorkspaceChangeCoordinator,
   type WorkspaceChangeCoordinator,
 } from "./workspace-changes";
@@ -299,7 +288,6 @@ export class CocurdexDaemonService {
   private keepAwakeSync: Promise<void> = Promise.resolve();
   readonly remoteTraffic: TrafficMeter = createTrafficMeter();
   readonly hostAccessReady: Promise<void>;
-  readonly workflows: WorkflowModule;
   readonly workspaceChanges: WorkspaceChangeCoordinator;
   private readonly runtimeFingerprint: string;
   private readonly socketPath: string;
@@ -312,7 +300,6 @@ export class CocurdexDaemonService {
   private readonly queuedFollowUps: SessionFollowUpQueue;
   private readonly sessionRuntimeStates = new SessionRuntimeStates();
   private readonly runCapacity: RunCapacity;
-  private readonly workflowWorkerScheduler: WorkflowWorkerScheduler;
   private shutdownPromise: Promise<void> | null = null;
   private readonly checkpointReconcileTimer: NodeJS.Timeout;
 
@@ -358,7 +345,6 @@ export class CocurdexDaemonService {
           }
         : null,
     });
-    this.workflows = new WorkflowModule(this.state.workflows);
     this.dataService = new DaemonDataService(this.state, this.events);
     this.decks = new DaemonDeckService(
       this.state.data.decks,
@@ -857,28 +843,6 @@ export class CocurdexDaemonService {
       }
       return persisted;
     });
-    const workflowExecutor = new RuntimeWorkflowActionExecutor(
-      new DaemonWorkflowAgentTurnRunner(
-        this.state,
-        this.runtime,
-        this.runs,
-        this.providerCredentials,
-      ),
-    );
-    const workflowWorker = new WorkflowWorker(
-      this.state.workflows,
-      workflowExecutor,
-      {
-        workerId: `${this.runtimeFingerprint}:${process.pid}`,
-        leaseDurationMs: 60_000,
-        now: () => new Date().toISOString(),
-        createId: () => crypto.randomUUID(),
-      },
-    );
-    this.workflowWorkerScheduler = new WorkflowWorkerScheduler(workflowWorker, {
-      concurrency: 4,
-    });
-    this.wakeWorkflowWorker();
     if (options.autoStartMemory === true) {
       void this.memory.initializeOnStartup();
     }
@@ -1071,7 +1035,6 @@ export class CocurdexDaemonService {
     return {
       agentTurns: this.runs.activeWorkCount,
       queuedInputs: this.queuedFollowUps.size,
-      workflowActive: this.workflowWorkerScheduler.isActive,
       workspaceSearches: this.searchService.activeCount,
     };
   }
@@ -1644,14 +1607,6 @@ export class CocurdexDaemonService {
     );
   }
 
-  listWorkflowRuns() {
-    return this.workflows.listRuns();
-  }
-
-  getWorkflowRun(workflowRunId: string) {
-    return this.workflows.get(workflowRunId);
-  }
-
   async listAgentRoles() {
     const roles = await this.state.listAgentRoles();
     return roles.filter((role) => !this.personalAgents.ownsRole(role.id));
@@ -1782,77 +1737,6 @@ export class CocurdexDaemonService {
       throw new Error("Delete the personal agent instead of its role");
     }
     await this.state.deleteAgentRole(id);
-  }
-
-  listWorkflowDefinitions() {
-    return this.workflows.listDefinitions();
-  }
-
-  getWorkflowDefinition(definitionId: string) {
-    return this.workflows.getDefinition(definitionId);
-  }
-
-  saveWorkflowDefinition(payload: SaveWorkflowDefinitionPayload) {
-    return this.workflows.saveDefinition(payload);
-  }
-
-  duplicateWorkflowDefinition(definitionId: string) {
-    return this.workflows.duplicateDefinition(definitionId);
-  }
-
-  async deleteWorkflowDefinition(definitionId: string) {
-    await this.workflows.deleteDefinition(definitionId);
-  }
-
-  async createWorkflow(payload: CreateWorkflowPayload) {
-    const definitionId =
-      payload.definitionId ?? PLAN_EXECUTE_REVIEW_WORKFLOW_ID;
-    const definition = await this.workflows.getDefinition(definitionId);
-    const bindings = payload.bindings ?? definition?.defaultBindings;
-    if (!bindings) {
-      throw new Error("Workflow executor bindings are required.");
-    }
-    for (const binding of Object.values(bindings)) {
-      const agent = await this.ensureAgentAvailable(binding.agentId);
-      const requiredWriteMode =
-        binding.permissionProfile === "read_only"
-          ? "read-only"
-          : "native-write";
-      if (!agent.capabilities.writeModes.includes(requiredWriteMode)) {
-        throw new Error(
-          `${agent.label} cannot satisfy workflow permission profile '${binding.permissionProfile}'.`,
-        );
-      }
-    }
-    return this.workflows.create({ ...payload, bindings });
-  }
-
-  async startWorkflow(workflowRunId: string) {
-    const aggregate = await this.workflows.start(workflowRunId);
-    this.wakeWorkflowWorker();
-    return aggregate;
-  }
-
-  async decideWorkflowGate(input: DecideWorkflowGateInput) {
-    const aggregate = await this.workflows.decideGate(input);
-    this.wakeWorkflowWorker();
-    return aggregate;
-  }
-
-  async cancelWorkflow(workflowRunId: string) {
-    const current = await this.workflows.get(workflowRunId);
-    const aggregate = await this.workflows.cancel(workflowRunId);
-    const activeSessionIds = new Set(
-      current?.attempts
-        .filter((attempt) => attempt.status === "running" && attempt.sessionId)
-        .map((attempt) => attempt.sessionId as string) ?? [],
-    );
-    await Promise.all(
-      Array.from(activeSessionIds, (sessionId) =>
-        this.runtime.cancelSessionTurn(sessionId),
-      ),
-    );
-    return aggregate;
   }
 
   async saveSessionConfiguration(
@@ -2882,11 +2766,9 @@ export class CocurdexDaemonService {
     );
     this.queuedFollowUps.clear();
     await this.scriptRuns.shutdown();
-    const schedulerClose = this.workflowWorkerScheduler.close();
     try {
       const results = await Promise.allSettled([
         this.runtime.shutdown(),
-        schedulerClose,
         this.acpRegistry.ready,
         Promise.resolve().then(() => this.searchService.dispose()),
         this.applications.dispose(),
@@ -2905,12 +2787,6 @@ export class CocurdexDaemonService {
       this.state.close();
       this.events.removeAllListeners();
     }
-  }
-
-  private wakeWorkflowWorker() {
-    void this.workflowWorkerScheduler.wake().catch((error: unknown) => {
-      logDaemonDiagnostic("error", "workflow.workerFailed", { error });
-    });
   }
 
   private async refreshSessionWorkingPath(

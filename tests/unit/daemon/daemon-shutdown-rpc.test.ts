@@ -26,9 +26,6 @@ async function fixture() {
   cleanups.push(async () => {
     await daemon.close();
   });
-  await vi.waitFor(() =>
-    expect(daemon.service.getActiveWork().workflowActive).toBe(false),
-  );
   const status = daemon.service.status();
   const shutdown = () =>
     requestDaemon(

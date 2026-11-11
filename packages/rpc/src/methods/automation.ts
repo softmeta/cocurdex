@@ -8,7 +8,6 @@ import type {
   CreateRoutinePayload,
   CreateScriptRunPayload,
   CreateTeamPayload,
-  CreateWorkflowPayload,
   DelegatedWorkRecord,
   DelegatedWorkTarget,
   DelegationCatalog,
@@ -42,7 +41,6 @@ import type {
   RoutineRunRecord,
   SaveAgentRolePayload,
   SaveTeamTemplatePayload,
-  SaveWorkflowDefinitionPayload,
   ScriptRunRecord,
   ScriptRunSettings,
   ScriptRunSnapshot,
@@ -59,10 +57,6 @@ import type {
   UpdateApplicationPayload,
   UpdatePersonalAgentPayload,
   UpdateRoutinePayload,
-  WorkflowAggregate,
-  WorkflowDefinitionRecord,
-  WorkflowGateDecisionRecord,
-  WorkflowRunRecord,
 } from "@cocurdex/shared";
 
 export type AutomationRequests = {
@@ -130,23 +124,6 @@ export type AutomationRequests = {
     tool: string;
     args: Record<string, unknown>;
   };
-  "workflow.list": undefined;
-  "workflow.get": { workflowRunId: string };
-  "workflow.listDefinitions": undefined;
-  "workflow.getDefinition": { definitionId: string };
-  "workflow.saveDefinition": SaveWorkflowDefinitionPayload;
-  "workflow.duplicateDefinition": { definitionId: string };
-  "workflow.deleteDefinition": { definitionId: string };
-  "workflow.create": CreateWorkflowPayload;
-  "workflow.start": { workflowRunId: string };
-  "workflow.decideGate": {
-    workflowRunId: string;
-    stepId: string;
-    decision: WorkflowGateDecisionRecord["decision"];
-    actor?: WorkflowGateDecisionRecord["actor"];
-    reason?: string;
-  };
-  "workflow.cancel": { workflowRunId: string };
   "agentRole.list": undefined;
   "agentRole.get": { id: string };
   "agentRole.save": SaveAgentRolePayload;
@@ -231,17 +208,6 @@ export type AutomationResults = {
   "application.tools": ApplicationTool[];
   "application.read": unknown;
   "application.call": unknown;
-  "workflow.list": WorkflowRunRecord[];
-  "workflow.get": WorkflowAggregate | null;
-  "workflow.listDefinitions": WorkflowDefinitionRecord[];
-  "workflow.getDefinition": WorkflowDefinitionRecord | null;
-  "workflow.saveDefinition": WorkflowDefinitionRecord;
-  "workflow.duplicateDefinition": WorkflowDefinitionRecord;
-  "workflow.deleteDefinition": null;
-  "workflow.create": WorkflowAggregate;
-  "workflow.start": WorkflowAggregate;
-  "workflow.decideGate": WorkflowAggregate;
-  "workflow.cancel": WorkflowAggregate;
   "agentRole.list": AgentRoleRecord[];
   "agentRole.get": AgentRoleRecord | null;
   "agentRole.save": AgentRoleRecord;

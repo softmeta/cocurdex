@@ -94,10 +94,6 @@ import {
 import { createSqliteSearchRepository, type SearchRepository } from "./search";
 import { createSqliteSyncRepository, type SyncRepository } from "./sync";
 import { createSqliteTeamRepository, type TeamRepository } from "./team";
-import {
-  createSqliteWorkflowRepository,
-  type WorkflowRepository,
-} from "./workflow";
 
 export interface CocurdexDatabase {
   notes: NotesRepository;
@@ -112,7 +108,6 @@ export interface CocurdexDatabase {
   runs: RunRepository;
   messageTurnStats: MessageTurnStatsRepository;
   turnChangeSets: TurnChangeSetRepository;
-  workflows: WorkflowRepository;
   teams: TeamRepository;
   scriptRuns: ScriptRunRepository;
   hostAccess: HostAccessRepository;
@@ -221,7 +216,6 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     runs: createSqliteRunRepository(database),
     messageTurnStats: createSqliteMessageTurnStatsRepository(database),
     turnChangeSets: createSqliteTurnChangeSetRepository(database),
-    workflows: createSqliteWorkflowRepository(database),
     teams: createSqliteTeamRepository(database),
     scriptRuns: createSqliteScriptRunRepository(database),
     hostAccess: createSqliteHostAccessRepository(database),

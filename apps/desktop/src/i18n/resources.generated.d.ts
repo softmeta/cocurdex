@@ -2855,7 +2855,7 @@ export default interface Resources {
           title: "Manage devices";
         };
         execute: {
-          description: "Start sessions, teams, script runs, and workflows, change or run MCP servers, and drive agents that run without approval.";
+          description: "Start sessions, teams, and script runs, change or run MCP servers, and drive agents that run without approval.";
           title: "Start work";
         };
         filesRead: {
@@ -3495,7 +3495,6 @@ export default interface Resources {
       skills: "Skills";
       teams: "Teams";
       usage: "Usage";
-      workflows: "Workflows";
       workspaces: "Workspaces";
       worktrees: "Worktrees";
     };
@@ -3892,77 +3891,6 @@ export default interface Resources {
         upToDate: "You're up to date.";
       };
       title: "Version";
-    };
-    workflows: {
-      addAgent: "Add agent";
-      addGate: "Add gate";
-      addTerminal: "Add end";
-      artifact: {
-        change_set: {
-          v1: "";
-        };
-        "change_set.v1": "Change set";
-        plan_artifact: {
-          v1: "";
-        };
-        "plan_artifact.v1": "Plan";
-        review_decision: {
-          v1: "";
-        };
-        "review_decision.v1": "Review decision";
-        validation_report: {
-          v1: "";
-        };
-        "validation_report.v1": "Validation report";
-      };
-      bindings: {
-        description: "Default planner, implementer, and reviewer roles used when creating a run from this definition.";
-        placeholder: "Select a role";
-      };
-      builtin: "Built in";
-      custom: "Custom";
-      delete: "Delete";
-      description: "Edit a labeled state machine of agent and gate steps. Duplicate the built-in template to change nodes and connections.";
-      duplicate: "Duplicate";
-      empty: "No workflow definitions yet.";
-      inspector: {
-        addInput: "Add input";
-        edge: "Transition";
-        empty: "Select a node or connection.";
-        inputs: "Inputs";
-        instruction: "Instruction";
-        maxAttempts: "Max attempts";
-        maxTraversals: "Max traversals";
-        output: "Output";
-        role: "Role";
-      };
-      node: {
-        agent: "Agent";
-        gate: "Gate";
-      };
-      readonlyHint: "The built-in definition is read-only. Duplicate it to edit.";
-      role: {
-        implementer: "Implementer";
-        planner: "Planner";
-        reviewer: "Reviewer";
-      };
-      save: "Save";
-      terminal: {
-        blocked: "Blocked";
-        cancelled: "Cancelled";
-        completed: "Completed";
-        exhausted: "Exhausted";
-        failed: "Failed";
-      };
-      toast: {
-        deleteFailed: "Could not delete this workflow.";
-        deleted: "Workflow deleted";
-        duplicateFailed: "Could not duplicate this workflow.";
-        duplicated: "Workflow duplicated";
-        loadFailed: "Could not load workflows.";
-        saveFailed: "Could not save this workflow.";
-        saved: "Workflow saved";
-      };
     };
     workspaces: {
       current: "Current";

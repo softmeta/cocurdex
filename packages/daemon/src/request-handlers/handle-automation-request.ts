@@ -17,7 +17,6 @@ const AUTOMATION_PREFIXES = [
   "scriptRun.",
   "team.",
   "teamTemplate.",
-  "workflow.",
 ] as const;
 
 type AutomationMethod = Extract<
@@ -146,29 +145,6 @@ export async function handleAutomationRequest(
       return service.scriptRuns.getSettings();
     case "scriptRun.settings.save":
       return service.scriptRuns.saveSettings(request.params);
-    case "workflow.list":
-      return service.listWorkflowRuns();
-    case "workflow.get":
-      return service.getWorkflowRun(request.params.workflowRunId);
-    case "workflow.listDefinitions":
-      return service.listWorkflowDefinitions();
-    case "workflow.getDefinition":
-      return service.getWorkflowDefinition(request.params.definitionId);
-    case "workflow.saveDefinition":
-      return service.saveWorkflowDefinition(request.params);
-    case "workflow.duplicateDefinition":
-      return service.duplicateWorkflowDefinition(request.params.definitionId);
-    case "workflow.deleteDefinition":
-      await service.deleteWorkflowDefinition(request.params.definitionId);
-      return null;
-    case "workflow.create":
-      return service.createWorkflow(request.params);
-    case "workflow.start":
-      return service.startWorkflow(request.params.workflowRunId);
-    case "workflow.decideGate":
-      return service.decideWorkflowGate(request.params);
-    case "workflow.cancel":
-      return service.cancelWorkflow(request.params.workflowRunId);
     case "personalAgent.list":
       return service.personalAgents.list();
     case "personalAgent.create":

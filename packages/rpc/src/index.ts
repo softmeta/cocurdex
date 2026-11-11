@@ -103,8 +103,6 @@ export const DAEMON_NO_PARAM_METHODS = {
   "session.list": true,
   "session.listArchived": true,
   "settings.pendingChanges.list": true,
-  "workflow.list": true,
-  "workflow.listDefinitions": true,
   "workspace.list": true,
   "worktree.list": true,
   "worktree.settings.get": true,

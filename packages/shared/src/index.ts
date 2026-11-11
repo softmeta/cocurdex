@@ -136,7 +136,6 @@ export {
 } from "./tool-call-display";
 export * from "./transcript-window";
 export * from "./unattended-execution";
-export * from "./workflow";
 export * from "./workspace-change-diff";
 export * from "./workspace-change-tools";
 export * from "./workspace-changes";

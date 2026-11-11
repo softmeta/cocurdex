@@ -28,7 +28,6 @@ export interface DaemonStatus {
 export interface DaemonActiveWork {
   agentTurns: number;
   queuedInputs: number;
-  workflowActive: boolean;
   workspaceSearches: number;
 }
 
