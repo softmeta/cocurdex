@@ -1,5 +1,5 @@
 import { createReadStream, existsSync } from "node:fs";
-import { lstat } from "node:fs/promises";
+import { lstat, readFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
@@ -84,6 +84,22 @@ function install() {
   return run("sh", [path.join(scriptsDir, "headless-install.sh")]);
 }
 
+async function daemonLogTail() {
+  const file = path.join(userDataPath, "logs", "daemon", "daemon.log");
+  const text = await readFile(file, "utf8").catch(() => "");
+  return text.split(/\r?\n/).slice(-40).join("\n");
+}
+
+async function withDaemonLog<T>(operation: () => Promise<T>) {
+  try {
+    return await operation();
+  } catch (error) {
+    throw new Error(
+      `${(error as Error).message}\n--- daemon.log ---\n${await daemonLogTail()}`,
+    );
+  }
+}
+
 function isAlive(pid: number) {
   try {
     process.kill(pid, 0);
@@ -139,8 +155,17 @@ describe("headless install script", () => {
 
   it("stops the running daemon to upgrade in place and starts it again", async () => {
     const before = await readDaemonMetadata(userDataPath);
+    if (!isAlive(before.pid)) {
+      throw new Error(
+        `daemon ${before.pid} exited before the upgrade\n${await daemonLogTail()}`,
+      );
+    }
 
-    const output = await install();
+    const output = await withDaemonLog(async () => {
+      const result = await install();
+      expect(result).toContain("Restarted the daemon");
+      return result;
+    });
 
     expect(output).toContain("Restarted the daemon");
     const after = await readDaemonMetadata(userDataPath);
