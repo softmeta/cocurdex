@@ -9,9 +9,11 @@ export function ConfigTrigger({
   leading,
   summary,
   mode,
+  accessibilityLabel,
   onPress,
 }: {
   testID: string;
+  accessibilityLabel?: string;
   leading?: ReactNode;
   summary: string;
   mode: string | null;
@@ -25,7 +27,9 @@ export function ConfigTrigger({
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={t("sessionConfig.open", { summary: label })}
+      accessibilityLabel={
+        accessibilityLabel ?? t("sessionConfig.open", { summary: label })
+      }
       onPress={onPress}
       hitSlop={space.xs}
       style={({ pressed }) => [styles.trigger, pressed && styles.pressed]}

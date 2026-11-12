@@ -31,9 +31,10 @@ export function ChatRuntimeControls({
   const labels = useRuntimeLabels();
   const open = useOptionSheet();
   const thinkingOptions = getChatThinkingLevelOptions(snapshot);
-  const thinking = thinkingOptions.find(
-    (option) => option.level === thinkingLevel,
-  );
+  const thinking =
+    thinkingOptions.length > 1
+      ? thinkingOptions.find((option) => option.level === thinkingLevel)
+      : undefined;
   const modelName = selected?.model.name ?? snapshot?.modelName ?? null;
 
   const present = async (request: Parameters<typeof open>[0]) => {
@@ -76,14 +77,16 @@ export function ChatRuntimeControls({
           testID={`${testIDPrefix}-model`}
           summary={modelName}
           mode={null}
+          accessibilityLabel={`${t("newSession.model")}: ${modelName}`}
           onPress={openModels}
         />
       ) : null}
       {thinking ? (
         <ConfigTrigger
           testID={`${testIDPrefix}-thinking`}
-          summary={thinkingOptionLabel(thinking, labels)}
-          mode={null}
+          summary={labels.thinking}
+          mode={thinkingOptionLabel(thinking, labels)}
+          accessibilityLabel={`${labels.thinking}: ${thinkingOptionLabel(thinking, labels)}`}
           onPress={openThinking}
         />
       ) : null}
