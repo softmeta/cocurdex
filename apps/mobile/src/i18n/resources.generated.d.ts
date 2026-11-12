@@ -27,6 +27,32 @@ export default interface Resources {
       title: "No assistants yet";
     };
     form: {
+      avatar: {
+        color: "Color";
+        colors: {
+          amber: "Amber";
+          blue: "Blue";
+          gray: "Gray";
+          green: "Green";
+          orange: "Orange";
+          pink: "Pink";
+          red: "Red";
+          teal: "Teal";
+          violet: "Violet";
+        };
+        custom: "Custom emoji";
+        face: {
+          curious: "Curious";
+          dots: "Calm";
+          happy: "Happy";
+          sleepy: "Sleepy";
+          wink: "Wink";
+        };
+        faces: "Expression";
+        shape: "Shape {{index}}";
+        shapes: "Shape";
+        title: "Avatar";
+      };
       create: "Create";
       description: "Description";
       descriptionPlaceholder: "One line about this assistant";
@@ -84,6 +110,7 @@ export default interface Resources {
       workFailed: "Work couldn't load.";
     };
     thread: {
+      greeting: "Working";
       placeholder: "Message {{name}}";
       suggestions: {
         attention: "What needs my attention today?";

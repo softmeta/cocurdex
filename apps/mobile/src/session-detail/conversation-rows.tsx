@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { StyleSheet, View } from "react-native";
+import { RoleAvatar, type RoleAvatarSource } from "@/agents";
 import { MarkdownText } from "@/markdown";
-import { layout, type ThemeColors } from "@/theme";
+import { layout, space, type ThemeColors } from "@/theme";
 import { ShimmerText } from "@/ui";
 import { PostedSourceLine } from "./posted-source-line";
 import type { CondensedItem } from "./transcript-activity";
@@ -11,10 +12,17 @@ type ConversationItem = Extract<
   { kind: "assistant" } | { kind: "activity" }
 >;
 
-function WorkingLine({ colors }: { colors: ThemeColors }) {
+export function WorkingLine({
+  colors,
+  role,
+}: {
+  colors: ThemeColors;
+  role: RoleAvatarSource | null;
+}) {
   const { t } = useTranslation("sessions");
   return (
     <View style={styles.working} accessibilityLiveRegion="polite">
+      {role ? <RoleAvatar role={role} size={18} /> : null}
       <ShimmerText
         text={t("detail.working")}
         baseColor={colors.mutedForeground}
@@ -31,13 +39,16 @@ export function ConversationRow({
   colors,
   hostId,
   fileRoot,
+  role,
 }: {
   item: ConversationItem;
   colors: ThemeColors;
   hostId: string;
   fileRoot: string | null | undefined;
+  role: RoleAvatarSource | null;
 }) {
-  if (item.kind === "activity") return <WorkingLine colors={colors} />;
+  if (item.kind === "activity")
+    return <WorkingLine colors={colors} role={role} />;
   return (
     <View style={styles.reply}>
       {item.source ? (
@@ -70,6 +81,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
   },
-  working: { minHeight: 32, justifyContent: "center" },
+  working: {
+    minHeight: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+  },
   workingText: { fontSize: 14 },
 });

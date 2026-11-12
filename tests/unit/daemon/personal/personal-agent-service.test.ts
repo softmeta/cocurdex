@@ -232,7 +232,11 @@ describe("PersonalAgentService", () => {
     await harness.service.create({ role: { ...coachRole, name: "Iris" } });
     const draft = await harness.service.draft({ locale: "en-US" });
     expect(draft.modelAvailable).toBe(false);
-    expect(draft.role).toMatchObject({ agentId: "pi", providerId: null });
+    expect(draft.role).toMatchObject({
+      agentId: "pi",
+      providerId: null,
+      avatar: { kind: "shape" },
+    });
     expect(draft.role.name).not.toBe("Iris");
     expect(draft.role.name).not.toBe("");
   });

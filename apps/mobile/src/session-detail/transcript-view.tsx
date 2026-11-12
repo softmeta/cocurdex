@@ -4,7 +4,7 @@ import type { TFunction } from "i18next";
 import { memo, type Ref, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import type { BubbleColors } from "@/agents";
+import type { BubbleColors, RoleAvatarSource } from "@/agents";
 import { MarkdownText } from "@/markdown";
 import { scaledSize, useTextScale } from "@/preferences";
 import { layout, space, type ThemeColors, useThemeColors } from "@/theme";
@@ -36,6 +36,7 @@ export interface TranscriptActions {
   onOpenImage(attachment: ImageAttachment): void;
   onOpenTool(toolCallId: string): void;
   onFork: ((messageId: string) => void) | null;
+  assistantRole?: RoleAvatarSource | null;
 }
 
 const IMAGE_ASPECT = { min: 0.5, max: 2 } as const;
@@ -445,6 +446,7 @@ export function TranscriptView({
           colors={colors}
           hostId={rowActions.hostId}
           fileRoot={rowActions.fileRoot}
+          role={rowActions.assistantRole ?? null}
         />
       ) : (
         <TranscriptRow

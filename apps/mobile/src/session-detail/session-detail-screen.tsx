@@ -13,7 +13,12 @@ import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePersonaBubble } from "@/agents";
-import { PersonaIntro, usePersonaOfSession } from "@/assistant";
+import {
+  PersonaGreetingLine,
+  PersonaIntro,
+  usePersonaGreeting,
+  usePersonaOfSession,
+} from "@/assistant";
 import { hostConnection } from "@/connection";
 import { SessionConfigChips, useNeedsExecuteToDrive } from "@/session-config";
 import { useViewedSession } from "@/sessions";
@@ -89,6 +94,7 @@ export function SessionDetailScreen({
   const chat = session !== undefined && isChatSession(session);
   const persona = usePersonaOfSession(host.hostId, sessionId);
   const personaBubble = usePersonaBubble(persona?.role ?? null);
+  const greeting = usePersonaGreeting(host.hostId, persona?.id ?? null);
   const workspace = sessionWorkspace(observation, workspaces);
   const workspacePath = sessionWorkspacePath(observation, workspace);
   const running =
@@ -272,7 +278,11 @@ export function SessionDetailScreen({
   } else if (showIntro) {
     body = (
       <View style={[styles.fill, dockInset]}>
-        <PersonaIntro onPick={(text) => void send(text, [])} />
+        {greeting && persona ? (
+          <PersonaGreetingLine role={persona.role} />
+        ) : (
+          <PersonaIntro onPick={(text) => void send(text, [])} />
+        )}
       </View>
     );
   } else {
@@ -302,6 +312,7 @@ export function SessionDetailScreen({
               },
             }),
           onFork: canFork ? fork : null,
+          assistantRole: persona?.role ?? null,
           onOpenTool: (toolCallId) =>
             router.push({
               pathname: "/tool-call/[hostId]/[sessionId]/[toolCallId]",
@@ -324,6 +335,7 @@ export function SessionDetailScreen({
           headerTitle: () => (
             <SessionTitle
               title={title}
+              avatar={persona?.role ?? null}
               subtitle={
                 persona
                   ? null

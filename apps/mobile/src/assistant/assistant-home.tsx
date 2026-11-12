@@ -15,7 +15,6 @@ import {
 } from "@/ui";
 import { useAgentActions } from "./agent-actions-menu";
 import {
-  greetPersonalAgent,
   revalidateAssistant,
   useBrief,
   useLatestReply,
@@ -27,6 +26,7 @@ import {
   type AssistantSection,
   assistantSections,
 } from "./assistant-sections";
+import { greetPersonalAgent } from "./persona-greeting";
 import { useAssistantRevalidation } from "./use-assistant-revalidation";
 
 function useSectionTitles(): Record<AssistantSection["kind"], string | null> {

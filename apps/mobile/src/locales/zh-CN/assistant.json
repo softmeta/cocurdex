@@ -25,6 +25,32 @@
     "title": "还没有助理"
   },
   "form": {
+    "avatar": {
+      "color": "颜色",
+      "colors": {
+        "amber": "琥珀",
+        "blue": "蓝",
+        "gray": "灰",
+        "green": "绿",
+        "orange": "橙",
+        "pink": "粉",
+        "red": "红",
+        "teal": "青",
+        "violet": "紫"
+      },
+      "custom": "自定义表情",
+      "face": {
+        "curious": "好奇",
+        "dots": "平静",
+        "happy": "开心",
+        "sleepy": "困倦",
+        "wink": "眨眼"
+      },
+      "faces": "表情",
+      "shape": "形状 {{index}}",
+      "shapes": "形状",
+      "title": "头像"
+    },
     "create": "创建",
     "description": "简介",
     "descriptionPlaceholder": "一句话介绍这个助理",
@@ -82,6 +108,7 @@
     "workFailed": "工作列表加载失败，下拉刷新后重试。"
   },
   "thread": {
+    "greeting": "工作中",
     "placeholder": "给 {{name}} 发消息",
     "suggestions": {
       "attention": "今天有什么需要我关注的？",

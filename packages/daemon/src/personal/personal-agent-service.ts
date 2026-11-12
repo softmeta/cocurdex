@@ -17,6 +17,7 @@ import {
   type PersonalAgentRolePayload,
   personalAgentRoleDraft,
   pickPersonaName,
+  resolveAgentRoleAvatar,
   type SaveAgentRolePayload,
   type SessionRecord,
   type SupportedLocale,
@@ -137,14 +138,21 @@ export class PersonalAgentService {
     );
     const model = await this.defaultModel(agents);
     return {
-      role: { ...personalAgentRoleDraft(name), ...model },
+      role: {
+        ...personalAgentRoleDraft(name),
+        ...model,
+        avatar: resolveAgentRoleAvatar({
+          id: crypto.randomUUID(),
+          avatar: null,
+        }),
+      },
       modelAvailable: model !== null,
     };
   }
 
   async create(payload: CreatePersonalAgentPayload) {
     const role =
-      payload.role.providerId && payload.role.modelId
+      payload.role.providerId !== null
         ? payload.role
         : { ...payload.role, ...(await this.defaultModel(await this.list())) };
     return this.insert(role, payload.soul ?? null);

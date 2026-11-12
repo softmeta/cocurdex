@@ -1,4 +1,3 @@
-import type { SavedHost } from "@cocurdex/client-runtime";
 import { isSupportedLocale } from "@cocurdex/shared";
 import i18n from "i18next";
 import useSWR, { mutate } from "swr";
@@ -56,16 +55,6 @@ export function revalidateAssistant(hostId: string) {
     (key) =>
       Array.isArray(key) && ASSISTANT_METHODS.has(key[0]) && key[1] === hostId,
   );
-}
-
-export function greetPersonalAgent(host: SavedHost, id: string) {
-  if (!host.scopes.includes("interact")) return;
-  void hostConnection(host.hostId)
-    .request("personalAgent.greet", {
-      id,
-      locale: isSupportedLocale(i18n.language) ? i18n.language : null,
-    })
-    .catch(() => undefined);
 }
 
 export function useLatestReply(

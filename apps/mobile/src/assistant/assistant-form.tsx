@@ -9,7 +9,7 @@ import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Keyboard, StyleSheet, Text } from "react-native";
-import { useCompatibleModels } from "@/agents";
+import { AvatarPicker, useCompatibleModels } from "@/agents";
 import { hostConnection } from "@/connection";
 import { ChoiceRow } from "@/session-runtime";
 import { useThemeColors } from "@/theme";
@@ -26,11 +26,11 @@ import {
   useOptionSheet,
 } from "@/ui";
 import {
-  greetPersonalAgent,
   revalidateAssistant,
   useAssistantDraft,
   usePersonalAgents,
 } from "./assistant-queries";
+import { greetPersonalAgent } from "./persona-greeting";
 
 interface AssistantDraft {
   name: string;
@@ -146,6 +146,10 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
     const { providerId, modelId, modelName } = baseRole(subject);
     return { providerId, modelId, modelName };
   });
+  const [avatar, setAvatar] = useState(() => baseRole(subject).avatar ?? null);
+  const avatarChanged =
+    agent !== null &&
+    JSON.stringify(avatar) !== JSON.stringify(agent.role.avatar ?? null);
   const models = useCompatibleModels(host.hostId, PERSONAL_AGENT_RUNTIME_ID);
   const open = useOptionSheet();
   const [saving, setSaving] = useState(false);
@@ -156,6 +160,7 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
     draft.name.trim() !== "" &&
     (agent === null ||
       !sameDraft(initial, draft) ||
+      avatarChanged ||
       model.providerId !== agent.role.providerId ||
       model.modelId !== agent.role.modelId);
   const field = (key: keyof AssistantDraft) => (value: string) =>
@@ -166,7 +171,7 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
     setSaving(true);
     setFailed(false);
     const connection = hostConnection(host.hostId);
-    const role = { ...rolePayload(subject, draft), ...model };
+    const role = { ...rolePayload(subject, draft), ...model, avatar };
     const soul = draft.soul.trim() || null;
     try {
       const saved = agent
@@ -230,6 +235,12 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
             placeholder={t("form.descriptionPlaceholder")}
             defaultValue={initial.description}
             onChangeText={field("description")}
+          />
+        </FieldSection>
+        <FieldSection title={t("form.avatar.title")}>
+          <AvatarPicker
+            role={{ id: agent?.role.id ?? "", name: draft.name, avatar }}
+            onChange={setAvatar}
           />
         </FieldSection>
         <FormSection>
