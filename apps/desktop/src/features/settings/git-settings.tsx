@@ -4,6 +4,7 @@ import type {
   ReasoningEffort,
 } from "@cocurdex/shared";
 import {
+  getAgentTraits,
   getDefaultOpenCodeAgent,
   getOpenCodeRuntimeOptions,
   getThinkingLevelLabel,
@@ -71,16 +72,17 @@ export function GitSettingsPanel() {
     thinkingLevelOptions,
     selection?.thinkingLevel ?? "default",
   );
-  const isClaudeAgent = agentId === "claude-agent";
+  const agentHasFastMode = getAgentTraits(agentId).fastMode;
   const claudeFastModeOptions =
-    isClaudeAgent && selectedProviderModel?.model.supportsFastMode
+    agentHasFastMode && selectedProviderModel?.model.supportsFastMode
       ? [
           { label: t("sessions:modelMenu.fastModeOn"), value: "on" },
           { label: t("sessions:modelMenu.fastModeOff"), value: "off" },
         ]
       : [];
   const codexReasoningOptions =
-    agentId === "codex" && selectedProviderModel
+    getAgentTraits(agentId).thinkingLevels === "reasoning-effort" &&
+    selectedProviderModel
       ? (selectedProviderModel.model.supportedReasoningEfforts ?? []).map(
           (effort) => ({
             description: effort.description,

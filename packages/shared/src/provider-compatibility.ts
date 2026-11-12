@@ -1,24 +1,9 @@
-import {
-  type AgentId,
-  type BuiltInAgentId,
-  isAcpRegistryAgentId,
-  type ProviderApi,
-  providerApis,
-} from "./contracts";
+import { getAgentTraits } from "./agent-traits";
+import { type AgentId, type ProviderApi, providerApis } from "./contracts";
 import type { CompatibleProviderModel } from "./provider-contracts";
 
-const agentApiCompatibility: Record<BuiltInAgentId, ProviderApi[]> = {
-  "claude-agent": [],
-  codex: ["openai-responses"],
-  opencode: ["openai-completions", "openai-responses", "anthropic-messages"],
-  pi: [...providerApis],
-};
-
 export function getCompatibleProviderApis(agentId: AgentId): ProviderApi[] {
-  if (isAcpRegistryAgentId(agentId)) {
-    return [];
-  }
-  return agentApiCompatibility[agentId] ?? [];
+  return [...getAgentTraits(agentId).providerApis];
 }
 
 export function isApiCompatibleWithAgent(agentId: AgentId, api: ProviderApi) {

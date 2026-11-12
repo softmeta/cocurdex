@@ -1,17 +1,17 @@
 import { getFallbackAgentPermissionModes } from "@cocurdex/shared/internal/agent-permission-modes";
+import { supportsInSessionRuntimeAxis } from "@cocurdex/shared/internal/agent-runtime-capabilities";
+import { getAgentTraits } from "@cocurdex/shared/internal/agent-traits";
 import {
-  agentRuntimeAxisCapabilities,
-  supportsInSessionRuntimeAxis,
-} from "@cocurdex/shared/internal/agent-runtime-capabilities";
-import type { AgentId } from "@cocurdex/shared/internal/contracts";
+  type AgentId,
+  BUILT_IN_AGENT_IDS,
+} from "@cocurdex/shared/internal/contracts";
 import { describe, expect, it } from "vitest";
 
 describe("agent runtime capabilities", () => {
   it("declares only in-session runtime changes", () => {
-    for (const capabilities of Object.values(agentRuntimeAxisCapabilities)) {
-      expect(
-        Object.values(capabilities).every((value) => value === "in-session"),
-      ).toBe(true);
+    for (const agentId of BUILT_IN_AGENT_IDS) {
+      const axes = Object.values(getAgentTraits(agentId).runtimeAxes);
+      expect(axes.every((value) => value === "in-session")).toBe(true);
     }
   });
 

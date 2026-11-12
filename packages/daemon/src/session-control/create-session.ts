@@ -7,7 +7,7 @@ import {
   type CompatibleProviderModel,
   type CreateSessionPayload,
   createProviderSnapshotForModel,
-  isAcpRegistryAgentId,
+  getAgentTraits,
   isAgentPermissionModeSupportedForModel,
   isPersonalWorkspaceId,
   type NewSessionDefaults,
@@ -30,9 +30,7 @@ export interface NewSessionContext {
 type ModelSelection = { providerId: string; modelId: string };
 
 function writeModeForAgent(agentId: AgentId): SessionRecord["writeMode"] {
-  return isAcpRegistryAgentId(agentId) || agentId === "claude-agent"
-    ? "native-write"
-    : "read-only";
+  return getAgentTraits(agentId).defaultWriteMode;
 }
 
 function resolveAgent(

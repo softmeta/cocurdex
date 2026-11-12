@@ -5,6 +5,7 @@ import type {
   CompatibleProviderModel,
 } from "@cocurdex/shared";
 import {
+  getAgentTraits,
   getOpenCodeRuntimeOptions,
   getThinkingLevelOptions,
   resolveOpenCodeRuntimeValue,
@@ -60,7 +61,7 @@ export function createCommitSelection(
     thinkingLevel: thinkingLevel === "default" ? null : thinkingLevel,
     serviceTier,
     fastMode:
-      agentId === "claude-agent" && item?.model.supportsFastMode
+      getAgentTraits(agentId).fastMode && item?.model.supportsFastMode
         ? (preferences.fastMode ?? false)
         : null,
     openCodeAgent:

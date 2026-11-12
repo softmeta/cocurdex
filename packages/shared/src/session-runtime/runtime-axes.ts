@@ -1,4 +1,5 @@
 import { supportsInSessionRuntimeAxis } from "../agent-runtime-capabilities";
+import { getAgentTraits } from "../agent-traits";
 import type { SessionRuntimeSelection } from "../contracts";
 import {
   type AgentId,
@@ -171,15 +172,16 @@ export function getSessionRuntimeAxes(
       openCode: null,
     };
   }
+  const traits = getAgentTraits(agentId);
+  const usesReasoningEffort = traits.thinkingLevels === "reasoning-effort";
   return {
-    thinking:
-      agentId === "codex"
-        ? null
-        : thinkingAxis(agentId, model, selection, configOptions),
-    effort: agentId === "codex" ? effortAxis(model, selection) : null,
+    thinking: usesReasoningEffort
+      ? null
+      : thinkingAxis(agentId, model, selection, configOptions),
+    effort: usesReasoningEffort ? effortAxis(model, selection) : null,
     speed: speedAxis(agentId, model, selection, configOptions),
     fastMode:
-      agentId === "claude-agent" && model.supportsFastMode
+      traits.fastMode && model.supportsFastMode
         ? (selection.fastMode ?? false)
         : null,
     openCode:

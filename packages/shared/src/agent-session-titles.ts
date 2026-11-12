@@ -1,21 +1,8 @@
-import {
-  type AgentId,
-  type BuiltInAgentId,
-  isAcpRegistryAgentId,
-  type SessionTitleStrategy,
-} from "./contracts";
-
-const agentSessionTitleStrategies = {
-  "claude-agent": "adapter-generated",
-  codex: "adapter-generated",
-  opencode: "native",
-  pi: "app-generated",
-} as const satisfies Record<BuiltInAgentId, SessionTitleStrategy>;
+import { getAgentTraits } from "./agent-traits";
+import type { AgentId, SessionTitleStrategy } from "./contracts";
 
 export function getAgentSessionTitleStrategy(
   agentId: AgentId,
 ): SessionTitleStrategy {
-  return isAcpRegistryAgentId(agentId)
-    ? "native"
-    : agentSessionTitleStrategies[agentId];
+  return getAgentTraits(agentId).sessionTitleStrategy;
 }

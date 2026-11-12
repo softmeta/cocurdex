@@ -10,6 +10,7 @@ import type {
 } from "@cocurdex/shared";
 import {
   findSessionConfigOption,
+  getAgentTraits,
   getComposerSessionConfigOptions,
   getConfigOptionSpeedTiers,
   getDefaultOpenCodeAgent,
@@ -98,7 +99,8 @@ export function SessionRuntimeMenu({
     axis: Parameters<typeof supportsInSessionRuntimeAxis>[1],
   ) => supportsInSessionRuntimeAxis(agentType, axis);
   const effortOptions =
-    agentType === "codex" && supportsRuntimeAxis("thinking")
+    getAgentTraits(agentType).thinkingLevels === "reasoning-effort" &&
+    supportsRuntimeAxis("thinking")
       ? (model?.supportedReasoningEfforts ?? [])
       : [];
   const defaultReasoningEffort = model?.defaultReasoningEffort ?? DEFAULT_VALUE;

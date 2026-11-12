@@ -6,6 +6,7 @@ export * from "./agent-role-avatar-shapes";
 export * from "./agent-runtime-capabilities";
 export * from "./agent-session-titles";
 export * from "./agent-tools";
+export * from "./agent-traits";
 export * from "./agent-versions";
 export * from "./alert";
 export * from "./applications";

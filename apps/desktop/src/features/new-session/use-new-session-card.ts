@@ -7,6 +7,7 @@ import {
   type AgentThinkingLevel,
   type CodexReasoningEffort,
   type CompatibleProviderModel,
+  getAgentTraits,
   getDefaultOpenCodeAgent,
   getOpenCodeRuntimeOptions,
   getThinkingLevelOptions,
@@ -178,7 +179,9 @@ export function useNewSessionCard({
   const canStartWithSelectedAgent = availableAgents.some(
     (agent) => agent.id === effectiveSelectedAgent,
   );
-  const requiresProviderModel = effectiveSelectedAgent === "pi";
+  const selectedAgentTraits = getAgentTraits(effectiveSelectedAgent);
+  const requiresProviderModel =
+    selectedAgentTraits.modelCatalog === "app-providers";
   const canStartSession =
     canStartWithSelectedAgent &&
     (!requiresProviderModel || Boolean(selectedCompatibleProvider));
@@ -213,9 +216,9 @@ export function useNewSessionCard({
   );
   const selectedOpenCodeAgentMenuValue =
     selectedOpenCodeAgentValue || openCodeAgentDefaultValue;
-  const isClaudeAgent = effectiveSelectedAgent === "claude-agent";
+  const agentHasFastMode = selectedAgentTraits.fastMode;
   const claudeFastModeOptions =
-    isClaudeAgent && selectedCompatibleProvider?.model.supportsFastMode
+    agentHasFastMode && selectedCompatibleProvider?.model.supportsFastMode
       ? [
           { label: t("modelMenu.fastModeOn"), value: "on" },
           { label: t("modelMenu.fastModeOff"), value: "off" },
@@ -254,10 +257,11 @@ export function useNewSessionCard({
             rawSelectedThinkingLevel === "default"
               ? null
               : selectedThinkingLevel,
-          ...(isClaudeAgent && selectedCompatibleProvider.model.supportsFastMode
+          ...(agentHasFastMode &&
+          selectedCompatibleProvider.model.supportsFastMode
             ? { fastMode: selectedClaudeFastMode }
             : {}),
-          ...(effectiveSelectedAgent === "codex"
+          ...(selectedAgentTraits.thinkingLevels === "reasoning-effort"
             ? {
                 reasoningEffort: selectedCodexReasoningEffort
                   ? (selectedCodexReasoningEffort as CodexReasoningEffort)
@@ -277,7 +281,8 @@ export function useNewSessionCard({
       : null;
 
   const codexReasoningOptions =
-    effectiveSelectedAgent === "codex" && selectedCompatibleProvider
+    selectedAgentTraits.thinkingLevels === "reasoning-effort" &&
+    selectedCompatibleProvider
       ? (selectedCompatibleProvider.model.supportedReasoningEfforts ?? []).map(
           (effort) => ({
             description: effort.description,
@@ -509,7 +514,7 @@ export function useNewSessionCard({
       ? (selectedCodexReasoningEffort as CodexReasoningEffort)
       : null,
     serviceTier: selectedServiceTier || null,
-    fastMode: isClaudeAgent ? selectedClaudeFastMode : null,
+    fastMode: agentHasFastMode ? selectedClaudeFastMode : null,
     thinkingLevel:
       rawSelectedThinkingLevel === "default" ? null : rawSelectedThinkingLevel,
     openCodeAgent: selectedOpenCodeAgentValue || null,

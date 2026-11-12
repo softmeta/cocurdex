@@ -6,15 +6,14 @@ import {
   type AgentPermissionModeOption,
   type AgentProviderSnapshot,
   type AgentSessionMode,
-  agentRuntimeAxisCapabilities,
+  BUILT_IN_AGENT_IDS,
   type BuiltInAgentId,
-  getAgentSessionTitleStrategy,
-  getFallbackAgentPermissionModes,
+  getAgentTraits,
+  getBuiltInAgentDescriptor,
   isAcpRegistryAgentId,
   isAgentId,
   isAgentPermissionModeSupportedForModel,
   isPlanModeId,
-  PLAN_MODE_ID,
   type SessionRecord,
   supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
@@ -38,79 +37,9 @@ export const agentLabels: Record<BuiltInAgentId, string> = {
   pi: "Pi",
 };
 
-function planSessionModes(): AgentSessionMode[] {
-  return [
-    { id: "default", name: "Default" },
-    { id: PLAN_MODE_ID, name: "Plan" },
-  ];
-}
-
-export const agentsAtom = atom<AgentDescriptor[]>([
-  {
-    id: "claude-agent",
-    label: "Claude Agent",
-    availability: "available",
-    capabilities: {
-      sessionModes: planSessionModes(),
-      permissionModes: getFallbackAgentPermissionModes("claude-agent"),
-      writeModes: ["read-only", "native-write"],
-      supportsSteering: true,
-      supportsStreaming: true,
-      supportsSelections: true,
-      sessionTitleStrategy: getAgentSessionTitleStrategy("claude-agent"),
-      transport: "native",
-      runtimeAxes: agentRuntimeAxisCapabilities["claude-agent"],
-    },
-  },
-  {
-    id: "codex",
-    label: "Codex",
-    availability: "available",
-    capabilities: {
-      sessionModes: planSessionModes(),
-      permissionModes: getFallbackAgentPermissionModes("codex"),
-      writeModes: ["read-only"],
-      supportsSteering: true,
-      supportsStreaming: true,
-      supportsSelections: true,
-      sessionTitleStrategy: getAgentSessionTitleStrategy("codex"),
-      transport: "native",
-      runtimeAxes: agentRuntimeAxisCapabilities.codex,
-    },
-  },
-  {
-    id: "opencode",
-    label: "OpenCode",
-    availability: "available",
-    capabilities: {
-      sessionModes: planSessionModes(),
-      permissionModes: getFallbackAgentPermissionModes("opencode"),
-      writeModes: ["read-only", "native-write"],
-      supportsSteering: false,
-      supportsStreaming: true,
-      supportsSelections: true,
-      sessionTitleStrategy: getAgentSessionTitleStrategy("opencode"),
-      transport: "native",
-      runtimeAxes: agentRuntimeAxisCapabilities.opencode,
-    },
-  },
-  {
-    id: "pi",
-    label: "Pi",
-    availability: "available",
-    capabilities: {
-      sessionModes: [],
-      permissionModes: getFallbackAgentPermissionModes("pi"),
-      writeModes: ["read-only"],
-      supportsSteering: true,
-      supportsStreaming: true,
-      supportsSelections: true,
-      sessionTitleStrategy: getAgentSessionTitleStrategy("pi"),
-      transport: "native",
-      runtimeAxes: agentRuntimeAxisCapabilities.pi,
-    },
-  },
-]);
+export const agentsAtom = atom<AgentDescriptor[]>(
+  BUILT_IN_AGENT_IDS.map(getBuiltInAgentDescriptor),
+);
 
 export const availableAgentsAtom = atom((get) =>
   get(agentsAtom).filter(isAgentReadyToStart),
@@ -211,11 +140,7 @@ export function isDefaultSessionTitle(title: string, agentType: AgentId) {
 export function getDefaultWriteMode(
   agentType: unknown,
 ): SessionRecord["writeMode"] {
-  const normalizedAgentType = normalizeAgentId(agentType);
-  return isAcpRegistryAgentId(normalizedAgentType) ||
-    normalizedAgentType === "claude-agent"
-    ? "native-write"
-    : "read-only";
+  return getAgentTraits(normalizeAgentId(agentType)).defaultWriteMode;
 }
 
 export function getPermissionModeOptions(

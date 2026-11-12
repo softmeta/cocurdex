@@ -1,3 +1,4 @@
+import { getAgentTraits } from "../agent-traits";
 import type {
   AgentId,
   AgentSessionConfigOption,
@@ -7,7 +8,6 @@ import type {
   ReasoningEffortOption,
 } from "../contracts";
 import {
-  isAcpRegistryAgentId,
   isReasoningEffort,
   piThinkingLevels,
   reasoningEfforts,
@@ -97,16 +97,14 @@ export function getThinkingLevelOptions(
   if (!source) {
     return [];
   }
-  if (source.agentType === "pi") {
-    return getPiThinkingLevels(source);
+  switch (getAgentTraits(source.agentType).thinkingLevels) {
+    case "app":
+      return getPiThinkingLevels(source);
+    case "adapter":
+      return getReportedThinkingLevels(source);
+    default:
+      return [];
   }
-  if (
-    isAcpRegistryAgentId(source.agentType) ||
-    source.agentType === "claude-agent"
-  ) {
-    return getReportedThinkingLevels(source);
-  }
-  return [];
 }
 
 export function getConfigOptionThinkingLevels(
@@ -149,7 +147,7 @@ export function getEffectiveThinkingLevel(
   reasoningEffort: ReasoningEffort | null | undefined,
   thinkingLevel: AgentThinkingLevel | null | undefined,
 ): AgentThinkingLevel | null {
-  if (agentType === "codex") {
+  if (getAgentTraits(agentType).thinkingLevels === "reasoning-effort") {
     return reasoningEffort ?? null;
   }
 

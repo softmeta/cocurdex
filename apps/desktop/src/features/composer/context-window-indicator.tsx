@@ -3,6 +3,7 @@ import {
   type AgentPermissionMode,
   type AgentRateLimitsRecord,
   type AgentThinkingLevel,
+  getAgentTraits,
   getEffectiveThinkingLevel,
   isAcpRegistryAgentId,
   PLAN_MODE_ID,
@@ -411,7 +412,10 @@ export function ContextWindowIndicator({
   if (sessionModeChip) {
     menuTriggerValues.push(sessionModeChip);
   }
-  if (session.agentType !== "codex" && effortLabel) {
+  if (
+    getAgentTraits(session.agentType).thinkingLevels !== "reasoning-effort" &&
+    effortLabel
+  ) {
     menuTriggerValues.push(effortLabel);
   }
   if (permissionModeLabel) {
