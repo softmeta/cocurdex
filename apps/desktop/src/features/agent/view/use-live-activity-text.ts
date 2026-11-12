@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
+import { useChatPresentation } from "../chat-display";
 import { useActiveToolCallLabel } from "../tool-call/use-tool-call-trigger-parts";
-import type { ActivityState } from "./chat-activity-state";
+import type { ActivityKind, ActivityState } from "./chat-activity-state";
 import { useSettledLabel } from "./use-settled-label";
 
 export type LiveActivityText = {
@@ -9,17 +10,27 @@ export type LiveActivityText = {
   handling: boolean;
 };
 
+function liveActivityKind(
+  kind: ActivityKind,
+  presentation: ReturnType<typeof useChatPresentation>,
+): ActivityKind {
+  return presentation === "chat" && kind === "planning" ? "thinking" : kind;
+}
+
 export function useLiveActivityText(
   activity: ActivityState | null | undefined,
 ): LiveActivityText {
   const { t } = useTranslation("agent");
+  const presentation = useChatPresentation();
   const tool = useActiveToolCallLabel(activity?.activeToolCall);
   const handling = activity?.kind === "usingTools";
   const wanted: LiveActivityText =
     tool && (tool.title || tool.secondary)
       ? { title: tool.title, secondary: tool.secondary ?? "", handling }
       : {
-          title: activity ? t(`activity.${activity.kind}`) : "",
+          title: activity
+            ? t(`activity.${liveActivityKind(activity.kind, presentation)}`)
+            : "",
           secondary: "",
           handling,
         };

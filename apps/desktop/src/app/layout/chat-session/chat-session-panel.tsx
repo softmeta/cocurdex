@@ -124,6 +124,7 @@ export function ChatSessionPanel({
       composerRef={composerRef}
       isRunning={isRunning}
       messages={messages}
+      presentation="chat"
       onSend={(text, attachments) => {
         void actions.send(session, text, attachments, thinkingLevel);
         return "sent";
