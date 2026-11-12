@@ -36,6 +36,7 @@ describe("withTurnEnds", () => {
       messageId: "a1",
       durationMs: 12_000,
       stopReason: "cancelled",
+      completedAt: "2026-01-01T00:00:12.000Z",
     },
   };
 
