@@ -163,11 +163,13 @@ describe("headless install script", () => {
 
     const output = await withDaemonLog(async () => {
       const result = await install();
-      expect(result).toContain("Restarted the daemon");
+      if (!result.includes("Restarted the daemon")) {
+        throw new Error(`Install did not restart the daemon:\n${result}`);
+      }
       return result;
     });
 
-    expect(output).toContain("Restarted the daemon");
+    expect(output).toContain("Stopped the daemon to upgrade it");
     const after = await readDaemonMetadata(userDataPath);
     expect(after.pid).not.toBe(before.pid);
     expect(isAlive(before.pid)).toBe(false);

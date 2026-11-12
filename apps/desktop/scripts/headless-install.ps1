@@ -59,7 +59,13 @@ try {
     if ($stopExit -ne 0) {
       throw "cocurdex install: could not stop the running daemon; retry when it is idle`n$stopResult"
     }
-    $wasRunning = "$stopResult" -match '"stopped"'
+    $stopStatus = try { ($stopResult | ConvertFrom-Json).status } catch { $null }
+    if ($stopStatus -eq 'stopped') {
+      $wasRunning = $true
+      Write-Host 'Stopped the daemon to upgrade it'
+    } elseif ($stopStatus -ne 'notRunning') {
+      throw "cocurdex install: unexpected output from cocurdex daemon stop`n$stopResult"
+    }
   }
 
   $parent = Split-Path -Parent $installDir

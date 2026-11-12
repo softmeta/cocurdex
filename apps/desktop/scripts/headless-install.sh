@@ -80,7 +80,12 @@ if [ -x "$install_dir/bin/cocurdex" ]; then
   stop_result="$("$install_dir/bin/cocurdex" daemon stop --json)" ||
     fail "could not stop the running daemon; retry when it is idle"
   case "$stop_result" in
-    *'"stopped"'*) was_running=1 ;;
+    *'"stopped"'*)
+      was_running=1
+      echo "Stopped the daemon to upgrade it"
+      ;;
+    *'"notRunning"'*) ;;
+    *) fail "unexpected output from cocurdex daemon stop: $stop_result" ;;
   esac
 fi
 
