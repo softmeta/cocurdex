@@ -87,8 +87,6 @@ import type {
   MemoryRecallResult,
   MemoryRememberInput,
   MemoryRememberResult,
-  MemorySessionSaveInput,
-  MemorySessionSaveResult,
   MemorySettings,
   MemoryStatus,
   MemoryUpdateInput,
@@ -605,9 +603,6 @@ export interface ProductApi {
   }): Promise<MemoryRecallResult>;
   showMemory(id: string): Promise<MemoryEntry | null>;
   rememberMemory(input: MemoryRememberInput): Promise<MemoryRememberResult>;
-  saveSessionMemory(
-    input: MemorySessionSaveInput,
-  ): Promise<MemorySessionSaveResult>;
   installMemory(force?: boolean): Promise<MemoryInstallResult>;
   listMemories(input: MemoryListInput): Promise<MemoryListResult>;
   updateMemory(input: MemoryUpdateInput): Promise<MemoryEntry | null>;

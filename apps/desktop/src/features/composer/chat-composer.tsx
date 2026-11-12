@@ -233,7 +233,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     });
 
     const slashCommands = useSlashCommands({
-      agentType,
+      agentType: isAgentMode ? agentType : undefined,
       editorRef,
       runtimeCommands,
       workspaceRootPath,
@@ -539,9 +539,15 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             </span>
           </AppDropdownItem>
           <AttachContextSubmenus
-            loadSkills={slashCommands.fetchCommands}
             onInsertContext={insertContextMention}
-            onSelectSkill={slashCommands.selectCommand}
+            skills={
+              isAgentMode
+                ? {
+                    load: slashCommands.fetchCommands,
+                    select: slashCommands.selectCommand,
+                  }
+                : null
+            }
           />
         </DropdownMenuGroup>
         {attachMenuExtras ? (
