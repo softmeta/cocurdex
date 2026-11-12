@@ -110,6 +110,9 @@ function ChatDraft({
   const [failed, setFailed] = useState(false);
   const canStart =
     !preview && Boolean(selected) && host.scopes.includes("execute");
+  const hasModels = Boolean(models.data?.length);
+  const unavailable =
+    !hasModels && (Boolean(models.error) || models.data !== undefined);
 
   const start = async (prompt: string, images: ImageAttachment[]) => {
     if (!canStart || !selected) return false;
@@ -160,43 +163,45 @@ function ChatDraft({
         follow={keyboard}
         style={{ backgroundColor: colors.background }}
         dock={
-          <>
-            {failed ? (
-              <Text
-                accessibilityRole="alert"
-                style={[styles.error, { color: colors.destructive }]}
-              >
-                {t("newSession.failed")}
-              </Text>
-            ) : null}
-            <Composer
-              running={false}
-              canSend={canStart}
-              canEdit={!preview}
-              onSend={start}
-              onStop={() => undefined}
-              onPickImages={pickImages}
-              onUploadImage={(image) => uploadImage(host.hostId, image)}
-              placeholder={t("chat.prompt")}
-              inputTestID="new-chat-prompt"
-              autoFocus
-              accessory={
-                selected ? (
-                  <ConfigTrigger
-                    testID="new-chat-model"
-                    summary={selected.model.name}
-                    mode={null}
-                    onPress={() => void openModels()}
-                  />
-                ) : undefined
-              }
-            />
-          </>
+          hasModels ? (
+            <>
+              {failed ? (
+                <Text
+                  accessibilityRole="alert"
+                  style={[styles.error, { color: colors.destructive }]}
+                >
+                  {t("newSession.failed")}
+                </Text>
+              ) : null}
+              <Composer
+                running={false}
+                canSend={canStart}
+                canEdit={!preview}
+                onSend={start}
+                onStop={() => undefined}
+                onPickImages={pickImages}
+                onUploadImage={(image) => uploadImage(host.hostId, image)}
+                placeholder={t("chat.prompt")}
+                inputTestID="new-chat-prompt"
+                autoFocus
+                accessory={
+                  selected ? (
+                    <ConfigTrigger
+                      testID="new-chat-model"
+                      summary={selected.model.name}
+                      mode={null}
+                      onPress={() => void openModels()}
+                    />
+                  ) : undefined
+                }
+              />
+            </>
+          ) : null
         }
       >
         <View style={styles.fill}>
           {preview ? <PendingTranscript host={host} send={preview} /> : null}
-          {models.data?.length === 0 || models.error ? (
+          {unavailable ? (
             <ListNotice
               icon={{ ios: "bubble.left", android: "chat_bubble" }}
               title={models.error ? t("chat.modelsFailed") : t("chat.noModels")}
