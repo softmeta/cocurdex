@@ -1075,17 +1075,9 @@
       "advanced": "高级",
       "authenticateToLoad": "完成上方认证后即可获取模型。",
       "columns": {
+        "actions": "操作",
         "capabilities": "能力",
-        "compat": "兼容配置",
-        "cost": "成本 / 1M",
-        "defaultModel": "默认",
-        "input": "输入",
-        "no": "否",
-        "reasoning": "推理",
-        "reasoningEfforts": "推理选项",
-        "serviceTiers": "服务档位",
-        "thinking": "思考映射",
-        "yes": "是"
+        "defaultModel": "默认"
       },
       "deleteConfirmDescription": "删除 {{model}}？之后 agent 将无法通过此服务商使用该模型。",
       "deleteConfirmTitle": "删除模型",
