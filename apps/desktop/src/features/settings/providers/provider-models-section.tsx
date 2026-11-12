@@ -31,76 +31,12 @@ import { ModelRuntimeSelect } from "./model-runtime-select";
 const fieldClass =
   "h-7 min-w-0 rounded-control border-border/70 bg-background/60 text-body shadow-none focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/20";
 
-function getModelInput(model: ProviderModelRecord) {
-  return model.capabilities?.includes("vision") ? "text, image" : "text";
-}
+const capabilityOrder = ["chat", "agent", "vision", "reasoning"] as const;
 
-function formatCapabilities(model: ProviderModelRecord) {
-  return model.capabilities?.length ? model.capabilities.join(", ") : "-";
-}
-
-function parseJsonRecord(json?: string | null) {
-  if (!json) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(json) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function formatJsonRecord(json?: string | null) {
-  const record = parseJsonRecord(json);
-  if (!record) {
-    return "-";
-  }
-
-  return Object.entries(record)
-    .map(([key, value]) => `${key}:${String(value)}`)
-    .join(", ");
-}
-
-function formatModelCost(costJson?: string | null) {
-  const cost = parseJsonRecord(costJson);
-  if (!cost) {
-    return "-";
-  }
-
-  return [
-    ["in", cost.input],
-    ["out", cost.output],
-    ["read", cost.cacheRead],
-    ["write", cost.cacheWrite],
-  ]
-    .filter(([, value]) => typeof value === "number")
-    .map(([label, value]) => `${label} ${value}`)
-    .join(" / ");
-}
-
-function formatReasoningEfforts(model: ProviderModelRecord) {
-  if (!model.supportedReasoningEfforts?.length) {
-    return model.defaultReasoningEffort ?? "-";
-  }
-
-  const efforts = model.supportedReasoningEfforts.map(
-    (option) => option.reasoningEffort,
-  );
-  return model.defaultReasoningEffort
-    ? `${model.defaultReasoningEffort} (${efforts.join(", ")})`
-    : efforts.join(", ");
-}
-
-function formatServiceTiers(model: ProviderModelRecord) {
-  if (!model.serviceTiers?.length) {
-    return "-";
-  }
-
-  return model.serviceTiers.map((tier) => tier.name || tier.id).join(", ");
+function modelCapabilities(model: ProviderModelRecord) {
+  const capabilities = new Set(model.capabilities ?? []);
+  if (model.reasoning) capabilities.add("reasoning");
+  return capabilityOrder.filter((capability) => capabilities.has(capability));
 }
 
 function modelsEmptyText(options: {
@@ -157,6 +93,9 @@ export function ProviderModelsSection({
         first.modelId.localeCompare(second.modelId),
     );
 
+  const mixedRuntimes =
+    new Set(selectedModels.map((model) => model.api)).size > 1;
+
   const emptyText = modelsEmptyText({
     builtIn,
     hasModels: selectedModels.length > 0,
@@ -209,51 +148,33 @@ export function ProviderModelsSection({
           </div>
         ) : (
           <Table
-            className="min-w-[1560px] border-separate border-spacing-0"
+            className="border-separate border-spacing-0"
             containerClassName="max-h-96"
           >
             <TableHeader className="text-xs font-medium text-muted-foreground">
               <TableRow className="border-border/50">
-                <TableHead className="sticky top-0 z-10 w-64 bg-muted px-3 py-1.5">
+                <TableHead className="sticky start-0 top-0 z-20 w-full border-e border-border/40 bg-muted px-3 py-1.5">
                   {t("providers.models.title")}
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
-                  {t("providers.fields.modelRuntime")}
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
+                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5 text-end">
                   {t("providers.fields.contextLimit")}
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
+                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5 text-end">
                   {t("providers.fields.outputLimit")}
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
-                  {t("providers.models.columns.reasoning")}
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
-                  {t("providers.models.columns.input")}
                 </TableHead>
                 <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
                   {t("providers.models.columns.capabilities")}
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
-                  {t("providers.models.columns.cost")}
+                {mixedRuntimes ? (
+                  <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
+                    {t("providers.fields.modelRuntime")}
+                  </TableHead>
+                ) : null}
+                <TableHead className="sticky end-0 top-0 z-20 border-s border-border/40 bg-muted px-3 py-1.5">
+                  <span className="sr-only">
+                    {t("providers.models.columns.actions")}
+                  </span>
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
-                  {t("providers.models.columns.thinking")}
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
-                  {t("providers.models.columns.compat")}
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
-                  {t("providers.models.columns.defaultModel")}
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
-                  {t("providers.models.columns.reasoningEfforts")}
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
-                  {t("providers.models.columns.serviceTiers")}
-                </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5" />
               </TableRow>
             </TableHeader>
             <TableBody className="bg-background">
@@ -262,12 +183,25 @@ export function ProviderModelsSection({
                   className="border-border/50 last:border-b-0"
                   key={`${model.providerId}:${model.modelId}`}
                 >
-                  <TableCell className="px-3 py-2">
-                    <div className="truncate font-medium">{model.name}</div>
-                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="truncate font-mono">
+                  <TableCell className="sticky start-0 z-10 border-e border-border/40 bg-background px-3 py-2">
+                    <div
+                      className="w-52 truncate font-medium"
+                      title={model.name}
+                    >
+                      {model.name}
+                    </div>
+                    <div className="mt-1 flex w-52 items-center gap-2 text-xs text-muted-foreground">
+                      <span
+                        className="truncate font-mono"
+                        title={model.modelId}
+                      >
                         {model.modelId}
                       </span>
+                      {model.isDefault ? (
+                        <span className="shrink-0">
+                          {t("providers.models.columns.defaultModel")}
+                        </span>
+                      ) : null}
                       {model.overridden ? (
                         <span className="shrink-0">
                           {t("providers.models.overridden")}
@@ -275,53 +209,21 @@ export function ProviderModelsSection({
                       ) : null}
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-44 max-w-56 truncate px-3 py-2 text-xs text-muted-foreground">
-                    {t(`providers.fields.runtime.${model.api}`)}
+                  <TableCell className="px-3 py-2 text-end font-mono text-xs text-muted-foreground tabular-nums">
+                    {formatLimit(model.contextLimit)}
                   </TableCell>
-                  <TableCell className="px-3 py-2">
-                    <ModelLimit
-                      label={t("providers.fields.contextLimit")}
-                      value={model.contextLimit}
-                    />
-                  </TableCell>
-                  <TableCell className="px-3 py-2">
-                    <ModelLimit
-                      label={t("providers.fields.outputLimit")}
-                      value={model.outputLimit}
-                    />
+                  <TableCell className="px-3 py-2 text-end font-mono text-xs text-muted-foreground tabular-nums">
+                    {formatLimit(model.outputLimit)}
                   </TableCell>
                   <TableCell className="px-3 py-2 text-xs text-muted-foreground">
-                    {model.reasoning
-                      ? t("providers.models.columns.yes")
-                      : t("providers.models.columns.no")}
+                    <ModelCapabilities model={model} />
                   </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-muted-foreground">
-                    {getModelInput(model)}
-                  </TableCell>
-                  <TableCell className="max-w-40 truncate px-3 py-2 text-xs text-muted-foreground">
-                    {formatCapabilities(model)}
-                  </TableCell>
-                  <TableCell className="max-w-48 truncate px-3 py-2 font-mono text-xs text-muted-foreground">
-                    {formatModelCost(model.costJson)}
-                  </TableCell>
-                  <TableCell className="max-w-52 truncate px-3 py-2 font-mono text-xs text-muted-foreground">
-                    {formatJsonRecord(model.thinkingLevelMapJson)}
-                  </TableCell>
-                  <TableCell className="max-w-64 truncate px-3 py-2 font-mono text-xs text-muted-foreground">
-                    {formatJsonRecord(model.compatJson)}
-                  </TableCell>
-                  <TableCell className="max-w-40 truncate px-3 py-2 text-xs text-muted-foreground">
-                    {model.isDefault
-                      ? t("providers.models.columns.defaultModel")
-                      : "-"}
-                  </TableCell>
-                  <TableCell className="max-w-48 truncate px-3 py-2 text-xs text-muted-foreground">
-                    {formatReasoningEfforts(model)}
-                  </TableCell>
-                  <TableCell className="max-w-40 truncate px-3 py-2 text-xs text-muted-foreground">
-                    {formatServiceTiers(model)}
-                  </TableCell>
-                  <TableCell className="px-3 py-2">
+                  {mixedRuntimes ? (
+                    <TableCell className="px-3 py-2 text-xs text-muted-foreground">
+                      {t(`providers.fields.runtime.${model.api}`)}
+                    </TableCell>
+                  ) : null}
+                  <TableCell className="sticky end-0 z-10 border-s border-border/40 bg-background px-3 py-2">
                     <div className="flex items-center justify-end gap-2">
                       <ModelParametersDialog
                         model={model}
@@ -444,23 +346,22 @@ function AddModelDialog({
   );
 }
 
-function ModelLimit({
-  label,
-  value,
-}: {
-  label: string;
-  value?: number | null;
-}) {
+function ModelCapabilities({ model }: { model: ProviderModelRecord }) {
+  const { t } = useTranslation("settings");
+  const capabilities = modelCapabilities(model);
+  if (capabilities.length === 0) return "-";
   return (
-    <div className="min-w-0 text-xs">
-      <div className="text-muted-foreground/70">{label}</div>
-      <div className="mt-0.5 font-mono text-muted-foreground">
-        {value ? formatLimit(value) : "-"}
-      </div>
-    </div>
+    <ul className="flex w-32 flex-wrap gap-x-2 gap-y-0.5">
+      {capabilities.map((capability) => (
+        <li key={capability}>
+          {t(`providers.fields.capability.${capability}`)}
+        </li>
+      ))}
+    </ul>
   );
 }
 
-function formatLimit(value: number) {
+function formatLimit(value?: number | null) {
+  if (!value) return "-";
   return value >= 1000 ? `${Math.round(value / 1000)}K` : String(value);
 }

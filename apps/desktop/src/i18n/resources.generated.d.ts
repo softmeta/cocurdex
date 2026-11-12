@@ -3428,17 +3428,9 @@ export default interface Resources {
         advanced: "Advanced";
         authenticateToLoad: "Authenticate above to load this provider's models.";
         columns: {
+          actions: "Actions";
           capabilities: "Capabilities";
-          compat: "Compat";
-          cost: "Cost / 1M";
           defaultModel: "Default";
-          input: "Input";
-          no: "No";
-          reasoning: "Reasoning";
-          reasoningEfforts: "Reasoning options";
-          serviceTiers: "Service tiers";
-          thinking: "Thinking map";
-          yes: "Yes";
         };
         deleteConfirmDescription: "Delete {{model}}? Agents can no longer use it through this provider.";
         deleteConfirmTitle: "Delete model";
