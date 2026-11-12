@@ -156,6 +156,13 @@ describe("permission mapping", () => {
       behavior: "deny",
       toolUseID: "tool-1",
     });
+    expect(allowPayload.requestPermission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        access: { operation: "edit", path: "src/app.ts" },
+        rawInputVisible: false,
+        locations: [{ path: "src/app.ts" }],
+      }),
+    );
   });
 
   it("maps Claude AskUserQuestion into structured answers instead of permission", async () => {

@@ -37,15 +37,7 @@ export const opencodeManifest: BuiltInAgentManifest = {
   rsrsHost: "opencode",
   acpRegistryEquivalents: ["opencode"],
   skills: {
-    homeDirs: [
-      [".agents", "skills"],
-      [".config", "opencode", "skills"],
-      [".opencode", "skills"],
-    ],
-    workspaceDirs: [
-      [".agents", "skills"],
-      [".opencode", "skills"],
-    ],
+    rootIds: ["agents", "claude", "opencode"],
     invocation: (name) => `Use the \`${name}\` skill. `,
   },
 };

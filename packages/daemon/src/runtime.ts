@@ -871,6 +871,10 @@ export class AgentRuntimeManager {
       title: request.title,
       description: request.description ?? null,
       rawInput: request.rawInput,
+      ...(request.rawInputVisible === undefined
+        ? {}
+        : { rawInputVisible: request.rawInputVisible }),
+      ...(request.access ? { access: request.access } : {}),
       locations: request.locations ?? [],
       options: request.options,
       status: "pending",

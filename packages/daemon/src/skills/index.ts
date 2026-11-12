@@ -1,4 +1,5 @@
 import path from "node:path";
+import { skillLocationEnvFromProcess } from "@cocurdex/agent-adapters";
 import { PRODUCT_SKILL_NAMES } from "@cocurdex/product-skills";
 import {
   primaryWorkspaceRootPath,
@@ -12,7 +13,6 @@ import type { SettingsStore } from "./skill-context";
 import { SkillBackups } from "./skill-fs";
 import { SkillInstaller } from "./skill-installer";
 import { SkillLibrary } from "./skill-library-service";
-import { skillLocationEnvFromProcess } from "./skill-locations";
 import { GithubSnapshotStore, githubTokenFromEnv } from "./skill-snapshots";
 import { SkillSourceLoader } from "./skill-sources";
 import { SkillUpdateCache } from "./skill-update-cache";

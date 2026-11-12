@@ -1,6 +1,10 @@
 import type { Dirent } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  linkAgentRoot,
+  type SkillRootLocation,
+} from "@cocurdex/agent-adapters";
 import type {
   InstalledSkill,
   SkillAgentVisibility,
@@ -19,7 +23,6 @@ import {
   toSkillFileEntries,
 } from "./skill-files";
 import { readSkillEntry, type SkillEntryState } from "./skill-links";
-import { linkAgentRoot, type SkillRootLocation } from "./skill-locations";
 import { type SkillLockEntry, sourceInfoFromLock } from "./skill-locks";
 import { parseSkillManifest, SKILL_FILE_NAME } from "./skill-manifest";
 

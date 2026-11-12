@@ -1,4 +1,9 @@
 import path from "node:path";
+import {
+  linkAgentRoot,
+  rootDir,
+  type SkillLocationEnv,
+} from "@cocurdex/agent-adapters";
 import type {
   InstalledSkill,
   InstalledSkillDetail,
@@ -26,11 +31,6 @@ import {
 } from "./skill-fs";
 import { type ScannedSkill, scanInstalledSkills } from "./skill-inventory";
 import { createSkillLink, readSkillEntry } from "./skill-links";
-import {
-  linkAgentRoot,
-  rootDir,
-  type SkillLocationEnv,
-} from "./skill-locations";
 import { withoutLockEntry, writeSkillLock } from "./skill-locks";
 import type { SkillUpdateCache } from "./skill-update-cache";
 

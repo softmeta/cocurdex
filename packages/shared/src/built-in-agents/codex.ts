@@ -37,14 +37,7 @@ export const codexManifest: BuiltInAgentManifest = {
   rsrsHost: "codex",
   acpRegistryEquivalents: ["codex-acp"],
   skills: {
-    homeDirs: [
-      [".agents", "skills"],
-      [".codex", "skills"],
-    ],
-    workspaceDirs: [
-      [".agents", "skills"],
-      [".codex", "skills"],
-    ],
+    rootIds: ["agents", "codex"],
     invocation: (name) => `$${name} `,
   },
 };

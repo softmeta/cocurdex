@@ -6,6 +6,7 @@ import type {
   SessionTitleStrategy,
   WriteMode,
 } from "../contracts";
+import type { SkillRootId } from "../skill-library";
 
 export type AgentThinkingLevelSource = "reasoning-effort" | "app" | "adapter";
 
@@ -40,8 +41,7 @@ export interface AgentModelIdentity {
 }
 
 export interface AgentSkillConvention {
-  homeDirs: readonly (readonly string[])[];
-  workspaceDirs: readonly (readonly string[])[];
+  rootIds: readonly SkillRootId[];
   invocation(skillName: string): string;
 }
 

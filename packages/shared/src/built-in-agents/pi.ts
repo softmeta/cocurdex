@@ -25,8 +25,7 @@ export const piManifest: BuiltInAgentManifest = {
   rsrsHost: "pi",
   acpRegistryEquivalents: ["pi-acp"],
   skills: {
-    homeDirs: [[".agents", "skills"]],
-    workspaceDirs: [[".agents", "skills"]],
+    rootIds: ["agents"],
     invocation: (name) => `/skill:${name} `,
   },
 };

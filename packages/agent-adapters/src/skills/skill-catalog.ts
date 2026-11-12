@@ -9,6 +9,12 @@ import {
   getBuiltInAgentManifest,
 } from "@cocurdex/shared";
 import { parse } from "yaml";
+import {
+  type SkillLocationEnv,
+  type SkillRootLocation,
+  skillLocationEnvFromProcess,
+  skillRoots,
+} from "./skill-locations";
 
 interface SkillFrontmatter {
   name?: unknown;
@@ -16,7 +22,7 @@ interface SkillFrontmatter {
 }
 
 interface ListAgentSkillsOptions {
-  homePath?: string;
+  env?: SkillLocationEnv;
 }
 
 function extractFrontmatter(content: string): SkillFrontmatter | null {
@@ -36,8 +42,7 @@ function extractFrontmatter(content: string): SkillFrontmatter | null {
 }
 
 const DEFAULT_SKILL_CONVENTION: AgentSkillConvention = {
-  homeDirs: [[".agents", "skills"]],
-  workspaceDirs: [[".agents", "skills"]],
+  rootIds: ["agents"],
   invocation: (name) => `/${name} `,
 };
 
@@ -45,18 +50,24 @@ function getSkillConvention(agentId: AgentId): AgentSkillConvention {
   return getBuiltInAgentManifest(agentId)?.skills ?? DEFAULT_SKILL_CONVENTION;
 }
 
+function agentRootDirs(roots: SkillRootLocation[], agentId: AgentId) {
+  return getSkillConvention(agentId).rootIds.flatMap((id) =>
+    roots.filter((root) => root.id === id).map((root) => root.dir),
+  );
+}
+
 function getAgentSkillRoots(
   agentId: AgentId,
   workspaceRootPath: string,
-  homePath: string,
+  env: SkillLocationEnv,
 ): string[] {
-  const { homeDirs, workspaceDirs } = getSkillConvention(agentId);
-  return [
-    ...homeDirs.map((segments) => path.join(homePath, ...segments)),
-    ...workspaceDirs.map((segments) =>
-      path.join(workspaceRootPath, ...segments),
-    ),
-  ];
+  const global = agentRootDirs(skillRoots("global", env), agentId);
+  if (!workspaceRootPath) return global;
+  const workspace = agentRootDirs(
+    skillRoots("workspace", env, workspaceRootPath),
+    agentId,
+  );
+  return [...global, ...workspace];
 }
 
 async function readSkill(
@@ -143,7 +154,7 @@ export async function listAgentSkills(
   const roots = getAgentSkillRoots(
     agentId,
     payload.workspaceRootPath,
-    options.homePath ?? homedir(),
+    options.env ?? skillLocationEnvFromProcess(homedir()),
   );
   const discovered = await Promise.all(
     roots.map((rootPath) => readSkillRoot(rootPath, agentId)),

@@ -24,6 +24,11 @@ export interface AgentPermissionResolution {
 }
 export type AgentPermissionStatus = "pending" | "allowed" | "denied";
 
+export interface AgentPermissionAccess {
+  operation: "edit" | "read" | "use" | "write";
+  path: string | null;
+}
+
 export interface AgentPermissionRequestRecord {
   id: string;
   sessionId: string;
@@ -32,6 +37,8 @@ export interface AgentPermissionRequestRecord {
   title: string;
   description?: string | null;
   rawInput?: unknown;
+  rawInputVisible?: boolean;
+  access?: AgentPermissionAccess;
   locations: AgentToolCallLocation[];
   options: AgentPermissionOption[];
   status: AgentPermissionStatus;
@@ -47,6 +54,8 @@ export interface AgentPermissionRequestPayload {
   title: string;
   description?: string | null;
   rawInput?: unknown;
+  rawInputVisible?: boolean;
+  access?: AgentPermissionAccess;
   locations?: AgentToolCallLocation[];
   options: AgentPermissionOption[];
 }

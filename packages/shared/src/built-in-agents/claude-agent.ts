@@ -44,14 +44,7 @@ export const claudeAgentManifest: BuiltInAgentManifest = {
   rsrsHost: "claude",
   acpRegistryEquivalents: ["claude-acp"],
   skills: {
-    homeDirs: [
-      [".agents", "skills"],
-      [".claude", "skills"],
-    ],
-    workspaceDirs: [
-      [".agents", "skills"],
-      [".claude", "skills"],
-    ],
+    rootIds: ["agents", "claude"],
     invocation: (name) => `/${name} `,
   },
 };
