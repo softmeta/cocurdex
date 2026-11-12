@@ -1,6 +1,12 @@
-import type { SavedHost } from "@cocurdex/client-runtime";
+import {
+  getChatThinkingLevelOptions,
+  NEW_CHAT_THINKING_LEVEL,
+  resolveChatThinkingLevel,
+  type SavedHost,
+} from "@cocurdex/client-runtime";
 import {
   type AgentProviderSnapshot,
+  type AgentThinkingLevel,
   CHAT_AGENT_ID,
   CHAT_WORKSPACE_ID,
   createProviderSnapshotForModel,
@@ -11,11 +17,11 @@ import {
 import { Stack } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Keyboard, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { hostConnection } from "@/connection";
 import { createConversationStarter } from "@/new-session";
-import { ConfigTrigger } from "@/session-config";
+import { ChatRuntimeControls, useChatModels } from "@/session-config";
 import {
   Composer,
   type PendingSend,
@@ -26,14 +32,7 @@ import {
 } from "@/session-detail";
 import { useHostSessions } from "@/sessions";
 import { layout, space, useThemeColors } from "@/theme";
-import {
-  KeyboardDock,
-  keyboardHidden,
-  ListNotice,
-  useKeyboardFollow,
-  useOptionSheet,
-} from "@/ui";
-import { useChatModels } from "./chat-models";
+import { KeyboardDock, ListNotice, useKeyboardFollow } from "@/ui";
 
 export function NewChatForm({ host }: { host: SavedHost }) {
   const [started, setStarted] = useState<{
@@ -64,7 +63,6 @@ function ChatDraft({
   const bottomInset = Math.max(useSafeAreaInsets().bottom - space.sm, 0);
   const keyboard = useKeyboardFollow(bottomInset);
   const models = useChatModels(host.hostId);
-  const open = useOptionSheet();
   const { sessions } = useHostSessions(host.hostId);
   const recent = sessions.reduce<SessionRecord | undefined>(
     (latest, session) =>
@@ -79,6 +77,8 @@ function ChatDraft({
     providerId: string;
     modelId: string;
   } | null>(null);
+  const [pickedThinkingLevel, setPickedThinkingLevel] =
+    useState<AgentThinkingLevel | null>(null);
   const preferred = picked ?? recent;
   const selected =
     models.data?.find(
@@ -86,6 +86,12 @@ function ChatDraft({
         preferred?.providerId === provider.id &&
         preferred.modelId === model.modelId,
     ) ?? models.data?.[0];
+  const snapshot = selected ? createProviderSnapshotForModel(selected) : null;
+  const thinkingLevel = resolveChatThinkingLevel(
+    getChatThinkingLevelOptions(snapshot),
+    pickedThinkingLevel ?? recent?.thinkingLevel,
+    NEW_CHAT_THINKING_LEVEL,
+  );
   const [startChat] = useState(() => {
     const connection = hostConnection(host.hostId);
     const sessionId = crypto.randomUUID();
@@ -115,12 +121,12 @@ function ChatDraft({
     !hasModels && (Boolean(models.error) || models.data !== undefined);
 
   const start = async (prompt: string, images: ImageAttachment[]) => {
-    if (!canStart || !selected) return false;
+    if (!canStart || !snapshot) return false;
     setFailed(false);
     setPreview({ id: "draft", text: prompt, images });
     try {
       const { session, messageId } = await startChat({
-        payload: createProviderSnapshotForModel(selected),
+        payload: { ...snapshot, thinkingLevel },
         prompt,
         attachments: images,
         fallbackTitle: t("chat.new"),
@@ -135,25 +141,6 @@ function ChatDraft({
       setFailed(true);
       return false;
     }
-  };
-
-  const openModels = async () => {
-    Keyboard.dismiss();
-    await keyboardHidden();
-    open({
-      title: t("newSession.model"),
-      items: (models.data ?? []).map(({ provider, model }) => ({
-        key: `${provider.id}/${model.modelId}`,
-        testID: `new-chat-model-${provider.id}/${model.modelId}`,
-        label: model.name,
-        supporting: provider.name,
-        selected:
-          selected?.provider.id === provider.id &&
-          selected.model.modelId === model.modelId,
-        onPress: () =>
-          setPicked({ providerId: provider.id, modelId: model.modelId }),
-      })),
-    });
   };
 
   return (
@@ -185,14 +172,20 @@ function ChatDraft({
                 inputTestID="new-chat-prompt"
                 autoFocus
                 accessory={
-                  selected ? (
-                    <ConfigTrigger
-                      testID="new-chat-model"
-                      summary={selected.model.name}
-                      mode={null}
-                      onPress={() => void openModels()}
-                    />
-                  ) : undefined
+                  <ChatRuntimeControls
+                    testIDPrefix="new-chat"
+                    models={models.data ?? []}
+                    selected={selected ?? null}
+                    snapshot={snapshot}
+                    thinkingLevel={thinkingLevel}
+                    onModel={({ provider, model }) =>
+                      setPicked({
+                        providerId: provider.id,
+                        modelId: model.modelId,
+                      })
+                    }
+                    onThinkingLevel={setPickedThinkingLevel}
+                  />
                 }
               />
             </>

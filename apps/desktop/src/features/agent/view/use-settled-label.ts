@@ -1,5 +1,5 @@
+import { initialSettledLabel, settleLabel } from "@cocurdex/client-runtime";
 import { useEffect, useState } from "react";
-import { initialSettledLabel, settleLabel } from "./settled-label";
 
 export function useSettledLabel<T>(key: string, value: T): T {
   const [state, setState] = useState(() =>

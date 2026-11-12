@@ -4,6 +4,18 @@ Rules for `apps/desktop`, in addition to the repository root `AGENTS.md`.
 
 `apps/desktop/src` is the renderer for both the Electron app and the web client, which the daemon serves (`packages/daemon/src/web-assets.ts`) behind `lib/web-host-bridge.ts`. Every UI rule below applies to both hosts.
 
+## Development and verification
+
+For new `t("...")` calls, run `pnpm --filter @cocurdex/desktop i18n:extract`, fill en-US and zh-CN, then `i18n:types`, `i18n:lint`, and `pnpm exec biome check --write apps/desktop/src/i18n` (biome normalizes the generated `.d.ts`; CI fails on stale output).
+
+Start or restart the desktop dev app yourself when verification needs it; do not wait for the user. When a renderer edit does not show up after HMR (for example, new Tailwind classes missing from the served CSS), restart the instance at once instead of waiting or debugging HMR. A change to main, preload, or the bundled daemon needs a restart, since HMR only reloads the renderer: run `pnpm --filter @cocurdex/desktop dev:inspect`, which rebuilds `prepare:cli` and spawns the rebuilt daemon. To restart a running dev app, stop the exact `dev:inspect`/`dev` process tree you found (by PID, never by process name), relaunch it detached with output redirected to a log file that outlives your shell, wait for the CDP port, and tell the user the log path. Restart the user's dev app whenever a change needs it, even while agent runs or other work in it are in progress; the user accepts the interruption, so do not hold back a restart or route around it with an isolated instance.
+
+You may attach to a running desktop app over Chrome DevTools Protocol yourself to debug, without asking first: read the renderer console, evaluate JavaScript, inspect the DOM, measure layout, and take screenshots (`.agents/skills/debug-desktop`). Keep the attach disposable: detach when the investigation is done, and restore what you changed (open views, theme, test data).
+
+Automated checks never share the user's dev app, its userData profile (`Cocurdex-dev`), CDP port 9222, or a renderer server from another checkout: the single-instance lock and the daemon socket are scoped to the userData profile, so a shared profile makes the second app exit or connect to another worktree's daemon, and a borrowed renderer URL runs another checkout's code. Each instance gets its own short `COCURDEX_USER_DATA_PATH` under `os.tmpdir()` (the macOS socket path limit is 103 bytes), its own free `COCURDEX_REMOTE_DEBUGGING_PORT`, and its own `electron-vite dev`, which picks a free Vite port; the scenario launcher does all of this. Stop an instance left up with `--keep` or replaced by a restart as soon as you are done with it.
+
+Startup performance has a baseline. CI fails when the renderer's startup chunks exceed `apps/desktop/startup-budget.json` (`pnpm --filter @cocurdex/desktop check:startup-bundle` after a build) or when desktop code imports `lazy`/`Suspense` from `react` (see `lazyComponent` below). Raise the budget with `check:startup-bundle --update` only for intended growth, and justify it in the PR. When a change touches startup (entry imports, app shell, bootstrap, main-process `whenReady`), compare `pnpm --filter @cocurdex/desktop perf:startup` on builds before and after; add `--onboarding` for the first-run screen. Reference on Apple Silicon (2026-09-30): returning user FCP about 70–90 ms and LCP about 100 ms.
+
 ## Public entries, heavy dependencies, and cycles
 
 Barrels are external interfaces, never an internal bus. Files within the same domain, including siblings exported by one barrel, import each other directly with relative paths.

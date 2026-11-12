@@ -20,7 +20,11 @@ import {
   usePersonaOfSession,
 } from "@/assistant";
 import { hostConnection } from "@/connection";
-import { SessionConfigChips, useNeedsExecuteToDrive } from "@/session-config";
+import {
+  ChatSessionRuntime,
+  SessionConfigChips,
+  useNeedsExecuteToDrive,
+} from "@/session-config";
 import { useViewedSession } from "@/sessions";
 import { layout, space, useThemeColors } from "@/theme";
 import {
@@ -32,6 +36,11 @@ import { Composer } from "./composer";
 import { conversationTranscript } from "./conversation-transcript";
 import { pickImages, uploadImage } from "./image-attachments";
 import { type InteractionActions, InteractionDock } from "./interaction-dock";
+import {
+  observedPhase,
+  type SessionPresentation,
+  withTurnEnds,
+} from "./live-run";
 import {
   type PendingSend,
   pendingSendItem,
@@ -56,6 +65,24 @@ function sessionSubtitle(
   const model = observation?.session.providerSnapshot?.modelName;
   const parts = [workspace?.name, model].filter(Boolean);
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function sessionPresentation(
+  personal: boolean,
+  chat: boolean,
+): SessionPresentation {
+  if (personal) return "assistant";
+  return chat ? "chat" : "work";
+}
+
+function messageTimes(observation: SessionObservationSnapshot | null) {
+  return new Map(
+    observation
+      ? [...observation.messages, ...observation.activeMessages].map(
+          (message) => [message.id, message.createdAt],
+        )
+      : [],
+  );
 }
 
 function runStartTime(observation: SessionObservationSnapshot | null) {
@@ -116,6 +143,7 @@ export function SessionDetailScreen({
     [sends, observation],
   );
   const conversation = persona !== null || chat;
+  const presentation = sessionPresentation(persona !== null, chat);
   const items = useMemo(() => {
     const transcriptItems = [
       ...(observation
@@ -128,12 +156,27 @@ export function SessionDetailScreen({
       ...unconfirmed.map(pendingSendItem),
     ];
     const busy = running || unconfirmed.length > 0;
-    if (conversation) return conversationTranscript(transcriptItems, busy);
-    return condenseTranscript(
-      transcriptItems,
-      observation?.toolCalls ?? [],
-      busy,
-      runStartedAt,
+    const live = {
+      running: busy,
+      phase: observedPhase(presentation, observation, running),
+      startedAt: runStartedAt,
+    };
+    const condensed =
+      presentation === "work"
+        ? condenseTranscript(
+            transcriptItems,
+            observation?.toolCalls ?? [],
+            live,
+          )
+        : conversationTranscript(transcriptItems, {
+            live,
+            times: messageTimes(observation),
+            separators: presentation === "assistant",
+          });
+    return withTurnEnds(
+      condensed,
+      observation?.turnStats ?? {},
+      presentation !== "assistant",
     );
   }, [
     observation,
@@ -141,7 +184,7 @@ export function SessionDetailScreen({
     running,
     unconfirmed,
     runStartedAt,
-    conversation,
+    presentation,
     persona,
   ]);
   const pending = observation
@@ -152,7 +195,8 @@ export function SessionDetailScreen({
   const unattended = useNeedsExecuteToDrive(host, sessionId);
   const needsExecute = !chat && unattended;
   const canApprove = host.scopes.includes("approvals");
-  const canFork = !chat && host.scopes.includes("execute");
+  const canConfigure = host.scopes.includes("execute");
+  const canFork = !chat && canConfigure;
   const canReadFiles = !chat && host.scopes.includes("files.read");
   const failed = observation?.session.status === "error";
 
@@ -262,6 +306,21 @@ export function SessionDetailScreen({
       ]
     : [];
 
+  let composerAccessory: ReactNode;
+  if (presentation === "work") {
+    composerAccessory = (
+      <SessionConfigChips host={host} sessionId={sessionId} />
+    );
+  } else if (presentation === "chat" && session && canConfigure) {
+    composerAccessory = (
+      <ChatSessionRuntime
+        host={host}
+        session={session}
+        onFailed={() => setActionFailed(true)}
+      />
+    );
+  }
+
   const [dockHeight, setDockHeight] = useState<number | null>(null);
   let body: ReactNode;
   const dockInset = { paddingBottom: dockHeight ?? 0 };
@@ -291,7 +350,7 @@ export function SessionDetailScreen({
         ref={transcript}
         sentMessageId={sends.at(-1)?.id}
         items={items}
-        presentation={conversation ? "assistant" : "work"}
+        presentation={presentation}
         userBubble={personaBubble ?? undefined}
         bottomInset={dockHeight ?? 0}
         onReachOldest={
@@ -401,11 +460,7 @@ export function SessionDetailScreen({
                   onStop={stop}
                   onPickImages={pickImages}
                   onUploadImage={(image) => uploadImage(host.hostId, image)}
-                  accessory={
-                    conversation ? undefined : (
-                      <SessionConfigChips host={host} sessionId={sessionId} />
-                    )
-                  }
+                  accessory={composerAccessory}
                 />
               )}
             </View>

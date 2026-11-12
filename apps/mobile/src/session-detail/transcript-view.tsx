@@ -18,10 +18,13 @@ import { RemoteImage } from "@/connection";
 import { ConversationRow } from "./conversation-rows";
 import { DelegationReportLine } from "./delegation-line";
 import { imageAttachmentRequest } from "./image-attachments";
+import type { SessionPresentation } from "./live-run";
 import { PostedSourceLine } from "./posted-source-line";
+import { TimeSeparator } from "./time-separator";
 import { TurnActions } from "./turn-actions";
 import { useActivityLabel } from "./use-activity-label";
 import { useElapsedLabel } from "./use-elapsed-label";
+import { useSettledLabel } from "./use-settled-label";
 import { WorkingMark } from "./working-mark";
 
 const BODY_SIZE = 16;
@@ -162,6 +165,14 @@ function LiveActivityLabel({
   const tool = item.items.findLast(
     (child) => child.kind === "tool" && child.status === "in_progress",
   );
+  const wanted =
+    tool?.kind === "tool"
+      ? { title: tool.title, detail: tool.detail }
+      : { title: label, detail: null };
+  const shown = useSettledLabel(
+    `${wanted.title}\u0000${wanted.detail ?? ""}`,
+    wanted,
+  );
   return (
     <>
       <WorkingMark />
@@ -175,11 +186,11 @@ function LiveActivityLabel({
         numberOfLines={1}
         style={[styles.activityText, { color: colors.mutedForeground }]}
       >
-        {tool?.kind === "tool" ? tool.title : label}
-        {tool?.kind === "tool" && tool.detail ? (
+        {shown.title}
+        {shown.detail ? (
           <Text
             style={[styles.toolDetail, { color: colors.foreground }]}
-          >{` ${tool.detail}`}</Text>
+          >{` ${shown.detail}`}</Text>
         ) : null}
       </Text>
     </>
@@ -327,6 +338,9 @@ const TranscriptRow = memo(function TranscriptRow({
     };
     return (
       <View style={styles.userTurn} testID={`transcript-user-${item.id}`}>
+        {item.separatorTime === undefined ? null : (
+          <TimeSeparator time={item.separatorTime} />
+        )}
         <UserImages images={item.images} actions={actions} colors={colors} />
         {item.text ? (
           <View style={[styles.bubble, { backgroundColor: bubble.background }]}>
@@ -357,6 +371,7 @@ const TranscriptRow = memo(function TranscriptRow({
         {item.turnEnd ? (
           <TurnActions
             text={item.text}
+            turn={item.turn}
             onFork={actions.onFork ? () => actions.onFork?.(item.id) : null}
           />
         ) : null}
@@ -403,7 +418,7 @@ function useStableActions(actions: TranscriptActions): TranscriptActions {
   );
 }
 
-export type TranscriptPresentation = "work" | "assistant";
+export type TranscriptPresentation = SessionPresentation;
 
 export function TranscriptView({
   items,
@@ -439,11 +454,12 @@ export function TranscriptView({
   }, []);
   const renderRow = useCallback(
     (item: CondensedItem) =>
-      presentation === "assistant" &&
+      presentation !== "work" &&
       (item.kind === "assistant" || item.kind === "activity") ? (
         <ConversationRow
           key={`${item.kind}:${item.id}`}
           item={item}
+          presentation={presentation}
           colors={colors}
           hostId={rowActions.hostId}
           fileRoot={rowActions.fileRoot}

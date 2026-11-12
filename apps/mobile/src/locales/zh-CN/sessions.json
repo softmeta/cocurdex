@@ -156,11 +156,19 @@
       "yesterday": "昨天"
     }
   },
+  "live": {
+    "handling": "正在处理",
+    "responding": "回复中",
+    "slowResponse": "这次有点慢，再等等",
+    "stillThinking": "还在想，稍等",
+    "thinking": "思考中"
+  },
   "message": {
     "copied": "已复制",
     "copy": "复制",
     "fork": "从这里分叉",
-    "forkTitle": "{{title}}（分叉）"
+    "forkTitle": "{{title}}（分叉）",
+    "stopped": "已停止"
   },
   "newSession": {
     "addOnComputer": "新工作区只能在电脑上添加。",

@@ -4,7 +4,7 @@ import { createContext, useContext } from "react";
 import { chatDisplaySettingsAtom } from "./chat-display-store";
 import type { ActivityDisplayMode } from "./chat-display-types";
 
-export type ChatPresentation = "work" | "assistant";
+export type ChatPresentation = "work" | "chat" | "assistant";
 
 export const ChatPresentationContext = createContext<ChatPresentation>("work");
 

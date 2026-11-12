@@ -2,6 +2,7 @@ import { formatDurationMs } from "@cocurdex/client-runtime";
 import { CircleStop } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useChatPresentation } from "../chat-display";
 import {
   getSingleToolCall,
   hasActiveToolCall,
@@ -35,6 +36,7 @@ export function ActivitySegment({
   renderItem(item: TimelineGroup, nested: boolean): ReactNode;
 }) {
   const { t } = useTranslation("agent");
+  const presentation = useChatPresentation();
   const singleItem = items[0];
 
   if (!liveLabel && !isTurnWork && singleItem && getSingleToolCall(items)) {
@@ -43,7 +45,9 @@ export function ActivitySegment({
 
   const summary = summarizeActivity(items);
   const turnDurationKey =
-    summary.kind === "reasoning" ? "activity.thoughtFor" : "activity.workedFor";
+    presentation === "chat" || summary.kind === "reasoning"
+      ? "activity.thoughtFor"
+      : "activity.workedFor";
   const label =
     isTurnWork && durationMs !== undefined
       ? t(turnDurationKey, { duration: formatDurationMs(durationMs) })

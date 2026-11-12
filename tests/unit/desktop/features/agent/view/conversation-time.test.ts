@@ -1,10 +1,8 @@
+import { formatSeparatorTime } from "@cocurdex/client-runtime";
 import type { MessageRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import type { ConversationGroup } from "@/features/agent/view/chat-timeline";
-import {
-  formatSeparatorTime,
-  separatorTimeBefore,
-} from "@/features/agent/view/conversation-time";
+import { separatorTimeBefore } from "@/features/agent/view/conversation-time";
 
 function message(id: string, createdAt: Date): MessageRecord {
   return {

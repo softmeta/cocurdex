@@ -1,7 +1,7 @@
 import type { ActivityAction } from "@cocurdex/client-runtime";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import type { CondensedItem } from "./transcript-activity";
+import type { CondensedItem, LivePhase } from "./transcript-activity";
 
 type ActivityItem = Extract<CondensedItem, { kind: "activity" }>;
 
@@ -30,8 +30,22 @@ function actionClause(
   }
 }
 
+export function liveLabel(
+  phase: LivePhase | undefined,
+  t: TFunction<"sessions">,
+) {
+  switch (phase) {
+    case "thinking":
+      return t("live.thinking");
+    case "responding":
+      return t("live.responding");
+    default:
+      return t("detail.working");
+  }
+}
+
 export function activityLabel(item: ActivityItem, t: TFunction<"sessions">) {
-  if (item.running) return t("detail.working");
+  if (item.running) return liveLabel(item.phase, t);
   const clauses: string[] = item.summary.actions.map(({ action, count }) =>
     actionClause(action, count, t),
   );

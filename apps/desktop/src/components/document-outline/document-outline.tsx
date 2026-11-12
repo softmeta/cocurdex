@@ -1,4 +1,5 @@
 import { ListTree } from "lucide-react";
+import { useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { AppDropdownContent, AppDropdownItem } from "@/components/app";
 import {
@@ -9,6 +10,11 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib";
 import type { DocumentHeading } from "./use-document-outline";
+import {
+  type OutlineTrackRow,
+  outlineTrackPath,
+  useOutlineTrack,
+} from "./use-outline-track";
 
 const HEADING_INDENT_CLASS_NAMES: Record<number, string> = {
   1: "ps-3",
@@ -26,13 +32,62 @@ function scrollToHeading(heading: DocumentHeading) {
   heading.element.scrollIntoView({ block: "start" });
 }
 
-function OutlineRail({ activeKey, headings }: OutlineProps) {
+function OutlineTrack({
+  activeIndex,
+  rows,
+}: {
+  activeIndex: number;
+  rows: OutlineTrackRow[];
+}) {
+  const clipId = `outline-track-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
+  const active = rows[activeIndex];
+  const path = outlineTrackPath(rows);
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 size-full overflow-visible rtl:-scale-x-100"
+    >
+      <path d={path} fill="none" className="stroke-border" strokeWidth={1} />
+      {active ? (
+        <>
+          <clipPath id={clipId}>
+            <rect
+              className="transition-[y,height] duration-200 ease-out"
+              height={active.bottom - active.top}
+              width="100%"
+              x={0}
+              y={active.top}
+            />
+          </clipPath>
+          <path
+            clipPath={`url(#${clipId})`}
+            d={path}
+            fill="none"
+            className="stroke-primary/55 dark:stroke-primary"
+            strokeWidth={2}
+          />
+        </>
+      ) : null}
+    </svg>
+  );
+}
+
+export function DocumentOutlineRail({ activeKey, headings }: OutlineProps) {
   const { t } = useTranslation();
+  const listRef = useRef<HTMLUListElement>(null);
+  const rows = useOutlineTrack(listRef, headings);
+  if (headings.length === 0) {
+    return null;
+  }
+  const activeIndex = headings.findIndex(
+    (heading) => heading.key === activeKey,
+  );
 
   return (
     <nav
       aria-label={t("outline")}
-      className="mt-6 flex max-h-[60%] w-56 shrink-0 flex-col self-start pe-4"
+      className="sticky top-6 mt-6 flex max-h-[60vh] w-56 shrink-0 flex-col self-start pe-4"
     >
       <Text
         as="div"
@@ -43,30 +98,38 @@ function OutlineRail({ activeKey, headings }: OutlineProps) {
       >
         {t("outline")}
       </Text>
-      <ul className="min-h-0 overflow-y-auto border-s border-border/70">
-        {headings.map((heading) => (
-          <li key={heading.key}>
-            <button
-              className={cn(
-                "-ms-px block w-full truncate border-s-2 border-transparent py-0.5 pe-2 text-start text-meta text-muted-foreground transition-colors hover:text-foreground",
-                HEADING_INDENT_CLASS_NAMES[heading.level],
-                heading.key === activeKey && "border-primary text-foreground",
-              )}
-              onClick={() => scrollToHeading(heading)}
-              title={heading.text}
-              type="button"
-            >
-              {heading.text}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <div className="min-h-0 overflow-y-auto">
+        <div className="relative">
+          <OutlineTrack activeIndex={activeIndex} rows={rows} />
+          <ul ref={listRef}>
+            {headings.map((heading) => (
+              <li key={heading.key}>
+                <button
+                  className={cn(
+                    "block w-full truncate py-0.5 pe-2 text-start text-meta text-muted-foreground transition-colors hover:text-foreground",
+                    HEADING_INDENT_CLASS_NAMES[heading.level],
+                    heading.key === activeKey && "text-foreground",
+                  )}
+                  onClick={() => scrollToHeading(heading)}
+                  title={heading.text}
+                  type="button"
+                >
+                  {heading.text}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </nav>
   );
 }
 
-function OutlineMenu({ activeKey, headings }: OutlineProps) {
+export function DocumentOutlineMenu({ activeKey, headings }: OutlineProps) {
   const { t } = useTranslation();
+  if (headings.length === 0) {
+    return null;
+  }
 
   return (
     <DropdownMenu>
@@ -100,18 +163,4 @@ function OutlineMenu({ activeKey, headings }: OutlineProps) {
       </AppDropdownContent>
     </DropdownMenu>
   );
-}
-
-export function DocumentOutline({
-  activeKey,
-  headings,
-  wide,
-}: OutlineProps & { wide: boolean }) {
-  if (headings.length === 0) {
-    return null;
-  }
-  if (wide) {
-    return <OutlineRail activeKey={activeKey} headings={headings} />;
-  }
-  return <OutlineMenu activeKey={activeKey} headings={headings} />;
 }

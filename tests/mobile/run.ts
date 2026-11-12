@@ -131,7 +131,7 @@ function flowLabels(locale: SupportedLocale) {
     LIST_OPTIONS_CLOSE: sessions.list.options.close,
     SHOW_MORE: sessions.list.showMore_other.replace("{{count}}", "\\d+"),
     SEND_ACTION: sessions.composer.send,
-    REPLYING_STATUS: sessions.detail.responding,
+    REPLYING_STATUS: sessions.live.responding,
     ATTACH_ACTION: sessions.composer.attach,
     WORKSPACE_NAME: FIXTURE_WORKSPACE_NAME,
     SEARCH_QUERY: "percentage",

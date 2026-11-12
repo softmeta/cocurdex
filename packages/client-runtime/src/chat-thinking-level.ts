@@ -1,8 +1,6 @@
-import type {
-  AgentProviderSnapshot,
-  AgentThinkingLevel,
-} from "@cocurdex/shared";
 import {
+  type AgentProviderSnapshot,
+  type AgentThinkingLevel,
   CHAT_AGENT_ID,
   getThinkingLevelOptions,
   type ThinkingLevelOption,

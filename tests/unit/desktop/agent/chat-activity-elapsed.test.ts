@@ -1,10 +1,7 @@
-import { formatElapsed } from "@cocurdex/client-runtime";
+import { formatElapsed, getActivityState } from "@cocurdex/client-runtime";
 import type { AgentToolCallRecord, MessageRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
-import {
-  getActivityState,
-  isActivityHeaderBusy,
-} from "@/features/agent/view/chat-activity-state";
+import { isActivityHeaderBusy } from "@/features/agent/view/chat-activity-state";
 
 describe("formatElapsed", () => {
   it("uses the completed-duration vocabulary", () => {

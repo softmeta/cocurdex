@@ -1,3 +1,8 @@
+import {
+  getChatThinkingLevelOptions,
+  NEW_CHAT_THINKING_LEVEL,
+  resolveChatThinkingLevel,
+} from "@cocurdex/client-runtime";
 import type {
   AgentProviderSnapshot,
   AgentThinkingLevel,
@@ -23,11 +28,6 @@ import { openSettings } from "@/features/settings/settings-navigation";
 import { useMountEffect } from "@/lib";
 import { chatProviderModelsAtom } from "./chat-models";
 import { chatSessionsAtom } from "./chat-sessions";
-import {
-  getChatThinkingLevelOptions,
-  NEW_CHAT_THINKING_LEVEL,
-  resolveChatThinkingLevel,
-} from "./chat-thinking-level";
 import { ModelPicker } from "./model-picker";
 
 export interface StartChatPayload {

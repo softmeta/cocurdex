@@ -1,9 +1,9 @@
+import { getActivityState } from "@cocurdex/client-runtime";
 import {
   type AgentToolCallRecord,
   WORKTREE_SETUP_TOOL_KIND,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
-import { getActivityState } from "@/features/agent/view/chat-activity-state";
 
 function toolCall(
   id: string,
