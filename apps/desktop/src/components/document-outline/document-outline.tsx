@@ -26,13 +26,16 @@ function scrollToHeading(heading: DocumentHeading) {
   heading.element.scrollIntoView({ block: "start" });
 }
 
-function OutlineRail({ activeKey, headings }: OutlineProps) {
+export function DocumentOutlineRail({ activeKey, headings }: OutlineProps) {
   const { t } = useTranslation();
+  if (headings.length === 0) {
+    return null;
+  }
 
   return (
     <nav
       aria-label={t("outline")}
-      className="mt-6 flex max-h-[60%] w-56 shrink-0 flex-col self-start pe-4"
+      className="sticky top-6 mt-6 flex max-h-[60vh] w-56 shrink-0 flex-col self-start pe-4"
     >
       <Text
         as="div"
@@ -65,8 +68,11 @@ function OutlineRail({ activeKey, headings }: OutlineProps) {
   );
 }
 
-function OutlineMenu({ activeKey, headings }: OutlineProps) {
+export function DocumentOutlineMenu({ activeKey, headings }: OutlineProps) {
   const { t } = useTranslation();
+  if (headings.length === 0) {
+    return null;
+  }
 
   return (
     <DropdownMenu>
@@ -100,18 +106,4 @@ function OutlineMenu({ activeKey, headings }: OutlineProps) {
       </AppDropdownContent>
     </DropdownMenu>
   );
-}
-
-export function DocumentOutline({
-  activeKey,
-  headings,
-  wide,
-}: OutlineProps & { wide: boolean }) {
-  if (headings.length === 0) {
-    return null;
-  }
-  if (wide) {
-    return <OutlineRail activeKey={activeKey} headings={headings} />;
-  }
-  return <OutlineMenu activeKey={activeKey} headings={headings} />;
 }

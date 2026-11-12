@@ -2,7 +2,8 @@ import { useRef } from "react";
 import { MarkdownRenderer } from "@/components";
 import {
   DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX,
-  DocumentOutline,
+  DocumentOutlineMenu,
+  DocumentOutlineRail,
   useDocumentOutline,
   useIsWiderThan,
 } from "@/components/document-outline";
@@ -22,20 +23,34 @@ export function MarkdownPreview({ content }: { content: string }) {
 
   return (
     <div className="relative flex h-full" ref={containerRef}>
-      <ScrollArea className="h-full min-w-0 flex-1" viewportRef={scrollerRef}>
-        <div className={cn("p-6", hasMenu && "pe-12")} ref={contentRef}>
+      <ScrollArea
+        className="h-full min-w-0 flex-1"
+        viewportProps={{ className: "flex" }}
+        viewportRef={scrollerRef}
+      >
+        <div
+          className={cn("min-w-0 flex-1 p-6", hasMenu && "pe-12")}
+          ref={contentRef}
+        >
           <MarkdownRenderer
             content={content}
             tone="editor"
             className="space-y-4"
           />
         </div>
+        {isWide ? (
+          <DocumentOutlineRail
+            activeKey={outline.activeKey}
+            headings={outline.headings}
+          />
+        ) : null}
       </ScrollArea>
-      <DocumentOutline
-        activeKey={outline.activeKey}
-        headings={outline.headings}
-        wide={isWide}
-      />
+      {isWide ? null : (
+        <DocumentOutlineMenu
+          activeKey={outline.activeKey}
+          headings={outline.headings}
+        />
+      )}
     </div>
   );
 }
