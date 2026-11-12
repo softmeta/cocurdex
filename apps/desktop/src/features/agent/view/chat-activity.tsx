@@ -1,11 +1,10 @@
-import { formatElapsed } from "@cocurdex/client-runtime";
+import { type ActivityState, formatElapsed } from "@cocurdex/client-runtime";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";
 import { AgentRoleAvatar } from "@/features/sessions";
 import { cn, useMountEffect } from "@/lib";
 import { useChatAssistantRole, useChatPresentation } from "../chat-display";
-import type { ActivityState } from "./chat-activity-state";
 import { useActivityMotion } from "./use-activity-motion";
 import type { LiveActivityText } from "./use-live-activity-text";
 

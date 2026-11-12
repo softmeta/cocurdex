@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
 import {
   initialSettledLabel,
   LABEL_ENTER_MS,
   LABEL_HOLD_MS,
   settleLabel,
-} from "@/features/agent/view/settled-label";
+} from "@cocurdex/client-runtime";
+import { describe, expect, it } from "vitest";
 
 function advance<T>(
   steps: Array<[at: number, key: string, value: T]>,

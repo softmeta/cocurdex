@@ -1,6 +1,6 @@
+import type { ActivityState } from "@cocurdex/client-runtime";
 import { useState } from "react";
 import type { CocurdexMarkMotion } from "@/components/cocurdex-mark";
-import type { ActivityState } from "./chat-activity-state";
 
 export function useActivityMotion(activity: ActivityState) {
   const { toolActivityId } = activity;

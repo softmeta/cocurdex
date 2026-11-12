@@ -1240,6 +1240,7 @@ export class CocurdexDaemonService {
       queuedAgentInputs,
       activeRun: this.state.getActiveRun(sessionId),
       usage,
+      turnStats: page.turnStats,
       turnChangeSets: page.turnChangeSets,
       interactions: this.runtime.getSessionInteractions(sessionId),
       plan: this.runtime.getSessionPlan(sessionId),

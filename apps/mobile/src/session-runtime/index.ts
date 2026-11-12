@@ -1,6 +1,7 @@
 export {
   type RuntimeLabels,
   runtimeSummary,
+  thinkingOptionLabel,
   useRuntimeLabels,
 } from "./runtime-labels";
 export {

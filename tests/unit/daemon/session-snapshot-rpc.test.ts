@@ -105,6 +105,43 @@ describe("session snapshot RPC", () => {
     await service.shutdown();
   });
 
+  it("carries the stats of each finished turn", async () => {
+    const service = await createService();
+    await service.state.persistAgentEvent({
+      type: "message.completed",
+      sessionId: "session-1",
+      message: {
+        id: "assistant-1",
+        sessionId: "session-1",
+        role: "assistant",
+        kind: "response",
+        content: "Done",
+        attachments: [],
+        createdAt: now,
+      },
+    });
+    await service.state.persistAgentEvent({
+      type: "turn.completed",
+      sessionId: "session-1",
+      messageId: "assistant-1",
+      durationMs: 4200,
+      stopReason: "end_turn",
+      completedAt: now,
+    });
+
+    const snapshot = await handleDaemonRequest<"session.snapshot">(service, {
+      id: "1",
+      method: "session.snapshot",
+      params: { sessionId: "session-1" },
+      token: "test",
+    });
+
+    expect(snapshot?.turnStats).toMatchObject({
+      "assistant-1": { durationMs: 4200, stopReason: "end_turn" },
+    });
+    await service.shutdown();
+  });
+
   it("returns null for an unknown session", async () => {
     const service = await createService();
 

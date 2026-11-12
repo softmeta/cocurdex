@@ -15,7 +15,7 @@ export function PendingTranscript({
 }) {
   const { t } = useTranslation("sessions");
   const items = useMemo(
-    () => condenseTranscript([pendingSendItem(send)], [], false),
+    () => condenseTranscript([pendingSendItem(send)], []),
     [send],
   );
   return (

@@ -1,6 +1,6 @@
+import type { ActivityState } from "@cocurdex/client-runtime";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { ActivityState } from "@/features/agent/view/chat-activity-state";
 import { useActivityMotion } from "@/features/agent/view/use-activity-motion";
 
 function activity(

@@ -1,7 +1,7 @@
+import type { ActivityKind, ActivityState } from "@cocurdex/client-runtime";
 import { useTranslation } from "react-i18next";
 import { useChatPresentation } from "../chat-display";
 import { useActiveToolCallLabel } from "../tool-call/use-tool-call-trigger-parts";
-import type { ActivityKind, ActivityState } from "./chat-activity-state";
 import { useSettledLabel } from "./use-settled-label";
 
 export type LiveActivityText = {

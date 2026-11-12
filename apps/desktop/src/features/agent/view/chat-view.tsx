@@ -1,4 +1,4 @@
-import { resolveJumpButton } from "@cocurdex/client-runtime";
+import { getActivityState, resolveJumpButton } from "@cocurdex/client-runtime";
 import type {
   AgentQuestionRequestRecord,
   MessageAttachment,
@@ -34,7 +34,6 @@ import {
   ChatPresentationContext,
 } from "../chat-display";
 import type { ToolCallPreviewLocation } from "../tool-call";
-import { getActivityState } from "./chat-activity-state";
 import { isDisclosureToggle } from "./chat-scroll";
 import { getCachedTranscriptModel } from "./chat-transcript-model";
 import {

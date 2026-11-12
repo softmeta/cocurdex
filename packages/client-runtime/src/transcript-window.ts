@@ -41,6 +41,7 @@ export function keepOlderPages(
       before(previous.toolCalls, windowStart),
       next.toolCalls,
     ),
+    turnStats: { ...previous.turnStats, ...next.turnStats },
     turnChangeSets: { ...previous.turnChangeSets, ...next.turnChangeSets },
     olderBeforeSeq: mergeOlderBoundary(previous.olderBeforeSeq, windowStart),
   };
@@ -54,6 +55,7 @@ export function prependTranscriptPage(
     ...observation,
     messages: prependUnique(page.messages, observation.messages),
     toolCalls: prependUnique(page.toolCalls, observation.toolCalls),
+    turnStats: { ...page.turnStats, ...observation.turnStats },
     turnChangeSets: { ...page.turnChangeSets, ...observation.turnChangeSets },
     olderBeforeSeq: mergeOlderBoundary(
       observation.olderBeforeSeq,

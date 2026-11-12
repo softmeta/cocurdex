@@ -3,7 +3,9 @@ export { type BackoffPolicy, backoffDelay } from "./backoff";
 export * from "./chat-elapsed";
 export * from "./chat-jump-button";
 export * from "./chat-prompt-anchor";
+export * from "./chat-thinking-level";
 export * from "./compact-relative-time";
+export * from "./conversation-time";
 export * from "./file-path-candidates";
 export {
   type ForegroundWakeup,
@@ -89,7 +91,19 @@ export {
   createSecureTransport,
   type SecureSocketConnector,
 } from "./secure-transport";
+export {
+  type ActivityKind,
+  type ActivityState,
+  getActivityState,
+} from "./session-activity-state";
 export * from "./session-list-view";
+export {
+  initialSettledLabel,
+  LABEL_ENTER_MS,
+  LABEL_HOLD_MS,
+  type SettledLabel,
+  settleLabel,
+} from "./settled-label";
 export * from "./streaming-markdown";
 export {
   type ConnectionState,

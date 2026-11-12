@@ -25,3 +25,7 @@ export function useChatModels(hostId: string) {
     { dedupingInterval: 0 },
   );
 }
+
+export type ChatModel = NonNullable<
+  ReturnType<typeof useChatModels>["data"]
+>[number];

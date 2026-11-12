@@ -52,6 +52,8 @@ function record(
   };
 }
 
+const LIVE = { running: true, phase: "working" } as const;
+
 const records = [
   record("t1"),
   record("t2"),
@@ -81,7 +83,7 @@ describe("condenseTranscript", () => {
       user("u2"),
       reply("a3"),
     ];
-    expect(shape(condenseTranscript(items, records, false))).toEqual([
+    expect(shape(condenseTranscript(items, records))).toEqual([
       "u1",
       "activity(t1,a1,t2,t3)",
       "a2!",
@@ -94,7 +96,6 @@ describe("condenseTranscript", () => {
     const [, activity] = condenseTranscript(
       [user("u1"), tool("t1"), tool("t2"), tool("t3"), reply("a1")],
       records,
-      false,
     );
     expect(activity).toMatchObject({
       kind: "activity",
@@ -121,7 +122,6 @@ describe("condenseTranscript", () => {
         condenseTranscript(
           [user("u1"), tool("t1"), reply("a1"), tool("t2")],
           records,
-          false,
         ),
       ),
     ).toEqual(["u1", "activity(t1,t2)", "a1!"]);
@@ -137,7 +137,7 @@ describe("condenseTranscript", () => {
       reply("a1"),
       tool("t3", "in_progress"),
     ];
-    expect(shape(condenseTranscript(items, records, true))).toEqual([
+    expect(shape(condenseTranscript(items, records, LIVE))).toEqual([
       "u1",
       "a0!",
       "u2",
@@ -153,7 +153,7 @@ it("keeps the same running heading before and after tool events", () => {
     [user("u1"), tool("t1")],
     [user("u1"), tool("t1"), reply("a1"), tool("t2")],
   ]) {
-    const result = condenseTranscript(items, records, true);
+    const result = condenseTranscript(items, records, LIVE);
     expect(result[1]).toMatchObject({
       kind: "activity",
       id: "activity:u1",
@@ -172,7 +172,11 @@ it("times only the live turn from the run start", () => {
     user("u2"),
     tool("t2"),
   ];
-  const result = condenseTranscript(items, records, true, 1_000);
+  const result = condenseTranscript(items, records, {
+    running: true,
+    phase: "working",
+    startedAt: 1_000,
+  });
   const activities = result.filter((item) => item.kind === "activity");
   expect(activities.map((item) => item.startedAt)).toEqual([undefined, 1_000]);
 });

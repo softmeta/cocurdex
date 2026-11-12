@@ -624,11 +624,19 @@ export default interface Resources {
         yesterday: "Yesterday";
       };
     };
+    live: {
+      handling: "Working on it";
+      responding: "Responding";
+      slowResponse: "Taking longer than usual, hang tight";
+      stillThinking: "Still thinking";
+      thinking: "Thinking";
+    };
     message: {
       copied: "Copied";
       copy: "Copy";
       fork: "Fork From Here";
       forkTitle: "{{title}} (fork)";
+      stopped: "Stopped";
     };
     newSession: {
       addOnComputer: "Add new workspaces on the computer.";

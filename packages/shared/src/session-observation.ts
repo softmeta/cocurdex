@@ -27,6 +27,7 @@ export interface SessionObservationSnapshot {
   queuedAgentInputs: QueuedAgentInputRecord[];
   activeRun: RunRecord | null;
   usage: AgentUsageRecord | null;
+  turnStats?: Record<string, AgentTurnCompletedEvent>;
   turnChangeSets: Record<string, TurnChangeSet>;
   interactions: SessionInteractionSnapshot;
   plan: AgentSessionPlan | null;

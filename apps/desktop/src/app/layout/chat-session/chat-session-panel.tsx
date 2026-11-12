@@ -1,3 +1,7 @@
+import {
+  getChatThinkingLevelOptions,
+  resolveChatThinkingLevel,
+} from "@cocurdex/client-runtime";
 import type { AgentThinkingLevel, SessionRecord } from "@cocurdex/shared";
 import { createProviderSnapshotForModel } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
@@ -12,9 +16,7 @@ import {
 import {
   ChatContextMeter,
   chatProviderModelsAtom,
-  getChatThinkingLevelOptions,
   ModelPicker,
-  resolveChatThinkingLevel,
 } from "@/features/chat";
 import type { ChatComposerHandle } from "@/features/composer";
 import { useMemoryStatus } from "@/features/memory";

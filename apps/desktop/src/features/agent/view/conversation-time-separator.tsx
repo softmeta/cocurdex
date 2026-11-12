@@ -1,5 +1,5 @@
+import { formatSeparatorTime } from "@cocurdex/client-runtime";
 import { i18n } from "@/i18n";
-import { formatSeparatorTime } from "./conversation-time";
 
 export function ConversationTimeSeparator({ time }: { time: number }) {
   return (

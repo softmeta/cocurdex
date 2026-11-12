@@ -41,12 +41,15 @@ appId: dev.cocurdex.mobile
       - extendedWaitUntil:
           visible: ${SEND_REPLY}
           timeout: 15000
-- assertNotVisible: ${REPLYING_STATUS}
 - takeScreenshot: session-streaming
 - extendedWaitUntil:
     visible: ${SEND_REPLY_END}
     timeout: 20000
-- assertNotVisible: ${REPLYING_STATUS}
+- extendedWaitUntil:
+    notVisible: ${REPLYING_STATUS}
+    timeout: 10000
+- assertVisible:
+    id: turn-copy
 - assertVisible: ${SEND_REPLY_CODE}
 - assertVisible: ${SEND_PROMPT}
 - tapOn: ${SEND_REPLY}

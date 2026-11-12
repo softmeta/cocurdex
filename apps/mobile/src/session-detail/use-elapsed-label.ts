@@ -25,8 +25,12 @@ function subscribe(listener: () => void) {
   };
 }
 
-export function useElapsedLabel(startedAt: number | undefined) {
+export function useElapsedMs(startedAt: number | undefined) {
   const [mountedAt] = useState(() => Date.now());
   const current = useSyncExternalStore(subscribe, () => now);
-  return formatElapsed(Math.max(0, current - (startedAt ?? mountedAt)));
+  return Math.max(0, current - (startedAt ?? mountedAt));
+}
+
+export function useElapsedLabel(startedAt: number | undefined) {
+  return formatElapsed(useElapsedMs(startedAt));
 }
