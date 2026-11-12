@@ -1,6 +1,12 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import { DEFAULT_LOCALE, getSystemLocale, supportedLocales } from "./language";
+import {
+  DEFAULT_LOCALE,
+  getStoredLanguageMode,
+  getSystemLocale,
+  resolveLanguageMode,
+  supportedLocales,
+} from "./language";
 import { resources } from "./resources";
 
 i18n.on("languageChanged", (language) => {
@@ -13,7 +19,7 @@ void i18n.use(initReactI18next).init({
   interpolation: {
     escapeValue: false,
   },
-  lng: getSystemLocale(),
+  lng: resolveLanguageMode(getStoredLanguageMode(), getSystemLocale()),
   resources,
   supportedLngs: [...supportedLocales],
 });

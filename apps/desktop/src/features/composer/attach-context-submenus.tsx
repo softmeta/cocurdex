@@ -101,13 +101,14 @@ function PickerSubmenu({
 }
 
 export function AttachContextSubmenus({
-  loadSkills,
   onInsertContext,
-  onSelectSkill,
+  skills,
 }: {
-  loadSkills(): Promise<AgentSlashCommand[]>;
   onInsertContext(attachment: ContextItemAttachment): void;
-  onSelectSkill(command: AgentSlashCommand): void;
+  skills: {
+    load(): Promise<AgentSlashCommand[]>;
+    select(command: AgentSlashCommand): void;
+  } | null;
 }) {
   const { t } = useTranslation("sessions");
 
@@ -142,18 +143,20 @@ export function AttachContextSubmenus({
 
   return (
     <>
-      <PickerSubmenu
-        icon={Sparkles}
-        label={t("composer.attachMenu.skills")}
-        load={async () =>
-          (await loadSkills()).map((command) => ({
-            id: command.name,
-            label: command.name,
-            description: command.description,
-            select: () => onSelectSkill(command),
-          }))
-        }
-      />
+      {skills ? (
+        <PickerSubmenu
+          icon={Sparkles}
+          label={t("composer.attachMenu.skills")}
+          load={async () =>
+            (await skills.load()).map((command) => ({
+              id: command.name,
+              label: command.name,
+              description: command.description,
+              select: () => skills.select(command),
+            }))
+          }
+        />
+      ) : null}
       <PickerSubmenu
         icon={ListTodo}
         label={t("composer.attachMenu.issues")}
