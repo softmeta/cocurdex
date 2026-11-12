@@ -1,16 +1,9 @@
 import type { AgentThinkingLevel, SessionRecord } from "@cocurdex/shared";
 import { createProviderSnapshotForModel } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import { Brain } from "lucide-react";
-import { type Ref, useState } from "react";
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import {
-  Button,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui";
 import {
   ChatView,
   toolCallsBySessionAtom,
@@ -29,8 +22,6 @@ import {
   getAgentDisplayLabel,
   getDisplaySessionStatus,
 } from "@/features/sessions";
-import { desktopApi } from "@/lib";
-import { cn } from "@/lib/utils";
 import { useChatSessionActions } from "./use-chat-session-actions";
 import { useMemoryRecallAlert } from "./use-memory-recall-alert";
 
@@ -50,7 +41,6 @@ export function ChatSessionPanel({
   paneId,
 }: ChatSessionPanelProps) {
   const { t } = useTranslation("memory");
-  const [savingMemory, setSavingMemory] = useState(false);
   const { data: memoryStatus } = useMemoryStatus();
   const messages = useSessionMessages(session.id);
   const toolCalls = useAtomValue(toolCallsBySessionAtom)[session.id] ?? [];
@@ -71,12 +61,6 @@ export function ChatSessionPanel({
   const recallError = recallFailed
     ? (lastRecall?.error ?? t("session.recallFailedUnknown"))
     : null;
-  let saveHint: string = t("session.save");
-  if (savingMemory) {
-    saveHint = t("session.saving");
-  } else if (recallFailed && recallError) {
-    saveHint = t("session.recallFailed", { error: recallError });
-  }
   useMemoryRecallAlert(
     recallFailed && recallError
       ? {
@@ -116,29 +100,6 @@ export function ChatSessionPanel({
       .catch(notifyFailure);
   };
 
-  const saveMemory = async () => {
-    setSavingMemory(true);
-    try {
-      const result = await desktopApi.saveSessionMemory({
-        sessionId: session.id,
-        importance: "important",
-      });
-      if (result.saved) {
-        toast.success(t("session.saved"));
-      } else if (result.reason === "duplicate") {
-        toast.info(t("session.alreadySaved"));
-      } else {
-        toast.error(result.reason ?? t("session.saveFailed"));
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("session.saveFailed"),
-      );
-    } finally {
-      setSavingMemory(false);
-    }
-  };
-
   return (
     <ChatView
       key={session.id}
@@ -157,31 +118,7 @@ export function ChatSessionPanel({
           />
         ),
         footerTrailing: (
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  aria-label={t("session.save")}
-                  disabled={savingMemory}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                  onClick={() => void saveMemory()}
-                >
-                  <Brain
-                    className={cn(
-                      "size-4",
-                      recallFailed && "text-status-warning",
-                    )}
-                  />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={6}>
-                {saveHint}
-              </TooltipContent>
-            </Tooltip>
-            <ChatContextMeter sessionId={session.id} snapshot={snapshot} />
-          </div>
+          <ChatContextMeter sessionId={session.id} snapshot={snapshot} />
         ),
       }}
       composerRef={composerRef}

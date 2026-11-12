@@ -1284,13 +1284,8 @@ export default interface Resources {
       title: "Let your assistants remember";
     };
     session: {
-      alreadySaved: "This conversation is already in memory";
       recallFailed: "Memory recall failed this turn: {{error}}";
       recallFailedUnknown: "unknown error";
-      save: "Save to memory";
-      saveFailed: "Could not save the conversation";
-      saved: "Conversation saved to memory";
-      saving: "Saving…";
     };
     settings: {
       actions: {
