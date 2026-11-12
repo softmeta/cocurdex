@@ -90,6 +90,21 @@ async function daemonLogTail() {
   return text.split(/\r?\n/).slice(-40).join("\n");
 }
 
+async function windowsStopProbe() {
+  if (!isWindows) return "";
+  const script = [
+    `$l = '${launcher}'`,
+    "'Test-Path: ' + (Test-Path $l)",
+    "'Test-Path -LiteralPath: ' + (Test-Path -LiteralPath $l)",
+    "$ErrorActionPreference = 'Continue'",
+    "'stop: ' + ((& $l daemon stop --json 2>&1 | Out-String).Trim())",
+    "'exit: ' + $LASTEXITCODE",
+  ].join("; ");
+  return run("powershell.exe", ["-NoProfile", "-Command", script]).catch(
+    (error: Error) => error.message,
+  );
+}
+
 async function withDaemonLog<T>(operation: () => Promise<T>) {
   try {
     return await operation();
@@ -165,7 +180,7 @@ describe("headless install script", () => {
       const result = await install();
       if (!result.includes("Restarted the daemon")) {
         throw new Error(
-          `Install did not restart the daemon (old daemon ${before.pid} alive: ${isAlive(before.pid)}):\n${result}`,
+          `Install did not restart the daemon (old daemon ${before.pid} alive: ${isAlive(before.pid)}):\n${result}\n--- stop probe ---\n${await windowsStopProbe()}`,
         );
       }
       return result;
