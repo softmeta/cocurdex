@@ -37,6 +37,7 @@ export default interface Resources {
         subagent_other: "Ran {{count}} subagents";
       };
       thinking: "Thinking";
+      thoughtFor: "Thought for {{duration}}";
       usingTools: "Using tools";
       workedFor: "Worked for {{duration}}";
     };

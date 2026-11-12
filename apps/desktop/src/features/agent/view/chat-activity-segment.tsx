@@ -41,10 +41,13 @@ export function ActivitySegment({
     return renderItem(singleItem, true);
   }
 
+  const summary = summarizeActivity(items);
+  const turnDurationKey =
+    summary.kind === "reasoning" ? "activity.thoughtFor" : "activity.workedFor";
   const label =
     isTurnWork && durationMs !== undefined
-      ? t("activity.workedFor", { duration: formatDurationMs(durationMs) })
-      : formatActivitySummary(summarizeActivity(items));
+      ? t(turnDurationKey, { duration: formatDurationMs(durationMs) })
+      : formatActivitySummary(summary);
 
   return (
     <ActivityBlock

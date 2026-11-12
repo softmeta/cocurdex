@@ -24,6 +24,7 @@
       "subagent_other": "运行了 {{count}} 个子代理"
     },
     "thinking": "思考中",
+    "thoughtFor": "思考了 {{duration}}",
     "usingTools": "工具调用中",
     "workedFor": "工作了 {{duration}}"
   },
