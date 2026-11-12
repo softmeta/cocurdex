@@ -175,6 +175,7 @@ function flowLabels(locale: SupportedLocale) {
     RENAME_COMPUTER_SAVE: hosts.rename.save,
     NEW_NOTE_ACTION: notes.create.open,
     NOTE_BODY_PLACEHOLDER: notes.editor.bodyPlaceholder,
+    NOTE_OUTLINE: notes.editor.outline,
     DEFAULT_NOTE_TITLE: "Untitled",
     ARCHIVE_ACTION: sessions.actions.archive,
     SESSION_CONFIG_CLOSE: sessions.sessionConfig.close,

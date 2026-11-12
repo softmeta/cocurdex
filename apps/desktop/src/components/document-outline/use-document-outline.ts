@@ -1,6 +1,6 @@
 import { type RefObject, useEffect, useState } from "react";
 
-export interface PreviewHeading {
+export interface DocumentHeading {
   element: HTMLElement;
   key: string;
   level: number;
@@ -9,8 +9,11 @@ export interface PreviewHeading {
 
 const HEADING_SELECTOR = "h1, h2, h3, h4";
 const ACTIVE_HEADING_OFFSET_PX = 80;
+const MIN_OUTLINE_HEADINGS = 3;
 
-function collectHeadings(root: HTMLElement): PreviewHeading[] {
+export const DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX = 896;
+
+function collectHeadings(root: HTMLElement): DocumentHeading[] {
   return Array.from(root.querySelectorAll<HTMLElement>(HEADING_SELECTOR))
     .map((element, index) => ({
       element,
@@ -21,9 +24,21 @@ function collectHeadings(root: HTMLElement): PreviewHeading[] {
     .filter((heading) => heading.text !== "");
 }
 
+function sameHeadings(a: DocumentHeading[], b: DocumentHeading[]) {
+  return (
+    a.length === b.length &&
+    a.every(
+      (heading, index) =>
+        heading.element === b[index]?.element &&
+        heading.level === b[index]?.level &&
+        heading.text === b[index]?.text,
+    )
+  );
+}
+
 function findActiveKey(
   scroller: HTMLElement,
-  headings: PreviewHeading[],
+  headings: DocumentHeading[],
 ): string | null {
   const atBottom =
     scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
@@ -42,11 +57,11 @@ function findActiveKey(
   return activeKey;
 }
 
-export function usePreviewHeadings(
+export function useDocumentOutline(
   scrollerRef: RefObject<HTMLElement | null>,
   contentRef: RefObject<HTMLElement | null>,
 ) {
-  const [headings, setHeadings] = useState<PreviewHeading[]>([]);
+  const [headings, setHeadings] = useState<DocumentHeading[]>([]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,20 +70,29 @@ export function usePreviewHeadings(
     if (!scroller || !content) {
       return;
     }
-    let current: PreviewHeading[] = [];
-    let frame = 0;
+    let current: DocumentHeading[] = [];
+    let activeFrame = 0;
+    let collectFrame = 0;
     const syncActive = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() =>
+      cancelAnimationFrame(activeFrame);
+      activeFrame = requestAnimationFrame(() =>
         setActiveKey(findActiveKey(scroller, current)),
       );
     };
     const syncHeadings = () => {
-      current = collectHeadings(content);
-      setHeadings(current);
+      const next = collectHeadings(content);
+      if (sameHeadings(current, next)) {
+        return;
+      }
+      current = next;
+      setHeadings(next);
       syncActive();
     };
-    const observer = new MutationObserver(syncHeadings);
+    const scheduleHeadings = () => {
+      cancelAnimationFrame(collectFrame);
+      collectFrame = requestAnimationFrame(syncHeadings);
+    };
+    const observer = new MutationObserver(scheduleHeadings);
     observer.observe(content, {
       characterData: true,
       childList: true,
@@ -79,11 +103,13 @@ export function usePreviewHeadings(
     return () => {
       observer.disconnect();
       scroller.removeEventListener("scroll", syncActive);
-      cancelAnimationFrame(frame);
+      cancelAnimationFrame(activeFrame);
+      cancelAnimationFrame(collectFrame);
     };
   }, [contentRef, scrollerRef]);
 
-  return { activeKey, headings };
+  const visible = headings.length >= MIN_OUTLINE_HEADINGS;
+  return { activeKey, headings: visible ? headings : [] };
 }
 
 export function useIsWiderThan(

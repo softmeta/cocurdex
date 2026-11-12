@@ -6,6 +6,7 @@ import {
 } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { CloseButton } from "./close-button";
 import { FieldSection } from "./field-section";
 import { Form } from "./form";
@@ -23,6 +24,7 @@ import {
 import { SelectedMark } from "./row-accessory";
 
 const SEARCH_AFTER_ITEMS = 10;
+const OPTION_INDENT = 16;
 
 function OptionRow({
   item,
@@ -40,9 +42,11 @@ function OptionRow({
       trailing={<SelectedMark selected={item.selected === true} />}
       onPress={() => onSelect(item)}
     >
-      <FormText tone={item.destructive ? "destructive" : "default"}>
-        {item.label}
-      </FormText>
+      <View style={{ paddingStart: (item.indent ?? 0) * OPTION_INDENT }}>
+        <FormText tone={item.destructive ? "destructive" : "default"}>
+          {item.label}
+        </FormText>
+      </View>
     </FormRow>
   );
 }

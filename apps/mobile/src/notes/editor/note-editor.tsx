@@ -32,6 +32,7 @@ import {
   type NoteEditorFormatState,
   type NoteEditorInbound,
   type NoteInsertKind,
+  type NoteOutline,
   noteEditorScript,
   parseNoteEditorMessage,
 } from "./note-editor-protocol";
@@ -42,6 +43,7 @@ type EditorWebView = ComponentRef<typeof WebView>;
 
 export interface NoteEditorHandle {
   blur(): void;
+  scrollToHeading(index: number): void;
 }
 
 export type NoteEditorBody =
@@ -122,6 +124,7 @@ export function NoteEditor({
   onProperties,
   onLinks,
   onFocusChange,
+  onOutline,
 }: {
   hostId: string;
   body: NoteEditorBody;
@@ -140,6 +143,7 @@ export function NoteEditor({
   onProperties?(): void;
   onLinks?(): void;
   onFocusChange?(focused: boolean): void;
+  onOutline?(outline: NoteOutline): void;
 }) {
   const { t } = useTranslation("notes");
   const colors = useThemeColors();
@@ -167,7 +171,10 @@ export function NoteEditor({
     webView.current?.injectJavaScript(noteEditorScript(message));
   const run = (command: NoteEditorCommand) =>
     send({ type: "command", command });
-  useImperativeHandle(ref, () => ({ blur: () => run({ name: "blur" }) }));
+  useImperativeHandle(ref, () => ({
+    blur: () => run({ name: "blur" }),
+    scrollToHeading: (index) => run({ name: "scrollToHeading", index }),
+  }));
 
   if (sentTheme.current !== null && sentTheme.current !== themeKey) {
     sentTheme.current = themeKey;
@@ -300,6 +307,9 @@ export function NoteEditor({
         return;
       case "highlight":
         highlight(message.requests);
+        return;
+      case "outline":
+        onOutline?.(message.outline);
         return;
       case "openImage": {
         const fileName = parseDocImageUri(message.src);

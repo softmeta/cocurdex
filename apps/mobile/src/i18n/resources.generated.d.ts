@@ -417,6 +417,7 @@ export default interface Resources {
         table: "Table";
         taskList: "Checklist";
       };
+      outline: "Table of contents";
       status: {
         error: "Not saved";
         saved: "Saved";
