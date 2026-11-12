@@ -64,7 +64,7 @@ function OutlineTrack({
             clipPath={`url(#${clipId})`}
             d={path}
             fill="none"
-            className="stroke-primary"
+            className="stroke-primary/55 dark:stroke-primary"
             strokeWidth={2}
           />
         </>
