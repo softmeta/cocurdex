@@ -9,6 +9,7 @@ import type {
   MessageAttachment,
 } from "@cocurdex/shared";
 import {
+  DEFAULT_AGENT_ID,
   isContextAttachment,
   isDocumentAttachment,
   supportsInSessionRuntimeAxis,
@@ -304,7 +305,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
       });
     };
 
-    const selectedAgent = agentType ?? "pi";
+    const selectedAgent = agentType ?? DEFAULT_AGENT_ID;
     const canAttachDocuments = supportsDocumentAttachments(selectedAgent);
     const hasUnsupportedDocument =
       !canAttachDocuments && managedAttachments.some(isDocumentAttachment);

@@ -10,6 +10,7 @@ import type {
 } from "@cocurdex/shared";
 import {
   findSessionConfigOption,
+  getAgentTraits,
   getComposerSessionConfigOptions,
   getConfigOptionSpeedTiers,
   getDefaultOpenCodeAgent,
@@ -98,7 +99,8 @@ export function SessionRuntimeMenu({
     axis: Parameters<typeof supportsInSessionRuntimeAxis>[1],
   ) => supportsInSessionRuntimeAxis(agentType, axis);
   const effortOptions =
-    agentType === "codex" && supportsRuntimeAxis("thinking")
+    getAgentTraits(agentType).thinkingLevels === "reasoning-effort" &&
+    supportsRuntimeAxis("thinking")
       ? (model?.supportedReasoningEfforts ?? [])
       : [];
   const defaultReasoningEffort = model?.defaultReasoningEffort ?? DEFAULT_VALUE;
@@ -122,24 +124,21 @@ export function SessionRuntimeMenu({
           { label: t("modelMenu.fastModeOff"), value: "off" },
         ]
       : [];
-  const openCodeRuntimeOptions =
-    agentType === "opencode"
-      ? getOpenCodeRuntimeOptions(model, providerSnapshot)
-      : { agents: [], variants: [] };
-  const openCodeAgentOptions =
-    agentType === "opencode" && supportsRuntimeAxis("agent")
-      ? openCodeRuntimeOptions.agents.map((agent) => ({
-          label: agent,
-          value: agent,
-        }))
-      : [];
-  const openCodeVariantOptions =
-    agentType === "opencode" && supportsRuntimeAxis("variant")
-      ? openCodeRuntimeOptions.variants.map((variant) => ({
-          label: variant,
-          value: variant,
-        }))
-      : [];
+  const openCodeRuntimeOptions = supportsRuntimeAxis("agent")
+    ? getOpenCodeRuntimeOptions(model, providerSnapshot)
+    : { agents: [], variants: [] };
+  const openCodeAgentOptions = supportsRuntimeAxis("agent")
+    ? openCodeRuntimeOptions.agents.map((agent) => ({
+        label: agent,
+        value: agent,
+      }))
+    : [];
+  const openCodeVariantOptions = supportsRuntimeAxis("variant")
+    ? openCodeRuntimeOptions.variants.map((variant) => ({
+        label: variant,
+        value: variant,
+      }))
+    : [];
   const openCodeAgentValue = resolveOpenCodeRuntimeValue(
     providerSnapshot?.openCodeAgent,
     openCodeRuntimeOptions.agents,

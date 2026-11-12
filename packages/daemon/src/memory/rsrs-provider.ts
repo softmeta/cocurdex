@@ -7,6 +7,7 @@ import type {
   MemorySettings,
   MemoryUpdateInput,
 } from "@cocurdex/shared";
+import { findBuiltInAgentByRsrsHost } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import type {
   MemoryProvider,
@@ -47,12 +48,6 @@ import {
 
 const CACHE_MS = 30_000;
 const RUNTIME_START_TIMEOUT_MS = 60_000;
-const AGENT_BY_RSRS_HOST: Record<string, string> = {
-  claude: "claude-agent",
-  codex: "codex",
-  opencode: "opencode",
-  pi: "pi",
-};
 const PARTITION_LIST_WINDOW = 500;
 
 export interface RsrsMemoryProviderOptions {
@@ -298,7 +293,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
     const executable = await this.requireExecutable();
     const hosts = await readInjectedHosts(executable).catch((): string[] => []);
     const agents = hosts.flatMap((host) => {
-      const agent = AGENT_BY_RSRS_HOST[host];
+      const agent = findBuiltInAgentByRsrsHost(host);
       return agent ? [agent] : [];
     });
     this.injected = { agents, at: this.nowMs() };

@@ -1,23 +1,13 @@
 import {
   type AcpRegistryInstalledAgent,
-  type AgentSessionMode,
-  agentRuntimeAxisCapabilities,
-  getAcpAgentProfile,
+  BUILT_IN_AGENT_IDS,
+  builtInAgentManifests,
   getAcpRegistryId,
-  getAgentRuntimeAxisCapabilities,
-  getAgentSessionTitleStrategy,
-  getFallbackAgentPermissionModes,
-  PLAN_MODE_ID,
+  getBuiltInAgentDescriptor,
+  getFallbackAgentCapabilities,
   toAcpRegistryAgentId,
 } from "@cocurdex/shared";
 import type { AgentDescriptor } from "./agent-types";
-
-function planSessionModes(): AgentSessionMode[] {
-  return [
-    { id: "default", name: "Default" },
-    { id: PLAN_MODE_ID, name: "Plan" },
-  ];
-}
 
 export type AgentRuntimeOwnership =
   | { kind: "builtin" }
@@ -28,84 +18,15 @@ interface AgentDefinition {
   runtime: AgentRuntimeOwnership;
 }
 
-const definitions: AgentDefinition[] = [
-  {
-    runtime: { executableName: "claude", kind: "external" },
-    descriptor: {
-      id: "claude-agent",
-      label: "Claude Agent",
-      availability: "available",
-      capabilities: {
-        sessionModes: planSessionModes(),
-        permissionModes: getFallbackAgentPermissionModes("claude-agent"),
-        writeModes: ["read-only", "native-write"],
-        supportsSteering: true,
-        supportsStreaming: true,
-        supportsSelections: true,
-        sessionTitleStrategy: getAgentSessionTitleStrategy("claude-agent"),
-        transport: "native",
-        runtimeAxes: agentRuntimeAxisCapabilities["claude-agent"],
-      },
-    },
-  },
-  {
-    runtime: { executableName: "codex", kind: "external" },
-    descriptor: {
-      id: "codex",
-      label: "Codex",
-      availability: "available",
-      capabilities: {
-        sessionModes: planSessionModes(),
-        permissionModes: getFallbackAgentPermissionModes("codex"),
-        writeModes: ["read-only", "native-write"],
-        supportsSteering: true,
-        supportsStreaming: true,
-        supportsSelections: true,
-        sessionTitleStrategy: getAgentSessionTitleStrategy("codex"),
-        transport: "native",
-        runtimeAxes: agentRuntimeAxisCapabilities.codex,
-      },
-    },
-  },
-  {
-    runtime: { executableName: "opencode", kind: "external" },
-    descriptor: {
-      id: "opencode",
-      label: "OpenCode",
-      availability: "available",
-      capabilities: {
-        sessionModes: planSessionModes(),
-        permissionModes: getFallbackAgentPermissionModes("opencode"),
-        writeModes: ["read-only", "native-write"],
-        supportsSteering: false,
-        supportsStreaming: true,
-        supportsSelections: true,
-        sessionTitleStrategy: getAgentSessionTitleStrategy("opencode"),
-        transport: "native",
-        runtimeAxes: agentRuntimeAxisCapabilities.opencode,
-      },
-    },
-  },
-  {
-    runtime: { kind: "builtin" },
-    descriptor: {
-      id: "pi",
-      label: "Pi",
-      availability: "available",
-      capabilities: {
-        sessionModes: [],
-        permissionModes: getFallbackAgentPermissionModes("pi"),
-        writeModes: ["read-only"],
-        supportsSteering: true,
-        supportsStreaming: true,
-        supportsSelections: true,
-        sessionTitleStrategy: getAgentSessionTitleStrategy("pi"),
-        transport: "native",
-        runtimeAxes: agentRuntimeAxisCapabilities.pi,
-      },
-    },
-  },
-];
+const definitions: AgentDefinition[] = BUILT_IN_AGENT_IDS.map((agentId) => {
+  const { executable } = builtInAgentManifests[agentId];
+  return {
+    runtime: executable
+      ? { executableName: executable, kind: "external" }
+      : { kind: "builtin" },
+    descriptor: getBuiltInAgentDescriptor(agentId),
+  };
+});
 
 function cloneDescriptor(descriptor: AgentDescriptor): AgentDescriptor {
   return {
@@ -144,7 +65,6 @@ export function getInstalledAcpRegistryAgent(id: AgentDescriptor["id"]) {
 function toAcpRegistryDefinition(
   agent: AcpRegistryInstalledAgent,
 ): AgentDefinition {
-  const profile = getAcpAgentProfile(agent.agentId);
   return {
     runtime: {
       executableName: agent.command,
@@ -155,17 +75,7 @@ function toAcpRegistryDefinition(
       id: agent.agentId,
       label: agent.name,
       availability: "available",
-      capabilities: {
-        sessionModes: profile.sessionModes ?? [],
-        permissionModes: getFallbackAgentPermissionModes(agent.agentId),
-        writeModes: ["native-write"],
-        supportsSteering: profile.supportsSteering ?? false,
-        supportsStreaming: true,
-        supportsSelections: true,
-        sessionTitleStrategy: "native",
-        transport: "acp",
-        runtimeAxes: getAgentRuntimeAxisCapabilities(agent.agentId),
-      },
+      capabilities: getFallbackAgentCapabilities(agent.agentId),
     },
   };
 }

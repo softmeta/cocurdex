@@ -1,5 +1,5 @@
 import {
-  agentMinimumVersions,
+  getAgentMinimumVersion,
   getAgentVersionStatus,
   parseAgentVersion,
 } from "@cocurdex/shared";
@@ -72,7 +72,7 @@ function assertSupportedOpenCodeCli() {
   const version = parseAgentVersion(String(result.stdout ?? ""));
   if (getAgentVersionStatus("opencode", version) === "outdated") {
     throw new Error(
-      `OpenCode ${version} is too old for Cocurdex. Upgrade OpenCode to ${agentMinimumVersions.opencode} or newer and retry.`,
+      `OpenCode ${version} is too old for Cocurdex. Upgrade OpenCode to ${getAgentMinimumVersion("opencode")} or newer and retry.`,
     );
   }
 

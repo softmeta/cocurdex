@@ -1,4 +1,5 @@
 import { supportsInSessionRuntimeAxis } from "../agent-runtime-capabilities";
+import { getAgentTraits } from "../agent-traits";
 import type {
   AgentId,
   AgentProviderSnapshot,
@@ -11,21 +12,22 @@ export function applySessionRuntime(
   supportsFastMode: boolean,
   runtime: SessionRuntimeSelection,
 ): AgentProviderSnapshot {
+  const traits = getAgentTraits(agentId);
   const thinkingLevel =
     runtime.thinkingLevel === "default" ? null : runtime.thinkingLevel;
   return {
     ...snapshot,
     thinkingLevel: thinkingLevel ?? null,
-    ...(agentId === "codex"
+    ...(traits.thinkingLevels === "reasoning-effort"
       ? { reasoningEffort: runtime.reasoningEffort ?? null }
       : {}),
-    ...(agentId === "claude-agent" && supportsFastMode
+    ...(traits.fastMode && supportsFastMode
       ? { fastMode: runtime.fastMode ?? false }
       : {}),
     ...(supportsInSessionRuntimeAxis(agentId, "speed")
       ? { serviceTier: runtime.serviceTier ?? null }
       : {}),
-    ...(agentId === "opencode"
+    ...(supportsInSessionRuntimeAxis(agentId, "agent")
       ? {
           openCodeAgent: runtime.openCodeAgent ?? null,
           openCodeVariant: runtime.openCodeVariant ?? null,

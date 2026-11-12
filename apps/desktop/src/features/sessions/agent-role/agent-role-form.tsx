@@ -5,6 +5,7 @@ import {
   type AgentRoleRecord,
   type AgentThinkingLevel,
   type CodexReasoningEffort,
+  getAgentTraits,
   type SaveAgentRolePayload,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
@@ -104,7 +105,7 @@ export function AgentRoleForm({
     ({ provider, model }) =>
       getProviderModelValue(provider.id, model.modelId) === modelValue,
   );
-  const isClaudeAgent = agentId === "claude-agent";
+  const agentHasFastMode = getAgentTraits(agentId).fastMode;
 
   useMountEffect(() => {
     let cancelled = false;
@@ -208,7 +209,7 @@ export function AgentRoleForm({
           ? (reasoningEffort as CodexReasoningEffort)
           : null,
         serviceTier: serviceTier || null,
-        fastMode: isClaudeAgent ? fastMode : null,
+        fastMode: agentHasFastMode ? fastMode : null,
         thinkingLevel: thinkingLevel === "default" ? null : thinkingLevel,
         openCodeAgent: openCodeAgent || null,
         openCodeVariant: openCodeVariant || null,

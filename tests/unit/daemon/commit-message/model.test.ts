@@ -7,7 +7,7 @@ import type {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const catalogs = vi.hoisted(() => ({
-  listCodexProviderModels: vi.fn(),
+  listAgentModels: vi.fn(),
   listPiProviderModels: vi.fn(),
 }));
 vi.mock("@cocurdex/agent-adapters", () => catalogs);
@@ -76,7 +76,11 @@ describe("resolveCommitMessageModel", () => {
   } as CommitMessageModelSelection;
 
   beforeEach(() => {
-    catalogs.listCodexProviderModels.mockReset().mockResolvedValue([]);
+    catalogs.listAgentModels
+      .mockReset()
+      .mockImplementation((agentId: string) =>
+        agentId === "pi" ? null : Promise.resolve([]),
+      );
     catalogs.listPiProviderModels.mockReset().mockResolvedValue([model]);
   });
 
@@ -110,9 +114,9 @@ describe("resolveCommitMessageModel", () => {
     ).rejects.toThrow("No commit message model configured");
   });
 
-  it("uses a native Codex model before configured providers", async () => {
+  it("resolves an agent-owned model without reading configured providers", async () => {
     const database = state([]);
-    catalogs.listCodexProviderModels.mockResolvedValue([{ provider, model }]);
+    catalogs.listAgentModels.mockResolvedValue([{ provider, model }]);
     await expect(
       resolveCommitMessageModel(database, { ...selection, agentId: "codex" }),
     ).resolves.toMatchObject({
@@ -131,6 +135,6 @@ describe("resolveCommitMessageModel", () => {
     await expect(
       resolveCommitMessageModel(database, { ...selection, agentId: "codex" }),
     ).rejects.toThrow("No commit message model configured");
-    expect(catalogs.listCodexProviderModels).not.toHaveBeenCalled();
+    expect(catalogs.listAgentModels).not.toHaveBeenCalled();
   });
 });

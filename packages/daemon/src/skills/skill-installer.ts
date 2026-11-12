@@ -1,4 +1,5 @@
 import path from "node:path";
+import { linkAgentRoot, rootDir } from "@cocurdex/agent-adapters";
 import type {
   SkillAddRequest,
   SkillAddResult,
@@ -22,7 +23,6 @@ import {
 import type { ScannedSkill } from "./skill-inventory";
 import type { SkillLibrary } from "./skill-library-service";
 import { createSkillLink } from "./skill-links";
-import { linkAgentRoot, rootDir } from "./skill-locations";
 import {
   type SkillLockEntry,
   type SkillLockFile,

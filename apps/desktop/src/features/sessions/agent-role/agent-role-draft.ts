@@ -1,4 +1,8 @@
-import type { AgentDescriptor, SaveAgentRolePayload } from "@cocurdex/shared";
+import {
+  type AgentDescriptor,
+  DEFAULT_AGENT_ID,
+  type SaveAgentRolePayload,
+} from "@cocurdex/shared";
 import { buildAgentSelectOptions } from "../agent-select-options";
 import { getDefaultPermissionMode } from "../session-agent-state";
 
@@ -8,7 +12,7 @@ export function blankRoleDraft(
   const agentId =
     buildAgentSelectOptions(agents).find(
       (option) => option.selectable !== false,
-    )?.value ?? "pi";
+    )?.value ?? DEFAULT_AGENT_ID;
   return {
     name: "",
     agentId,

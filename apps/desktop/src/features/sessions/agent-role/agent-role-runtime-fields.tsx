@@ -6,6 +6,7 @@ import type {
   CompatibleProviderModel,
 } from "@cocurdex/shared";
 import {
+  getAgentTraits,
   getDefaultOpenCodeAgent,
   getOpenCodeRuntimeOptions,
   getThinkingLevelLabel,
@@ -103,16 +104,17 @@ export function AgentRoleRuntimeFields({
     thinkingLevelOptions,
     thinkingLevel,
   );
-  const isClaudeAgent = agentId === "claude-agent";
+  const agentHasFastMode = getAgentTraits(agentId).fastMode;
   const claudeFastModeOptions =
-    isClaudeAgent && selectedProviderModel?.model.supportsFastMode
+    agentHasFastMode && selectedProviderModel?.model.supportsFastMode
       ? [
           { label: t("modelMenu.fastModeOn"), value: "on" },
           { label: t("modelMenu.fastModeOff"), value: "off" },
         ]
       : [];
   const codexReasoningOptions =
-    agentId === "codex" && selectedProviderModel
+    getAgentTraits(agentId).thinkingLevels === "reasoning-effort" &&
+    selectedProviderModel
       ? (selectedProviderModel.model.supportedReasoningEfforts ?? []).map(
           (effort) => ({
             description: effort.description,
@@ -134,10 +136,9 @@ export function AgentRoleRuntimeFields({
           })),
         ]
       : [];
-  const openCodeRuntimeOptions =
-    agentId === "opencode"
-      ? getOpenCodeRuntimeOptions(selectedProviderModel?.model)
-      : { agents: [], variants: [] };
+  const openCodeRuntimeOptions = supportsInSessionRuntimeAxis(agentId, "agent")
+    ? getOpenCodeRuntimeOptions(selectedProviderModel?.model)
+    : { agents: [], variants: [] };
   const openCodeAgentDefaultValue = getDefaultOpenCodeAgent(
     openCodeRuntimeOptions,
   );

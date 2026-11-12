@@ -3,11 +3,7 @@ import type {
   AgentProviderSelection,
   CompatibleProviderModel,
 } from "@cocurdex/shared";
-import {
-  CODEX_BUILT_IN_PROVIDER_ID,
-  CODEX_DEFAULT_MODEL_ID,
-  isAcpRegistryAgentId,
-} from "@cocurdex/shared";
+import { getAgentTraits } from "@cocurdex/shared";
 import { getProviderModelValue } from "./provider-model-cache";
 
 function getItemValue(item: CompatibleProviderModel | undefined) {
@@ -39,28 +35,9 @@ export function getDefaultProviderModelValue(
     );
   }
 
-  if (agentId === "codex") {
-    const builtInDefault = items.find(
-      ({ model, provider }) =>
-        provider.id === CODEX_BUILT_IN_PROVIDER_ID && model.isDefault,
-    );
-    return getProviderModelValue(
-      CODEX_BUILT_IN_PROVIDER_ID,
-      builtInDefault?.model.modelId ?? CODEX_DEFAULT_MODEL_ID,
-    );
-  }
-
-  if (
-    isAcpRegistryAgentId(agentId) ||
-    agentId === "opencode" ||
-    agentId === "claude-agent"
-  ) {
-    return getItemValue(items.find(({ model }) => model.isDefault) ?? items[0]);
-  }
-
-  if (agentId === "pi") {
+  if (getAgentTraits(agentId).modelCatalog === "app-providers") {
     return getItemValue(items[0]);
   }
 
-  return "";
+  return getItemValue(items.find(({ model }) => model.isDefault) ?? items[0]);
 }

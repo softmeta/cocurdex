@@ -3,8 +3,8 @@ import {
   type AgentPermissionMode,
   type AgentRateLimitsRecord,
   type AgentThinkingLevel,
+  getAgentTraits,
   getEffectiveThinkingLevel,
-  isAcpRegistryAgentId,
   PLAN_MODE_ID,
   type ReasoningEffort,
   type SessionRecord,
@@ -324,9 +324,7 @@ export function ContextWindowIndicator({
     : "";
 
   const ownsModelCatalog =
-    isAcpRegistryAgentId(session.agentType) ||
-    session.agentType === "claude-agent" ||
-    session.agentType === "codex";
+    getAgentTraits(session.agentType).modelCatalog === "agent";
   const usage = resolvedSessionId ? sessionUsage[resolvedSessionId] : undefined;
   const model = resolveRuntimeProviderModel(
     session.agentType,
@@ -411,7 +409,10 @@ export function ContextWindowIndicator({
   if (sessionModeChip) {
     menuTriggerValues.push(sessionModeChip);
   }
-  if (session.agentType !== "codex" && effortLabel) {
+  if (
+    getAgentTraits(session.agentType).thinkingLevels !== "reasoning-effort" &&
+    effortLabel
+  ) {
     menuTriggerValues.push(effortLabel);
   }
   if (permissionModeLabel) {

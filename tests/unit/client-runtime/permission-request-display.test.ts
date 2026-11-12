@@ -45,6 +45,8 @@ describe("describePermissionRequest", () => {
           toolName: "Write",
           input: { file_path: "/work/acme-shop/src/cart.ts" },
         },
+        rawInputVisible: false,
+        access: { operation: "write", path: "/work/acme-shop/src/cart.ts" },
       }),
     );
 

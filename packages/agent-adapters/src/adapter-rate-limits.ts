@@ -1,30 +1,21 @@
-import {
-  type AgentId,
-  type AgentRateLimitsReadResult,
-  type AgentRateLimitsRecord,
-  isPlanUsageAgentId,
-  PLAN_USAGE_AGENT_IDS,
-  type PlanUsageAgentId,
+import type {
+  AgentId,
+  AgentRateLimitsReadResult,
+  AgentRateLimitsRecord,
 } from "@cocurdex/shared";
-import { readAcpRegistryRateLimits } from "./acp-registry";
 import { AdapterRateLimitsProbeError } from "./adapter-rate-limits-error";
-import { readClaudePlanUsage } from "./claude-cli/claude-plan-usage-probe";
-import { readCodexRateLimits } from "./codex/codex-rate-limits";
+import { findAgentPlugin } from "./agent-native";
 
 export type AdapterRateLimitsMap = Partial<
   Record<AgentId, AgentRateLimitsReadResult>
 >;
 
-export type AdapterRateLimitProbes = Record<
-  PlanUsageAgentId,
-  () => Promise<AgentRateLimitsRecord | null>
->;
+export type AdapterRateLimitProbe = (
+  agentId: AgentId,
+) => (() => Promise<AgentRateLimitsRecord | null>) | null;
 
-const defaultProbes: AdapterRateLimitProbes = {
-  "claude-agent": readClaudePlanUsage,
-  codex: readCodexRateLimits,
-  "acp:grok-build": () => readAcpRegistryRateLimits("acp:grok-build"),
-};
+const pluginProbe: AdapterRateLimitProbe = (agentId) =>
+  findAgentPlugin(agentId)?.readPlanUsage ?? null;
 
 function toProbeError(error: unknown): AgentRateLimitsReadResult {
   if (error instanceof AdapterRateLimitsProbeError) {
@@ -43,13 +34,13 @@ function toProbeError(error: unknown): AgentRateLimitsReadResult {
 }
 
 export async function readAdapterRateLimits(
-  agentIds: readonly AgentId[] = PLAN_USAGE_AGENT_IDS,
-  probes: AdapterRateLimitProbes = defaultProbes,
+  agentIds: readonly AgentId[],
+  probeFor: AdapterRateLimitProbe = pluginProbe,
 ): Promise<AdapterRateLimitsMap> {
   const uniqueIds = [...new Set(agentIds)];
   const entries = await Promise.all(
     uniqueIds.map(async (agentId) => {
-      const probe = isPlanUsageAgentId(agentId) ? probes[agentId] : null;
+      const probe = probeFor(agentId);
       if (!probe) {
         return [agentId, null] as const;
       }

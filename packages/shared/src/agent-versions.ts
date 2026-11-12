@@ -1,39 +1,22 @@
 import {
-  type AgentId,
-  type BuiltInAgentId,
-  isAcpRegistryAgentId,
-} from "./contracts";
+  type AgentInstallHint,
+  builtInAgentManifests,
+} from "./built-in-agents";
+import { type AgentId, isAcpRegistryAgentId } from "./contracts";
 
-export const agentMinimumVersions: Record<BuiltInAgentId, string | null> = {
-  "claude-agent": "2.0.0",
-  codex: null,
-  opencode: "2.0.20",
-  pi: null,
-};
+export type { AgentInstallHint } from "./built-in-agents";
 
-export interface AgentInstallHint {
-  command: string;
-  docsUrl: string;
+export function getAgentMinimumVersion(agentId: AgentId): string | null {
+  return isAcpRegistryAgentId(agentId)
+    ? null
+    : (builtInAgentManifests[agentId]?.minimumVersion ?? null);
 }
 
-export const agentInstallHints: Record<
-  BuiltInAgentId,
-  AgentInstallHint | null
-> = {
-  "claude-agent": {
-    command: "npm install -g @anthropic-ai/claude-code",
-    docsUrl: "https://docs.claude.com/en/docs/claude-code/setup",
-  },
-  codex: {
-    command: "npm install -g @openai/codex",
-    docsUrl: "https://developers.openai.com/codex/cli",
-  },
-  opencode: {
-    command: "curl -fsSL https://opencode.ai/install | bash",
-    docsUrl: "https://opencode.ai/docs",
-  },
-  pi: null,
-};
+export function getAgentInstallHint(agentId: AgentId): AgentInstallHint | null {
+  return isAcpRegistryAgentId(agentId)
+    ? null
+    : (builtInAgentManifests[agentId]?.installHint ?? null);
+}
 
 export type AgentVersionStatus = "ok" | "outdated" | "unknown";
 
@@ -82,9 +65,7 @@ export function getAgentVersionStatus(
   agentId: AgentId,
   version: string | null | undefined,
 ): AgentVersionStatus {
-  const minimum = isAcpRegistryAgentId(agentId)
-    ? null
-    : agentMinimumVersions[agentId];
+  const minimum = getAgentMinimumVersion(agentId);
   const parsed = parseAgentVersion(version);
 
   if (!minimum) {

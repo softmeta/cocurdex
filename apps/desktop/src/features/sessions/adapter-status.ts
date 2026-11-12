@@ -1,8 +1,8 @@
 import {
   type AgentDescriptor,
   type AgentInstallHint,
-  agentInstallHints,
-  agentMinimumVersions,
+  getAgentInstallHint,
+  getAgentMinimumVersion,
   getAgentVersionStatus,
   isAcpRegistryAgentId,
 } from "@cocurdex/shared";
@@ -30,13 +30,9 @@ export function getAdapterStatus(agent: AgentDescriptor): AdapterStatus {
   const version = agent.installation?.version ?? null;
   const base = {
     version,
-    minimumVersion: isAcpRegistryAgentId(agent.id)
-      ? null
-      : agentMinimumVersions[agent.id],
+    minimumVersion: getAgentMinimumVersion(agent.id),
     executablePath: agent.installation?.executablePath ?? null,
-    installHint: isAcpRegistryAgentId(agent.id)
-      ? null
-      : agentInstallHints[agent.id],
+    installHint: getAgentInstallHint(agent.id),
     error: agent.installation?.error ?? null,
   };
 

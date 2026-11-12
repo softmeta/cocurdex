@@ -13,19 +13,6 @@
     "send": "发送",
     "stop": "停止"
   },
-  "agentDescriptions": {
-    "claudeCli": "使用本机已安装并登录的 Claude Agent",
-    "claudeCode": "仅使用 cocurdex Provider 的 Anthropic Messages 模型",
-    "codex": "快速代码生成",
-    "opencode": "开源替代方案",
-    "pi": "内置 agent"
-  },
-  "agents": {
-    "claudeCli": "Claude Agent",
-    "codex": "Codex",
-    "opencode": "OpenCode",
-    "pi": "Pi"
-  },
   "git": {
     "turnFiles_other": "{{count}} 个文件"
   },

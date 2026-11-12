@@ -1,5 +1,5 @@
 import {
-  generateCodexConversationTitle,
+  generateAgentConversationTitle,
   generatePiConversationTitle,
   generatePiText,
 } from "@cocurdex/agent-adapters";
@@ -9,7 +9,7 @@ import type {
   ProviderModelRecord,
   SessionRecord,
 } from "@cocurdex/shared";
-import { errorKindForLog, hostForLog } from "@cocurdex/shared";
+import { errorKindForLog, getAgentTraits, hostForLog } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import {
   findConfiguredProviderModel,
@@ -107,48 +107,48 @@ async function resolveSessionTitleModel(
   return { ...records, apiKey: runtime.apiKey };
 }
 
+function usesAppGeneratedTitles(session: SessionRecord) {
+  return (
+    getAgentTraits(session.agentType).sessionTitleStrategy === "app-generated"
+  );
+}
+
 export async function generateProviderSessionTitle(
   deps: SessionTitleDeps,
   session: SessionRecord,
   payload: { message: string; fallbackTitle: string },
 ): Promise<string | null> {
-  const useCodexCli = session.agentType === "codex";
-  const records =
-    session.agentType === "pi"
-      ? ((await resolveDedicatedTitleModel(deps)) ??
-        (await resolveSessionTitleModel(deps, session)))
-      : null;
-  if (!records && !useCodexCli) {
-    return null;
-  }
-
+  const records = usesAppGeneratedTitles(session)
+    ? ((await resolveDedicatedTitleModel(deps)) ??
+      (await resolveSessionTitleModel(deps, session)))
+    : null;
   const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    TITLE_GENERATION_TIMEOUT_MS,
-  );
-  const startedAt = Date.now();
-  try {
-    let generated: string | null;
-    if (useCodexCli) {
-      const modelId = session.providerSnapshot?.modelId;
-      generated = await generateCodexConversationTitle({
-        message: payload.message,
-        ...(modelId ? { model: modelId } : {}),
-        signal: controller.signal,
-      });
-    } else if (records) {
-      generated = await generatePiConversationTitle({
+  const modelId = session.providerSnapshot?.modelId;
+  const generation = records
+    ? generatePiConversationTitle({
         provider: records.provider,
         model: records.model,
         apiKey: records.apiKey,
         message: payload.message,
         sessionId: session.id,
         signal: controller.signal,
+      })
+    : generateAgentConversationTitle(session.agentType, {
+        message: payload.message,
+        ...(modelId ? { modelId } : {}),
+        signal: controller.signal,
       });
-    } else {
-      return null;
-    }
+  if (!generation) {
+    return null;
+  }
+
+  const timeout = setTimeout(
+    () => controller.abort(),
+    TITLE_GENERATION_TIMEOUT_MS,
+  );
+  const startedAt = Date.now();
+  try {
+    const generated = await generation;
     return generated ?? payload.fallbackTitle;
   } catch (error) {
     logDaemonDiagnostic("info", "titleGeneration.skipped", {
@@ -171,7 +171,9 @@ export async function generateSessionText(
   session: SessionRecord,
   prompt: { systemPrompt: string; message: string; maxTokens: number },
 ): Promise<string | null> {
-  if (session.agentType !== "pi") return null;
+  if (getAgentTraits(session.agentType).modelCatalog !== "app-providers") {
+    return null;
+  }
   const records = await resolveSessionTitleModel(deps, session);
   if (!records) {
     logDaemonDiagnostic("info", "sessionText.modelUnresolved", {

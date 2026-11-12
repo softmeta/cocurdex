@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import os, { homedir } from "node:os";
-import { deleteOpenCodeSession } from "@cocurdex/agent-adapters";
+import { deleteAgentProviderSession } from "@cocurdex/agent-adapters";
 import { loginPiProvider } from "@cocurdex/agent-adapters/provider-auth";
 import { AgentSteeringUnavailableError } from "@cocurdex/agent-core";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
@@ -127,7 +127,6 @@ import {
   postedMessagesSinceReply,
 } from "./personal";
 import { DaemonProviderService } from "./provider";
-import { CodexLoginSessions } from "./provider/codex-login";
 import { withServerProviderConnection } from "./provider/server-connection";
 import {
   generateProviderSessionTitle,
@@ -253,7 +252,6 @@ export class CocurdexDaemonService {
   readonly applications: ApplicationService;
   readonly pdfAnnotationsService: DaemonPdfAnnotationsService;
   readonly attachments: DaemonAttachmentStore;
-  readonly codexLogins = new CodexLoginSessions();
   readonly workspaces: WorkspaceHost;
   readonly settings: DaemonSettingsService;
   readonly runtime: AgentRuntimeManager;
@@ -1592,7 +1590,7 @@ export class CocurdexDaemonService {
 
     const providerSession = await this.state.getProviderSession(
       sessionId,
-      "opencode",
+      session.agentType,
     );
     const workspace = (await this.state.listWorkspaces()).find(
       (candidate) => candidate.id === session.workspaceId,
@@ -1607,9 +1605,10 @@ export class CocurdexDaemonService {
     this.runtime.clearSessionPlan(sessionId);
 
     if (providerSession?.providerSessionId) {
-      await deleteOpenCodeSession({
-        providerSessionId: providerSession.providerSessionId,
-      });
+      await deleteAgentProviderSession(
+        session.agentType,
+        providerSession.providerSessionId,
+      );
     }
 
     await this.state.deleteSession(sessionId);
@@ -1823,24 +1822,12 @@ export class CocurdexDaemonService {
     session: SessionRecord,
     payload: RefineSessionTitlePayload,
   ) {
-    if (session.agentType !== "claude-agent") {
-      return generateProviderSessionTitle(
-        {
-          state: this.state,
-          readApiKey: (providerId) =>
-            this.providerCredentials.readApiKey(providerId),
-          resolveSessionProvider: (target) =>
-            this.providerCredentials.forSession(target),
-        },
-        session,
-        payload,
-      );
-    }
     try {
-      return await this.runtime.generateSessionTitle(
+      const runtimeTitle = await this.runtime.generateSessionTitle(
         session.id,
         payload.message,
       );
+      if (runtimeTitle !== undefined) return runtimeTitle;
     } catch (error) {
       logDaemonDiagnostic("info", "titleGeneration.skipped", {
         error: error instanceof Error ? error.message : String(error),
@@ -1848,6 +1835,17 @@ export class CocurdexDaemonService {
       });
       return null;
     }
+    return generateProviderSessionTitle(
+      {
+        state: this.state,
+        readApiKey: (providerId) =>
+          this.providerCredentials.readApiKey(providerId),
+        resolveSessionProvider: (target) =>
+          this.providerCredentials.forSession(target),
+      },
+      session,
+      payload,
+    );
   }
 
   async listSessionSlashCommands(

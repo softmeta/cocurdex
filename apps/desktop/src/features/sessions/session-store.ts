@@ -39,7 +39,6 @@ import {
 } from "./session-split/session-split-store";
 
 export {
-  agentLabels,
   agentsAtom,
   applyAgentSessionModesAtom,
   availableAgentsAtom,
@@ -47,6 +46,7 @@ export {
   getAgentDisplayLabel,
   getDefaultPermissionMode,
   getDefaultSessionTitle,
+  getFirstAvailableAgent,
   getPermissionModeOptions,
   getSessionModeOptions,
   getSessionPermissionMode,

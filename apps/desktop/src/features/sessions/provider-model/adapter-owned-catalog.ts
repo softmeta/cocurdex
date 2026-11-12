@@ -1,7 +1,11 @@
-import { type AgentId, getAcpAgentProfile } from "@cocurdex/shared";
+import {
+  type AgentId,
+  getAcpAgentProfile,
+  getAgentTraits,
+} from "@cocurdex/shared";
 
 export function usesAdapterOwnedModelCatalog(agentId: AgentId) {
-  return agentId !== "pi";
+  return getAgentTraits(agentId).modelCatalog !== "app-providers";
 }
 
 export function usesLazyModelAxesProbe(agentId: AgentId) {

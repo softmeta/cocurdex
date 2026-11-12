@@ -5,6 +5,7 @@ import type {
 } from "@anthropic-ai/claude-agent-sdk";
 import type { CreateAgentSessionPayload } from "@cocurdex/agent-core";
 import type {
+  AgentPermissionAccess,
   AgentPermissionRequestPayload,
   AgentPlanApprovalDecision,
   AgentQuestionOption,
@@ -40,6 +41,16 @@ function getLocations(
   const path = blockedPath ?? getInputPath(input);
 
   return path ? [{ path }] : [];
+}
+
+function getAccessOperation(
+  toolName: string,
+): AgentPermissionAccess["operation"] {
+  const name = toolName.toLowerCase();
+  if (name.includes("write")) return "write";
+  if (name.includes("edit")) return "edit";
+  if (name.includes("read")) return "read";
+  return "use";
 }
 
 function getTitle(
@@ -180,6 +191,11 @@ export function createClaudeCanUseTool(
         blockedPath: options.blockedPath,
         suggestions: options.suggestions,
         toolName,
+      },
+      rawInputVisible: false,
+      access: {
+        operation: getAccessOperation(toolName),
+        path: getInputPath(input) ?? options.blockedPath ?? null,
       },
       locations: getLocations(input, options.blockedPath),
       options: createPermissionOptions([

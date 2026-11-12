@@ -15,10 +15,7 @@ export {
   redetectStaleAgentsAtom,
 } from "./agent-detection";
 export { AgentIcon, AgentIconLabel } from "./agent-icon";
-export {
-  defaultAgentDescriptors,
-  selectableAgentOptions,
-} from "./agent-options";
+export { defaultAgentDescriptors } from "./agent-options";
 export {
   AgentRoleAvatar,
   type AgentRoleAvatarSource,
@@ -56,12 +53,12 @@ export {
 } from "./provider-model";
 export { ScriptRunPanel, ScriptRunProposals } from "./script-run";
 export {
-  agentLabels,
   agentsAtom,
   applyAgentSessionModesAtom,
   bootstrapAgentsAtom,
   getAgentDisplayLabel,
   getDefaultPermissionMode,
+  getFirstAvailableAgent,
   getPermissionModeOptions,
   getSessionModeOptions,
   getSessionPermissionMode,

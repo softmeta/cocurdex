@@ -5,10 +5,12 @@ import type {
   CompatibleProviderModel,
 } from "@cocurdex/shared";
 import {
+  getAgentTraits,
   getOpenCodeRuntimeOptions,
   getThinkingLevelOptions,
   resolveOpenCodeRuntimeValue,
   resolveThinkingLevel,
+  supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
 import { getAgentRuntimePreferences } from "@/features/sessions";
 
@@ -60,22 +62,20 @@ export function createCommitSelection(
     thinkingLevel: thinkingLevel === "default" ? null : thinkingLevel,
     serviceTier,
     fastMode:
-      agentId === "claude-agent" && item?.model.supportsFastMode
+      getAgentTraits(agentId).fastMode && item?.model.supportsFastMode
         ? (preferences.fastMode ?? false)
         : null,
-    openCodeAgent:
-      agentId === "opencode"
-        ? resolveOpenCodeRuntimeValue(
-            preferences.openCodeAgent,
-            openCodeOptions.agents,
-          ) || null
-        : null,
-    openCodeVariant:
-      agentId === "opencode"
-        ? resolveOpenCodeRuntimeValue(
-            preferences.openCodeVariant,
-            openCodeOptions.variants,
-          ) || null
-        : null,
+    openCodeAgent: supportsInSessionRuntimeAxis(agentId, "agent")
+      ? resolveOpenCodeRuntimeValue(
+          preferences.openCodeAgent,
+          openCodeOptions.agents,
+        ) || null
+      : null,
+    openCodeVariant: supportsInSessionRuntimeAxis(agentId, "variant")
+      ? resolveOpenCodeRuntimeValue(
+          preferences.openCodeVariant,
+          openCodeOptions.variants,
+        ) || null
+      : null,
   };
 }

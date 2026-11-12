@@ -1,5 +1,12 @@
 import { readAdapterRateLimits } from "@cocurdex/agent-adapters/internal/adapter-rate-limits";
+import type { AgentId, AgentRateLimitsRecord } from "@cocurdex/shared";
 import { describe, expect, it, vi } from "vitest";
+
+type Probe = () => Promise<AgentRateLimitsRecord | null>;
+
+function probes(byAgent: Partial<Record<AgentId, Probe>>) {
+  return (agentId: AgentId) => byAgent[agentId] ?? null;
+}
 
 describe("readAdapterRateLimits", () => {
   it("probes only the requested plan-usage adapters in parallel", async () => {
@@ -15,11 +22,10 @@ describe("readAdapterRateLimits", () => {
       throw new Error("should not run");
     });
 
-    const result = await readAdapterRateLimits(["claude-agent", "codex"], {
-      "claude-agent": claude,
-      codex,
-      "acp:grok-build": grok,
-    });
+    const result = await readAdapterRateLimits(
+      ["claude-agent", "codex"],
+      probes({ "claude-agent": claude, codex, "acp:grok-build": grok }),
+    );
 
     expect(claude).toHaveBeenCalledOnce();
     expect(codex).toHaveBeenCalledOnce();
@@ -42,7 +48,7 @@ describe("readAdapterRateLimits", () => {
   it("isolates a failing probe so the others still return", async () => {
     const result = await readAdapterRateLimits(
       ["claude-agent", "codex", "acp:grok-build"],
-      {
+      probes({
         "claude-agent": async () => {
           throw new Error("sdk down");
         },
@@ -51,7 +57,7 @@ describe("readAdapterRateLimits", () => {
           updatedAt: "2026-09-04T00:00:00.000Z",
         }),
         "acp:grok-build": async () => null,
-      },
+      }),
     );
 
     expect(result["claude-agent"]).toEqual({

@@ -216,8 +216,6 @@ export const providerPayloadSchemas = {
   "provider.importJson": exact<Payload<"provider.importJson">>()(
     z.object({ json: boundedTextSchema(4_194_304) }),
   ),
-  "codex.login.wait": exact<Payload<"codex.login.wait">>()(loginIdPayload),
-  "codex.login.cancel": exact<Payload<"codex.login.cancel">>()(loginIdPayload),
   "agent.runLimits.set": exact<Payload<"agent.runLimits.set">>()(
     z.object({
       limits: z.object({

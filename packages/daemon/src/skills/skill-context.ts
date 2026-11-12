@@ -1,17 +1,17 @@
 import path from "node:path";
-import type {
-  SkillLibraryScope,
-  SkillRef,
-  SkillTarget,
-  SkillWorkspaceInfo,
-} from "@cocurdex/shared";
 import {
   globalSkillLockPath,
   projectSkillLockPath,
   type SkillLocationEnv,
   type SkillRootLocation,
   skillRoots,
-} from "./skill-locations";
+} from "@cocurdex/agent-adapters";
+import type {
+  SkillLibraryScope,
+  SkillRef,
+  SkillTarget,
+  SkillWorkspaceInfo,
+} from "@cocurdex/shared";
 import { readSkillLock, type SkillLockFile } from "./skill-locks";
 
 export type WorkspaceResolver = (

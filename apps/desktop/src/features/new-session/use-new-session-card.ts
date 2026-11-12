@@ -7,6 +7,8 @@ import {
   type AgentThinkingLevel,
   type CodexReasoningEffort,
   type CompatibleProviderModel,
+  DEFAULT_AGENT_ID,
+  getAgentTraits,
   getDefaultOpenCodeAgent,
   getOpenCodeRuntimeOptions,
   getThinkingLevelOptions,
@@ -22,13 +24,13 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
-  selectableAgentOptions as agentDropdownOptions,
   applyAgentSessionModesAtom,
   defaultAgentDescriptors,
   getAgentRuntimePreferences,
   getCachedProviderModelEntry,
   getDefaultPermissionMode,
   getDefaultProviderModelValue,
+  getFirstAvailableAgent,
   getPermissionModeOptions,
   getProviderModelCacheVersion,
   getSessionModeOptions,
@@ -79,12 +81,12 @@ export function useNewSessionCard({
 }: UseNewSessionCardProps) {
   const { t } = useTranslation("sessions");
   const applyAgentSessionModes = useSetAtom(applyAgentSessionModesAtom);
-  const initialAgentType = agentType ?? "pi";
+  const initialAgentType = agentType ?? DEFAULT_AGENT_ID;
   const [initialRuntimePreferences] = useState(() =>
     getAgentRuntimePreferences(initialAgentType),
   );
   const [uncontrolledAgent, setUncontrolledAgent] = useState<AgentId>(
-    () => agentType ?? "pi",
+    () => agentType ?? DEFAULT_AGENT_ID,
   );
   const selectedAgent = agentType ?? uncontrolledAgent;
   const [selectedSessionModeId, setSelectedSessionModeId] =
@@ -141,17 +143,12 @@ export function useNewSessionCard({
       `${provider.id}::${model.modelId}` === selectedProviderModel,
   );
   const availableAgents = agents.filter(isAgentReadyToStart);
-  const selectableAgentOptions = agentDropdownOptions.filter((agentOption) =>
-    availableAgents.some((agent) => agent.id === agentOption.id),
-  );
   const activeAgentAvailable = availableAgents.some(
     (agent) => agent.id === selectedAgent,
   );
   const effectiveSelectedAgent = activeAgentAvailable
     ? selectedAgent
-    : (selectableAgentOptions[0]?.id ??
-      availableAgents[0]?.id ??
-      selectedAgent);
+    : (getFirstAvailableAgent(agents) ?? selectedAgent);
   const sessionModeOptions = getSessionModeOptions(
     agents,
     effectiveSelectedAgent,
@@ -178,7 +175,9 @@ export function useNewSessionCard({
   const canStartWithSelectedAgent = availableAgents.some(
     (agent) => agent.id === effectiveSelectedAgent,
   );
-  const requiresProviderModel = effectiveSelectedAgent === "pi";
+  const selectedAgentTraits = getAgentTraits(effectiveSelectedAgent);
+  const requiresProviderModel =
+    selectedAgentTraits.modelCatalog === "app-providers";
   const canStartSession =
     canStartWithSelectedAgent &&
     (!requiresProviderModel || Boolean(selectedCompatibleProvider));
@@ -196,10 +195,12 @@ export function useNewSessionCard({
     thinkingLevelOptions,
     rawSelectedThinkingLevel,
   );
-  const openCodeRuntimeOptions =
-    effectiveSelectedAgent === "opencode"
-      ? getOpenCodeRuntimeOptions(selectedCompatibleProvider?.model)
-      : { agents: [], variants: [] };
+  const openCodeRuntimeOptions = supportsInSessionRuntimeAxis(
+    effectiveSelectedAgent,
+    "agent",
+  )
+    ? getOpenCodeRuntimeOptions(selectedCompatibleProvider?.model)
+    : { agents: [], variants: [] };
   const selectedOpenCodeAgentValue = resolveOpenCodeRuntimeValue(
     selectedOpenCodeAgent,
     openCodeRuntimeOptions.agents,
@@ -213,9 +214,9 @@ export function useNewSessionCard({
   );
   const selectedOpenCodeAgentMenuValue =
     selectedOpenCodeAgentValue || openCodeAgentDefaultValue;
-  const isClaudeAgent = effectiveSelectedAgent === "claude-agent";
+  const agentHasFastMode = selectedAgentTraits.fastMode;
   const claudeFastModeOptions =
-    isClaudeAgent && selectedCompatibleProvider?.model.supportsFastMode
+    agentHasFastMode && selectedCompatibleProvider?.model.supportsFastMode
       ? [
           { label: t("modelMenu.fastModeOn"), value: "on" },
           { label: t("modelMenu.fastModeOff"), value: "off" },
@@ -254,10 +255,11 @@ export function useNewSessionCard({
             rawSelectedThinkingLevel === "default"
               ? null
               : selectedThinkingLevel,
-          ...(isClaudeAgent && selectedCompatibleProvider.model.supportsFastMode
+          ...(agentHasFastMode &&
+          selectedCompatibleProvider.model.supportsFastMode
             ? { fastMode: selectedClaudeFastMode }
             : {}),
-          ...(effectiveSelectedAgent === "codex"
+          ...(selectedAgentTraits.thinkingLevels === "reasoning-effort"
             ? {
                 reasoningEffort: selectedCodexReasoningEffort
                   ? (selectedCodexReasoningEffort as CodexReasoningEffort)
@@ -267,7 +269,7 @@ export function useNewSessionCard({
           ...(supportsInSessionRuntimeAxis(effectiveSelectedAgent, "speed")
             ? { serviceTier: selectedServiceTier || null }
             : {}),
-          ...(effectiveSelectedAgent === "opencode"
+          ...(supportsInSessionRuntimeAxis(effectiveSelectedAgent, "agent")
             ? {
                 openCodeAgent: selectedOpenCodeAgentValue || null,
                 openCodeVariant: selectedOpenCodeVariantValue || null,
@@ -277,7 +279,8 @@ export function useNewSessionCard({
       : null;
 
   const codexReasoningOptions =
-    effectiveSelectedAgent === "codex" && selectedCompatibleProvider
+    selectedAgentTraits.thinkingLevels === "reasoning-effort" &&
+    selectedCompatibleProvider
       ? (selectedCompatibleProvider.model.supportedReasoningEfforts ?? []).map(
           (effort) => ({
             description: effort.description,
@@ -509,7 +512,7 @@ export function useNewSessionCard({
       ? (selectedCodexReasoningEffort as CodexReasoningEffort)
       : null,
     serviceTier: selectedServiceTier || null,
-    fastMode: isClaudeAgent ? selectedClaudeFastMode : null,
+    fastMode: agentHasFastMode ? selectedClaudeFastMode : null,
     thinkingLevel:
       rawSelectedThinkingLevel === "default" ? null : rawSelectedThinkingLevel,
     openCodeAgent: selectedOpenCodeAgentValue || null,
@@ -623,7 +626,7 @@ export function useNewSessionCard({
       modelId,
     );
 
-    if (!shouldPersistProviderDefault(effectiveSelectedAgent, providerId)) {
+    if (!shouldPersistProviderDefault(effectiveSelectedAgent)) {
       return;
     }
 
@@ -663,29 +666,32 @@ export function useNewSessionCard({
     thinkingLevelOptions,
     thinkingLevelOverride:
       rawSelectedThinkingLevel === "default" ? "" : rawSelectedThinkingLevel,
-    openCodeAgentOptions:
-      effectiveSelectedAgent === "opencode"
-        ? [
-            ...openCodeRuntimeOptions.agents.map((agent) => ({
-              label: agent,
-              value: agent,
-            })),
-          ]
-        : [],
+    openCodeAgentOptions: supportsInSessionRuntimeAxis(
+      effectiveSelectedAgent,
+      "agent",
+    )
+      ? [
+          ...openCodeRuntimeOptions.agents.map((agent) => ({
+            label: agent,
+            value: agent,
+          })),
+        ]
+      : [],
     openCodeAgentDefaultValue,
     openCodeAgentValue: selectedOpenCodeAgentMenuValue,
-    openCodeVariantOptions:
-      effectiveSelectedAgent === "opencode"
-        ? openCodeRuntimeOptions.variants.map((variant) => ({
-            label: variant,
-            value: variant,
-          }))
-        : [],
+    openCodeVariantOptions: supportsInSessionRuntimeAxis(
+      effectiveSelectedAgent,
+      "variant",
+    )
+      ? openCodeRuntimeOptions.variants.map((variant) => ({
+          label: variant,
+          value: variant,
+        }))
+      : [],
     openCodeVariantValue: selectedOpenCodeVariantValue,
     contextWorkspaceRootPaths,
     setSelectedOpenCodeAgent: handleSelectOpenCodeAgent,
     setSelectedOpenCodeVariant: handleSelectOpenCodeVariant,
-    selectableAgentOptions,
     providerSnapshot,
     currentRoleDraft,
     handleSelectAgent,

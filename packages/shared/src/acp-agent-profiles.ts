@@ -15,6 +15,7 @@ export interface AcpAgentProfile {
   supportsSteering?: boolean;
   documentAttachments?: boolean;
   lazyModelAxes?: boolean;
+  planUsage?: boolean;
 }
 
 const inSession = "in-session" as const;
@@ -44,6 +45,7 @@ const acpAgentProfiles: Readonly<Record<string, AcpAgentProfile>> = {
     },
     supportsSteering: true,
     documentAttachments: true,
+    planUsage: true,
   },
 };
 

@@ -1,18 +1,14 @@
 import {
   type AgentId,
   type DocumentAttachment,
-  getAcpAgentProfile,
+  getAgentTraits,
 } from "@cocurdex/shared";
 import { desktopApi } from "@/lib";
 
 export const DOCUMENT_ATTACHMENT_ACCEPT = "application/pdf";
 const MAX_DOCUMENT_BYTES = 32 * 1024 * 1024;
 export function supportsDocumentAttachments(agentId: AgentId) {
-  return (
-    agentId === "claude-agent" ||
-    agentId === "opencode" ||
-    getAcpAgentProfile(agentId).documentAttachments === true
-  );
+  return getAgentTraits(agentId).documentAttachments;
 }
 
 export function isSupportedDocumentFile(file: File) {

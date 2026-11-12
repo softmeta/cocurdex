@@ -42,41 +42,15 @@ function getPermissionInput(permission: AgentPermissionRequestRecord) {
   return asObject(rawInput?.input) ?? asObject(permission.rawInput);
 }
 
-export function getClaudePermissionDetails(
-  permission: AgentPermissionRequestRecord,
-) {
-  if (permission.providerId !== "claude-agent") {
-    return null;
-  }
-
-  const rawInput = asObject(permission.rawInput);
-  const input = getPermissionInput(permission);
-  const path =
-    getString(input?.file_path) ??
-    getString(input?.filePath) ??
-    getString(input?.path) ??
-    permission.locations[0]?.path ??
-    null;
-  const toolName =
-    getString(rawInput?.toolName) ??
-    getString(input?.toolName) ??
-    permission.kind;
-  const normalizedToolName = toolName.toLowerCase();
-  let action: "edit" | "read" | "use" | "write" = "use";
-
-  if (normalizedToolName.includes("write")) {
-    action = "write";
-  } else if (normalizedToolName.includes("edit")) {
-    action = "edit";
-  } else if (normalizedToolName.includes("read")) {
-    action = "read";
-  }
-
+function describeAccess(permission: AgentPermissionRequestRecord) {
+  const access = permission.access;
+  if (!access) return null;
+  const name = access.path ? getBasename(access.path) : null;
   return {
-    action,
-    path,
-    subtitle: path ? getBasename(path) : permission.description,
-    target: path ? getBasename(path) : permission.title,
+    operation: access.operation,
+    path: access.path,
+    subtitle: name ?? permission.description ?? null,
+    target: name ?? permission.title,
   };
 }
 
@@ -194,10 +168,9 @@ export interface PermissionRequestDisplay {
 export function describePermissionRequest(
   permission: AgentPermissionRequestRecord,
 ): PermissionRequestDisplay {
-  const claudeDetails = getClaudePermissionDetails(permission);
-  const primaryPath = claudeDetails?.path ?? permission.locations[0]?.path;
-  const sourceDescription =
-    claudeDetails?.subtitle ?? permission.description ?? null;
+  const access = describeAccess(permission);
+  const primaryPath = access?.path ?? permission.locations[0]?.path;
+  const sourceDescription = access?.subtitle ?? permission.description ?? null;
   const details = getReadablePermissionDetails({
     displayDescription: sourceDescription,
     permission,
@@ -208,11 +181,11 @@ export function describePermissionRequest(
     kind: "title",
     text: permission.title,
   };
-  if (claudeDetails) {
+  if (access) {
     summary = {
       kind: "file",
-      action: claudeDetails.action,
-      target: claudeDetails.target,
+      action: access.operation,
+      target: access.target,
     };
   }
   if (hasCommand) {
@@ -222,7 +195,7 @@ export function describePermissionRequest(
   const showRawInput =
     rawInput !== "" &&
     details.length === 0 &&
-    permission.providerId !== "claude-agent";
+    permission.rawInputVisible !== false;
   return {
     summary,
     description: hasCommand ? null : sourceDescription,

@@ -1,7 +1,7 @@
 import { getFallbackAgentPermissionModes } from "./agent-permission-modes";
+import { getAgentTraits } from "./agent-traits";
 import { isChatSession } from "./chat-session";
 import {
-  type AgentId,
   type AgentPermissionModeOption,
   type AgentSessionConfigOption,
   PLAN_MODE_ID,
@@ -21,7 +21,6 @@ const ATTENDED_CONFIG_CATEGORIES: ReadonlySet<string> = new Set([
   "thought_level",
 ]);
 const MODE_CONFIG_CATEGORY = "mode";
-const AGENTS_WITHOUT_TOOL_APPROVALS: ReadonlySet<AgentId> = new Set(["pi"]);
 
 export type UnattendedSessionFacts = Pick<
   SessionRecord,
@@ -69,7 +68,7 @@ export function sessionRunsUnattended(
   runtime?: AgentSessionRuntimeState | null,
 ) {
   if (isChatSession(session)) return false;
-  if (AGENTS_WITHOUT_TOOL_APPROVALS.has(session.agentType)) return true;
+  if (!getAgentTraits(session.agentType).toolApprovals) return true;
   if (
     session.permissionMode &&
     !isAttendedPermissionMode(session.permissionMode, [

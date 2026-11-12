@@ -38,12 +38,12 @@ describe("listAgentSkills", () => {
     const codexSkills = await listAgentSkills(
       "codex",
       { workspaceRootPath },
-      { homePath },
+      { env: { home: homePath } },
     );
     const openCodeSkills = await listAgentSkills(
       "opencode",
       { workspaceRootPath },
-      { homePath },
+      { env: { home: homePath } },
     );
 
     expect(codexSkills).toEqual([
@@ -71,7 +71,7 @@ describe("listAgentSkills", () => {
     const skills = await listAgentSkills(
       "codex",
       { workspaceRootPath },
-      { homePath },
+      { env: { home: homePath } },
     );
 
     expect(skills[0]?.name).toBe("skill-creator");
@@ -98,11 +98,38 @@ describe("listAgentSkills", () => {
     const skills = await listAgentSkills(
       "claude-agent",
       { workspaceRootPath },
-      { homePath },
+      { env: { home: homePath } },
     );
 
     expect(skills).toHaveLength(1);
     expect(skills[0]?.description).toBe("Workspace description");
     expect(skills[0]?.invocation).toBe("/review ");
+  });
+
+  it("reads agent skills from the configured agent home", async () => {
+    const rootPath = await tempDirs.create("cocurdex-skills-");
+    const homePath = path.join(rootPath, "home");
+    const codexHome = path.join(rootPath, "custom-codex");
+    const workspaceRootPath = path.join(rootPath, "workspace");
+    await writeSkill(
+      path.join(codexHome, "skills"),
+      "release",
+      "release",
+      "Cut a release",
+    );
+    await writeSkill(
+      path.join(homePath, ".codex", "skills"),
+      "stale",
+      "stale",
+      "Ignored default home",
+    );
+
+    const skills = await listAgentSkills(
+      "codex",
+      { workspaceRootPath },
+      { env: { home: homePath, codexHome } },
+    );
+
+    expect(skills.map((skill) => skill.name)).toEqual(["release"]);
   });
 });
