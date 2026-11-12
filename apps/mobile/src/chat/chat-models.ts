@@ -4,10 +4,10 @@ import { hostConnection } from "@/connection";
 
 export function useChatModels(hostId: string) {
   return useSWR(
-    ["provider.listConfigs", "provider.listModels", hostId] as const,
+    ["provider.listConfigs", "provider.listAllModels", hostId] as const,
     async ([listProviders, listModels, host]) => {
       const connection = hostConnection(host);
-      const [configs, { models }] = await Promise.all([
+      const [configs, models] = await Promise.all([
         connection.request(listProviders),
         connection.request(listModels, {}),
       ]);
