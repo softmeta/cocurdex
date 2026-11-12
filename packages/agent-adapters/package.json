@@ -14,13 +14,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "^2.4.0",
-    "@anthropic-ai/claude-agent-sdk": "0.3.318",
+    "@agentclientprotocol/sdk": "^2.5.0",
+    "@anthropic-ai/claude-agent-sdk": "0.3.322",
     "@cocurdex/agent-core": "workspace:*",
     "@cocurdex/shared": "workspace:*",
     "@earendil-works/pi-ai": "1.5.0",
     "@earendil-works/pi-coding-agent": "1.5.0",
-    "@opencode/client": "2.2.5",
+    "@opencode/client": "2.2.6",
     "cross-spawn": "^7.0.6",
     "yaml": "^2.9.0"
   },
