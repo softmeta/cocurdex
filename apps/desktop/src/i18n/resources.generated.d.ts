@@ -483,6 +483,7 @@ export default interface Resources {
       showLess: "Show less";
       showMore: "Show more";
     };
+    outline: "Table of contents";
     permissions: {
       allowed: "";
       denied: "";
@@ -918,9 +919,6 @@ export default interface Resources {
       toggleThumbnails: "Thumbnails";
       zoomIn: "Zoom in";
       zoomOut: "Zoom out";
-    };
-    preview: {
-      toc: "Table of contents";
     };
     states: {
       conversationFilesDescription: "Attachments and files opened in this conversation";

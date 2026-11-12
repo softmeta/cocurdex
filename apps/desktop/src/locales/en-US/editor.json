@@ -202,9 +202,6 @@
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out"
   },
-  "preview": {
-    "toc": "Table of contents"
-  },
   "states": {
     "conversationFilesDescription": "Attachments and files opened in this conversation",
     "fileReadError": "Unable to read this file in the editor preview.",

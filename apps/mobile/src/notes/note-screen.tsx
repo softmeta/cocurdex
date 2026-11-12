@@ -2,7 +2,7 @@ import type { SavedHost } from "@cocurdex/client-runtime";
 import type { NoteSummary } from "@cocurdex/shared";
 import { Stack } from "expo-router";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 import { hostConnection } from "@/connection";
@@ -18,7 +18,8 @@ import {
 } from "@/ui";
 import type { NoteSaveStatus } from "./editor/note-doc-session";
 import { useNoteDocSession } from "./editor/note-doc-sessions";
-import { NoteEditor } from "./editor/note-editor";
+import { NoteEditor, type NoteEditorHandle } from "./editor/note-editor";
+import type { NoteOutline } from "./editor/note-editor-protocol";
 import { useNote, useNotes } from "./note-queries";
 import { parentNoteChoices } from "./note-sections";
 
@@ -29,6 +30,36 @@ function useSaveLabel(status: NoteSaveStatus, updatedAt: string | undefined) {
   if (status === "saved") return t("editor.status.saved");
   if (status === "error") return t("editor.status.error");
   return updatedAt ? age : "";
+}
+
+const MIN_OUTLINE_HEADINGS = 3;
+
+function useNoteOutline() {
+  const { t } = useTranslation("notes");
+  const openSheet = useOptionSheet();
+  const editor = useRef<NoteEditorHandle>(null);
+  const [outline, setOutline] = useState<NoteOutline | null>(null);
+  const headings = outline?.headings ?? [];
+
+  const open = () =>
+    openSheet({
+      title: t("editor.outline"),
+      items: headings.map((heading, index) => ({
+        key: String(index),
+        label: heading.text,
+        indent: Math.max(0, heading.level - 2),
+        selected: index === outline?.active,
+        testID: `note-outline-${index}`,
+        onPress: () => editor.current?.scrollToHeading(index),
+      })),
+    });
+
+  return {
+    editor,
+    open,
+    shown: headings.length >= MIN_OUTLINE_HEADINGS,
+    onOutline: setOutline,
+  };
 }
 
 function useNoteProperties(
@@ -134,6 +165,7 @@ export function NoteScreen({
   const shown = note.data ?? summary;
   const doc = useNoteDocSession(host.hostId, noteId);
   const properties = useNoteProperties(host, noteId, notes);
+  const outline = useNoteOutline();
   const saveLabel = useSaveLabel(doc.status, shown?.updatedAt);
   const settled = useTransitionSettled();
   const [editing, setEditing] = useState(created);
@@ -150,6 +182,13 @@ export function NoteScreen({
       <Stack.Screen options={{ title: "" }} />
       <HeaderButtons
         items={[
+          {
+            key: "outline",
+            icon: { ios: "list.bullet.indent", android: "toc" },
+            label: t("editor.outline"),
+            hidden: !ready || !outline.shown,
+            onPress: outline.open,
+          },
           {
             key: "edit",
             icon: editing
@@ -190,6 +229,7 @@ export function NoteScreen({
       .join(" · ");
     return (
       <NoteEditor
+        ref={outline.editor}
         hostId={host.hostId}
         body={{ kind: "doc", session: doc.session }}
         title={shown.title}
@@ -201,6 +241,7 @@ export function NoteScreen({
         onProperties={properties.open}
         links={links.label}
         onLinks={links.open}
+        onOutline={outline.onOutline}
       />
     );
   }

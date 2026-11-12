@@ -22,6 +22,7 @@ import type {
   NoteEditorOutbound,
   NoteEditorTheme,
   NoteInsertKind,
+  NoteOutline,
 } from "../../src/notes/editor/note-editor-protocol";
 import { createCodeHighlight } from "./code-highlight";
 
@@ -35,6 +36,9 @@ declare global {
 const REMOTE_ORIGIN = Symbol("note-doc-remote");
 const BASE_FONT_SIZE = 17;
 const CARET_MARGIN = 16;
+const HEADING_SELECTOR = "h1, h2, h3, h4";
+const ACTIVE_HEADING_OFFSET = 80;
+const HEADING_SCROLL_MARGIN = 8;
 
 function post(message: NoteEditorOutbound) {
   window.ReactNativeWebView.postMessage(JSON.stringify(message));
@@ -57,6 +61,8 @@ let lastFormat = "";
 let markdownFrame: number | null = null;
 let reportedFocus = false;
 let focusCheck: ReturnType<typeof setTimeout> | null = null;
+let lastOutline = "";
+let outlineFrame: number | null = null;
 const codeHighlight = createCodeHighlight((requests) =>
   post({ type: "highlight", requests }),
 );
@@ -104,6 +110,60 @@ function reportFormat(current: EditorType) {
   post({ type: "format", format });
 }
 
+function headingElements() {
+  return Array.from(
+    bodyHost.querySelectorAll<HTMLElement>(HEADING_SELECTOR),
+  ).filter((heading) => (heading.textContent ?? "").trim() !== "");
+}
+
+function activeHeading(headings: HTMLElement[]) {
+  if (headings.length === 0) return null;
+  const atBottom =
+    window.scrollY + window.innerHeight >=
+    document.documentElement.scrollHeight - 1;
+  if (atBottom) return headings.length - 1;
+  let active = 0;
+  headings.forEach((heading, index) => {
+    if (heading.getBoundingClientRect().top <= ACTIVE_HEADING_OFFSET) {
+      active = index;
+    }
+  });
+  return active;
+}
+
+function reportOutline() {
+  const headings = headingElements();
+  const outline: NoteOutline = {
+    headings: headings.map((heading) => ({
+      level: Number(heading.tagName.slice(1)),
+      text: (heading.textContent ?? "").trim(),
+    })),
+    active: activeHeading(headings),
+  };
+  const serialized = JSON.stringify(outline);
+  if (serialized === lastOutline) return;
+  lastOutline = serialized;
+  post({ type: "outline", outline });
+}
+
+function reportOutlineNextFrame() {
+  if (outlineFrame !== null) return;
+  outlineFrame = requestAnimationFrame(() => {
+    outlineFrame = null;
+    reportOutline();
+  });
+}
+
+function scrollToHeading(index: number) {
+  const heading = headingElements()[index];
+  if (!heading) return;
+  const top =
+    heading.getBoundingClientRect().top +
+    window.scrollY -
+    HEADING_SCROLL_MARGIN;
+  window.scrollTo(0, Math.max(0, top));
+}
+
 function removeSlash(current: EditorType) {
   const { from } = current.state.selection;
   const before = current.state.doc.textBetween(Math.max(0, from - 1), from);
@@ -138,6 +198,10 @@ function run(command: NoteEditorCommand) {
     return;
   }
   if (command.name === "dismissSlash") return;
+  if (command.name === "scrollToHeading") {
+    scrollToHeading(command.index);
+    return;
+  }
   if ("fromSlash" in command && command.fromSlash) removeSlash(current);
   if (command.name === "block") setBlock(current, command.style);
   else if (command.name === "insert") insert(current, command.kind);
@@ -282,7 +346,10 @@ function start(message: Extract<NoteEditorInbound, { type: "init" }>) {
     editorProps: {
       attributes: { class: "prose", autocapitalize: "sentences" },
     },
-    onTransaction: ({ editor: current }) => reportFormat(current),
+    onTransaction: ({ editor: current }) => {
+      reportFormat(current);
+      reportOutlineNextFrame();
+    },
     onUpdate: () => {
       if (!collaborative) postMarkdownNextFrame();
     },
@@ -296,6 +363,7 @@ function start(message: Extract<NoteEditorInbound, { type: "init" }>) {
     titleField.focus();
     titleField.select();
   }
+  reportOutlineNextFrame();
 }
 
 function setEditable(editable: boolean) {
@@ -356,6 +424,7 @@ function releaseExcessScroll() {
   if (needed < window.scrollY) window.scrollTo(0, needed);
 }
 
+window.addEventListener("scroll", reportOutlineNextFrame, { passive: true });
 window.addEventListener("resize", () => {
   fitTitle();
   releaseExcessScroll();

@@ -40,6 +40,7 @@
       "table": "表格",
       "taskList": "待办清单"
     },
+    "outline": "目录",
     "status": {
       "error": "未保存",
       "saved": "已保存",

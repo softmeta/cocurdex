@@ -224,6 +224,18 @@ appId: dev.cocurdex.mobile
     timeout: 10000
 - waitForAnimationToEnd
 - takeScreenshot: note-detail
+- tapOn: ${NOTE_OUTLINE}
+- extendedWaitUntil:
+    visible:
+      id: note-outline-2
+    timeout: 10000
+- takeScreenshot: note-outline
+- tapOn:
+    id: note-outline-2
+- extendedWaitUntil:
+    notVisible:
+      id: note-outline-2
+    timeout: 10000
 - runFlow:
     when:
       platform: iOS

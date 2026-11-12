@@ -508,12 +508,18 @@ export const FIXTURE_NOTES: FixtureNote[] = [
     inWorkspace: true,
     bodyMarkdown: `# Checkout spec
 
+## Totals
+
 1. Show the subtotal from \`cartSubtotal\`.
 2. Apply at most one discount code.
 3. Never charge less than zero.
 
+## Codes
+
 - [x] Fixed amount codes
 - [ ] Percentage codes
+
+## Live codes
 
 | Code | Discount | Status |
 | --- | --- | --- |

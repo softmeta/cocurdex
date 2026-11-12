@@ -22,6 +22,7 @@ export type NoteEditorCommand =
   | { name: "list"; kind: "bulletList" | "taskList" }
   | { name: "link"; href: string | null }
   | { name: "dismissSlash" }
+  | { name: "scrollToHeading"; index: number }
   | { name: "blur" };
 
 export interface NoteEditorTheme {
@@ -47,6 +48,16 @@ export interface NoteEditorFormatState {
   bulletList: boolean;
   taskList: boolean;
   link: string | null;
+}
+
+export interface NoteOutlineHeading {
+  level: number;
+  text: string;
+}
+
+export interface NoteOutline {
+  headings: NoteOutlineHeading[];
+  active: number | null;
 }
 
 export type NoteEditorContent =
@@ -88,7 +99,8 @@ export type NoteEditorOutbound =
   | { type: "links" }
   | { type: "openLink"; href: string }
   | { type: "openImage"; src: string; alt: string }
-  | { type: "highlight"; requests: NoteCodeRequest[] };
+  | { type: "highlight"; requests: NoteCodeRequest[] }
+  | { type: "outline"; outline: NoteOutline };
 
 const OUTBOUND_TYPES = new Set<NoteEditorOutbound["type"]>([
   "ready",
@@ -103,6 +115,7 @@ const OUTBOUND_TYPES = new Set<NoteEditorOutbound["type"]>([
   "openLink",
   "openImage",
   "highlight",
+  "outline",
 ]);
 
 export function parseNoteEditorMessage(

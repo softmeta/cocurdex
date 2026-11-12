@@ -14,6 +14,12 @@ import {
   TableControls,
 } from "@/components/markdown-body-editor";
 import "@/components/markdown-body-editor/markdown-body-editor.css";
+import {
+  DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX,
+  DocumentOutline,
+  useDocumentOutline,
+  useIsWiderThan,
+} from "@/components/document-outline";
 import { EmptyState, ScrollArea, Text } from "@/components/ui";
 import { RelatedEntities } from "@/features/entity-links";
 import { parsePdfNoteCitationHref } from "@/features/pdf-reader/pdf-note-citation";
@@ -195,49 +201,72 @@ function NoteEditorBody({
 
   const editorChromeRef = useHideDragHandleOnLayoutShift(editor);
   const [dragHandlePosition] = useState(createDragHandlePosition);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const outline = useDocumentOutline(scrollerRef, bodyRef);
+  const isWide = useIsWiderThan(
+    containerRef,
+    DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX,
+  );
+  const hasMenu = outline.headings.length > 0 && !isWide;
 
   return (
-    <ScrollArea
-      ref={editorChromeRef}
-      className="min-h-0 flex-1"
-      viewportProps={{ className: "flex flex-col" }}
-    >
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pt-4 pb-8">
-        <div className="mb-4 flex flex-col gap-1">
-          <div className="flex items-center gap-3">
-            <NoteTitleInput
-              key={titleEpoch}
-              noteId={note.id}
-              initialTitle={note.title}
-              editor={editor}
-            />
-            <SaveIndicator status={saveStatus} />
-          </div>
-          <NoteTimestamps
-            createdAt={note.createdAt}
-            updatedAt={note.updatedAt}
-          />
-        </div>
-        {editor ? (
-          <DragHandle
-            editor={editor}
-            computePositionConfig={dragHandlePosition.config}
-            onNodeChange={({ node }) => {
-              dragHandlePosition.hovered.isTable = node?.type.name === "table";
-            }}
-          >
-            <div className="flex h-[calc(1.7*var(--text-body))] cursor-grab items-center pe-2 text-muted-foreground hover:text-foreground active:cursor-grabbing">
-              <GripVertical className="size-4" />
+    <div ref={containerRef} className="relative flex min-h-0 flex-1">
+      <ScrollArea
+        ref={editorChromeRef}
+        className="min-h-0 min-w-0 flex-1"
+        viewportRef={scrollerRef}
+        viewportProps={{ className: "flex flex-col" }}
+      >
+        <div
+          className={cn(
+            "mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pt-4 pb-8",
+            hasMenu && "pe-14",
+          )}
+        >
+          <div className="mb-4 flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+              <NoteTitleInput
+                key={titleEpoch}
+                noteId={note.id}
+                initialTitle={note.title}
+                editor={editor}
+              />
+              <SaveIndicator status={saveStatus} />
             </div>
-          </DragHandle>
-        ) : null}
-        <div className="relative flex flex-1 flex-col">
-          <EditorContent editor={editor} className="relative flex-1" />
-          {editor ? <TableControls editor={editor} /> : null}
+            <NoteTimestamps
+              createdAt={note.createdAt}
+              updatedAt={note.updatedAt}
+            />
+          </div>
+          {editor ? (
+            <DragHandle
+              editor={editor}
+              computePositionConfig={dragHandlePosition.config}
+              onNodeChange={({ node }) => {
+                dragHandlePosition.hovered.isTable =
+                  node?.type.name === "table";
+              }}
+            >
+              <div className="flex h-[calc(1.7*var(--text-body))] cursor-grab items-center pe-2 text-muted-foreground hover:text-foreground active:cursor-grabbing">
+                <GripVertical className="size-4" />
+              </div>
+            </DragHandle>
+          ) : null}
+          <div ref={bodyRef} className="relative flex flex-1 flex-col">
+            <EditorContent editor={editor} className="relative flex-1" />
+            {editor ? <TableControls editor={editor} /> : null}
+          </div>
+          <RelatedEntities entity={{ kind: "note", id: note.id }} />
         </div>
-        <RelatedEntities entity={{ kind: "note", id: note.id }} />
-      </div>
-    </ScrollArea>
+      </ScrollArea>
+      <DocumentOutline
+        activeKey={outline.activeKey}
+        headings={outline.headings}
+        wide={isWide}
+      />
+    </div>
   );
 }
 
