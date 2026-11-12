@@ -7,6 +7,7 @@ const user = (id: string): CondensedItem => ({
   id,
   text: id,
   images: [],
+  report: null,
 });
 const reply = (id: string, streaming = true): CondensedItem => ({
   kind: "assistant",

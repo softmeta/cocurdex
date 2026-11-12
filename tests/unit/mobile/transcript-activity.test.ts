@@ -8,6 +8,7 @@ const user = (id: string): TranscriptItem => ({
   id,
   text: id,
   images: [],
+  report: null,
 });
 const reply = (id: string): TranscriptItem => ({
   kind: "assistant",

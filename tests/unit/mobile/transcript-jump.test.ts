@@ -99,7 +99,13 @@ describe("hasUnseenLatest", () => {
 describe("promptOutline", () => {
   it("lists user prompts by their first line with their transcript index", () => {
     const items: CondensedItem[] = [
-      { kind: "user", id: "u1", text: "  Review totals\nin cents", images: [] },
+      {
+        kind: "user",
+        id: "u1",
+        text: "  Review totals\nin cents",
+        images: [],
+        report: null,
+      },
       {
         kind: "assistant",
         id: "a1",
@@ -108,7 +114,7 @@ describe("promptOutline", () => {
         source: null,
         turnEnd: true,
       },
-      { kind: "user", id: "u2", text: "Ship it", images: [] },
+      { kind: "user", id: "u2", text: "Ship it", images: [], report: null },
     ];
     expect(promptOutline(items)).toEqual([
       { id: "u1", text: "Review totals", index: 0 },
