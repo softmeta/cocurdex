@@ -152,11 +152,17 @@ export async function readSessionActivity(
   reader: SessionActivityReader,
   callerSessionId: string,
   sessionId: string,
+  delegatedFrom: (sessionId: string) => string | null = () => null,
 ): Promise<HandoffItem[]> {
   const ancestors = forkAncestors(reader, callerSessionId);
-  if (sessionId !== callerSessionId && !ancestors.has(sessionId)) {
+  const delegated = delegatedFrom(sessionId) === callerSessionId;
+  if (
+    sessionId !== callerSessionId &&
+    !ancestors.has(sessionId) &&
+    !delegated
+  ) {
     throw new Error(
-      `Session ${sessionId} is not this session or one it was forked from`,
+      `Session ${sessionId} is not this session, one it was forked from, or work it delegated`,
     );
   }
   const [messages, toolCalls] = await Promise.all([
@@ -169,7 +175,7 @@ export async function readSessionActivity(
     runs: reader.listRuns(sessionId),
     outputChars: Number.POSITIVE_INFINITY,
   });
-  if (sessionId === callerSessionId) return items;
+  if (sessionId === callerSessionId || delegated) return items;
   const bound = forkPositionBound(messages, ancestors.get(sessionId) ?? null);
   return items.filter((item) => (item.position ?? 0) < bound);
 }

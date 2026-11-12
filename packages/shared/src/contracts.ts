@@ -279,6 +279,34 @@ export interface PeerMessageOrigin {
   sessionTitle: string;
 }
 
+export type DelegationReportOutcome =
+  | "finished"
+  | "ready"
+  | "needs_you"
+  | "blocked"
+  | "failed"
+  | "cancelled"
+  | "interrupted";
+
+export const DELEGATION_REPORT_OUTCOMES = [
+  "finished",
+  "ready",
+  "needs_you",
+  "blocked",
+  "failed",
+  "cancelled",
+  "interrupted",
+] as const satisfies readonly DelegationReportOutcome[];
+
+export interface DelegationMessageOrigin {
+  kind: "delegation";
+  sessionId: string;
+  sessionTitle: string;
+  outcome: DelegationReportOutcome;
+  hostId?: string;
+  hostName?: string;
+}
+
 export interface RemoteHostMessageOrigin {
   kind: "remoteHost";
   hostName: string;
@@ -312,6 +340,7 @@ export interface GreetingMessageOrigin {
 
 export type MessageOrigin =
   | PeerMessageOrigin
+  | DelegationMessageOrigin
   | RemoteHostMessageOrigin
   | ScriptRunMessageOrigin
   | RoutineMessageOrigin

@@ -4,7 +4,7 @@ import type { TFunction } from "i18next";
 import { memo, type Ref, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import type { BubbleColors } from "@/agents";
+import type { BubbleColors, RoleAvatarSource } from "@/agents";
 import { MarkdownText } from "@/markdown";
 import { scaledSize, useTextScale } from "@/preferences";
 import { layout, space, type ThemeColors, useThemeColors } from "@/theme";
@@ -16,6 +16,7 @@ export type { TranscriptHandle } from "./transcript-list";
 
 import { RemoteImage } from "@/connection";
 import { ConversationRow } from "./conversation-rows";
+import { DelegationReportLine } from "./delegation-line";
 import { imageAttachmentRequest } from "./image-attachments";
 import { PostedSourceLine } from "./posted-source-line";
 import { TurnActions } from "./turn-actions";
@@ -35,6 +36,7 @@ export interface TranscriptActions {
   onOpenImage(attachment: ImageAttachment): void;
   onOpenTool(toolCallId: string): void;
   onFork: ((messageId: string) => void) | null;
+  assistantRole?: RoleAvatarSource | null;
 }
 
 const IMAGE_ASPECT = { min: 0.5, max: 2 } as const;
@@ -309,6 +311,15 @@ const TranscriptRow = memo(function TranscriptRow({
   onToggle(id: string): void;
   userBubble?: BubbleColors;
 }) {
+  if (item.kind === "user" && item.report) {
+    return (
+      <DelegationReportLine
+        report={item.report}
+        hostId={actions.hostId}
+        color={colors.mutedForeground}
+      />
+    );
+  }
   if (item.kind === "user") {
     const bubble = userBubble ?? {
       background: colors.muted,
@@ -332,6 +343,7 @@ const TranscriptRow = memo(function TranscriptRow({
           <PostedSourceLine
             source={item.source}
             color={colors.mutedForeground}
+            hostId={actions.hostId}
           />
         ) : null}
         <MarkdownText
@@ -374,19 +386,20 @@ const TranscriptRow = memo(function TranscriptRow({
 function useStableActions(actions: TranscriptActions): TranscriptActions {
   const latest = useRef(actions);
   latest.current = actions;
-  const { hostId, fileRoot } = actions;
+  const { hostId, fileRoot, assistantRole } = actions;
   const canFork = actions.onFork !== null;
   return useMemo(
     () => ({
       hostId,
       fileRoot,
+      assistantRole,
       onOpenImage: (attachment) => latest.current.onOpenImage(attachment),
       onOpenTool: (toolCallId) => latest.current.onOpenTool(toolCallId),
       onFork: canFork
         ? (messageId) => latest.current.onFork?.(messageId)
         : null,
     }),
-    [hostId, fileRoot, canFork],
+    [hostId, fileRoot, assistantRole, canFork],
   );
 }
 
@@ -434,6 +447,7 @@ export function TranscriptView({
           colors={colors}
           hostId={rowActions.hostId}
           fileRoot={rowActions.fileRoot}
+          role={rowActions.assistantRole ?? null}
         />
       ) : (
         <TranscriptRow

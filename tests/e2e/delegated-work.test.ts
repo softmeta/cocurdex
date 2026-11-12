@@ -194,7 +194,7 @@ describe("delegated work", () => {
           const report = items.findIndex(
             (item) =>
               item.role === "user" &&
-              item.origin?.kind === "peer" &&
+              item.origin?.kind === "delegation" &&
               item.origin.sessionId === work.sessionId,
           );
           return (
@@ -209,11 +209,116 @@ describe("delegated work", () => {
       );
       const report = thread.find(
         (item) =>
-          item.origin?.kind === "peer" &&
+          item.origin?.kind === "delegation" &&
           item.origin.sessionId === work.sessionId,
       );
+      expect(report?.origin).toMatchObject({ outcome: "finished" });
       expect(report?.content).toContain('Work session "Fix checkout"');
       expect(report?.content).toContain("Checkout fixed");
+    } finally {
+      await dispose();
+    }
+  });
+
+  it("wakes the assistant only for reported outcomes and tracks them on the issue", async () => {
+    const { stub, cli, createPersona, messages, dispose } = await setUp();
+    try {
+      const coach = await createPersona("Coach");
+      const issue = await cli<{ id: string; identifier: string }>([
+        "issue",
+        "create",
+        "--title",
+        "Checkout totals are wrong",
+        "--status",
+        "backlog",
+      ]);
+      stub.plan = {
+        kind: "script",
+        turns: [
+          {
+            toolCalls: [
+              {
+                name: "work_report",
+                arguments: { status: "dropped", summary: "Cannot reproduce" },
+              },
+            ],
+          },
+          { text: ["Could not reproduce it"] },
+          {
+            toolCalls: [
+              {
+                name: "work_report",
+                arguments: {
+                  status: "ready",
+                  summary: "Totals fixed; rounding untested on refunds",
+                },
+              },
+            ],
+          },
+          { text: ["Long worker transcript"] },
+          { text: ["Totals are fixed"] },
+        ],
+      };
+      const work = await cli<DelegatedWorkRecord>([
+        "persona",
+        "work",
+        "start",
+        "Coach",
+        "--workspace",
+        "Shop",
+        "--prompt",
+        "Fix the checkout totals",
+        "--role",
+        "Builder",
+        "--issue",
+        issue.identifier,
+      ]);
+      await eventually(
+        () => cli<DelegatedWorkRecord[]>(["persona", "work", "list", "Coach"]),
+        (works) => works[0]?.state === "completed",
+      );
+      await cli([
+        "persona",
+        "work",
+        "send",
+        "Coach",
+        work.sessionId,
+        "Try with a coupon applied",
+      ]);
+      const thread = await eventually(
+        () => messages(coach.homeSessionId),
+        (items) =>
+          items.some(
+            (item) => item.role === "assistant" && item.kind === "response",
+          ),
+      );
+      const reports = thread.filter(
+        (item) => item.origin?.kind === "delegation",
+      );
+      expect(reports).toHaveLength(1);
+      expect(reports[0]?.origin).toMatchObject({
+        sessionId: work.sessionId,
+        outcome: "ready",
+      });
+      expect(reports[0]?.content).toContain(
+        "Summary: Totals fixed; rounding untested on refunds",
+      );
+      expect(reports[0]?.content).not.toContain("Long worker transcript");
+
+      const detail = await cli<{
+        issue: { statusCategory: string | null };
+        sessions: { sessionId: string }[];
+        events: { kind: string; body: string | null }[];
+      }>(["issue", "show", issue.id, "--detail"]);
+      expect(detail.issue.statusCategory).toBe("started");
+      expect(detail.sessions.map((link) => link.sessionId)).toEqual([
+        work.sessionId,
+      ]);
+      expect(
+        detail.events
+          .filter((event) => event.kind === "commented")
+          .map((event) => event.body),
+      ).toEqual(["Totals fixed; rounding untested on refunds"]);
     } finally {
       await dispose();
     }

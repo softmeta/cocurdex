@@ -1,4 +1,5 @@
-import type { AgentId, RunStatus } from "./contracts";
+import type { AgentId, DelegationReportOutcome, RunStatus } from "./contracts";
+import type { RoutineReport } from "./routine";
 
 export type DelegatedWorkState = RunStatus | "idle" | "archived";
 
@@ -68,6 +69,7 @@ export interface StartDelegatedWorkPayload {
   teamTemplate?: string | null;
   isolateWorktree?: boolean;
   host?: string | null;
+  issue?: string | null;
 }
 
 export interface RemoteWorkStartPayload {
@@ -101,6 +103,7 @@ export interface RemoteWorkStatus {
   updatedAt: string;
   latestRun: { id: string; status: RunStatus; error: string | null } | null;
   reply: string | null;
+  report?: RoutineReport | null;
 }
 
 export interface SendDelegatedWorkPayload {
@@ -114,31 +117,35 @@ export interface DelegatedWorkTarget {
   sessionId: string;
 }
 
-export type DelegatedWorkOutcome =
-  | "finished"
-  | "failed"
-  | "cancelled"
-  | "interrupted";
-
 const OUTCOME_BY_RUN_STATUS: Record<
-  Exclude<RunStatus, "running">,
-  DelegatedWorkOutcome
+  Exclude<RunStatus, "running" | "completed">,
+  DelegationReportOutcome
 > = {
-  completed: "finished",
   failed: "failed",
   cancelled: "cancelled",
   interrupted: "interrupted",
 };
 
-const OUTCOME_HEADERS: Record<DelegatedWorkOutcome, string> = {
+const OUTCOME_HEADERS: Record<DelegationReportOutcome, string> = {
   finished: "finished its turn",
+  ready: "has a result ready",
+  needs_you: "needs the user to decide",
+  blocked: "is blocked",
   failed: "failed",
   cancelled: "was cancelled",
   interrupted: "was interrupted",
 };
 
-export function delegatedWorkOutcome(status: RunStatus): DelegatedWorkOutcome {
-  return status === "running" ? "interrupted" : OUTCOME_BY_RUN_STATUS[status];
+export const DELEGATED_REPLY_MAX_LENGTH = 6_000;
+
+export function delegationReportOutcome(
+  status: RunStatus,
+  report: RoutineReport | null,
+): DelegationReportOutcome | null {
+  if (status === "running") return "interrupted";
+  if (status !== "completed") return OUTCOME_BY_RUN_STATUS[status];
+  if (!report) return "finished";
+  return report.status === "dropped" ? null : report.status;
 }
 
 export function delegatedWorkReportMessageId(runId: string) {
@@ -148,18 +155,39 @@ export function delegatedWorkReportMessageId(runId: string) {
 export function renderDelegatedWorkBriefing(
   personaName: string,
   prompt: string,
+  canReport = false,
 ) {
-  return `[Task from the personal assistant "${personaName}". Your final reply is reported back to it.]\n${prompt}`;
+  const reporting = canReport
+    ? " Before you end each turn, call work_report once: ready with a result, dropped when there is nothing for the user, needs_you with the question they must answer, blocked or failed with why. Write its summary for the assistant: the outcome, what the user must review or decide, and what you did not verify."
+    : "";
+  return `[Task from the personal assistant "${personaName}". Your final reply is reported back to it.${reporting}]\n${prompt}`;
+}
+
+function shortenedReply(reply: string, readMore: string | null) {
+  if (reply.length <= DELEGATED_REPLY_MAX_LENGTH) return reply;
+  const note = readMore
+    ? `[Reply shortened. ${readMore}]`
+    : "[Reply shortened.]";
+  return `${reply.slice(0, DELEGATED_REPLY_MAX_LENGTH)}\n${note}`;
 }
 
 export function renderDelegatedWorkReport(input: {
   title: string;
-  outcome: DelegatedWorkOutcome;
+  sessionId: string;
+  outcome: DelegationReportOutcome;
   error: string | null;
+  report: RoutineReport | null;
   reply: string | null;
+  readMore: string | null;
 }) {
-  const header = `[Work session "${input.title}" you delegated ${OUTCOME_HEADERS[input.outcome]}. Tell the user what happened and what, if anything, they should review or decide; they can open the session from this message.]`;
-  const body = [input.error ? `Error: ${input.error}` : "", input.reply ?? ""]
+  const header = `[Work session "${input.title}" you delegated ${OUTCOME_HEADERS[input.outcome]}. The user does not see this message. Tell them in your own words what came out of it, what they must review or decide, and how sure the result is; do not retell how the work was done or repeat an outcome you already told them. Link the session as cocurdex://session/${input.sessionId}.]`;
+  const report = input.report;
+  const body = [
+    input.error ? `Error: ${input.error}` : "",
+    report ? `Summary: ${report.summary}` : "",
+    report?.question ? `Question for the user: ${report.question}` : "",
+    !report && input.reply ? shortenedReply(input.reply, input.readMore) : "",
+  ]
     .filter(Boolean)
     .join("\n\n");
   return body ? `${header}\n${body}` : header;

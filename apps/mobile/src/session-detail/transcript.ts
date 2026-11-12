@@ -4,6 +4,9 @@ import {
   type AgentPlanApprovalRecord,
   type AgentQuestionRequestRecord,
   type AgentToolCallRecord,
+  type DelegationReportFold,
+  type DelegationSource,
+  foldDelegationReports,
   type ImageAttachment,
   isImageAttachment,
   type MessageRecord,
@@ -12,10 +15,17 @@ import {
 
 export type PostedSource =
   | { kind: "brief" }
-  | { kind: "routine"; name: string };
+  | { kind: "routine"; name: string }
+  | { kind: "delegation"; sources: readonly DelegationSource[] };
 
 export type TranscriptItem =
-  | { kind: "user"; id: string; text: string; images: ImageAttachment[] }
+  | {
+      kind: "user";
+      id: string;
+      text: string;
+      images: ImageAttachment[];
+      report: DelegationSource | null;
+    }
   | {
       kind: "assistant";
       id: string;
@@ -41,6 +51,7 @@ export interface TranscriptInput {
   activeMessages: readonly MessageRecord[];
   toolCalls: readonly AgentToolCallRecord[];
   workspacePath: string | null;
+  personal?: boolean;
 }
 
 interface Ordered {
@@ -59,12 +70,18 @@ function compareOrdered(left: Ordered, right: Ordered) {
 function messageItem(
   message: MessageRecord,
   streaming: boolean,
+  fold: DelegationReportFold,
 ): TranscriptItem | null {
   if (message.kind === "reasoning") return null;
+  if (fold.hiddenMessageIds.has(message.id)) return null;
+  const report = fold.pendingByMessageId.get(message.id) ?? null;
+  if (report) {
+    return { kind: "user", id: message.id, text: "", images: [], report };
+  }
   const images = message.attachments.filter(isImageAttachment);
   const text = message.content.trim() === "" ? "" : message.content;
   if (message.role === "user" && (text !== "" || images.length > 0)) {
-    return { kind: "user", id: message.id, text, images };
+    return { kind: "user", id: message.id, text, images, report: null };
   }
   if (text === "") return null;
   if (message.role === "assistant") {
@@ -73,13 +90,18 @@ function messageItem(
       id: message.id,
       text: message.content,
       streaming,
-      source: postedSource(message),
+      source: postedSource(message, fold),
     };
   }
   return null;
 }
 
-function postedSource(message: MessageRecord): PostedSource | null {
+function postedSource(
+  message: MessageRecord,
+  fold: DelegationReportFold,
+): PostedSource | null {
+  const sources = fold.sourcesByReplyId.get(message.id);
+  if (sources?.length) return { kind: "delegation", sources };
   if (message.origin?.kind === "brief") return { kind: "brief" };
   if (message.origin?.kind === "routine") {
     return { kind: "routine", name: message.origin.routineName };
@@ -90,9 +112,10 @@ function postedSource(message: MessageRecord): PostedSource | null {
 function orderedMessages(
   messages: readonly MessageRecord[],
   streaming: boolean,
+  fold: DelegationReportFold,
 ): Ordered[] {
   return messages.flatMap((message) => {
-    const item = messageItem(message, streaming);
+    const item = messageItem(message, streaming, fold);
     return item ? [{ seq: message.seq, at: message.createdAt, item }] : [];
   });
 }
@@ -109,18 +132,21 @@ function toolItem(
 
 export function buildTranscript(input: TranscriptInput): TranscriptItem[] {
   const finishedIds = new Set(input.messages.map((message) => message.id));
+  const active = input.activeMessages.filter(
+    (message) => !finishedIds.has(message.id),
+  );
+  const fold = foldDelegationReports([...input.messages, ...active], {
+    personal: input.personal ?? false,
+  });
   const finished = [
-    ...orderedMessages(input.messages, false),
+    ...orderedMessages(input.messages, false, fold),
     ...input.toolCalls.map((call) => ({
       seq: call.seq,
       at: call.startedAt,
       item: toolItem(call, input.workspacePath),
     })),
   ].sort(compareOrdered);
-  const streaming = orderedMessages(
-    input.activeMessages.filter((message) => !finishedIds.has(message.id)),
-    true,
-  ).sort(compareOrdered);
+  const streaming = orderedMessages(active, true, fold).sort(compareOrdered);
   return [...finished, ...streaming].map((entry) => entry.item);
 }
 

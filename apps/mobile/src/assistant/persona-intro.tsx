@@ -1,14 +1,16 @@
 import { type AndroidSymbol, type SFSymbol, SymbolView } from "expo-symbols";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { RoleAvatar, type RoleAvatarSource } from "@/agents";
 import { layout, space, useThemeColors } from "@/theme";
+import { ShimmerText } from "@/ui";
 
 const SUGGESTIONS: {
   key: "attention" | "brief" | "memory";
   icon: { ios: SFSymbol; android: AndroidSymbol };
 }[] = [
   { key: "attention", icon: { ios: "bell", android: "notifications" } },
-  { key: "brief", icon: { ios: "calendar.badge.clock", android: "event" } },
+  { key: "brief", icon: { ios: "alarm", android: "alarm" } },
   { key: "memory", icon: { ios: "brain", android: "psychology" } },
 ];
 
@@ -36,11 +38,13 @@ export function PersonaIntro({ onPick }: { onPick(text: string): void }) {
             pressed && { backgroundColor: colors.muted },
           ]}
         >
-          <SymbolView
-            name={icon}
-            size={16}
-            tintColor={colors.mutedForeground}
-          />
+          <View style={styles.icon}>
+            <SymbolView
+              name={icon}
+              size={16}
+              tintColor={colors.mutedForeground}
+            />
+          </View>
           <Text
             numberOfLines={1}
             style={[styles.text, { color: colors.foreground }]}
@@ -53,7 +57,33 @@ export function PersonaIntro({ onPick }: { onPick(text: string): void }) {
   );
 }
 
+export function PersonaGreetingLine({ role }: { role: RoleAvatarSource }) {
+  const { t } = useTranslation("assistant");
+  const colors = useThemeColors();
+  return (
+    <View style={styles.greeting} accessibilityLiveRegion="polite">
+      <RoleAvatar role={role} size={18} />
+      <ShimmerText
+        text={t("thread.greeting")}
+        baseColor={colors.mutedForeground}
+        highlightColor={colors.foreground}
+        style={styles.greetingText}
+        testID="persona-greeting"
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  greeting: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    minHeight: 32,
+    paddingHorizontal: layout.sideMargin,
+    paddingTop: space.md,
+  },
+  greetingText: { fontSize: 14 },
   list: {
     flex: 1,
     justifyContent: "flex-end",
@@ -69,5 +99,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
     borderRadius: 12,
   },
+  icon: { width: 20, alignItems: "center" },
   text: { flex: 1, fontSize: 15 },
 });

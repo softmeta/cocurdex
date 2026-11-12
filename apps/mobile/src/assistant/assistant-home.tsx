@@ -15,7 +15,6 @@ import {
 } from "@/ui";
 import { useAgentActions } from "./agent-actions-menu";
 import {
-  greetPersonalAgent,
   revalidateAssistant,
   useBrief,
   useLatestReply,
@@ -27,6 +26,7 @@ import {
   type AssistantSection,
   assistantSections,
 } from "./assistant-sections";
+import { greetPersonalAgent } from "./persona-greeting";
 import { useAssistantRevalidation } from "./use-assistant-revalidation";
 
 function useSectionTitles(): Record<AssistantSection["kind"], string | null> {
@@ -83,7 +83,13 @@ function previewLine(content: string) {
     .trim();
 }
 
-export function AssistantHome({ host }: { host: SavedHost }) {
+export function AssistantHome({
+  host,
+  onCreate,
+}: {
+  host: SavedHost;
+  onCreate(): void;
+}) {
   const { t } = useTranslation("assistant");
   const router = useRouter();
   const scrollIndicator = useScrollIndicatorWhileScrolling();
@@ -159,7 +165,8 @@ export function AssistantHome({ host }: { host: SavedHost }) {
           <ListNotice
             icon={{ ios: "sparkles", android: "auto_awesome" }}
             title={t("empty.title")}
-            description={t("empty.description", { host: host.name })}
+            description={t("empty.description")}
+            action={{ label: t("form.newTitle"), onPress: onCreate }}
           />
         }
         renderSectionHeader={({ section }) => {

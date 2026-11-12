@@ -14,7 +14,7 @@ import {
   TableControls,
 } from "@/components/markdown-body-editor";
 import "@/components/markdown-body-editor/markdown-body-editor.css";
-import { EmptyState, Text } from "@/components/ui";
+import { EmptyState, ScrollArea, Text } from "@/components/ui";
 import { RelatedEntities } from "@/features/entity-links";
 import { parsePdfNoteCitationHref } from "@/features/pdf-reader/pdf-note-citation";
 import { openPdfAtPageAtom } from "@/features/pdf-reader/pdf-reader-store";
@@ -197,9 +197,10 @@ function NoteEditorBody({
   const [dragHandlePosition] = useState(createDragHandlePosition);
 
   return (
-    <div
+    <ScrollArea
       ref={editorChromeRef}
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+      className="min-h-0 flex-1"
+      viewportProps={{ className: "flex flex-col" }}
     >
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pt-4 pb-8">
         <div className="mb-4 flex flex-col gap-1">
@@ -236,7 +237,7 @@ function NoteEditorBody({
         </div>
         <RelatedEntities entity={{ kind: "note", id: note.id }} />
       </div>
-    </div>
+    </ScrollArea>
   );
 }
 
@@ -296,7 +297,10 @@ function FolderPlaceholder({ note }: { note: NoteRecord }) {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <ScrollArea
+      className="min-h-0 flex-1"
+      viewportProps={{ className: "flex flex-col" }}
+    >
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pt-4 pb-8">
         <input
           type="text"
@@ -331,7 +335,7 @@ function FolderPlaceholder({ note }: { note: NoteRecord }) {
           />
         </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 }
 

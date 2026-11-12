@@ -4,6 +4,7 @@ export {
   useAgents,
   useCompatibleModels,
 } from "./agent-queries";
+export { AvatarEmojiField, AvatarPicker } from "./avatar-picker";
 export {
   type PermissionModeLabel,
   usePermissionModeLabels,

@@ -21,18 +21,46 @@
     "title": "Today"
   },
   "empty": {
-    "description": "Create an assistant on {{host}} to see it here.",
+    "description": "Assistants keep context, follow up on work, and report back to you.",
     "title": "No assistants yet"
   },
   "form": {
+    "avatar": {
+      "color": "Color",
+      "colors": {
+        "amber": "Amber",
+        "blue": "Blue",
+        "gray": "Gray",
+        "green": "Green",
+        "orange": "Orange",
+        "pink": "Pink",
+        "red": "Red",
+        "teal": "Teal",
+        "violet": "Violet"
+      },
+      "custom": "Custom emoji",
+      "face": {
+        "curious": "Curious",
+        "dots": "Calm",
+        "happy": "Happy",
+        "sleepy": "Sleepy",
+        "wink": "Wink"
+      },
+      "faces": "Expression",
+      "shape": "Shape {{index}}",
+      "shapes": "Shape",
+      "title": "Avatar"
+    },
     "create": "Create",
     "description": "Description",
     "descriptionPlaceholder": "One line about this assistant",
+    "draftFailed": "Couldn't prepare a new assistant",
     "editTitle": "Edit assistant",
     "failed": "Couldn't save. Try again.",
     "instructions": "Instructions",
     "instructionsPlaceholder": "What this assistant is for and how it should work",
     "name": "Name",
+    "needsModel": "Set up a model on your computer to create an assistant",
     "newTitle": "New assistant",
     "save": "Save",
     "soul": "Persona",
@@ -80,6 +108,7 @@
     "workFailed": "Work couldn't load."
   },
   "thread": {
+    "greeting": "Working",
     "placeholder": "Message {{name}}",
     "suggestions": {
       "attention": "What needs my attention today?",

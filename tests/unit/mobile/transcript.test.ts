@@ -48,6 +48,36 @@ function tool(
 }
 
 describe("buildTranscript", () => {
+  it("shows an assistant's reply to a work report instead of the report", () => {
+    const origin = {
+      kind: "delegation" as const,
+      sessionId: "w1",
+      sessionTitle: "Fix checkout",
+      outcome: "finished" as const,
+    };
+    const items = buildTranscript({
+      messages: [
+        message("r1", 1, "user", "[work report]", { origin }),
+        message("a1", 2, "assistant", "Checkout is fixed."),
+        message("r2", 3, "user", "[work report]", {
+          origin: { ...origin, sessionId: "w2", outcome: "blocked" },
+        }),
+      ],
+      activeMessages: [],
+      toolCalls: [],
+      workspacePath: null,
+      personal: true,
+    });
+    expect(items).toMatchObject([
+      {
+        kind: "assistant",
+        id: "a1",
+        source: { kind: "delegation", sources: [{ sessionId: "w1" }] },
+      },
+      { kind: "user", id: "r2", text: "", report: { outcome: "blocked" } },
+    ]);
+  });
+
   it("keeps a user message that carries only images", () => {
     const photo: ImageAttachment = {
       kind: "image",
@@ -71,7 +101,7 @@ describe("buildTranscript", () => {
     });
 
     expect(items).toEqual([
-      { kind: "user", id: "u1", text: "", images: [photo] },
+      { kind: "user", id: "u1", text: "", images: [photo], report: null },
     ]);
   });
 
@@ -87,7 +117,13 @@ describe("buildTranscript", () => {
     });
 
     expect(items).toEqual([
-      { kind: "user", id: "u1", text: "Add discount codes", images: [] },
+      {
+        kind: "user",
+        id: "u1",
+        text: "Add discount codes",
+        images: [],
+        report: null,
+      },
       {
         kind: "tool",
         id: "cart",
@@ -158,7 +194,7 @@ describe("buildTranscript", () => {
     });
 
     expect(items).toEqual([
-      { kind: "user", id: "u1", text: "Go", images: [] },
+      { kind: "user", id: "u1", text: "Go", images: [], report: null },
       {
         kind: "assistant",
         id: "a2",

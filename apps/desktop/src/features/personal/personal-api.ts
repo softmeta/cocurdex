@@ -13,6 +13,7 @@ function uiLocale() {
 
 export const personalApi = {
   list: () => requestDaemon("personalAgent.list"),
+  draft: () => requestDaemon("personalAgent.draft", { locale: uiLocale() }),
   create: (payload: CreatePersonalAgentPayload) =>
     requestDaemon("personalAgent.create", payload),
   greet: (id: string) =>

@@ -129,6 +129,20 @@ function RateLimitsField({
   result: AgentRateLimitsReadResult | undefined;
 }) {
   const { t } = useTranslation("settings");
+  const content = rateLimitsContent(loading, result, t);
+  if (!content) {
+    return null;
+  }
+  return (
+    <DetailField label={t("adapters.detail.usage")}>{content}</DetailField>
+  );
+}
+
+function rateLimitsContent(
+  loading: boolean,
+  result: AgentRateLimitsReadResult | undefined,
+  t: TFunction<"settings">,
+) {
   if (result?.status === "available") {
     return <AdapterRateLimits layout="detail" rateLimits={result.rateLimits} />;
   }
@@ -353,12 +367,10 @@ function AgentDetailContent({
           </DetailField>
         ) : null}
         {showsRateLimits ? (
-          <DetailField label={t("adapters.detail.usage")}>
-            <RateLimitsField
-              loading={rateLimitsLoading}
-              result={rateLimitsResult}
-            />
-          </DetailField>
+          <RateLimitsField
+            loading={rateLimitsLoading}
+            result={rateLimitsResult}
+          />
         ) : null}
         {canSignIn && registryAgentId ? (
           <DetailField label={t("adapters.detail.signIn")}>

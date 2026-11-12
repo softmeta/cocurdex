@@ -24,7 +24,7 @@ cocurdex persona send <persona> <message> [--wait] [--timeout <seconds>] --json
 cocurdex persona thread <persona> [--limit <n>] --json
 ```
 
-- Personas always run on Pi; pick a model the user has configured (`cocurdex provider list`).
+- Personas always run on Pi; pick a model the user has configured (`cocurdex provider list`). Without `--provider`/`--model`, `create` uses the default persona's model, else the first compatible one.
 - A muted persona (`--mute`) never notifies the desktop or the phone; what needs the user from its threads still shows in the assistant overview and `cocurdex inbox`.
 - `send` posts to the persona's home thread and returns the message id. With `--wait` it returns the reply once the turn settles, and fails with the persona's error when the turn fails. Without `--wait`, read the reply later with `thread`.
 - Instructions describe the job; the soul describes who the persona is to the user. Keep both short and specific, and pass long text with the `-file` flags.
@@ -86,17 +86,19 @@ A persona does not write code itself. It hands repository work to an ordinary wo
 cocurdex persona work catalog [--host <computer>] --json
 cocurdex persona work list <persona> --json
 cocurdex persona work start <persona> --workspace <id|name> --prompt <text>|--prompt-file <path> \
-  [--title <title>] [--role <role>|--team <template>] [--worktree] [--host <computer>] --json
+  [--title <title>] [--role <role>|--team <template>] [--worktree] [--issue <COC-12|id>] [--host <computer>] --json
 cocurdex persona work send <persona> <session-id> <message> --json
 cocurdex persona work stop <persona> <session-id> --json
 ```
 
 - `catalog` lists the workspaces (never the chat or personal ones), saved agent roles, and team templates that `start` accepts by id or exact name.
 - Without `--role` or `--team`, the session uses the workspace's most recent agent and model. `--role` runs it as that agent role; `--team` makes it lead that team template, with the template's first member as its role. Pass one or the other, not both. `--worktree` works in a new git worktree.
-- The task arrives in the session marked as coming from the persona. Each time the session finishes a turn, its reply is posted into the persona's home thread, and the persona takes a new turn to tell the user what happened.
-- The session runs with the workspace's usual permission mode; approvals and questions reach the user through the assistant overview and notifications, never the persona.
+- `--issue` ties the session to an issue: it is linked as working on the issue, an issue that has not started moves to the first started status, and each report is added to the issue as a comment from the session. It is refused with `--host`.
+- The task arrives in the session marked as coming from the persona. The session can end a turn with `work_report` (`status` `ready`, `dropped`, `needs_you` with a `question`, `blocked`, or `failed`, and a `summary`). When the turn ends, a report with `origin.kind` `delegation` and its `outcome` is posted into the persona's home thread and the persona takes a new turn; a `dropped` turn wakes no one. The report carries the summary and question when the session reported, otherwise its reply, shortened past 6000 characters.
+- The user never reads the report itself: the thread hides each report once the persona answers it and shows the work session as the reply's source. The persona states the result, what the user must decide, and how sure it is in its own words, links the session as `cocurdex://session/<id>`, and reads more of a local session with `history_read`, which may read the sessions it delegated.
+- The session runs with the workspace's usual permission mode; approvals and questions reach the user through the assistant overview and notifications, never the persona. A delegated session's finished or failed turn sends no notification and adds no unread inbox item of its own: the persona's answer does.
 - `send` delivers a follow-up into the session's current turn when its agent supports it, otherwise after it. A persona can only see, message, and stop the sessions it delegated.
-- Inside a persona's thread, the `work` tool group (`work_catalog`, `work_start`, `work_list`, `work_send`, `work_stop`) does the same. A routine can delegate only with `full` access.
+- Inside a persona's thread, the `work` tool group (`work_catalog`, `work_start`, `work_list`, `work_send`, `work_stop`) does the same; `work_report` exists only inside a delegated session. A routine can delegate only with `full` access.
 
 ### Work on another computer
 
@@ -104,13 +106,13 @@ A persona can also hand work to another computer the user paired with this one (
 
 - `catalog --host <computer>` lists that computer's workspaces and agent roles (no team templates); `catalog` without it also returns `hosts`, the paired computers with whether each is reachable. Always pick the workspace from that computer's catalog: a remote start never falls back to a workspace of this computer.
 - `start --host` runs the session on that computer, with its agents, files, and permission mode. `--team` is refused there. The task arrives marked as coming from this computer and the persona.
-- `list` shows remote work with `host` (`id`, `name`, `reachable`) and `waitingFor` (`permission`, `question`, `plan`, or `null`). Approvals and questions are answered on that computer, never here: tell the user "it is waiting for you on <computer>". This computer checks remote sessions about every 15 seconds; when one finishes a turn, its reply is posted into the persona's home thread as coming from that computer.
+- `list` shows remote work with `host` (`id`, `name`, `reachable`) and `waitingFor` (`permission`, `question`, `plan`, or `null`). Approvals and questions are answered on that computer, never here: tell the user "it is waiting for you on <computer>". This computer checks remote sessions about every 15 seconds; when one finishes a turn, its report is posted into the persona's home thread with that computer's `hostName`. A `work_report` reaches here only while that computer has not restarted since the start; otherwise the reply is used.
 - `send` and `stop` reach the remote session the same way. When the computer is offline, `start`, `send`, and `stop` fail with `host_unreachable`; `list` keeps the last known state with `reachable: false`.
 - The other computer must grant this one `read`, `interact`, and `execute`. Removing the computer (`cocurdex host remotes remove`) stops tracking its work here.
 
 ## Inbox and brief
 
-The inbox gathers what needs the user from personas: pending approvals, questions, and plans, failed or unread finished sessions, from persona threads and the work sessions personas delegated (never ordinary work or chat sessions), and routine results, runs that need the user, failures, and auto-pauses. Items are ordered by what needs the user, then failures, then results. The brief is today's summary built from the same data without a model: what needs the user, each routine's latest result today, and failures; it is `null` when there is nothing to report.
+The inbox gathers what needs the user from personas: pending approvals, questions, and plans and failed sessions from persona threads and the work sessions personas delegated, unread finished persona threads (never ordinary work or chat sessions), and routine results, runs that need the user, failures, and auto-pauses. Items are ordered by what needs the user, then failures, then results. The brief is today's summary built from the same data without a model: what needs the user, each routine's latest result today, and failures; it is `null` when there is nothing to report.
 
 ```bash
 cocurdex inbox [list] --json

@@ -254,11 +254,15 @@ describe("federated work", () => {
       const thread = await eventually(localThread, (items) =>
         items.some(
           (item) =>
-            item.origin?.kind === "remoteHost" &&
+            item.origin?.kind === "delegation" &&
             item.origin.sessionId === work.sessionId,
         ),
       );
-      const report = thread.find((item) => item.origin?.kind === "remoteHost");
+      const report = thread.find((item) => item.origin?.kind === "delegation");
+      expect(report?.origin).toMatchObject({
+        outcome: "finished",
+        hostName: expect.any(String),
+      });
       expect(report?.content).toContain('Work session "Fix checkout"');
       expect(report?.content).toContain("Checkout fixed");
       expect(

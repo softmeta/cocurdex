@@ -3,13 +3,21 @@ import type { PersonalAgentRepository, PersonalAgentRow } from "@cocurdex/db";
 import {
   type AgentRoleRecord,
   assertPersonalAgentRuntime,
+  type CompatibleProviderModel,
   type CreatePersonalAgentPayload,
   comparePersonalAgents,
+  type DraftPersonalAgentPayload,
   type DuplicatePersonalAgentPayload,
   type GreetPersonalAgentPayload,
+  matchSupportedLocale,
   normalizePersonalAgentSoul,
+  PERSONA_NAME_POOLS,
+  type PersonalAgentDraft,
   type PersonalAgentRecord,
   type PersonalAgentRolePayload,
+  personalAgentRoleDraft,
+  pickPersonaName,
+  resolveAgentRoleAvatar,
   type SaveAgentRolePayload,
   type SessionRecord,
   type SupportedLocale,
@@ -28,6 +36,7 @@ export interface PersonalAgentServiceDeps {
   deleteRole(id: string): Promise<void>;
   createHomeSession(role: AgentRoleRecord): Promise<SessionRecord>;
   removeSession(sessionId: string): Promise<void>;
+  listModels(): Promise<CompatibleProviderModel[]>;
   hasMessages(sessionId: string): Promise<boolean>;
   writeGreeting(
     sessionId: string,
@@ -116,8 +125,54 @@ export class PersonalAgentService {
     return row ? { id: row.id, roleId: row.roleId, soul: row.soul } : null;
   }
 
-  create(payload: CreatePersonalAgentPayload) {
-    return this.insert(payload.role, payload.soul ?? null);
+  async draft(
+    payload: DraftPersonalAgentPayload = {},
+  ): Promise<PersonalAgentDraft> {
+    const agents = await this.list();
+    const locale =
+      payload.locale ??
+      matchSupportedLocale([Intl.DateTimeFormat().resolvedOptions().locale]);
+    const name = pickPersonaName(
+      PERSONA_NAME_POOLS[locale],
+      agents.map((agent) => agent.role.name),
+    );
+    const model = await this.defaultModel(agents);
+    return {
+      role: {
+        ...personalAgentRoleDraft(name),
+        ...model,
+        avatar: resolveAgentRoleAvatar({
+          id: crypto.randomUUID(),
+          avatar: null,
+        }),
+      },
+      modelAvailable: model !== null,
+    };
+  }
+
+  async create(payload: CreatePersonalAgentPayload) {
+    const role =
+      payload.role.providerId !== null
+        ? payload.role
+        : { ...payload.role, ...(await this.defaultModel(await this.list())) };
+    return this.insert(role, payload.soul ?? null);
+  }
+
+  private async defaultModel(agents: readonly PersonalAgentRecord[]) {
+    const template = agents.find((agent) => agent.isDefault)?.role;
+    const models = await this.deps.listModels();
+    const chosen =
+      models.find(
+        ({ provider, model }) =>
+          provider.id === template?.providerId &&
+          model.modelId === template?.modelId,
+      ) ?? models[0];
+    if (!chosen) return null;
+    return {
+      providerId: chosen.provider.id,
+      modelId: chosen.model.modelId,
+      modelName: chosen.model.name,
+    };
   }
 
   greet(payload: GreetPersonalAgentPayload) {

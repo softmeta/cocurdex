@@ -79,6 +79,7 @@ import {
   type TurnPhase,
 } from "./chat-timeline";
 import { ContextCompactionDivider } from "./context-compaction-divider";
+import { DelegationSourceLine } from "./delegation-report";
 import { MessageOriginLine } from "./message-origin-line";
 import { turnStatsByMessageAtom } from "./message-store";
 import { MessageTime } from "./message-time";
@@ -572,6 +573,9 @@ const MessageArticle = memo(function MessageArticle({
           ) : null}
           {message.origin ? (
             <MessageOriginLine origin={message.origin} />
+          ) : null}
+          {message.role === "assistant" ? (
+            <DelegationSourceLine messageId={message.id} />
           ) : null}
           <MessageAttachments message={message} />
           {isReasoning ? (

@@ -58,6 +58,16 @@
     "awaitingInput": "有问题要问你",
     "completedUnread": "已完成",
     "connecting": "正在连接…",
+    "delegation": {
+      "awaiting": "等待助理处理",
+      "basedOn": "依据",
+      "blocked": "受阻",
+      "cancelled": "已取消",
+      "failed": "失败",
+      "finished": "已完成",
+      "interrupted": "已中断",
+      "needsYou": "需要你决定"
+    },
     "failed": "运行失败",
     "imagePrompt": "图片",
     "jumpToLatest": "跳到最新消息",

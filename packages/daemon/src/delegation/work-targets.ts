@@ -22,7 +22,9 @@ export type DelegationErrorCode =
   | "host_not_found"
   | "host_ambiguous"
   | "host_unreachable"
-  | "remote_team";
+  | "remote_team"
+  | "remote_issue"
+  | "issue_not_found";
 
 export class DelegationError extends Error {
   override readonly name = "DelegationError";

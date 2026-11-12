@@ -1,15 +1,14 @@
-import {
-  type AgentToolCallerContext,
-  type CreateRoutinePayload,
-  ROUTINE_REPORT_STATUSES,
-  ROUTINE_REPORT_SUMMARY_MAX_LENGTH,
-  type RoutineRecord,
-  type RoutineReport,
-  type RoutineRunRecord,
-  type RoutineSchedule,
-  type UpdateRoutinePayload,
+import type {
+  AgentToolCallerContext,
+  CreateRoutinePayload,
+  RoutineRecord,
+  RoutineReport,
+  RoutineRunRecord,
+  RoutineSchedule,
+  UpdateRoutinePayload,
 } from "@cocurdex/shared";
 import type { AgentToolRegistry } from "../tool-registry";
+import { parseReport, reportStatusSchema } from "./report-input";
 
 export interface RoutineToolDependencies {
   personaOf(sessionId: string): Promise<string | null>;
@@ -86,29 +85,6 @@ function parseSchedule(value: unknown): RoutineSchedule | undefined {
 
 function optionalText(value: unknown) {
   return typeof value === "string" ? value : undefined;
-}
-
-function reportText(value: unknown, label: string) {
-  const text = typeof value === "string" ? value.trim() : "";
-  if (!text) throw new Error(`${label} cannot be empty`);
-  if (text.length > ROUTINE_REPORT_SUMMARY_MAX_LENGTH) {
-    throw new Error(
-      `${label} is longer than ${ROUTINE_REPORT_SUMMARY_MAX_LENGTH} characters`,
-    );
-  }
-  return text;
-}
-
-function parseReport(input: Record<string, unknown>): RoutineReport {
-  const status = oneOf(ROUTINE_REPORT_STATUSES, input.status);
-  if (!status) {
-    throw new Error(
-      `status must be one of ${ROUTINE_REPORT_STATUSES.join(", ")}`,
-    );
-  }
-  const question =
-    status === "needs_you" ? reportText(input.question, "question") : null;
-  return { status, summary: reportText(input.summary, "summary"), question };
 }
 
 function oneOf<T extends string>(values: readonly T[], value: unknown) {
@@ -299,12 +275,7 @@ export function registerRoutineTools(
       inputSchema: {
         type: "object",
         properties: {
-          status: {
-            type: "string",
-            enum: [...ROUTINE_REPORT_STATUSES],
-            description:
-              "ready: a result to read; dropped: nothing worth telling this time; needs_you: the user has to decide or answer; blocked: something outside your control stopped you; failed: you could not do the task",
-          },
+          status: reportStatusSchema,
           summary: {
             type: "string",
             description: "What the user reads, written for them",

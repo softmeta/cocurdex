@@ -3,15 +3,18 @@ import type { DelegationRepository, DelegationRow } from "@cocurdex/db";
 import {
   type AgentEvent,
   type AgentRoleRecord,
+  DELEGATED_REPLY_MAX_LENGTH,
   type DelegatedWorkRecord,
   type DelegatedWorkWaitingFor,
   type DelegationCatalog,
   type DelegationCatalogQuery,
+  type DelegationReportOutcome,
   decideRequesterReport,
-  delegatedWorkOutcome,
   delegatedWorkReportMessageId,
+  delegationReportOutcome,
   type MessageOrigin,
   type MessageRecord,
+  type RoutineReport,
   type RunRecord,
   type RunStatus,
   renderDelegatedWorkBriefing,
@@ -25,6 +28,7 @@ import {
 } from "@cocurdex/shared";
 import type { RemoteWorkGateway } from "./remote-work-gateway";
 import { RemoteWorkWatcher } from "./remote-work-watcher";
+import type { WorkReports } from "./work-reports";
 import {
   createWorkSession,
   followUpDelivery,
@@ -50,8 +54,21 @@ export interface DelegationPersona {
   homeSessionId: string;
 }
 
+export interface DelegationIssue {
+  id: string;
+  identifier: string;
+}
+
+export interface DelegationIssues {
+  resolve(ref: string): Promise<DelegationIssue | null>;
+  attach(issueId: string, sessionId: string): Promise<void>;
+  comment(sessionId: string, body: string): Promise<void>;
+}
+
 export interface DelegationModuleDependencies extends WorkSessionDependencies {
   repository: DelegationRepository;
+  reports: WorkReports;
+  issues: DelegationIssues;
   getPersona(personaId: string): Promise<DelegationPersona | null>;
   getSession(sessionId: string): Promise<SessionRecord | null>;
   listWorkspaces(): Promise<WorkspaceRecord[]>;
@@ -83,7 +100,8 @@ interface FinishedTurn {
   title: string;
   run: { id: string; status: RunStatus; error: string | null };
   reply: string | null;
-  origin: MessageOrigin;
+  report: RoutineReport | null;
+  host: { id: string; name: string } | null;
 }
 
 const LIST_LIMIT = 50;
@@ -111,7 +129,10 @@ export class DelegationModule {
                   error: null,
                 },
                 reply: status.reply,
-                origin: this.remoteOrigin(row, status.title),
+                report: status.report ?? null,
+                host: row.remote
+                  ? { id: row.remote.hostId, name: row.remote.hostName }
+                  : null,
               },
               false,
             ),
@@ -158,7 +179,14 @@ export class DelegationModule {
       );
     }
     const persona = await this.requirePersona(payload.personaId);
+    if (payload.host && payload.issue) {
+      throw new DelegationError(
+        "remote_issue",
+        "Issues track work on this computer only; leave out the issue for a paired computer.",
+      );
+    }
     if (payload.host) return this.startRemote(payload, persona, prompt);
+    const issue = payload.issue ? await this.requireIssue(payload.issue) : null;
     const workspace = resolveWorkspace(
       await this.deps.listWorkspaces(),
       payload.workspace,
@@ -190,10 +218,11 @@ export class DelegationModule {
       remote: null,
     };
     this.deps.repository.insert(row);
+    if (issue) await this.deps.issues.attach(issue.id, session.id);
     await this.deps.sendSessionMessage({
       sessionId: session.id,
       messageId: crypto.randomUUID(),
-      content: renderDelegatedWorkBriefing(persona.name, prompt),
+      content: renderDelegatedWorkBriefing(persona.name, prompt, true),
       delivery: "start-new-run",
       origin: this.personaOrigin(persona),
     });
@@ -244,7 +273,7 @@ export class DelegationModule {
     await this.deps.sendSessionMessage({
       sessionId: session.id,
       messageId: crypto.randomUUID(),
-      content: renderDelegatedWorkBriefing(persona.name, message),
+      content: renderDelegatedWorkBriefing(persona.name, message, true),
       delivery: await followUpDelivery(this.deps, session),
       origin: this.personaOrigin(persona),
     });
@@ -267,6 +296,16 @@ export class DelegationModule {
     await this.deps.stopSession(target.sessionId);
     const session = await this.requireSession(row);
     return this.describe(row, session, await this.deps.listWorkspaces());
+  }
+
+  reporting(sessionId: string) {
+    const row = this.deps.repository.get(sessionId);
+    return Boolean(row && !row.remote);
+  }
+
+  recordReport(sessionId: string, report: RoutineReport) {
+    const run = this.deps.latestRun(sessionId);
+    this.deps.reports.record(sessionId, run?.id ?? null, report);
   }
 
   forgetPersona(personaId: string) {
@@ -383,7 +422,8 @@ export class DelegationModule {
       title: work.title,
       run: { id: run.id, status: run.status, error: run.error ?? null },
       reply: reply?.content ?? null,
-      origin: { kind: "peer", sessionId: work.id, sessionTitle: work.title },
+      report: this.deps.reports.forRun(work.id, run.id),
+      host: null,
     };
   }
 
@@ -395,6 +435,8 @@ export class DelegationModule {
     if (!turn.run.id) return;
     const messageId = delegatedWorkReportMessageId(turn.run.id);
     if (await this.deps.getMessage(messageId)) return;
+    const outcome = delegationReportOutcome(turn.run.status, turn.report);
+    if (!outcome) return;
     const home = await this.deps.getSession(row.requesterSessionId);
     const decision = decideRequesterReport({
       dropped: false,
@@ -412,16 +454,56 @@ export class DelegationModule {
         messageId,
         content: renderDelegatedWorkReport({
           title: turn.title,
-          outcome: delegatedWorkOutcome(turn.run.status),
+          sessionId: turn.workSessionId,
+          outcome,
           error: turn.run.error,
+          report: turn.report,
           reply: turn.reply,
+          readMore: turn.host
+            ? `The whole reply is in the session on ${turn.host.name}.`
+            : `Read the whole reply with history_read sessionId=${turn.workSessionId}.`,
         }),
         delivery:
           decision.delivery === "hold" ? "queue-after-run" : decision.delivery,
-        origin: turn.origin,
+        origin: this.reportOrigin(turn, outcome),
       },
       { hold: decision.delivery === "hold" },
     );
+    if (!turn.host) await this.commentOnIssues(turn);
+  }
+
+  private async commentOnIssues(turn: FinishedTurn) {
+    const body = issueComment(turn);
+    if (!body) return;
+    try {
+      await this.deps.issues.comment(turn.workSessionId, body);
+    } catch (error) {
+      this.deps.onReportFailed(error);
+    }
+  }
+
+  private reportOrigin(
+    turn: FinishedTurn,
+    outcome: DelegationReportOutcome,
+  ): MessageOrigin {
+    return {
+      kind: "delegation",
+      sessionId: turn.workSessionId,
+      sessionTitle: turn.title,
+      outcome,
+      ...(turn.host ? { hostId: turn.host.id, hostName: turn.host.name } : {}),
+    };
+  }
+
+  private async requireIssue(ref: string) {
+    const issue = await this.deps.issues.resolve(ref);
+    if (!issue) {
+      throw new DelegationError(
+        "issue_not_found",
+        `No issue matches "${ref}".`,
+      );
+    }
+    return issue;
   }
 
   private hosts() {
@@ -464,16 +546,6 @@ export class DelegationModule {
       kind: "peer",
       sessionId: persona.homeSessionId,
       sessionTitle: persona.name,
-    };
-  }
-
-  private remoteOrigin(row: DelegationRow, title: string): MessageOrigin {
-    return {
-      kind: "remoteHost",
-      hostName: row.remote?.hostName ?? "",
-      senderName: title,
-      hostId: row.remote?.hostId,
-      sessionId: row.workSessionId,
     };
   }
 
@@ -567,4 +639,18 @@ export class DelegationModule {
   private now() {
     return this.deps.now?.() ?? new Date().toISOString();
   }
+}
+
+function issueComment(turn: FinishedTurn) {
+  const report = turn.report;
+  if (report) {
+    return report.question
+      ? `${report.summary}\n\n${report.question}`
+      : report.summary;
+  }
+  const reply = turn.reply?.trim();
+  if (!reply) return turn.run.error;
+  return reply.length > DELEGATED_REPLY_MAX_LENGTH
+    ? `${reply.slice(0, DELEGATED_REPLY_MAX_LENGTH)}…`
+    : reply;
 }

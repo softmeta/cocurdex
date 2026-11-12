@@ -10,6 +10,7 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuTrigger,
+  ScrollArea,
   Text,
 } from "@/components/ui";
 import { cn } from "@/lib";
@@ -123,21 +124,18 @@ export function MarkdownPreview({ content }: { content: string }) {
 
   return (
     <div className="relative flex h-full" ref={containerRef}>
-      <div
-        className={cn(
-          "h-full min-w-0 flex-1 overflow-auto p-6",
-          hasToc && !isWide && "pe-12",
-        )}
-        ref={scrollerRef}
-      >
-        <div ref={contentRef}>
+      <ScrollArea className="h-full min-w-0 flex-1" viewportRef={scrollerRef}>
+        <div
+          className={cn("p-6", hasToc && !isWide && "pe-12")}
+          ref={contentRef}
+        >
           <MarkdownRenderer
             content={content}
             tone="editor"
             className="space-y-4"
           />
         </div>
-      </div>
+      </ScrollArea>
       {hasToc && isWide ? (
         <PreviewTocRail activeKey={activeKey} headings={headings} />
       ) : null}

@@ -69,6 +69,16 @@
     "awaitingInput": "Has a question for you",
     "completedUnread": "Finished",
     "connecting": "Connecting…",
+    "delegation": {
+      "awaiting": "waiting for the assistant",
+      "basedOn": "Based on",
+      "blocked": "Blocked",
+      "cancelled": "Cancelled",
+      "failed": "Failed",
+      "finished": "Done",
+      "interrupted": "Interrupted",
+      "needsYou": "Needs you"
+    },
     "failed": "Run failed",
     "imagePrompt": "Image",
     "jumpToLatest": "Jump to latest",

@@ -1,6 +1,6 @@
-import type { SavedHost } from "@cocurdex/client-runtime";
 import { isSupportedLocale } from "@cocurdex/shared";
 import i18n from "i18next";
+import { useState } from "react";
 import useSWR, { mutate } from "swr";
 import { hostConnection } from "@/connection";
 
@@ -20,6 +20,20 @@ export function usePersonalAgents(hostId: string) {
     ["personalAgent.list", hostId] as const,
     ([method, id]) => hostConnection(id).request(method),
     DAEMON_READ,
+  );
+}
+
+let draftRequest = 0;
+
+export function useAssistantDraft(hostId: string | null) {
+  const [request] = useState(() => ++draftRequest);
+  return useSWR(
+    hostId ? (["personalAgent.draft", hostId, request] as const) : null,
+    ([method, id]) =>
+      hostConnection(id).request(method, {
+        locale: isSupportedLocale(i18n.language) ? i18n.language : null,
+      }),
+    { ...DAEMON_READ, revalidateOnFocus: false },
   );
 }
 
@@ -45,16 +59,6 @@ export function revalidateAssistant(hostId: string) {
     (key) =>
       Array.isArray(key) && ASSISTANT_METHODS.has(key[0]) && key[1] === hostId,
   );
-}
-
-export function greetPersonalAgent(host: SavedHost, id: string) {
-  if (!host.scopes.includes("interact")) return;
-  void hostConnection(host.hostId)
-    .request("personalAgent.greet", {
-      id,
-      locale: isSupportedLocale(i18n.language) ? i18n.language : null,
-    })
-    .catch(() => undefined);
 }
 
 export function useLatestReply(
