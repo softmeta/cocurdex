@@ -113,7 +113,10 @@ export function buildInbox(sources: InboxSources): InboxItem[] {
     const at = state.latestResultAt ?? session.updatedAt;
     if (state.runtimeState === "failed") {
       items.push({ ...base, kind: "failed", detail: null, at });
-    } else if (state.attentionState === "completed-unread") {
+    } else if (
+      state.attentionState === "completed-unread" &&
+      !sources.delegatedSessionIds.has(session.id)
+    ) {
       items.push({ ...base, kind: "completed", detail: null, at });
     }
   }

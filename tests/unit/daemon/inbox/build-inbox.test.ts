@@ -252,11 +252,13 @@ describe("buildInbox", () => {
     expect(items).toEqual([]);
   });
 
-  it("keeps work the persona delegated, so its approvals reach the user", () => {
+  it("keeps the approvals of delegated work but leaves its results to the persona", () => {
     const items = buildInbox({
-      delegatedSessionIds: new Set(["delegated"]),
-      sessions: [session("delegated")],
-      attention: [],
+      delegatedSessionIds: new Set(["delegated", "finished"]),
+      sessions: [session("delegated"), session("finished")],
+      attention: [
+        attention("finished", { attentionState: "completed-unread" }),
+      ],
       pending: {
         permissions: [
           {

@@ -28,6 +28,7 @@ export * from "./contracts";
 export * from "./data-events";
 export * from "./decks";
 export * from "./delegated-work";
+export * from "./delegation-transcript";
 export * from "./disabled-agents";
 export * from "./doc-images";
 export * from "./entity-links";

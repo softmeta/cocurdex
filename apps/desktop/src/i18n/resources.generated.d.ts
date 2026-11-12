@@ -84,6 +84,19 @@ export default interface Resources {
       sessionTotals: "Session totals";
       tooltip: "{{percent}}% of context limit";
     };
+    delegation: {
+      awaitingAssistant: "waiting for the assistant";
+      basedOn: "Based on";
+      from: "Report from {{title}}";
+      outcome: {
+        blocked: "Blocked";
+        cancelled: "Cancelled";
+        failed: "Failed";
+        finished: "Done";
+        interrupted: "Interrupted";
+        needsYou: "Needs you";
+      };
+    };
     imagePreview: {
       copied: "Copied";
       copyFailed: "Copy failed";

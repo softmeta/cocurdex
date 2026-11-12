@@ -16,6 +16,7 @@ export type { TranscriptHandle } from "./transcript-list";
 
 import { RemoteImage } from "@/connection";
 import { ConversationRow } from "./conversation-rows";
+import { DelegationReportLine } from "./delegation-line";
 import { imageAttachmentRequest } from "./image-attachments";
 import { PostedSourceLine } from "./posted-source-line";
 import { TurnActions } from "./turn-actions";
@@ -309,6 +310,15 @@ const TranscriptRow = memo(function TranscriptRow({
   onToggle(id: string): void;
   userBubble?: BubbleColors;
 }) {
+  if (item.kind === "user" && item.report) {
+    return (
+      <DelegationReportLine
+        report={item.report}
+        hostId={actions.hostId}
+        color={colors.mutedForeground}
+      />
+    );
+  }
   if (item.kind === "user") {
     const bubble = userBubble ?? {
       background: colors.muted,
@@ -332,6 +342,7 @@ const TranscriptRow = memo(function TranscriptRow({
           <PostedSourceLine
             source={item.source}
             color={colors.mutedForeground}
+            hostId={actions.hostId}
           />
         ) : null}
         <MarkdownText

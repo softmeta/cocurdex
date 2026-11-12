@@ -152,6 +152,21 @@ export function assistantWorkStep(state, getStub) {
           name: await translate(session, "personal:roster.label"),
         },
       });
+      const basedOn = await translate(session, "agent:delegation.basedOn");
+      await session.waitUntil(
+        (label) =>
+          [...document.querySelectorAll("article")].some((node) =>
+            node.textContent.includes(`${label}Overview code review`),
+          ),
+        basedOn,
+        UI_TIMEOUT_MS,
+      );
+      const reportShown = await session.run(() =>
+        [...document.querySelectorAll("article")].some((node) =>
+          node.textContent.includes('Work session "Overview code review"'),
+        ),
+      );
+      check(!reportShown, "the work report stays out of the assistant thread");
       await showPanelView(session, "overview");
       await clickByRole(session, {
         role: "button",

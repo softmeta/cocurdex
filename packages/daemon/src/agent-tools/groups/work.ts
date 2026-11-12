@@ -3,10 +3,12 @@ import type {
   DelegatedWorkRecord,
   DelegationCatalog,
   DelegationCatalogQuery,
+  RoutineReport,
   SendDelegatedWorkPayload,
   StartDelegatedWorkPayload,
 } from "@cocurdex/shared";
 import type { AgentToolRegistry } from "../tool-registry";
+import { parseReport, reportStatusSchema } from "./report-input";
 
 export interface WorkToolDependencies {
   personaOf(sessionId: string): Promise<string | null>;
@@ -18,6 +20,8 @@ export interface WorkToolDependencies {
     personaId: string;
     sessionId: string;
   }): Promise<DelegatedWorkRecord>;
+  reporting(sessionId: string): boolean;
+  report(sessionId: string, report: RoutineReport): void;
 }
 
 function optionalText(value: unknown) {
@@ -76,7 +80,7 @@ export function registerWorkTools(
       group: "work",
       name: "start",
       description:
-        "Delegate coding or other repository work to a work session in one of the user's workspaces. It runs on the user's coding agents (Claude Code, Codex, and others) with the workspace's usual agent and model unless you pick an agent role, or as a team when you pick a team template. The session appears in the user's work sidebar, where they can follow and take it over. Each time it finishes a turn, its reply is reported back to you in this thread. Ask the user which workspace when it is unclear. Write the prompt as a complete task: goal, context the user gave you, and what done looks like.",
+        "Delegate coding or other repository work to a work session in one of the user's workspaces. It runs on the user's coding agents (Claude Code, Codex, and others) with the workspace's usual agent and model unless you pick an agent role, or as a team when you pick a team template. The session appears in the user's work sidebar, where they can follow and take it over. Each time it finishes a turn with something for the user, its report comes back to you in this thread; turns with nothing to tell do not. Ask the user which workspace when it is unclear. Write the prompt as a complete task: goal, context the user gave you, and what done looks like.",
       inputSchema: {
         type: "object",
         properties: {
@@ -97,6 +101,11 @@ export function registerWorkTools(
             type: "string",
             description:
               "Team template id or name from work_catalog; the session leads that team",
+          },
+          issue: {
+            type: "string",
+            description:
+              "Issue the work is for (identifier like COC-12, or id). Pass it when the request concerns an issue or the user wants the work tracked: the session is linked to it, the issue moves to a started status, and each report is added to it as a comment.",
           },
           isolateWorktree: {
             type: "boolean",
@@ -124,6 +133,7 @@ export function registerWorkTools(
         teamTemplate: optionalText(input.teamTemplate),
         isolateWorktree: input.isolateWorktree === true,
         host: optionalText(input.host),
+        issue: optionalText(input.issue),
       }),
   });
 
@@ -187,5 +197,37 @@ export function registerWorkTools(
         personaId: await persona(caller),
         sessionId: String(input.sessionId),
       }),
+  });
+
+  registry.register({
+    descriptor: {
+      group: "work",
+      name: "report",
+      description:
+        "Report the turn you are ending to the personal assistant that delegated this work. Call it once, at the end of each turn. dropped tells the assistant nothing; any other status reaches it with your summary.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          status: reportStatusSchema,
+          summary: {
+            type: "string",
+            description:
+              "For the assistant: the outcome, what the user must review or decide, and what you did not verify",
+          },
+          question: {
+            type: "string",
+            description: "Required with needs_you: what the user has to answer",
+          },
+        },
+        required: ["status", "summary"],
+        additionalProperties: false,
+      },
+    },
+    isAvailable: (caller) => deps.reporting(caller.sessionId),
+    execute: async (caller, input) => {
+      const report = parseReport(input);
+      deps.report(caller.sessionId, report);
+      return { recorded: report.status };
+    },
   });
 }

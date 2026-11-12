@@ -18,5 +18,11 @@ export function unconfirmedSends(
 }
 
 export function pendingSendItem(send: PendingSend): TranscriptItem {
-  return { kind: "user", id: send.id, text: send.text, images: send.images };
+  return {
+    kind: "user",
+    id: send.id,
+    text: send.text,
+    images: send.images,
+    report: null,
+  };
 }

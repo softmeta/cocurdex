@@ -9,11 +9,13 @@ import type {
   RemoteWorkStarted,
   RemoteWorkStartPayload,
   RemoteWorkStatus,
+  RoutineReport,
   RunRecord,
   SessionRecord,
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import { renderDelegatedWorkBriefing } from "@cocurdex/shared";
+import type { WorkReports } from "./work-reports";
 import {
   createWorkSession,
   followUpDelivery,
@@ -35,6 +37,7 @@ export interface RemoteWorkSender {
 }
 
 export interface RemoteWorkHostDependencies extends WorkSessionDependencies {
+  reports: WorkReports;
   listWorkspaces(): Promise<WorkspaceRecord[]>;
   listRoles(): Promise<AgentRoleRecord[]>;
   getSession(sessionId: string): Promise<SessionRecord | null>;
@@ -56,7 +59,18 @@ function senderOrigin(sender: RemoteWorkSender): MessageOrigin {
 }
 
 export class RemoteWorkHost {
+  private readonly started = new Set<string>();
+
   constructor(private readonly deps: RemoteWorkHostDependencies) {}
+
+  reporting(sessionId: string) {
+    return this.started.has(sessionId);
+  }
+
+  recordReport(sessionId: string, report: RoutineReport) {
+    const run = this.deps.latestRun(sessionId);
+    this.deps.reports.record(sessionId, run?.id ?? null, report);
+  }
 
   async catalog(): Promise<DelegationCatalog> {
     const [workspaces, roles] = await Promise.all([
@@ -86,10 +100,11 @@ export class RemoteWorkHost {
       title,
       isolateWorktree: payload.isolateWorktree === true,
     });
+    this.started.add(session.id);
     await this.deps.sendSessionMessage({
       sessionId: session.id,
       messageId: crypto.randomUUID(),
-      content: renderDelegatedWorkBriefing(sender.senderName, prompt),
+      content: renderDelegatedWorkBriefing(sender.senderName, prompt, true),
       delivery: "start-new-run",
       origin: senderOrigin(sender),
     });
@@ -123,7 +138,11 @@ export class RemoteWorkHost {
     await this.deps.sendSessionMessage({
       sessionId: session.id,
       messageId: crypto.randomUUID(),
-      content: renderDelegatedWorkBriefing(sender.senderName, message),
+      content: renderDelegatedWorkBriefing(
+        sender.senderName,
+        message,
+        this.started.has(session.id),
+      ),
       delivery: await followUpDelivery(this.deps, session),
       origin: senderOrigin(sender),
     });
@@ -164,6 +183,9 @@ export class RemoteWorkHost {
         ? { id: run.id, status: run.status, error: run.error ?? null }
         : null,
       reply: reply?.content ?? null,
+      report: finished
+        ? this.deps.reports.forRun(session.id, finished.id)
+        : null,
     };
   }
 }

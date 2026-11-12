@@ -66,6 +66,8 @@ export function createSqliteMessageRepository(
              AND role IN ('user', 'assistant')
              AND (kind IS NULL OR kind <> 'reasoning')
              AND content <> ''
+             AND (origin_json IS NULL
+               OR json_extract(origin_json, '$.kind') <> 'delegation')
            ORDER BY seq DESC
            LIMIT 1`,
         )

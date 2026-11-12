@@ -12,7 +12,7 @@ import { findPersonaByRef } from "./persona-commands";
 
 const LIST_USAGE = "cocurdex persona work list <persona> [--json]";
 const START_USAGE =
-  "cocurdex persona work start <persona> --workspace <id|name> --prompt <text>|--prompt-file <path> [--title <title>] [--role <role>|--team <template>] [--worktree] [--host <paired computer>] [--json]";
+  "cocurdex persona work start <persona> --workspace <id|name> --prompt <text>|--prompt-file <path> [--title <title>] [--role <role>|--team <template>] [--worktree] [--host <paired computer>] [--issue <COC-12|id>] [--json]";
 const SEND_USAGE =
   "cocurdex persona work send <persona> <session-id> <message> [--json]";
 const STOP_USAGE = "cocurdex persona work stop <persona> <session-id> [--json]";
@@ -100,6 +100,7 @@ export async function handlePersonaWorkCommand(
         teamTemplate: stringFlag(parsed, "team") ?? null,
         isolateWorktree: parsed.flags.get("worktree") === true,
         host: stringFlag(parsed, "host") ?? null,
+        issue: stringFlag(parsed, "issue") ?? null,
       }),
     );
     printResult(work, parsed);

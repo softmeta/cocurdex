@@ -1,5 +1,9 @@
 import { isAgentId } from "../agent-role";
-import { providerApis, reasoningEfforts } from "../contracts";
+import {
+  DELEGATION_REPORT_OUTCOMES,
+  providerApis,
+  reasoningEfforts,
+} from "../contracts";
 import type { SendSessionCommand, SessionConfiguration } from "./types";
 
 function record(value: unknown): asserts value is Record<string, unknown> {
@@ -177,6 +181,24 @@ function validateMessageOrigin(value: unknown) {
     text(value.senderName, "origin sender name", 4096, true);
     if (value.hostId !== undefined) validateRecordId(value.hostId, "host ID");
     if (value.sessionId !== undefined) validateSessionId(value.sessionId);
+    return;
+  }
+  if (value.kind === "delegation") {
+    keys(value, [
+      "kind",
+      "sessionId",
+      "sessionTitle",
+      "outcome",
+      "hostId",
+      "hostName",
+    ]);
+    validateSessionId(value.sessionId);
+    text(value.sessionTitle, "origin session title", 4096, true);
+    if (!DELEGATION_REPORT_OUTCOMES.includes(value.outcome as never))
+      throw new Error("Invalid delegation outcome");
+    if (value.hostId !== undefined) validateRecordId(value.hostId, "host ID");
+    if (value.hostName !== undefined)
+      text(value.hostName, "origin host name", 4096, true);
     return;
   }
   keys(value, ["kind", "sessionId", "sessionTitle"]);

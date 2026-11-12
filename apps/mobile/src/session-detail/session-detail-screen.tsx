@@ -113,7 +113,11 @@ export function SessionDetailScreen({
   const items = useMemo(() => {
     const transcriptItems = [
       ...(observation
-        ? buildTranscript({ ...observation, workspacePath })
+        ? buildTranscript({
+            ...observation,
+            workspacePath,
+            personal: persona !== null,
+          })
         : []),
       ...unconfirmed.map(pendingSendItem),
     ];
@@ -132,6 +136,7 @@ export function SessionDetailScreen({
     unconfirmed,
     runStartedAt,
     conversation,
+    persona,
   ]);
   const pending = observation
     ? pendingInteraction(observation.interactions)

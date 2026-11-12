@@ -19,6 +19,7 @@ import { CollapsibleUserMessageBody, MarkdownRenderer } from "@/components";
 import { Avatar, AvatarFallback } from "@/components/ui";
 import { selectSessionAtom, sessionsAtom } from "@/features/sessions";
 import { desktopApi } from "@/lib";
+import { DelegationStatusLine } from "./delegation-report";
 import { messageOriginLabel } from "./message-origin-label";
 
 const ORIGIN_ICONS = {
@@ -28,6 +29,7 @@ const ORIGIN_ICONS = {
   brief: Newspaper,
   greeting: Bot,
   remoteHost: Laptop,
+  delegation: Bot,
 } satisfies Record<MessageOrigin["kind"], unknown>;
 
 function PeerOriginAvatar({ origin }: { origin: MessageOrigin }) {
@@ -127,6 +129,13 @@ export function PeerPrompt({
   )?.parentSessionId;
   const origin = message.origin;
   if (!origin) return null;
+  if (origin.kind === "delegation") {
+    return (
+      <div ref={(element) => setUserMessageRef(message.id, element)}>
+        <DelegationStatusLine messageId={message.id} origin={origin} />
+      </div>
+    );
+  }
   const fromLead =
     origin.kind === "peer" && origin.sessionId === parentSessionId;
   const body = stripPeerEnvelope(message.content);

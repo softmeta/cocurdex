@@ -94,6 +94,7 @@ import {
   DelegationModule,
   pendingInteractionKind,
   RemoteWorkHost,
+  WorkReports,
 } from "./delegation";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { loadExecutionTree } from "./execution-tree";
@@ -138,7 +139,7 @@ import {
   ProviderCredentials,
   ProviderLoginSessions,
 } from "./provider-credentials";
-import { PushService, pushTriggerForEvent } from "./push";
+import { PushService, type PushTrigger, pushTriggerForEvent } from "./push";
 import {
   createRemoteHostStore,
   RemoteHosts,
@@ -621,8 +622,10 @@ export class CocurdexDaemonService {
     };
     const waitingFor = (sessionId: string) =>
       pendingInteractionKind(this.runtime.getPendingInteractions(), sessionId);
+    const workReports = new WorkReports();
     this.remoteWork = new RemoteWorkHost({
       ...workSessions,
+      reports: workReports,
       listWorkspaces: () => this.state.listWorkspaces(),
       listRoles: () => this.listAgentRoles(),
       getSession: (sessionId) => this.state.getSession(sessionId),
@@ -636,6 +639,17 @@ export class CocurdexDaemonService {
     this.delegations = new DelegationModule({
       ...workSessions,
       waitingFor,
+      reports: workReports,
+      issues: {
+        resolve: async (ref) => {
+          const issue = await this.dataService.resolveIssue(ref);
+          return issue ? { id: issue.id, identifier: issue.identifier } : null;
+        },
+        attach: (issueId, sessionId) =>
+          this.dataService.startIssueWork(issueId, sessionId),
+        comment: (sessionId, body) =>
+          this.dataService.commentSessionIssues(sessionId, body),
+      },
       remote: remoteWorkGateway(this.remoteHosts),
       repository: this.state.data.delegations,
       getPersona: async (personaId) => {
@@ -673,6 +687,8 @@ export class CocurdexDaemonService {
           this.sessionActivityReader(),
           caller.sessionId,
           sessionId,
+          (id) =>
+            this.state.data.delegations.get(id)?.requesterSessionId ?? null,
         ),
     });
     registerMemoryTools(this.agentTools.registry, {
@@ -761,6 +777,13 @@ export class CocurdexDaemonService {
       list: (personaId) => this.delegations.list(personaId),
       send: (payload) => this.delegations.send(payload),
       stop: (target) => this.delegations.stop(target),
+      reporting: (sessionId) =>
+        this.delegations.reporting(sessionId) ||
+        this.remoteWork.reporting(sessionId),
+      report: (sessionId, report) =>
+        this.delegations.reporting(sessionId)
+          ? this.delegations.recordReport(sessionId, report)
+          : this.remoteWork.recordReport(sessionId, report),
     });
     registerRoutineTools(this.agentTools.registry, {
       personaOf,
@@ -885,7 +908,7 @@ export class CocurdexDaemonService {
       await this.team.onAgentEvent(event);
       await this.delegations.onAgentEvent(event);
       const alert = pushTriggerForEvent(event, new Date());
-      if (alert) {
+      if (alert && !this.reportedByAssistant(alert)) {
         void this.outbox
           .alert(alert, "turn")
           .catch((error: unknown) =>
@@ -900,6 +923,16 @@ export class CocurdexDaemonService {
     if (options.autoStartMemory === true) {
       void this.memory.initializeOnStartup();
     }
+  }
+
+  private reportedByAssistant(alert: PushTrigger) {
+    const turnEnd =
+      alert.kind === "turnCompleted" || alert.kind === "turnFailed";
+    return (
+      turnEnd &&
+      (this.delegations.reporting(alert.sessionId) ||
+        this.remoteWork.reporting(alert.sessionId))
+    );
   }
 
   startBackgroundRecovery() {

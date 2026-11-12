@@ -131,7 +131,7 @@ export function registerHistoryTools(
       group: "history",
       name: "read",
       description:
-        "Read this Cocurdex session's history: user and assistant messages, commands with their output, file changes, and failed tools, ordered by position. Use it to recover items a context handoff omitted or shortened. Without a position it returns the newest items; page backward with beforePosition (olderBeforePosition from the last result) or forward with afterPosition. Pass itemId (with textOffset from nextTextOffset) to read one long item in full. sessionId defaults to this session; a forked session may also read the session it was forked from, up to the fork point.",
+        "Read this Cocurdex session's history: user and assistant messages, commands with their output, file changes, and failed tools, ordered by position. Use it to recover items a context handoff omitted or shortened. Without a position it returns the newest items; page backward with beforePosition (olderBeforePosition from the last result) or forward with afterPosition. Pass itemId (with textOffset from nextTextOffset) to read one long item in full. sessionId defaults to this session; a forked session may also read the session it was forked from, up to the fork point, and a personal assistant the work sessions it delegated.",
       inputSchema: {
         type: "object",
         properties: {

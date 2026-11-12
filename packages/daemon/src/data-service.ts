@@ -8,6 +8,7 @@ import {
   type CreateIssuePayload,
   type CreateNotePayload,
   type CreateViewPayload,
+  DEFAULT_VIEW_ID,
   type DeleteColumnPayload,
   type DeleteIssueLabelPayload,
   type DeleteIssuePayload,
@@ -20,6 +21,7 @@ import {
   type GetNoteDocPayload,
   type GetNotePayload,
   type IssueRelationPayload,
+  type IssueStatusCategory,
   isContextItemAttachment,
   isLinkableEntityKind,
   type LinkIssueSessionPayload,
@@ -245,6 +247,54 @@ export class DaemonDataService {
     return linked;
   }
 
+  async resolveIssue(ref: string) {
+    const resolved = await this.state.data.entityLinks.resolve({
+      kind: "issue",
+      id: ref,
+    });
+    if (!resolved) return null;
+    return this.state.data.issues.getIssue({ id: resolved.id });
+  }
+
+  async startIssueWork(issueId: string, sessionId: string) {
+    await this.state.data.issues.linkSession({ id: issueId, sessionId });
+    const issue = await this.state.data.issues.getIssue({ id: issueId });
+    if (issue && isNotStarted(issue.statusCategory)) {
+      const started = (
+        await this.state.data.issues.listColumns({ field: "status" })
+      )
+        .filter((column) => column.category === "started")
+        .sort((left, right) => left.sortOrder - right.sortOrder)[0];
+      if (started) {
+        await this.state.data.issues.updateIssue({
+          viewId: DEFAULT_VIEW_ID,
+          id: issueId,
+          status: started.id,
+          actor: { kind: "session", sessionId },
+        });
+      }
+    }
+    this.emitChanged("issues");
+  }
+
+  async commentSessionIssues(sessionId: string, body: string) {
+    const links = await this.state.data.entityLinks.list({
+      kind: "session",
+      id: sessionId,
+    });
+    const issueIds = links
+      .filter((link) => link.relation === "works-on")
+      .map((link) => link.target.id);
+    for (const id of issueIds) {
+      await this.state.data.issues.comment({
+        id,
+        body,
+        actor: { kind: "session", sessionId },
+      });
+    }
+    if (issueIds.length > 0) this.emitChanged("issues");
+  }
+
   listIssueLinkedSessionIds() {
     return this.state.data.issues.listLinkedSessionIds();
   }
@@ -332,4 +382,10 @@ export class DaemonDataService {
       areas: [area],
     });
   }
+}
+
+function isNotStarted(category: IssueStatusCategory | null) {
+  return (
+    category === null || category === "backlog" || category === "unstarted"
+  );
 }

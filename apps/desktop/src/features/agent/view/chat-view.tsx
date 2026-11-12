@@ -43,6 +43,7 @@ import {
 } from "./chat-user-navigation";
 import { ComposerDock, JumpControls } from "./chat-view-panels";
 import type { ChatViewProps } from "./chat-view-types";
+import { DelegationFoldContext, useDelegationFold } from "./delegation-fold";
 import { useChatBottomStick } from "./use-chat-bottom-stick";
 import { useChatScrollState } from "./use-chat-scroll-state";
 import { useChatViewPerfMarkers } from "./use-chat-view-perf-markers";
@@ -133,6 +134,8 @@ export function ChatView({
     [...questions]
       .reverse()
       .find((question) => question.status === "pending") ?? null;
+  const delegation = useDelegationFold(messages, presentation === "assistant");
+  const transcriptMessages = delegation.visibleMessages;
   const { conversationGroups, timelineGroups } = useMemo(() => {
     const startLabel = "transcript-model-start";
     const endLabel = "transcript-model-end";
@@ -147,7 +150,7 @@ export function ChatView({
 
     const model = getCachedTranscriptModel(
       perfSessionId,
-      messages,
+      transcriptMessages,
       toolCalls,
       questions,
     );
@@ -172,7 +175,7 @@ export function ChatView({
     }
 
     return model;
-  }, [messages, perfSessionId, questions, toolCalls]);
+  }, [messages, perfSessionId, questions, toolCalls, transcriptMessages]);
   const activity = useMemo(
     () =>
       getActivityState({
@@ -370,169 +373,171 @@ export function ChatView({
 
   return (
     <ChatPresentationContext value={presentation}>
-      <ChatAssistantRoleContext value={composerRole ?? null}>
-        <section className="@container/chat flex h-full flex-col bg-chat-canvas">
-          <div className="relative flex-1 overflow-hidden">
-            {presentation === "assistant" ? null : (
-              <UserMessageNavigation
-                activeMessageId={activeUserNavigationMessageId}
-                messages={stickyUserMessages}
-                onSelect={scrollToUserMessage}
-              />
-            )}
-            <RenderReadinessContext value={renderReadiness}>
-              <ScrollArea
-                className={cn(
-                  "h-full px-2 @lg/chat:px-3 @3xl/chat:px-6",
-                  !isInitialBottomSettled && "opacity-0",
-                )}
-                scrollbarProps={{
-                  onPointerDownCapture: markUserScrollIntent,
-                }}
-                viewportProps={{
-                  className: "[overflow-anchor:none]",
-                  onClickCapture: (event) => {
-                    if (isDisclosureToggle(event.target)) {
-                      holdForDisclosure();
-                    }
-                  },
-                  onKeyDownCapture: () => handleUserScrollIntent(),
-                  onPointerDown: markUserScrollIntent,
-                  onPointerDownCapture: markUserScrollIntent,
-                  onScroll: (event) => {
-                    syncScrollState(stickyUserMessages);
-                    if (isInitialBottomSettled) {
-                      olderTranscript.loadNearTop(event.currentTarget);
-                    }
-                  },
-                  onTouchMoveCapture: () => handleUserScrollIntent(),
-                  onWheelCapture: (event) => {
-                    handleUserScrollIntent(event.deltaY);
-                    if (event.deltaY < 0 && isInitialBottomSettled) {
-                      olderTranscript.loadNearTop(viewportRef.current);
-                    }
-                  },
-                  tabIndex: 0,
-                }}
-                viewportRef={attachViewport}
-              >
-                <ChatContentColumn
+      <DelegationFoldContext value={delegation.fold}>
+        <ChatAssistantRoleContext value={composerRole ?? null}>
+          <section className="@container/chat flex h-full flex-col bg-chat-canvas">
+            <div className="relative flex-1 overflow-hidden">
+              {presentation === "assistant" ? null : (
+                <UserMessageNavigation
+                  activeMessageId={activeUserNavigationMessageId}
+                  messages={stickyUserMessages}
+                  onSelect={scrollToUserMessage}
+                />
+              )}
+              <RenderReadinessContext value={renderReadiness}>
+                <ScrollArea
                   className={cn(
-                    !floatingHeader && "pt-6",
-                    floatingHeader && "pt-20",
-                    timelineGroups.length === 0 && "pb-6",
+                    "h-full px-2 @lg/chat:px-3 @3xl/chat:px-6",
+                    !isInitialBottomSettled && "opacity-0",
                   )}
-                  ref={chatContentRef}
+                  scrollbarProps={{
+                    onPointerDownCapture: markUserScrollIntent,
+                  }}
+                  viewportProps={{
+                    className: "[overflow-anchor:none]",
+                    onClickCapture: (event) => {
+                      if (isDisclosureToggle(event.target)) {
+                        holdForDisclosure();
+                      }
+                    },
+                    onKeyDownCapture: () => handleUserScrollIntent(),
+                    onPointerDown: markUserScrollIntent,
+                    onPointerDownCapture: markUserScrollIntent,
+                    onScroll: (event) => {
+                      syncScrollState(stickyUserMessages);
+                      if (isInitialBottomSettled) {
+                        olderTranscript.loadNearTop(event.currentTarget);
+                      }
+                    },
+                    onTouchMoveCapture: () => handleUserScrollIntent(),
+                    onWheelCapture: (event) => {
+                      handleUserScrollIntent(event.deltaY);
+                      if (event.deltaY < 0 && isInitialBottomSettled) {
+                        olderTranscript.loadNearTop(viewportRef.current);
+                      }
+                    },
+                    tabIndex: 0,
+                  }}
+                  viewportRef={attachViewport}
                 >
-                  {showsEmptyState ? null : timelineGroups.length === 0 ? (
-                    <div className="text-chat-fg-muted text-meta">
-                      {t("toolCalls.subagentEmpty")}
-                    </div>
-                  ) : (
-                    <>
-                      <ChatVirtualTimeline
-                        activity={activity}
-                        anchoredPromptId={anchoredPromptId}
-                        groups={conversationGroups}
-                        isRunning={isRunning}
-                        latestMessageId={latestMessage?.id ?? null}
-                        onAnswerQuestion={stableOnAnswerQuestion}
-                        onOpenToolLocation={stableOnOpenToolLocation}
-                        onResolvePermission={stableOnResolvePermission}
-                        runStartedAt={runStartedAt}
-                        scrollRef={timelineScrollRef}
-                        setUserMessageRef={setUserMessageRef}
-                        showMessageActions={!readOnly}
-                        userMessageRefs={userMessageRefs}
-                        viewportElement={viewportElement}
-                      />
-                      {sessionId && !readOnly ? (
-                        <ScriptRunProposals
-                          key={sessionId}
-                          sessionId={sessionId}
+                  <ChatContentColumn
+                    className={cn(
+                      !floatingHeader && "pt-6",
+                      floatingHeader && "pt-20",
+                      timelineGroups.length === 0 && "pb-6",
+                    )}
+                    ref={chatContentRef}
+                  >
+                    {showsEmptyState ? null : timelineGroups.length === 0 ? (
+                      <div className="text-chat-fg-muted text-meta">
+                        {t("toolCalls.subagentEmpty")}
+                      </div>
+                    ) : (
+                      <>
+                        <ChatVirtualTimeline
+                          activity={activity}
+                          anchoredPromptId={anchoredPromptId}
+                          groups={conversationGroups}
+                          isRunning={isRunning}
+                          latestMessageId={latestMessage?.id ?? null}
+                          onAnswerQuestion={stableOnAnswerQuestion}
+                          onOpenToolLocation={stableOnOpenToolLocation}
+                          onResolvePermission={stableOnResolvePermission}
+                          runStartedAt={runStartedAt}
+                          scrollRef={timelineScrollRef}
+                          setUserMessageRef={setUserMessageRef}
+                          showMessageActions={!readOnly}
+                          userMessageRefs={userMessageRefs}
+                          viewportElement={viewportElement}
                         />
-                      ) : null}
-                    </>
-                  )}
-                </ChatContentColumn>
-              </ScrollArea>
-            </RenderReadinessContext>
-            {showsEmptyState ? (
-              <div className="absolute inset-0 flex flex-col overflow-y-auto px-2 @lg/chat:px-3 @3xl/chat:px-6">
-                <ChatContentColumn
-                  className={cn(
-                    emptyStateAlign === "center" && "my-auto py-10",
-                    emptyStateAlign === "start" && !floatingHeader && "pt-6",
-                    emptyStateAlign === "start" && floatingHeader && "pt-20",
-                  )}
-                >
-                  {emptyState ?? <StageIdentity />}
-                </ChatContentColumn>
-              </div>
-            ) : null}
-            <JumpControls
-              streaming={isRunning && shouldShowJumpToLatest}
-              onJumpToLatest={() => scrollToLatest(true)}
-              onJumpToTop={() => olderTranscript.loadAllThen(scrollToTop)}
-              showJumpToLatest={shouldShowJumpToLatest}
-              showJumpToTop={shouldShowJumpToTop}
+                        {sessionId && !readOnly ? (
+                          <ScriptRunProposals
+                            key={sessionId}
+                            sessionId={sessionId}
+                          />
+                        ) : null}
+                      </>
+                    )}
+                  </ChatContentColumn>
+                </ScrollArea>
+              </RenderReadinessContext>
+              {showsEmptyState ? (
+                <div className="absolute inset-0 flex flex-col overflow-y-auto px-2 @lg/chat:px-3 @3xl/chat:px-6">
+                  <ChatContentColumn
+                    className={cn(
+                      emptyStateAlign === "center" && "my-auto py-10",
+                      emptyStateAlign === "start" && !floatingHeader && "pt-6",
+                      emptyStateAlign === "start" && floatingHeader && "pt-20",
+                    )}
+                  >
+                    {emptyState ?? <StageIdentity />}
+                  </ChatContentColumn>
+                </div>
+              ) : null}
+              <JumpControls
+                streaming={isRunning && shouldShowJumpToLatest}
+                onJumpToLatest={() => scrollToLatest(true)}
+                onJumpToTop={() => olderTranscript.loadAllThen(scrollToTop)}
+                showJumpToLatest={shouldShowJumpToLatest}
+                showJumpToTop={shouldShowJumpToTop}
+              />
+            </div>
+            <ComposerDock
+              chatComposer={chatComposer}
+              role={composerRole}
+              placeholderOverride={composerPlaceholder}
+              sessionId={sessionId}
+              agentLabel={agentLabel}
+              agentType={agentType}
+              attachment={attachment}
+              composerContextChips={composerContextChips}
+              draftKey={
+                sessionId ? sessionComposerDraftKey(sessionId) : undefined
+              }
+              sessionModeId={sessionModeId}
+              composerRef={composerRef}
+              permissionMode={permissionMode}
+              providerSnapshot={providerSnapshot}
+              thinkingLevel={thinkingLevel}
+              thinkingLevelOptions={thinkingLevelOptions}
+              isRunning={isRunning}
+              canSendWhileRunning={canSendWhileRunning}
+              runtimeCommands={runtime?.commands}
+              runtimeMode={runtime?.mode}
+              queuedInputs={queuedInputs}
+              canSteerQueuedInput={canSteerQueuedInput}
+              onClearAttachment={onClearAttachment}
+              onSelectSessionMode={onSelectSessionMode}
+              onSelectPermissionMode={onSelectPermissionMode}
+              onSelectThinkingLevel={onSelectThinkingLevel}
+              onSelectRuntimeMode={onSelectRuntimeMode}
+              onSelectAgent={onSelectAgent}
+              onSend={stableOnSend}
+              onStop={onStop}
+              onDeleteQueuedInput={onDeleteQueuedInput}
+              onSendNowQueuedInput={onSendNowQueuedInput}
+              onResumeQueuedInputs={onResumeQueuedInputs}
+              onSteerQueuedInput={onSteerQueuedInput}
+              onUpdateQueuedInput={onUpdateQueuedInput}
+              onResolvePermission={onResolvePermission}
+              onResolvePlanApproval={onResolvePlanApproval}
+              onDismissPlan={onDismissPlan}
+              onTogglePlanCollapsed={onTogglePlanCollapsed}
+              pendingPermissionRequest={pendingPermissionRequest}
+              pendingPlanApproval={pendingPlanApproval}
+              pendingQuestion={pendingQuestion}
+              onAnswerQuestion={stableOnAnswerQuestion}
+              plan={plan}
+              planCollapsed={planCollapsed}
+              workspaceRootPath={workspaceRootPath}
+              workspaceRootPaths={workspaceRootPaths}
+              hideComposer={readOnly}
+              parentSessionTitle={parentSessionTitle}
+              onOpenParentSession={onOpenParentSession}
             />
-          </div>
-          <ComposerDock
-            chatComposer={chatComposer}
-            role={composerRole}
-            placeholderOverride={composerPlaceholder}
-            sessionId={sessionId}
-            agentLabel={agentLabel}
-            agentType={agentType}
-            attachment={attachment}
-            composerContextChips={composerContextChips}
-            draftKey={
-              sessionId ? sessionComposerDraftKey(sessionId) : undefined
-            }
-            sessionModeId={sessionModeId}
-            composerRef={composerRef}
-            permissionMode={permissionMode}
-            providerSnapshot={providerSnapshot}
-            thinkingLevel={thinkingLevel}
-            thinkingLevelOptions={thinkingLevelOptions}
-            isRunning={isRunning}
-            canSendWhileRunning={canSendWhileRunning}
-            runtimeCommands={runtime?.commands}
-            runtimeMode={runtime?.mode}
-            queuedInputs={queuedInputs}
-            canSteerQueuedInput={canSteerQueuedInput}
-            onClearAttachment={onClearAttachment}
-            onSelectSessionMode={onSelectSessionMode}
-            onSelectPermissionMode={onSelectPermissionMode}
-            onSelectThinkingLevel={onSelectThinkingLevel}
-            onSelectRuntimeMode={onSelectRuntimeMode}
-            onSelectAgent={onSelectAgent}
-            onSend={stableOnSend}
-            onStop={onStop}
-            onDeleteQueuedInput={onDeleteQueuedInput}
-            onSendNowQueuedInput={onSendNowQueuedInput}
-            onResumeQueuedInputs={onResumeQueuedInputs}
-            onSteerQueuedInput={onSteerQueuedInput}
-            onUpdateQueuedInput={onUpdateQueuedInput}
-            onResolvePermission={onResolvePermission}
-            onResolvePlanApproval={onResolvePlanApproval}
-            onDismissPlan={onDismissPlan}
-            onTogglePlanCollapsed={onTogglePlanCollapsed}
-            pendingPermissionRequest={pendingPermissionRequest}
-            pendingPlanApproval={pendingPlanApproval}
-            pendingQuestion={pendingQuestion}
-            onAnswerQuestion={stableOnAnswerQuestion}
-            plan={plan}
-            planCollapsed={planCollapsed}
-            workspaceRootPath={workspaceRootPath}
-            workspaceRootPaths={workspaceRootPaths}
-            hideComposer={readOnly}
-            parentSessionTitle={parentSessionTitle}
-            onOpenParentSession={onOpenParentSession}
-          />
-        </section>
-      </ChatAssistantRoleContext>
+          </section>
+        </ChatAssistantRoleContext>
+      </DelegationFoldContext>
     </ChatPresentationContext>
   );
 }

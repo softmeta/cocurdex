@@ -41,7 +41,11 @@ export function ConversationRow({
   return (
     <View style={styles.reply}>
       {item.source ? (
-        <PostedSourceLine source={item.source} color={colors.mutedForeground} />
+        <PostedSourceLine
+          source={item.source}
+          color={colors.mutedForeground}
+          hostId={hostId}
+        />
       ) : null}
       <View
         style={[styles.bubble, { backgroundColor: colors.chatSurfaceBubble }]}
