@@ -19,6 +19,10 @@ import { cn, desktopApi, useMountEffect } from "@/lib";
 import { JsonAddMenu } from "../json-add-menu";
 import { JsonDropArea } from "../json-drop-area";
 import { SettingsListItem } from "../settings-list-item";
+import {
+  SettingsMasterDetail,
+  type SettingsPane,
+} from "../settings-master-detail";
 import { SettingsSearchableSelect } from "../settings-select";
 import { providerImportWarningMessage } from "./import-warning-message";
 import { ProviderEditor } from "./provider-editor";
@@ -149,6 +153,7 @@ function mergeProviderModels(
 export function ProviderSettingsPanel() {
   const { t } = useTranslation("settings");
   const bootstrapProviderModels = useSetAtom(bootstrapProviderModelsAtom);
+  const [pane, setPane] = useState<SettingsPane>("list");
   const [providers, setProviders] = useState<ProviderConfigRecord[]>(
     providerSettingsSnapshot?.providers ?? [],
   );
@@ -254,18 +259,21 @@ export function ProviderSettingsPanel() {
   });
 
   function selectProvider(provider: ProviderConfigRecord) {
+    setPane("detail");
     setSelectedProviderId(provider.id);
     setIsCreatingProvider(false);
     setPendingTemplateId("");
   }
 
   function startNewProvider() {
+    setPane("detail");
     setSelectedProviderId(null);
     setIsCreatingProvider(true);
     setPendingTemplateId("");
   }
 
   function startNewProviderFromTemplate(templateId: string) {
+    setPane("detail");
     setSelectedProviderId(null);
     setIsCreatingProvider(true);
     setPendingTemplateId(templateId);
@@ -557,186 +565,195 @@ export function ProviderSettingsPanel() {
   return (
     <ProviderJsonImport onImport={importProvidersFromJson}>
       {(onText) => (
-        <JsonDropArea className="gap-6" messages={jsonMessages} onText={onText}>
-          <div className="flex min-h-0 w-72 shrink-0 flex-col gap-3">
-            <div className="flex shrink-0 items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <AppSearchInput
-                  placeholder={t("providers.searchPlaceholder")}
-                  value={providerQuery}
-                  onChange={(event) => setProviderQuery(event.target.value)}
-                />
-              </div>
-              <JsonAddMenu
-                label={t("providers.actions.newProvider")}
-                messages={jsonMessages}
-                variant="secondary"
-                onAddManually={startNewProvider}
-                onText={onText}
-              />
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-auto">
-              <div className="flex flex-col gap-2 pe-1">
-                {filteredProviders.length === 0 &&
-                filteredTemplates.length === 0 ? (
-                  <div className="flex w-full cursor-default flex-col items-start gap-0.5 px-3 py-2 text-start">
-                    <span className="text-body font-medium text-muted-foreground">
-                      {t("providers.empty.noMatches")}
-                    </span>
-                    <span className="w-full text-2xs">&nbsp;</span>
-                  </div>
-                ) : (
-                  <>
-                    {filteredProviders.map((provider) => {
-                      const isActive =
-                        surface.kind === "provider" &&
-                        surface.id === provider.id;
-                      const modelCount = models.filter(
-                        (model) => model.providerId === provider.id,
-                      ).length;
-
-                      return (
-                        <SettingsListItem
-                          isActive={isActive}
-                          key={provider.id}
-                          subtitle={t("providers.models.modelCount", {
-                            count: modelCount,
-                          })}
-                          title={provider.name}
-                          trailing={
-                            <span
-                              className={cn(
-                                "size-1.5 shrink-0 rounded-full",
-                                provider.enabled
-                                  ? "bg-emerald-500/70"
-                                  : "bg-muted-foreground/30",
-                              )}
-                            />
-                          }
-                          onClick={() => selectProvider(provider)}
-                        />
-                      );
-                    })}
-
-                    {filteredTemplates.map((template) => {
-                      const isActive =
-                        isCreatingProvider && pendingTemplateId === template.id;
-                      return (
-                        <SettingsListItem
-                          isActive={isActive}
-                          key={`template:${template.id}`}
-                          subtitle={template.baseUrl}
-                          title={template.name}
-                          onClick={() =>
-                            startNewProviderFromTemplate(template.id)
-                          }
-                        />
-                      );
-                    })}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
-            <div className="flex min-w-0 flex-col gap-6 pe-1">
-              {shouldShowProviderEditor ? (
-                <ProviderEditor
-                  authMethods={editorAuthMethods}
-                  key={editorKey}
-                  provider={editorProvider}
-                  selectedProvider={selectedProvider}
-                  selectedModels={selectedModels}
-                  presetProviderIds={presetProviderIds}
-                  onClearApiKey={clearApiKey}
-                  onRefreshModels={refreshModels}
-                  onReload={reload}
-                  onRemoveProvider={removeProvider}
-                  onSaveModel={saveModel}
-                  onSaveProvider={saveProvider}
-                  onUpdateProviderEnabled={updateProviderEnabled}
-                />
-              ) : (
-                <div className="flex min-h-[160px] items-center justify-center rounded-card bg-settings-surface px-6 text-center text-body text-muted-foreground">
-                  {t("providers.templates.description")}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2 rounded-card bg-settings-surface px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-sm font-medium">
-                      {t("providers.titleModel.label")}
-                    </span>
-                    <span className="text-2xs text-muted-foreground">
-                      {t("providers.titleModel.description")}
-                    </span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <SettingsSearchableSelect
-                      ariaLabel={t("providers.titleModel.label")}
-                      emptyText={t("providers.models.noMatches")}
-                      options={[
-                        {
-                          value: "",
-                          label: titleModelNoneLabel,
-                          group: "none",
-                          groupLabel: "",
-                        },
-                        ...titleModelGroups.flatMap((group) =>
-                          group.options.map((option) => ({
-                            value: option.value,
-                            label: option.label,
-                            keywords: option.value,
-                            group: group.label,
-                            groupLabel: group.label,
-                          })),
-                        ),
-                      ]}
-                      searchPlaceholder={t(
-                        "providers.models.searchPlaceholder",
-                      )}
-                      triggerLabel={titleModelSelectedLabel}
-                      value={titleModelValue}
-                      onChange={(next) => {
-                        void selectTitleModel(next);
-                      }}
+        <JsonDropArea messages={jsonMessages} onText={onText}>
+          <SettingsMasterDetail
+            pane={pane}
+            onBack={() => setPane("list")}
+            list={
+              <div className="flex min-h-0 flex-1 flex-col gap-3">
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <AppSearchInput
+                      placeholder={t("providers.searchPlaceholder")}
+                      value={providerQuery}
+                      onChange={(event) => setProviderQuery(event.target.value)}
                     />
-                    <Button
-                      disabled={
-                        !titleModelValue || titleModelProbe.status === "testing"
-                      }
-                      type="button"
-                      variant="outline"
-                      onClick={() => void probeSelectedTitleModel()}
-                    >
-                      {titleModelProbe.status === "testing" ? (
-                        <Spinner size="sm" />
-                      ) : null}
-                      {titleModelProbe.status === "testing"
-                        ? t("providers.titleModel.testing")
-                        : t("providers.titleModel.test")}
-                    </Button>
+                  </div>
+                  <JsonAddMenu
+                    label={t("providers.actions.newProvider")}
+                    messages={jsonMessages}
+                    variant="secondary"
+                    onAddManually={startNewProvider}
+                    onText={onText}
+                  />
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-auto">
+                  <div className="flex flex-col gap-2 pe-1">
+                    {filteredProviders.length === 0 &&
+                    filteredTemplates.length === 0 ? (
+                      <div className="flex w-full cursor-default flex-col items-start gap-0.5 px-3 py-2 text-start">
+                        <span className="text-body font-medium text-muted-foreground">
+                          {t("providers.empty.noMatches")}
+                        </span>
+                        <span className="w-full text-2xs">&nbsp;</span>
+                      </div>
+                    ) : (
+                      <>
+                        {filteredProviders.map((provider) => {
+                          const isActive =
+                            surface.kind === "provider" &&
+                            surface.id === provider.id;
+                          const modelCount = models.filter(
+                            (model) => model.providerId === provider.id,
+                          ).length;
+
+                          return (
+                            <SettingsListItem
+                              isActive={isActive}
+                              key={provider.id}
+                              subtitle={t("providers.models.modelCount", {
+                                count: modelCount,
+                              })}
+                              title={provider.name}
+                              trailing={
+                                <span
+                                  className={cn(
+                                    "size-1.5 shrink-0 rounded-full",
+                                    provider.enabled
+                                      ? "bg-emerald-500/70"
+                                      : "bg-muted-foreground/30",
+                                  )}
+                                />
+                              }
+                              onClick={() => selectProvider(provider)}
+                            />
+                          );
+                        })}
+
+                        {filteredTemplates.map((template) => {
+                          const isActive =
+                            isCreatingProvider &&
+                            pendingTemplateId === template.id;
+                          return (
+                            <SettingsListItem
+                              isActive={isActive}
+                              key={`template:${template.id}`}
+                              subtitle={template.baseUrl}
+                              title={template.name}
+                              onClick={() =>
+                                startNewProviderFromTemplate(template.id)
+                              }
+                            />
+                          );
+                        })}
+                      </>
+                    )}
                   </div>
                 </div>
-                {titleModelProbeStatusText ? (
-                  <span
-                    className={cn(
-                      "text-2xs",
-                      titleModelProbe.status === "done" &&
-                        !titleModelProbe.result.ok
-                        ? "text-destructive"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {titleModelProbeStatusText}
-                  </span>
-                ) : null}
               </div>
-            </div>
-          </div>
+            }
+            detail={
+              <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+                <div className="flex min-w-0 flex-col gap-6 pe-1">
+                  {shouldShowProviderEditor ? (
+                    <ProviderEditor
+                      authMethods={editorAuthMethods}
+                      key={editorKey}
+                      provider={editorProvider}
+                      selectedProvider={selectedProvider}
+                      selectedModels={selectedModels}
+                      presetProviderIds={presetProviderIds}
+                      onClearApiKey={clearApiKey}
+                      onRefreshModels={refreshModels}
+                      onReload={reload}
+                      onRemoveProvider={removeProvider}
+                      onSaveModel={saveModel}
+                      onSaveProvider={saveProvider}
+                      onUpdateProviderEnabled={updateProviderEnabled}
+                    />
+                  ) : (
+                    <div className="flex min-h-[160px] items-center justify-center rounded-card bg-settings-surface px-6 text-center text-body text-muted-foreground">
+                      {t("providers.templates.description")}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-2 rounded-card bg-settings-surface px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="text-sm font-medium">
+                          {t("providers.titleModel.label")}
+                        </span>
+                        <span className="text-2xs text-muted-foreground">
+                          {t("providers.titleModel.description")}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <SettingsSearchableSelect
+                          ariaLabel={t("providers.titleModel.label")}
+                          emptyText={t("providers.models.noMatches")}
+                          options={[
+                            {
+                              value: "",
+                              label: titleModelNoneLabel,
+                              group: "none",
+                              groupLabel: "",
+                            },
+                            ...titleModelGroups.flatMap((group) =>
+                              group.options.map((option) => ({
+                                value: option.value,
+                                label: option.label,
+                                keywords: option.value,
+                                group: group.label,
+                                groupLabel: group.label,
+                              })),
+                            ),
+                          ]}
+                          searchPlaceholder={t(
+                            "providers.models.searchPlaceholder",
+                          )}
+                          triggerLabel={titleModelSelectedLabel}
+                          value={titleModelValue}
+                          onChange={(next) => {
+                            void selectTitleModel(next);
+                          }}
+                        />
+                        <Button
+                          disabled={
+                            !titleModelValue ||
+                            titleModelProbe.status === "testing"
+                          }
+                          type="button"
+                          variant="outline"
+                          onClick={() => void probeSelectedTitleModel()}
+                        >
+                          {titleModelProbe.status === "testing" ? (
+                            <Spinner size="sm" />
+                          ) : null}
+                          {titleModelProbe.status === "testing"
+                            ? t("providers.titleModel.testing")
+                            : t("providers.titleModel.test")}
+                        </Button>
+                      </div>
+                    </div>
+                    {titleModelProbeStatusText ? (
+                      <span
+                        className={cn(
+                          "text-2xs",
+                          titleModelProbe.status === "done" &&
+                            !titleModelProbe.result.ok
+                            ? "text-destructive"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {titleModelProbeStatusText}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            }
+          />
         </JsonDropArea>
       )}
     </ProviderJsonImport>

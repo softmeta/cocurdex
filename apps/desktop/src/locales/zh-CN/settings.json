@@ -671,6 +671,9 @@
     "title": "开源许可",
     "view": "查看"
   },
+  "masterDetail": {
+    "back": "返回列表"
+  },
   "mcp": {
     "actions": {
       "remove": "移除",
@@ -1244,6 +1247,7 @@
   "sidebar": {
     "backToApp": "返回应用",
     "clearSearch": "清空搜索",
+    "label": "设置导航",
     "resize": "调整设置侧边栏宽度",
     "search": "搜索设置",
     "searchEmpty": "没有匹配的设置",

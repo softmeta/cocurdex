@@ -13,7 +13,7 @@ import {
   SidebarToggleButton,
 } from "@/app/layout/sidebar/sidebar-frame";
 import { SettingRow, SettingsGroup } from "@/components";
-import { ScrollArea } from "@/components/ui";
+import { ScrollArea, Sheet, SheetContent } from "@/components/ui";
 import { AppUpdateSettingsPanel } from "@/features/app-update";
 import { MemorySettingsPanel } from "@/features/memory";
 import { AgentRoleSettingsPanel } from "@/features/sessions/agent-role";
@@ -42,6 +42,7 @@ import {
 } from "./settings-sections";
 import { SettingsSidebar } from "./settings-sidebar";
 import type { AppearanceSettings, ThemeMode } from "./theme";
+import { useObservedWidth } from "./use-observed-width";
 import {
   selectedSettingsWorkspaceIdAtom,
   WorkspaceSettingsHeading,
@@ -50,6 +51,7 @@ import {
 import { WorktreeSettingsPanel } from "./worktrees";
 
 const SETTINGS_HEADING_GAP = 16;
+const SETTINGS_MIN_CONTENT_WIDTH = 600;
 
 export interface SettingsScreenProps {
   activeSection: SettingsSectionId;
@@ -303,10 +305,52 @@ export function SettingsScreen({
         {sectionLabel}
       </h1>
     );
+  const [screenRef, screenWidth] = useObservedWidth<HTMLElement>();
+  const [isSidebarOverlayOpen, setIsSidebarOverlayOpen] = useState(false);
+  const resolvedSidebarWidth = sidebarWidth ?? 240;
+  const canDockSidebar =
+    screenWidth >= resolvedSidebarWidth + SETTINGS_MIN_CONTENT_WIDTH;
+  const isSidebarDocked = isSidebarOpen && canDockSidebar;
+  const isSidebarShown = canDockSidebar ? isSidebarOpen : isSidebarOverlayOpen;
+  const toggleSidebar = () => {
+    if (canDockSidebar) {
+      onToggleSidebar();
+      return;
+    }
+    setIsSidebarOverlayOpen((open) => !open);
+  };
   const handleSectionChange = (sectionId: SettingsSectionId) => {
     setSelectedWorkspaceId(null);
+    setIsSidebarOverlayOpen(false);
     onSectionChange(sectionId);
   };
+  const titlebarControls = (
+    <div
+      className="absolute top-0 start-0 z-[100] flex items-center"
+      style={{
+        height: TITLEBAR_HEIGHT,
+        paddingInlineStart: TITLEBAR_LEADING_RESERVE,
+      }}
+    >
+      <div className="app-no-drag flex items-center gap-1">
+        <SidebarToggleButton
+          label={t("editor:actions.toggleSidebar")}
+          open={isSidebarShown}
+          onToggle={toggleSidebar}
+        />
+        {historyControls}
+      </div>
+    </div>
+  );
+  const sidebar = (
+    <SettingsSidebar
+      activeSection={activeSection}
+      clusters={sidebarClusters}
+      sidebarWidth={sidebarWidth}
+      onBackToApp={onBackToApp}
+      onSectionChange={handleSectionChange}
+    />
+  );
   const settingsPanel = (
     <SectionPanel
       appearanceSettings={appearanceSettings}
@@ -327,23 +371,36 @@ export function SettingsScreen({
   );
 
   return (
-    <main className="relative flex h-screen overflow-hidden bg-shell text-foreground">
-      {isSidebarOpen ? (
+    <main
+      className="relative flex h-screen overflow-hidden bg-shell text-foreground"
+      ref={screenRef}
+    >
+      {isSidebarDocked ? (
         <ResizableSidebarSlot
-          isOpen={isSidebarOpen}
+          isOpen
           separatorAriaLabel={t("settings:sidebar.resize")}
-          width={sidebarWidth ?? 240}
+          width={resolvedSidebarWidth}
           onResizeMouseDown={(event) => onResizeSidebar?.(event)}
         >
-          <SettingsSidebar
-            activeSection={activeSection}
-            clusters={sidebarClusters}
-            sidebarWidth={sidebarWidth}
-            onBackToApp={onBackToApp}
-            onSectionChange={handleSectionChange}
-          />
+          {sidebar}
         </ResizableSidebarSlot>
       ) : null}
+      {canDockSidebar ? null : (
+        <Sheet
+          open={isSidebarOverlayOpen}
+          onOpenChange={setIsSidebarOverlayOpen}
+        >
+          <SheetContent
+            aria-label={t("settings:sidebar.label")}
+            className="gap-0 border-0 bg-sidebar p-0 data-[side=left]:w-auto data-[side=left]:sm:max-w-none"
+            showCloseButton={false}
+            side="left"
+          >
+            {sidebar}
+            {titlebarControls}
+          </SheetContent>
+        </Sheet>
+      )}
 
       <section
         className="min-w-0 flex-1 overflow-hidden bg-app"
@@ -352,11 +409,11 @@ export function SettingsScreen({
         <header
           className={cn(
             "app-drag flex h-8 min-w-0 shrink-0 items-center border-b pe-4 transition-colors",
-            isSidebarOpen && "ps-5",
+            isSidebarDocked && "ps-5",
             isContentScrolled ? "border-border/60" : "border-transparent",
           )}
           style={{
-            paddingInlineStart: isSidebarOpen
+            paddingInlineStart: isSidebarDocked
               ? undefined
               : TITLEBAR_TOOLBAR_MIN_WIDTH + SETTINGS_HEADING_GAP,
           }}
@@ -413,22 +470,7 @@ export function SettingsScreen({
         )}
       </section>
 
-      <div
-        className="absolute top-0 start-0 z-[100] flex items-center"
-        style={{
-          height: TITLEBAR_HEIGHT,
-          paddingInlineStart: TITLEBAR_LEADING_RESERVE,
-        }}
-      >
-        <div className="app-no-drag flex items-center gap-1">
-          <SidebarToggleButton
-            label={t("editor:actions.toggleSidebar")}
-            open={isSidebarOpen}
-            onToggle={onToggleSidebar}
-          />
-          {historyControls}
-        </div>
-      </div>
+      {titlebarControls}
     </main>
   );
 }

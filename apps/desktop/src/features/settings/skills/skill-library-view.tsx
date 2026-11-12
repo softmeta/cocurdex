@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/ui";
+import {
+  SettingsMasterDetail,
+  type SettingsPane,
+} from "../settings-master-detail";
 import { SkillDetail } from "./skill-detail";
 import {
   groupInstalledSkills,
@@ -24,6 +28,7 @@ export function SkillLibraryView({
   const { t } = useTranslation("settings");
   const [query, setQuery] = useState("");
   const [selection, setSelection] = useState<SkillSelection>({ kind: "pack" });
+  const [pane, setPane] = useState<SettingsPane>("list");
   const skills = library.library?.skills ?? [];
   const groups = groupInstalledSkills(skills, query);
   const selectedSkill =
@@ -54,54 +59,63 @@ export function SkillLibraryView({
           })}
         </Text>
       ))}
-      <div className="flex min-h-0 min-w-0 flex-1 gap-6">
-        <SkillList
-          groups={groups}
-          isChecking={library.isChecking}
-          packDot={packDotState(pack.statuses)}
-          packSubtitle={packSubtitle}
-          query={query}
-          selection={
-            selectedSkill || selection.kind !== "skill" ? selection : null
-          }
-          workspaceName={library.library?.workspace?.name ?? null}
-          onCheckUpdates={() => void library.checkUpdates()}
-          onQueryChange={setQuery}
-          onSelect={setSelection}
-        />
-        <div className="min-h-0 min-w-0 flex-1 overflow-auto">
-          <div className="flex min-w-0 flex-col pe-1">
-            {selection.kind === "pack" ? (
-              <SkillPackDetail
-                builtin={groups.builtin}
-                pack={pack}
-                onChanged={changed}
-                onOpenSkill={(name) =>
-                  setSelection({ kind: "packSkill", name })
-                }
-              />
-            ) : null}
-            {selection.kind === "packSkill" ? (
-              <SkillPackSkillDetail
-                key={selection.name}
-                name={selection.name}
-                onBack={() => setSelection({ kind: "pack" })}
-              />
-            ) : null}
-            {selectedSkill ? (
-              <SkillDetail
-                key={selection.kind === "skill" ? selection.key : "none"}
-                skill={selectedSkill}
-                onChanged={changed}
-                onRemoved={() => {
-                  setSelection({ kind: "pack" });
-                  changed();
-                }}
-              />
-            ) : null}
+      <SettingsMasterDetail
+        pane={pane}
+        onBack={() => setPane("list")}
+        list={
+          <SkillList
+            groups={groups}
+            isChecking={library.isChecking}
+            packDot={packDotState(pack.statuses)}
+            packSubtitle={packSubtitle}
+            query={query}
+            selection={
+              selectedSkill || selection.kind !== "skill" ? selection : null
+            }
+            workspaceName={library.library?.workspace?.name ?? null}
+            onCheckUpdates={() => void library.checkUpdates()}
+            onQueryChange={setQuery}
+            onSelect={(next) => {
+              setSelection(next);
+              setPane("detail");
+            }}
+          />
+        }
+        detail={
+          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+            <div className="flex min-w-0 flex-col pe-1">
+              {selection.kind === "pack" ? (
+                <SkillPackDetail
+                  builtin={groups.builtin}
+                  pack={pack}
+                  onChanged={changed}
+                  onOpenSkill={(name) =>
+                    setSelection({ kind: "packSkill", name })
+                  }
+                />
+              ) : null}
+              {selection.kind === "packSkill" ? (
+                <SkillPackSkillDetail
+                  key={selection.name}
+                  name={selection.name}
+                  onBack={() => setSelection({ kind: "pack" })}
+                />
+              ) : null}
+              {selectedSkill ? (
+                <SkillDetail
+                  key={selection.kind === "skill" ? selection.key : "none"}
+                  skill={selectedSkill}
+                  onChanged={changed}
+                  onRemoved={() => {
+                    setSelection({ kind: "pack" });
+                    changed();
+                  }}
+                />
+              ) : null}
+            </div>
           </div>
-        </div>
-      </div>
+        }
+      />
     </div>
   );
 }
