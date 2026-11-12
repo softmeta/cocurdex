@@ -147,23 +147,6 @@ export type AgentRuntimeAxisCapabilities = Partial<
   Record<AgentRuntimeAxis, AgentRuntimeChangePolicy>
 >;
 
-export interface CodexAccountState {
-  method: "apikey" | "chatgpt" | "other" | null;
-  email: string | null;
-  planType: string | null;
-  requiresOpenaiAuth: boolean;
-}
-
-export interface CodexLoginStartResult {
-  loginId: string;
-  authUrl: string;
-}
-
-export interface CodexLoginOutcome {
-  success: boolean;
-  error: string | null;
-}
-
 export interface AgentProviderSnapshot {
   providerId: string;
   providerName: string;

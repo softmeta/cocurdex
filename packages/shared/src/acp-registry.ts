@@ -2,15 +2,6 @@ import type { AcpRegistryAgentId, BuiltInAgentId } from "./contracts";
 
 export type AcpRegistryDistributionKind = "binary" | "npx" | "uvx" | "local";
 
-export const ACP_REGISTRY_BUILT_IN_EQUIVALENTS: Readonly<
-  Record<string, BuiltInAgentId>
-> = {
-  "claude-acp": "claude-agent",
-  "codex-acp": "codex",
-  opencode: "opencode",
-  "pi-acp": "pi",
-};
-
 export interface AcpRegistryLaunchCommand {
   command: string;
   args: string[];

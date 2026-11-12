@@ -10,7 +10,6 @@ const METHOD_TIMEOUTS: Partial<Record<DaemonMethod, number>> = {
   "worktree.create": 15 * 60_000,
   "worktree.remove": 15 * 60_000,
   "session.refineTitle": 2 * 60_000,
-  "codex.login.wait": 30 * 60_000,
   "mcp.status": 3 * 60_000,
   "mcp.server.test": 3 * 60_000,
   "mcp.login.start": 3 * 60_000,

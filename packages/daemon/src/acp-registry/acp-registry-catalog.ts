@@ -1,7 +1,7 @@
 import {
-  ACP_REGISTRY_BUILT_IN_EQUIVALENTS,
   type AcpRegistryCatalogAgent,
   type AcpRegistryDistributionKind,
+  findBuiltInAgentForAcpRegistryId,
 } from "@cocurdex/shared";
 import { EnvHttpProxyAgent, fetch } from "undici";
 
@@ -175,7 +175,7 @@ export function parseAcpRegistry(
           website: readHttpsUrl(raw.website),
           iconUrl: readHttpsUrl(raw.icon),
           distribution,
-          builtInAgentId: ACP_REGISTRY_BUILT_IN_EQUIVALENTS[registryId] ?? null,
+          builtInAgentId: findBuiltInAgentForAcpRegistryId(registryId),
         },
         launch,
       },

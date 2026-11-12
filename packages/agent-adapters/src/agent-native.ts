@@ -1,62 +1,59 @@
 import {
   type AgentId,
+  type BuiltInAgentId,
   type CompatibleProviderModel,
   isAcpRegistryAgentId,
 } from "@cocurdex/shared";
-import { listAcpRegistryProviderModels } from "./acp-registry";
-import { listClaudeCliProviderModels } from "./claude-cli";
-import {
-  generateCodexConversationTitle,
-  listCodexProviderModels,
-} from "./codex";
-import { deleteOpenCodeSession, listOpenCodeProviderModels } from "./opencode";
+import { createAcpRegistryPlugin } from "./acp-registry/plugin";
+import type {
+  AgentConversationTitleInput,
+  AgentModelListOptions,
+  AgentRuntimePlugin,
+} from "./agent-plugin";
+import { claudeAgentPlugin } from "./claude-cli/plugin";
+import { codexPlugin } from "./codex/plugin";
+import { opencodePlugin } from "./opencode/plugin";
+import { piPlugin } from "./pi-sdk/plugin";
 
-export interface AgentModelListOptions {
-  forceRefresh?: boolean;
+export type {
+  AgentConversationTitleInput,
+  AgentModelListOptions,
+  AgentRuntimePlugin,
+} from "./agent-plugin";
+
+const builtInAgentPlugins: Readonly<
+  Record<BuiltInAgentId, AgentRuntimePlugin>
+> = {
+  "claude-agent": claudeAgentPlugin,
+  codex: codexPlugin,
+  opencode: opencodePlugin,
+  pi: piPlugin,
+};
+
+export function findAgentPlugin(agentId: AgentId): AgentRuntimePlugin | null {
+  if (isAcpRegistryAgentId(agentId)) return createAcpRegistryPlugin(agentId);
+  return Object.hasOwn(builtInAgentPlugins, agentId)
+    ? builtInAgentPlugins[agentId]
+    : null;
 }
 
 export function listAgentModels(
   agentId: AgentId,
   options: AgentModelListOptions = {},
 ): Promise<CompatibleProviderModel[]> | null {
-  if (isAcpRegistryAgentId(agentId)) {
-    return listAcpRegistryProviderModels(agentId, options);
-  }
-  switch (agentId) {
-    case "claude-agent":
-      return listClaudeCliProviderModels(undefined, undefined, options);
-    case "codex":
-      return listCodexProviderModels(options);
-    case "opencode":
-      return listOpenCodeProviderModels(options);
-    case "pi":
-      return null;
-  }
-}
-
-export interface AgentConversationTitleInput {
-  message: string;
-  modelId?: string;
-  signal?: AbortSignal;
+  return findAgentPlugin(agentId)?.listModels?.(options) ?? null;
 }
 
 export function generateAgentConversationTitle(
   agentId: AgentId,
   input: AgentConversationTitleInput,
 ): Promise<string | null> | null {
-  if (agentId !== "codex") return null;
-  return generateCodexConversationTitle({
-    message: input.message,
-    ...(input.modelId ? { model: input.modelId } : {}),
-    ...(input.signal ? { signal: input.signal } : {}),
-  });
+  return findAgentPlugin(agentId)?.generateConversationTitle?.(input) ?? null;
 }
 
 export async function deleteAgentProviderSession(
   agentId: AgentId,
   providerSessionId: string,
 ) {
-  if (agentId === "opencode") {
-    await deleteOpenCodeSession({ providerSessionId });
-  }
+  await findAgentPlugin(agentId)?.deleteProviderSession?.(providerSessionId);
 }

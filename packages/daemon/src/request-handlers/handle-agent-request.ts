@@ -1,4 +1,3 @@
-import { logoutCodex, readCodexAccount } from "@cocurdex/agent-adapters";
 import type {
   DaemonMethod,
   DaemonRequest,
@@ -88,27 +87,6 @@ export async function handleAgentRequest(
       return service.agents.listAcpRegistryUpdates(request.params);
     case "acpRegistry.update":
       return service.agents.updateAcpRegistryAgent(request.params.agentId);
-    case "codex.account.read":
-      if (await service.agents.isAgentDisabled("codex")) {
-        return {
-          method: null,
-          email: null,
-          planType: null,
-          requiresOpenaiAuth: false,
-        };
-      }
-      return readCodexAccount();
-    case "codex.login.start":
-      await service.agents.assertAgentEnabled("codex");
-      return service.codexLogins.start();
-    case "codex.login.wait":
-      return service.codexLogins.wait(request.params.loginId);
-    case "codex.login.cancel":
-      await service.codexLogins.cancel(request.params.loginId);
-      return null;
-    case "codex.logout":
-      await logoutCodex();
-      return null;
     case "mcp.readConfig":
       return service.mcp.config.readConfig();
     case "mcp.saveConfig":

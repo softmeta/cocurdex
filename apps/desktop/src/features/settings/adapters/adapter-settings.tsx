@@ -3,7 +3,7 @@ import {
   type AgentDescriptor,
   type AgentId,
   type AgentRateLimitsReadResult,
-  isPlanUsageAgentId,
+  supportsPlanUsage,
 } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { PackageSearch, RotateCw } from "lucide-react";
@@ -57,7 +57,7 @@ function rowStatus(
 function planUsageAgentIds(agents: AgentDescriptor[]) {
   return agents
     .filter((agent) => {
-      if (!isPlanUsageAgentId(agent.id)) {
+      if (!supportsPlanUsage(agent.id)) {
         return false;
       }
       const kind = getAdapterStatus(agent).kind;

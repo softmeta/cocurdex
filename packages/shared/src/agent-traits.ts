@@ -1,117 +1,33 @@
 import { getAcpAgentProfile } from "./acp-agent-profiles";
 import { getFallbackAgentPermissionModes } from "./agent-permission-modes";
 import {
+  type AgentTraits,
+  type BuiltInAgentManifest,
+  builtInAgentManifests,
+} from "./built-in-agents";
+import {
   type AgentCapabilities,
   type AgentDescriptor,
   type AgentId,
   type AgentRuntimeAxisCapabilities,
   type AgentSessionMode,
+  BUILT_IN_AGENT_IDS,
   type BuiltInAgentId,
   isAcpRegistryAgentId,
   PLAN_MODE_ID,
-  type SessionTitleStrategy,
-  type WriteMode,
 } from "./contracts";
 
-export type AgentThinkingLevelSource = "reasoning-effort" | "app" | "adapter";
-
-export type AgentModelCatalog = "agent" | "agent-providers" | "app-providers";
-
-export interface AgentTraits {
-  label: string;
-  transport: AgentCapabilities["transport"];
-  planMode: boolean;
-  writeModes: readonly WriteMode[];
-  defaultWriteMode: WriteMode;
-  supportsSteering: boolean;
-  sessionTitleStrategy: SessionTitleStrategy;
-  runtimeAxes: AgentRuntimeAxisCapabilities;
-  thinkingLevels: AgentThinkingLevelSource | null;
-  fastMode: boolean;
-  documentAttachments: boolean;
-  modelCatalog: AgentModelCatalog;
-  toolApprovals: boolean;
-}
+export type {
+  AgentModelCatalog,
+  AgentModelIdentity,
+  AgentSkillConvention,
+  AgentThinkingLevelSource,
+  AgentTraits,
+  BuiltInAgentManifest,
+} from "./built-in-agents";
+export { builtInAgentManifests } from "./built-in-agents";
 
 const inSession = "in-session" as const;
-
-const builtInAgentTraits: Readonly<Record<BuiltInAgentId, AgentTraits>> = {
-  "claude-agent": {
-    label: "Claude Agent",
-    transport: "native",
-    planMode: true,
-    writeModes: ["read-only", "native-write"],
-    defaultWriteMode: "native-write",
-    supportsSteering: true,
-    sessionTitleStrategy: "adapter-generated",
-    runtimeAxes: {
-      model: inSession,
-      thinking: inSession,
-      permission: inSession,
-      speed: inSession,
-    },
-    thinkingLevels: "adapter",
-    fastMode: true,
-    documentAttachments: true,
-    modelCatalog: "agent",
-    toolApprovals: true,
-  },
-  codex: {
-    label: "Codex",
-    transport: "native",
-    planMode: true,
-    writeModes: ["read-only", "native-write"],
-    defaultWriteMode: "read-only",
-    supportsSteering: true,
-    sessionTitleStrategy: "adapter-generated",
-    runtimeAxes: {
-      model: inSession,
-      thinking: inSession,
-      permission: inSession,
-      speed: inSession,
-    },
-    thinkingLevels: "reasoning-effort",
-    fastMode: false,
-    documentAttachments: false,
-    modelCatalog: "agent",
-    toolApprovals: true,
-  },
-  opencode: {
-    label: "OpenCode",
-    transport: "native",
-    planMode: true,
-    writeModes: ["read-only", "native-write"],
-    defaultWriteMode: "read-only",
-    supportsSteering: false,
-    sessionTitleStrategy: "native",
-    runtimeAxes: {
-      model: inSession,
-      agent: inSession,
-      variant: inSession,
-      permission: inSession,
-    },
-    thinkingLevels: null,
-    fastMode: false,
-    documentAttachments: true,
-    modelCatalog: "agent-providers",
-    toolApprovals: true,
-  },
-  pi: {
-    label: "Pi",
-    transport: "native",
-    planMode: false,
-    writeModes: ["read-only"],
-    defaultWriteMode: "read-only",
-    supportsSteering: true,
-    sessionTitleStrategy: "app-generated",
-    runtimeAxes: { model: inSession, thinking: inSession },
-    thinkingLevels: "app",
-    fastMode: false,
-    documentAttachments: false,
-    modelCatalog: "app-providers",
-    toolApprovals: false,
-  },
-};
 
 const acpRegistryRuntimeAxes: AgentRuntimeAxisCapabilities = {
   model: inSession,
@@ -135,6 +51,8 @@ function acpRegistryAgentTraits(agentId: AgentId): AgentTraits {
     documentAttachments: profile.documentAttachments === true,
     modelCatalog: "agent",
     toolApprovals: true,
+    disableable: true,
+    planUsage: profile.planUsage === true,
   };
 }
 
@@ -153,14 +71,54 @@ function retiredAgentTraits(agentId: AgentId): AgentTraits {
     documentAttachments: false,
     modelCatalog: "agent",
     toolApprovals: true,
+    disableable: true,
+    planUsage: false,
   };
+}
+
+export function isBuiltInAgentId(agentId: string): agentId is BuiltInAgentId {
+  return Object.hasOwn(builtInAgentManifests, agentId);
+}
+
+export function getBuiltInAgentManifest(
+  agentId: AgentId,
+): BuiltInAgentManifest | null {
+  return isBuiltInAgentId(agentId) ? builtInAgentManifests[agentId] : null;
 }
 
 export function getAgentTraits(agentId: AgentId): AgentTraits {
   if (isAcpRegistryAgentId(agentId)) return acpRegistryAgentTraits(agentId);
-  return Object.hasOwn(builtInAgentTraits, agentId)
-    ? builtInAgentTraits[agentId]
-    : retiredAgentTraits(agentId);
+  return getBuiltInAgentManifest(agentId) ?? retiredAgentTraits(agentId);
+}
+
+export function canDisableAgent(agentId: AgentId): boolean {
+  return getAgentTraits(agentId).disableable;
+}
+
+export function supportsPlanUsage(agentId: AgentId): boolean {
+  return getAgentTraits(agentId).planUsage;
+}
+
+export function findBuiltInAgentByRsrsHost(
+  host: string,
+): BuiltInAgentId | null {
+  return (
+    BUILT_IN_AGENT_IDS.find(
+      (agentId) => builtInAgentManifests[agentId].rsrsHost === host,
+    ) ?? null
+  );
+}
+
+export function findBuiltInAgentForAcpRegistryId(
+  registryId: string,
+): BuiltInAgentId | null {
+  return (
+    BUILT_IN_AGENT_IDS.find((agentId) =>
+      builtInAgentManifests[agentId].acpRegistryEquivalents.includes(
+        registryId,
+      ),
+    ) ?? null
+  );
 }
 
 function planSessionModes(): AgentSessionMode[] {
@@ -197,7 +155,7 @@ export function getBuiltInAgentDescriptor(
 ): AgentDescriptor {
   return {
     id: agentId,
-    label: builtInAgentTraits[agentId].label,
+    label: builtInAgentManifests[agentId].label,
     availability: "available",
     capabilities: getFallbackAgentCapabilities(agentId),
   };

@@ -1,5 +1,7 @@
 import {
   type AcpRegistryInstalledAgent,
+  BUILT_IN_AGENT_IDS,
+  builtInAgentManifests,
   getAcpRegistryId,
   getBuiltInAgentDescriptor,
   getFallbackAgentCapabilities,
@@ -16,24 +18,15 @@ interface AgentDefinition {
   runtime: AgentRuntimeOwnership;
 }
 
-const definitions: AgentDefinition[] = [
-  {
-    runtime: { executableName: "claude", kind: "external" },
-    descriptor: getBuiltInAgentDescriptor("claude-agent"),
-  },
-  {
-    runtime: { executableName: "codex", kind: "external" },
-    descriptor: getBuiltInAgentDescriptor("codex"),
-  },
-  {
-    runtime: { executableName: "opencode", kind: "external" },
-    descriptor: getBuiltInAgentDescriptor("opencode"),
-  },
-  {
-    runtime: { kind: "builtin" },
-    descriptor: getBuiltInAgentDescriptor("pi"),
-  },
-];
+const definitions: AgentDefinition[] = BUILT_IN_AGENT_IDS.map((agentId) => {
+  const { executable } = builtInAgentManifests[agentId];
+  return {
+    runtime: executable
+      ? { executableName: executable, kind: "external" }
+      : { kind: "builtin" },
+    descriptor: getBuiltInAgentDescriptor(agentId),
+  };
+});
 
 function cloneDescriptor(descriptor: AgentDescriptor): AgentDescriptor {
   return {

@@ -2,7 +2,12 @@ import { readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import type { ListSlashCommandsPayload } from "@cocurdex/agent-core";
-import type { AgentId, AgentSlashCommand } from "@cocurdex/shared";
+import {
+  type AgentId,
+  type AgentSkillConvention,
+  type AgentSlashCommand,
+  getBuiltInAgentManifest,
+} from "@cocurdex/shared";
 import { parse } from "yaml";
 
 interface SkillFrontmatter {
@@ -30,50 +35,28 @@ function extractFrontmatter(content: string): SkillFrontmatter | null {
   }
 }
 
+const DEFAULT_SKILL_CONVENTION: AgentSkillConvention = {
+  homeDirs: [[".agents", "skills"]],
+  workspaceDirs: [[".agents", "skills"]],
+  invocation: (name) => `/${name} `,
+};
+
+function getSkillConvention(agentId: AgentId): AgentSkillConvention {
+  return getBuiltInAgentManifest(agentId)?.skills ?? DEFAULT_SKILL_CONVENTION;
+}
+
 function getAgentSkillRoots(
   agentId: AgentId,
   workspaceRootPath: string,
   homePath: string,
 ): string[] {
-  const roots = [
-    path.join(homePath, ".agents", "skills"),
-    path.join(workspaceRootPath, ".agents", "skills"),
+  const { homeDirs, workspaceDirs } = getSkillConvention(agentId);
+  return [
+    ...homeDirs.map((segments) => path.join(homePath, ...segments)),
+    ...workspaceDirs.map((segments) =>
+      path.join(workspaceRootPath, ...segments),
+    ),
   ];
-
-  if (agentId === "claude-agent") {
-    roots.push(
-      path.join(homePath, ".claude", "skills"),
-      path.join(workspaceRootPath, ".claude", "skills"),
-    );
-  }
-  if (agentId === "codex") {
-    roots.push(
-      path.join(homePath, ".codex", "skills"),
-      path.join(workspaceRootPath, ".codex", "skills"),
-    );
-  }
-  if (agentId === "opencode") {
-    roots.push(
-      path.join(homePath, ".config", "opencode", "skills"),
-      path.join(homePath, ".opencode", "skills"),
-      path.join(workspaceRootPath, ".opencode", "skills"),
-    );
-  }
-
-  return roots;
-}
-
-function getSkillInvocation(agentId: AgentId, skillName: string): string {
-  switch (agentId) {
-    case "codex":
-      return `$${skillName} `;
-    case "pi":
-      return `/skill:${skillName} `;
-    case "opencode":
-      return `Use the \`${skillName}\` skill. `;
-    default:
-      return `/${skillName} `;
-  }
 }
 
 async function readSkill(
@@ -96,7 +79,7 @@ async function readSkill(
     return {
       name,
       description: description || undefined,
-      invocation: getSkillInvocation(agentId, name),
+      invocation: getSkillConvention(agentId).invocation(name),
       source: "skill",
     };
   } catch {

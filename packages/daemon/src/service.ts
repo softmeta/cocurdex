@@ -127,7 +127,6 @@ import {
   postedMessagesSinceReply,
 } from "./personal";
 import { DaemonProviderService } from "./provider";
-import { CodexLoginSessions } from "./provider/codex-login";
 import { withServerProviderConnection } from "./provider/server-connection";
 import {
   generateProviderSessionTitle,
@@ -253,7 +252,6 @@ export class CocurdexDaemonService {
   readonly applications: ApplicationService;
   readonly pdfAnnotationsService: DaemonPdfAnnotationsService;
   readonly attachments: DaemonAttachmentStore;
-  readonly codexLogins = new CodexLoginSessions();
   readonly workspaces: WorkspaceHost;
   readonly settings: DaemonSettingsService;
   readonly runtime: AgentRuntimeManager;

@@ -12,9 +12,6 @@ import type {
   AgentRateLimitsReadResult,
   AgentRunLimits,
   AgentSessionMode,
-  CodexAccountState,
-  CodexLoginOutcome,
-  CodexLoginStartResult,
   CompatibleProviderModel,
   InstalledSkillDetail,
   McpConfigFile,
@@ -123,11 +120,6 @@ export type AgentsRequests = {
   "provider.auth.login.cancel": { loginId: string };
   "provider.importJson": { json: string };
   "provider.exportJson": undefined;
-  "codex.account.read": undefined;
-  "codex.logout": undefined;
-  "codex.login.start": undefined;
-  "codex.login.wait": { loginId: string };
-  "codex.login.cancel": { loginId: string };
   "mcp.readConfig": undefined;
   "mcp.saveConfig": { content: string };
   "mcp.readProjectConfig": { workspaceId: string };
@@ -222,11 +214,6 @@ export type AgentsResults = {
   "provider.auth.login.cancel": null;
   "provider.importJson": ProviderImportResult;
   "provider.exportJson": PiModelsJson;
-  "codex.account.read": CodexAccountState;
-  "codex.logout": null;
-  "codex.login.start": CodexLoginStartResult;
-  "codex.login.wait": CodexLoginOutcome;
-  "codex.login.cancel": null;
   "mcp.readConfig": McpConfigFile;
   "mcp.saveConfig": McpConfigFile;
   "mcp.readProjectConfig": McpProjectConfigFile;
