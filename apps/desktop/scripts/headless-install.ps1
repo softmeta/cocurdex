@@ -97,7 +97,14 @@ if (-not $env:COCURDEX_NO_MODIFY_PATH -and $entries -notcontains $binDir) {
 $installed = (Get-Content (Join-Path $installDir 'VERSION'))[0]
 Write-Host "Installed $installed to $installDir"
 if ($wasRunning) {
-  & $launcher daemon status | Out-Null
+  # A call operator child inherits this shell's handles and passes them on to the daemon the CLI
+  # launches, which then holds a capturing caller's pipes open. ShellExecute inherits none.
+  $restart = Start-Process -FilePath $launcher -ArgumentList 'daemon', 'status' -WindowStyle Hidden -PassThru
+  $null = $restart.Handle
+  $restart.WaitForExit()
+  if ($restart.ExitCode -ne 0) {
+    throw "cocurdex install: could not restart the daemon; run ``cocurdex daemon status`` to start it"
+  }
   Write-Host 'Restarted the daemon'
 }
 Write-Host 'Run `cocurdex daemon background on` to start the daemon when you sign in'
