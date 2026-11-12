@@ -19,6 +19,10 @@ import {
   handleDaemonBackgroundCommand,
 } from "./daemon-background-command";
 import { withDaemon } from "./daemon-command";
+import {
+  daemonStopUsageLines,
+  handleDaemonStopCommand,
+} from "./daemon-stop-command";
 import { handleDeckCommand } from "./deck-commands";
 import {
   diagnosticsUsageLines,
@@ -238,6 +242,11 @@ async function main(rawArgs: string[]) {
   if (resource === "daemon" && action === "status") {
     const status = await withDaemon(() => requestDaemon("daemon.status"));
     printResult(status, parsed);
+    return;
+  }
+
+  if (resource === "daemon" && action === "stop") {
+    await handleDaemonStopCommand(parsed);
     return;
   }
 
@@ -523,6 +532,7 @@ function usageLines(): string[] {
     "  cocurdex search <query> [--kind note|issue] [--workspace <id>] [--json]",
     ...skillsUsageLines(),
     ...diagnosticsUsageLines(),
+    ...daemonStopUsageLines(),
     ...daemonBackgroundUsageLines(),
     ...webUsageLines(),
     ...hostUsageLines(),

@@ -27,6 +27,7 @@ async function linuxService(
     target: launchCommand
       ? {
           platform: "linux",
+          runtime: "app",
           launchCommand,
           userDataPath,
           defaultUserDataPath: userDataPath,
@@ -54,6 +55,7 @@ describe("daemon background mode", () => {
       enabled: true,
       available: true,
       registered: true,
+      startsAt: "login",
     });
     const [entry] = await autostartEntries();
     const content = await readFile(
@@ -70,6 +72,7 @@ describe("daemon background mode", () => {
       enabled: false,
       available: true,
       registered: false,
+      startsAt: "login",
     });
     expect(await autostartEntries()).toEqual([]);
   });
@@ -96,6 +99,7 @@ describe("daemon background mode", () => {
       enabled: false,
       available: false,
       registered: false,
+      startsAt: "login",
     });
     await expect(service.set(true, { kind: "local" })).rejects.toThrow(
       "not available",
@@ -108,6 +112,7 @@ describe("daemon background mode", () => {
     const userDataPath = path.join(homeDir, "data");
     const target = (launchCommand: string[]) => ({
       platform: "linux" as const,
+      runtime: "app" as const,
       launchCommand,
       userDataPath,
       defaultUserDataPath: userDataPath,

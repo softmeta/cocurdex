@@ -39,10 +39,17 @@ export class DaemonBackgroundService {
   }
 
   async status(): Promise<DaemonBackgroundStatus> {
+    const registered = this.item
+      ? await this.store.installed(this.item)
+      : false;
     return {
       enabled: await this.enabled(),
       available: this.item !== null,
-      registered: this.item ? await this.store.installed(this.item) : false,
+      registered,
+      startsAt:
+        this.item && registered
+          ? await this.store.startsAt(this.item)
+          : "login",
     };
   }
 

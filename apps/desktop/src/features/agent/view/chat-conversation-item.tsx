@@ -65,7 +65,11 @@ import {
   getSegmentKey,
   groupActivityWithFollowingItem,
 } from "./chat-segment-groups";
-import type { ConversationGroup, TimelineGroup } from "./chat-timeline";
+import type {
+  ConversationGroup,
+  ConversationRenderSegment,
+  TimelineGroup,
+} from "./chat-timeline";
 import {
   findConversationTurnStats,
   getDisplayedItems,
@@ -79,6 +83,7 @@ import { MessageOriginLine } from "./message-origin-line";
 import { turnStatsByMessageAtom } from "./message-store";
 import { MessageTime } from "./message-time";
 import { PeerPrompt } from "./peer-prompt";
+import { useLiveActivityText } from "./use-live-activity-text";
 import { useMessageFilePathHandlers } from "./use-message-file-path-handlers";
 
 function getMessageArticleClassName(
@@ -630,6 +635,24 @@ function getTurnPhase(
   return turnStats?.stopReason === "cancelled" ? "interrupted" : "completed";
 }
 
+function getTurnWorkSegment(
+  segments: ConversationRenderSegment[],
+  phase: TurnPhase,
+  turnEndMessageId: string | null | undefined,
+) {
+  if (phase === "live") {
+    return segments.find((segment) => segment.kind === "activity");
+  }
+  if (turnEndMessageId === null) {
+    return segments.at(-1);
+  }
+  const turnEndIndex = segments.findIndex(
+    (segment) =>
+      segment.kind === "item" && segment.item.id === turnEndMessageId,
+  );
+  return segments[turnEndIndex - 1];
+}
+
 export const ChatConversationItem = memo(function ChatConversationItem({
   activity,
   conversationGroup,
@@ -686,19 +709,16 @@ export const ChatConversationItem = memo(function ChatConversationItem({
   const isStopped = phase === "interrupted";
   const showStoppedInActions =
     isStopped && showMessageActions && turnEndMessageId != null;
-  const turnWorkSegment =
-    turnEndMessageId === null
-      ? segments.at(-1)
-      : segments[
-          segments.findIndex(
-            (segment) =>
-              segment.kind === "item" && segment.item.id === turnEndMessageId,
-          ) - 1
-        ];
+  const turnWorkSegment = getTurnWorkSegment(segments, phase, turnEndMessageId);
 
+  const liveText = useLiveActivityText(showActivity ? activity : null);
   const liveLabel =
     showActivity && activity && activity.kind !== "responding" ? (
-      <ActivityLiveLabel activity={activity} runStartedAt={runStartedAt} />
+      <ActivityLiveLabel
+        activity={activity}
+        runStartedAt={runStartedAt}
+        text={liveText}
+      />
     ) : null;
   const lastSegment = segments.at(-1);
   const liveSegment =

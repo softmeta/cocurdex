@@ -20,6 +20,7 @@ import {
   createAttachmentHttpHandler,
   isAttachmentHttpRequest,
 } from "./attachment-http";
+import type { DaemonRuntime } from "./background";
 import { createCommandReceiptLog } from "./command-receipt-log";
 import { prepareDaemonEndpoint, probeDaemonEndpoint } from "./daemon-endpoint";
 import {
@@ -81,7 +82,7 @@ import {
 } from "./workspace-file-http";
 
 interface StartDaemonServerOptions {
-  appLaunchCommand?: readonly string[] | null;
+  runtime?: DaemonRuntime;
   logging?: DaemonLogging;
   runtimeFingerprint: string;
   token: string;
@@ -567,13 +568,15 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       agentToolsUrl,
       localToken: options.token,
       autoStartMemory: process.env.COCURDEX_DISABLE_MEMORY_AUTO_START !== "1",
-      appLaunchCommand: options.appLaunchCommand,
+      runtime: options.runtime,
     });
     const activeService = service;
     health = createDaemonHealthMonitor({
       pid: process.pid,
       startedAt,
       databasePath: getDatabasePath(userDataPath),
+      credentialStore: () =>
+        activeService.providerCredentials.credentialStore(),
       activeRequests: () => gate.activeRequestCount,
       activeWork: () => activeService.getActiveWork(),
       connections: () => ({

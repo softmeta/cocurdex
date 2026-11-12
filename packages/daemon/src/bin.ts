@@ -1,16 +1,41 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
+import path from "node:path";
 import { formatErrorForLog } from "@cocurdex/shared/node";
-import { resolveAppLaunchCommand } from "./background";
+import {
+  type DaemonRuntime,
+  parseBackgroundLaunch,
+  resolveDaemonRuntime,
+} from "./background";
 import { configureDaemonLogging } from "./daemon-logging";
 import { logDaemonDiagnostic } from "./diagnostics";
-import { getConfiguredUserDataPath } from "./paths";
+import {
+  COCURDEX_USER_DATA_PATH_ENV,
+  getConfiguredUserDataPath,
+} from "./paths";
 import { startDaemonServer } from "./wire";
 
 const CRASH_SHUTDOWN_DEADLINE_MS = 5_000;
 
+function headlessWebRoot(runtime: DaemonRuntime, scriptPath: string) {
+  if (runtime.kind !== "headless") return undefined;
+  const webRoot = path.resolve(path.dirname(scriptPath), "..", "web");
+  return existsSync(path.join(webRoot, "index.html")) ? webRoot : undefined;
+}
+
 function startDaemonProcess() {
+  const runtime = resolveDaemonRuntime({
+    env: process.env,
+    execPath: process.execPath,
+    execArgv: process.execArgv,
+    scriptPath: process.argv[1],
+    electronVersion: process.versions.electron,
+  });
+  const background = parseBackgroundLaunch(process.argv);
+  if (runtime.kind === "headless" && background?.userDataPath) {
+    process.env[COCURDEX_USER_DATA_PATH_ENV] = background.userDataPath;
+  }
   const logging = configureDaemonLogging({
     userDataPath: getConfiguredUserDataPath(),
     echoToTerminal: process.stdout.isTTY === true,
@@ -139,16 +164,14 @@ function startDaemonProcess() {
   }
 
   void startDaemonServer({
-    appLaunchCommand: resolveAppLaunchCommand({
-      env: process.env,
-      execPath: process.execPath,
-      electronVersion: process.versions.electron,
-    }),
+    runtime,
     logging,
     runtimeFingerprint,
     token,
     webSocketPort,
-    webRoot: process.env.COCURDEX_WEB_ROOT || undefined,
+    webRoot:
+      process.env.COCURDEX_WEB_ROOT ||
+      headlessWebRoot(runtime, process.argv[1] ?? ""),
     onIdleShutdown: () => process.exit(0),
   })
     .then((daemon) => {

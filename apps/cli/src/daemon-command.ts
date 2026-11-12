@@ -1,7 +1,10 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { readDaemonMetadata, requestDaemon } from "@cocurdex/daemon/client";
 import { withoutNodeEnvProxyFlag } from "@cocurdex/shared";
+import { headlessDaemonCommand } from "./headless-daemon";
 import { findMonorepoRoot, launchBackgroundDaemon } from "./open-desktop";
 
 export async function withDaemon<T>(operation: () => Promise<T>) {
@@ -13,9 +16,31 @@ export async function withDaemon<T>(operation: () => Promise<T>) {
   return operation();
 }
 
+function spawnDetached(command: string, args: string[], cwd?: string) {
+  const child = spawn(command, args, {
+    cwd,
+    detached: true,
+    env: withoutNodeEnvProxyFlag(process.env),
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  child.unref();
+}
+
 async function startDaemon() {
   if (process.versions.electron) {
     await launchBackgroundDaemon();
+    return waitForDaemon();
+  }
+  const headless = headlessDaemonCommand({
+    cliDir: path.dirname(fileURLToPath(import.meta.url)),
+    execPath: process.execPath,
+    platform: process.platform,
+    exists: existsSync,
+  });
+  if (headless) {
+    const [runtime, ...args] = headless;
+    spawnDetached(runtime, [...process.execArgv, ...args]);
     return waitForDaemon();
   }
   const monorepoRoot = await findMonorepoRoot();
@@ -26,18 +51,11 @@ async function startDaemon() {
   }
 
   const daemonRoot = path.join(monorepoRoot, "packages", "daemon");
-  const child = spawn(
+  spawnDetached(
     process.execPath,
     ["--import", "tsx", path.join("src", "bin.ts")],
-    {
-      cwd: daemonRoot,
-      detached: true,
-      env: withoutNodeEnvProxyFlag(process.env),
-      stdio: "ignore",
-      windowsHide: true,
-    },
+    daemonRoot,
   );
-  child.unref();
   return waitForDaemon();
 }
 

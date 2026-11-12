@@ -439,6 +439,77 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --clobber
 
+  headless:
+    name: Headless ${{ matrix.target }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: darwin-arm64
+            runner: macos-26
+          - target: darwin-x64
+            runner: macos-26-intel
+          - target: win32-x64
+            runner: windows-latest
+          - target: linux-x64
+            runner: ubuntu-latest
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+
+      - name: Restore pnpm store
+        uses: ./.github/actions/restore-pnpm-store
+
+      - name: Install native build tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y python3 make g++
+
+      - name: Stamp release version
+        if: github.ref_type == 'tag'
+        run: node scripts/release.mjs stamp "${GITHUB_REF_NAME}"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build headless archive
+        run: pnpm --filter @cocurdex/desktop dist:headless
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+
+      - name: Test headless archive
+        run: pnpm --filter @cocurdex/e2e test:headless
+
+      - name: Upload headless archive
+        if: github.ref_type == 'tag'
+        working-directory: apps/desktop/release/headless
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEADLESS_TARGET: ${{ matrix.target }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" \
+            cocurdex-headless-${HEADLESS_TARGET}.* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --clobber
+
   android:
     name: Android (Google Play internal and APKs)
     needs: prepare
@@ -766,6 +837,7 @@ jobs:
       - macos
       - windows
       - linux
+      - headless
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -809,6 +881,17 @@ jobs:
           gh release upload "${GITHUB_REF_NAME}" promoted-apks/* \
             --repo "${GITHUB_REPOSITORY}" --clobber
 
+      - name: Upload headless install scripts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p install-scripts
+          cp apps/desktop/scripts/headless-install.sh install-scripts/install.sh
+          cp apps/desktop/scripts/headless-install.ps1 install-scripts/install.ps1
+          gh release upload "${GITHUB_REF_NAME}" install-scripts/* \
+            --repo "${GITHUB_REPOSITORY}" --clobber
+
       - name: Upload unified SHA256SUMS
         env:
           GH_TOKEN: ${{ github.token }}
@@ -845,10 +928,11 @@ jobs:
       - macos
       - windows
       - linux
+      - headless
       - android
       - ios
       - publish
-    if: ${{ always() && github.ref_type == 'tag' && needs.prepare.result != 'skipped' && (needs.prepare.result != 'success' || needs.macos.result != 'success' || needs.windows.result != 'success' || needs.linux.result != 'success' || needs.publish.result != 'success') }}
+    if: ${{ always() && github.ref_type == 'tag' && needs.prepare.result != 'skipped' && (needs.prepare.result != 'success' || needs.macos.result != 'success' || needs.windows.result != 'success' || needs.linux.result != 'success' || needs.headless.result != 'success' || needs.publish.result != 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

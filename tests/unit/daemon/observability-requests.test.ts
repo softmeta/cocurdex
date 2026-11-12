@@ -22,6 +22,7 @@ async function observability() {
     pid: process.pid,
     startedAt: "2026-10-24T00:00:00.000Z",
     databasePath: path.join(userDataPath, "cocurdex.sqlite"),
+    credentialStore: async () => "keyring",
     activeRequests: () => 2,
     activeWork: () => ({
       agentTurns: 1,

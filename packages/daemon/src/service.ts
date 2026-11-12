@@ -85,7 +85,7 @@ import { resolveApplicationPrincipal } from "./application-principal";
 import { ApplicationService } from "./application-service";
 import { AssistantSessions } from "./assistant/assistant-sessions";
 import { DaemonAttachmentStore } from "./attachment-store";
-import { DaemonBackgroundService } from "./background";
+import { DaemonBackgroundService, type DaemonRuntime } from "./background";
 import { DaemonCommitMessageService } from "./commit-message";
 import { DaemonSettingsService } from "./daemon-settings";
 import { DaemonDataService } from "./data-service";
@@ -134,6 +134,8 @@ import {
   generateSessionText,
 } from "./provider/session-title";
 import {
+  createCredentialVault,
+  headlessCredentialStore,
   ProviderCredentials,
   ProviderLoginSessions,
 } from "./provider-credentials";
@@ -203,7 +205,7 @@ export interface CocurdexDaemonServiceOptions {
   agentToolsUrl?: string;
   localToken?: string;
   autoStartMemory?: boolean;
-  appLaunchCommand?: readonly string[] | null;
+  runtime?: DaemonRuntime;
 }
 
 export interface CocurdexDaemonStatus {
@@ -340,18 +342,21 @@ export class CocurdexDaemonService {
       identity: () => this.hostAccess.identity(),
       crypto: daemonNoiseCrypto,
     });
+    const runtime = options.runtime ?? { kind: "source" };
     this.background = new DaemonBackgroundService({
       settings: this.state.hostAccessStore.settings,
-      target: options.appLaunchCommand
-        ? {
-            platform: process.platform,
-            launchCommand: options.appLaunchCommand,
-            userDataPath: options.userDataPath,
-            defaultUserDataPath: getDefaultUserDataPath(),
-            homeDir: homedir(),
-            xdgConfigHome: process.env.XDG_CONFIG_HOME,
-          }
-        : null,
+      target:
+        runtime.kind !== "source"
+          ? {
+              platform: process.platform,
+              runtime: runtime.kind,
+              launchCommand: runtime.launchCommand,
+              userDataPath: options.userDataPath,
+              defaultUserDataPath: getDefaultUserDataPath(),
+              homeDir: homedir(),
+              xdgConfigHome: process.env.XDG_CONFIG_HOME,
+            }
+          : null,
     });
     this.dataService = new DaemonDataService(this.state, this.events);
     this.decks = new DaemonDeckService(
@@ -446,6 +451,12 @@ export class CocurdexDaemonService {
     this.providerCredentials = new ProviderCredentials(
       this.state,
       options.userDataPath,
+      createCredentialVault(options.userDataPath, {
+        store:
+          runtime.kind === "headless"
+            ? headlessCredentialStore(process.platform)
+            : "keyring",
+      }),
     );
     this.providerLogins = new ProviderLoginSessions(
       (providerId, method, interaction) =>

@@ -105,8 +105,8 @@ jobs:
             pnpm exec turbo run "$@" ${affected:+--affected} --dry=json |
               jq '[.tasks[] | select(.command != "<NONEXISTENT>")] | length > 0'
           }
-          run_native="$(selected test test:desktop)"
-          run_linux="$(selected test:desktop test:ui check:startup-bundle)"
+          run_native="$(selected test test:desktop test:headless)"
+          run_linux="$(selected test:desktop test:headless test:ui check:startup-bundle)"
           run_mobile=true
           if [[ "${comparable}" == "true" ]]; then
             run_mobile="$(pnpm exec turbo ls --affected --output=json |
@@ -287,7 +287,7 @@ jobs:
           COCURDEX_TEST_ARTIFACTS_DIR: ${{ runner.temp }}/desktop-tests
       - name: Test built desktop
         if: ${{ !cancelled() && env.RUN == 'true' && runner.os != 'Linux' }}
-        run: pnpm exec turbo run test:desktop ${AFFECTED:+--affected}
+        run: pnpm exec turbo run test:desktop test:headless ${AFFECTED:+--affected}
         env:
           GH_TOKEN: ${{ github.token }}
           COCURDEX_TEST_ARTIFACTS_DIR: ${{ runner.temp }}/desktop-tests
@@ -300,7 +300,7 @@ jobs:
           sudo chmod 4755 "$sandbox"
       - name: Test built desktop and UI scenarios
         if: env.RUN == 'true' && runner.os == 'Linux'
-        run: xvfb-run -a pnpm exec turbo run test:desktop test:ui check:startup-bundle ${AFFECTED:+--affected} --concurrency 1 --continue
+        run: xvfb-run -a pnpm exec turbo run test:desktop test:headless test:ui check:startup-bundle ${AFFECTED:+--affected} --concurrency 1 --continue
         env:
           GH_TOKEN: ${{ github.token }}
           COCURDEX_SCENARIO_RENDERER: built
