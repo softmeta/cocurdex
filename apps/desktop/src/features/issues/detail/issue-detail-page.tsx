@@ -9,7 +9,7 @@ import {
   MarkdownBodyEditor,
   type MarkdownBodyEditorHandle,
 } from "@/components/markdown-body-editor";
-import { Text } from "@/components/ui";
+import { ScrollArea, Text } from "@/components/ui";
 import {
   type IssueDetailState,
   saveIssueDetailAtom,
@@ -81,7 +81,7 @@ export function IssueDetailPage({
         </div>
         {stepper ? <IssueStepControls stepper={stepper} /> : null}
       </PanelToolbar>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="mx-auto flex w-full max-w-3xl flex-col pb-10">
           <IssueTextFields
             key={`${card.id}-${bodyEpoch}`}
@@ -120,7 +120,7 @@ export function IssueDetailPage({
             </>
           ) : null}
         </div>
-      </div>
+      </ScrollArea>
     </article>
   );
 }
