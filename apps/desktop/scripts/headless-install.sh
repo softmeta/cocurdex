@@ -84,7 +84,7 @@ if [ -x "$install_dir/bin/cocurdex" ]; then
       was_running=1
       echo "Stopped the daemon to upgrade it"
       ;;
-    *'"notRunning"'*) ;;
+    *'"notRunning"'*) echo "No running daemon to stop" ;;
     *) fail "unexpected output from cocurdex daemon stop: $stop_result" ;;
   esac
 fi

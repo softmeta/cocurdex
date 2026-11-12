@@ -63,7 +63,9 @@ try {
     if ($stopStatus -eq 'stopped') {
       $wasRunning = $true
       Write-Host 'Stopped the daemon to upgrade it'
-    } elseif ($stopStatus -ne 'notRunning') {
+    } elseif ($stopStatus -eq 'notRunning') {
+      Write-Host 'No running daemon to stop'
+    } else {
       throw "cocurdex install: unexpected output from cocurdex daemon stop`n$stopResult"
     }
   }

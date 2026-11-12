@@ -164,7 +164,9 @@ describe("headless install script", () => {
     const output = await withDaemonLog(async () => {
       const result = await install();
       if (!result.includes("Restarted the daemon")) {
-        throw new Error(`Install did not restart the daemon:\n${result}`);
+        throw new Error(
+          `Install did not restart the daemon (old daemon ${before.pid} alive: ${isAlive(before.pid)}):\n${result}`,
+        );
       }
       return result;
     });
