@@ -3020,6 +3020,9 @@ export default interface Resources {
       title: "Open source licenses";
       view: "View";
     };
+    masterDetail: {
+      back: "Back to list";
+    };
     mcp: {
       actions: {
         remove: "Remove";
@@ -3599,6 +3602,7 @@ export default interface Resources {
     sidebar: {
       backToApp: "Back to app";
       clearSearch: "Clear search";
+      label: "Settings navigation";
       resize: "Resize settings sidebar";
       search: "Search settings";
       searchEmpty: "No matching settings";

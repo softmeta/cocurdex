@@ -10,6 +10,10 @@ import { mutate } from "swr";
 import { Text } from "@/components/ui";
 import { desktopApi } from "@/lib";
 import { JsonDropArea } from "../json-drop-area";
+import {
+  SettingsMasterDetail,
+  type SettingsPane,
+} from "../settings-master-detail";
 import { McpAgentsSection } from "./mcp-agents-section";
 import { McpEmptyState } from "./mcp-empty-state";
 import { McpImportDialog } from "./mcp-import-dialog";
@@ -68,6 +72,7 @@ export function McpSettingsPanel() {
   const [mode, setMode] = useState<McpEditorMode>("form");
   const [query, setQuery] = useState("");
   const [selection, setSelection] = useState<McpSelection | null>(null);
+  const [pane, setPane] = useState<SettingsPane>("list");
   const [importState, setImportState] = useState<ImportState | null>(null);
   const [importSession, setImportSession] = useState(0);
   const importSessionRef = useRef(0);
@@ -159,6 +164,7 @@ export function McpSettingsPanel() {
   };
 
   const startNewServer = () => {
+    setPane("detail");
     setNewServerStatus(null);
     setSelection({ scope: "new" });
   };
@@ -230,76 +236,86 @@ export function McpSettingsPanel() {
         />
       ) : null}
       {view === "servers" ? (
-        <JsonDropArea
-          className="gap-6"
-          messages={jsonMessages}
-          onText={importJsonText}
-        >
-          <McpServerList
-            project={mcp.project?.servers ?? null}
-            query={query}
-            selection={active}
-            servers={listedServers}
-            status={mcp.status}
-            workspaceName={mcp.workspaceName}
-            onAdd={startNewServer}
-            onImport={() => void scanAgents()}
-            onQueryChange={setQuery}
-            onSelect={setSelection}
-            onText={importJsonText}
+        <JsonDropArea messages={jsonMessages} onText={importJsonText}>
+          <SettingsMasterDetail
+            pane={pane}
+            onBack={() => setPane("list")}
+            list={
+              <McpServerList
+                project={mcp.project?.servers ?? null}
+                query={query}
+                selection={active}
+                servers={listedServers}
+                status={mcp.status}
+                workspaceName={mcp.workspaceName}
+                onAdd={startNewServer}
+                onImport={() => void scanAgents()}
+                onQueryChange={setQuery}
+                onSelect={(next) => {
+                  setSelection(next);
+                  setPane("detail");
+                }}
+                onText={importJsonText}
+              />
+            }
+            detail={
+              <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+                <div className="flex min-w-0 flex-col gap-6 pe-1">
+                  {detail && active ? (
+                    <McpServerDetail
+                      config={detail.config}
+                      key={detail.key}
+                      name={detail.name}
+                      otherNames={globalNames.filter(
+                        (name) =>
+                          active.scope === "new" || name !== detail.name,
+                      )}
+                      scope={active.scope}
+                      sourcePath={detail.sourcePath}
+                      status={detailStatus}
+                      workspaceId={mcp.workspaceId}
+                      onEnabledSaved={(file) => {
+                        applySaved(file);
+                        void mcp.refreshServerStatus(detail.name);
+                      }}
+                      onRemoved={(file) => {
+                        applySaved(file);
+                        mcp.forgetStatus(detail.name);
+                        setSelection(null);
+                      }}
+                      onSaved={(file, name) => {
+                        applySaved(file);
+                        if (name !== detail.name) mcp.forgetStatus(detail.name);
+                        setSelection({ scope: "global", name });
+                        void mcp.refreshServerStatus(name);
+                      }}
+                      onSignInChanged={(name) =>
+                        void mcp.refreshServerStatus(name)
+                      }
+                      onTested={(result) => {
+                        if (active.scope === "new") setNewServerStatus(result);
+                        else mcp.applyStatus(result);
+                      }}
+                    />
+                  ) : null}
+                  {detail && active?.scope === "global" ? (
+                    <McpAgentsSection
+                      config={detail.config}
+                      key={`${detail.key}:agents`}
+                      name={detail.name}
+                      onSaved={applySaved}
+                    />
+                  ) : null}
+                  {detail ? (
+                    <McpToolsCard
+                      isChecking={mcp.status.isChecking && !detailStatus}
+                      status={detailStatus}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            }
           />
-          <div className="min-h-0 min-w-0 flex-1 overflow-auto">
-            <div className="flex min-w-0 flex-col gap-6 pe-1">
-              {detail && active ? (
-                <McpServerDetail
-                  config={detail.config}
-                  key={detail.key}
-                  name={detail.name}
-                  otherNames={globalNames.filter(
-                    (name) => active.scope === "new" || name !== detail.name,
-                  )}
-                  scope={active.scope}
-                  sourcePath={detail.sourcePath}
-                  status={detailStatus}
-                  workspaceId={mcp.workspaceId}
-                  onEnabledSaved={(file) => {
-                    applySaved(file);
-                    void mcp.refreshServerStatus(detail.name);
-                  }}
-                  onRemoved={(file) => {
-                    applySaved(file);
-                    mcp.forgetStatus(detail.name);
-                    setSelection(null);
-                  }}
-                  onSaved={(file, name) => {
-                    applySaved(file);
-                    if (name !== detail.name) mcp.forgetStatus(detail.name);
-                    setSelection({ scope: "global", name });
-                    void mcp.refreshServerStatus(name);
-                  }}
-                  onSignInChanged={(name) => void mcp.refreshServerStatus(name)}
-                  onTested={(result) => {
-                    if (active.scope === "new") setNewServerStatus(result);
-                    else mcp.applyStatus(result);
-                  }}
-                />
-              ) : null}
-              {detail && active?.scope === "global" ? (
-                <McpAgentsSection
-                  config={detail.config}
-                  key={`${detail.key}:agents`}
-                  name={detail.name}
-                  onSaved={applySaved}
-                />
-              ) : null}
-              {detail ? (
-                <McpToolsCard
-                  isChecking={mcp.status.isChecking && !detailStatus}
-                  status={detailStatus}
-                />
-              ) : null}
-            </div>
-          </div>
         </JsonDropArea>
       ) : null}
 

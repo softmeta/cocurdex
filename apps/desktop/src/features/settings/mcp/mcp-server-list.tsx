@@ -104,7 +104,7 @@ export function McpServerList({
   const isEmpty = globalEntries.length === 0 && projectEntries.length === 0;
 
   return (
-    <div className="flex min-h-0 w-72 shrink-0 flex-col gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex shrink-0 items-center gap-2">
         <div className="min-w-0 flex-1">
           <AppSearchInput
