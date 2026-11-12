@@ -9,7 +9,7 @@ import {
   getAdapterStatus,
   isAdapterSelectable,
 } from "./adapter-status";
-import { agentOptions } from "./agent-options";
+import { BUILT_IN_AGENT_DISPLAY_ORDER } from "./agent-options";
 import { getAgentDisplayLabel } from "./session-agent-state";
 
 export interface AgentSelectOption {
@@ -27,7 +27,7 @@ export function buildAgentSelectOptions(
   const registryAgentIds = agents
     .map((agent) => agent.id)
     .filter(isAcpRegistryAgentId);
-  return [...agentOptions.map((option) => option.id), ...registryAgentIds].map(
+  return [...BUILT_IN_AGENT_DISPLAY_ORDER, ...registryAgentIds].map(
     (agentId) => {
       const agent = byId.get(agentId);
       const status = agent ? getAdapterStatus(agent) : null;

@@ -2,6 +2,7 @@ export * from "./acp";
 export * from "./acp-registry";
 export { readAdapterRateLimits } from "./adapter-rate-limits";
 export * from "./agent-adapter-factory";
+export * from "./agent-native";
 export * from "./claude-cli";
 export * from "./cli";
 export * from "./codex";

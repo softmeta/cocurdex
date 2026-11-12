@@ -1,8 +1,5 @@
 import {
-  listAcpRegistryProviderModels,
-  listClaudeCliProviderModels,
-  listCodexProviderModels,
-  listOpenCodeProviderModels,
+  listAgentModels,
   listPiProviderModels,
 } from "@cocurdex/agent-adapters";
 import {
@@ -12,7 +9,6 @@ import {
   DISABLED_AGENTS_SETTING_KEY,
   filterCompatibleProviderModels,
   getCompatibleProviderApis,
-  isAcpRegistryAgentId,
   type ProviderConfigRecord,
   type ProviderModelRecord,
   parseDisabledAgentIds,
@@ -88,29 +84,14 @@ export async function resolveCommitMessageModel(
     await state.getAppSetting?.(DISABLED_AGENTS_SETTING_KEY),
   );
   if (disabledIds.has(selection.agentId)) throw new Error(NO_MODEL_ERROR);
-  let native: CompatibleProviderModel[] = [];
-  if (isAcpRegistryAgentId(selection.agentId)) {
-    native = await listAcpRegistryProviderModels(selection.agentId);
-  }
-  switch (selection.agentId) {
-    case "claude-agent":
-      native = await listClaudeCliProviderModels();
-      break;
-    case "opencode":
-      native = await listOpenCodeProviderModels();
-      break;
-    case "codex":
-      native = await listCodexProviderModels();
-      break;
-  }
-  let item = native.find(
-    ({ provider, model }) =>
-      provider.id === selection.providerId &&
-      model.modelId === selection.modelId,
-  );
-  if (!item && (selection.agentId === "pi" || selection.agentId === "codex")) {
-    item = await resolveConfiguredModel(state, selection);
-  }
+  const nativeModels = listAgentModels(selection.agentId);
+  const item = nativeModels
+    ? (await nativeModels).find(
+        ({ provider, model }) =>
+          provider.id === selection.providerId &&
+          model.modelId === selection.modelId,
+      )
+    : await resolveConfiguredModel(state, selection);
   if (!item) throw new Error(NO_MODEL_ERROR);
   return {
     agentId: selection.agentId,

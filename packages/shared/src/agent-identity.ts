@@ -7,6 +7,8 @@ export const BUILT_IN_AGENT_IDS = [
 
 export type BuiltInAgentId = (typeof BUILT_IN_AGENT_IDS)[number];
 
+export const DEFAULT_AGENT_ID: BuiltInAgentId = "pi";
+
 export const ACP_REGISTRY_AGENT_ID_PREFIX = "acp:";
 
 export type AcpRegistryAgentId = `acp:${string}`;

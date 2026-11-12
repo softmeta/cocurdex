@@ -9,15 +9,13 @@ import {
   type BuiltInAgentId,
   isAcpRegistryAgentId,
   PLAN_MODE_ID,
-  type ProviderApi,
-  providerApis,
   type SessionTitleStrategy,
   type WriteMode,
 } from "./contracts";
 
 export type AgentThinkingLevelSource = "reasoning-effort" | "app" | "adapter";
 
-export type AgentModelCatalog = "adapter" | "app-providers";
+export type AgentModelCatalog = "agent" | "agent-providers" | "app-providers";
 
 export interface AgentTraits {
   label: string;
@@ -32,7 +30,7 @@ export interface AgentTraits {
   fastMode: boolean;
   documentAttachments: boolean;
   modelCatalog: AgentModelCatalog;
-  providerApis: readonly ProviderApi[];
+  toolApprovals: boolean;
 }
 
 const inSession = "in-session" as const;
@@ -55,8 +53,8 @@ const builtInAgentTraits: Readonly<Record<BuiltInAgentId, AgentTraits>> = {
     thinkingLevels: "adapter",
     fastMode: true,
     documentAttachments: true,
-    modelCatalog: "adapter",
-    providerApis: [],
+    modelCatalog: "agent",
+    toolApprovals: true,
   },
   codex: {
     label: "Codex",
@@ -75,8 +73,8 @@ const builtInAgentTraits: Readonly<Record<BuiltInAgentId, AgentTraits>> = {
     thinkingLevels: "reasoning-effort",
     fastMode: false,
     documentAttachments: false,
-    modelCatalog: "adapter",
-    providerApis: ["openai-responses"],
+    modelCatalog: "agent",
+    toolApprovals: true,
   },
   opencode: {
     label: "OpenCode",
@@ -95,12 +93,8 @@ const builtInAgentTraits: Readonly<Record<BuiltInAgentId, AgentTraits>> = {
     thinkingLevels: null,
     fastMode: false,
     documentAttachments: true,
-    modelCatalog: "adapter",
-    providerApis: [
-      "openai-completions",
-      "openai-responses",
-      "anthropic-messages",
-    ],
+    modelCatalog: "agent-providers",
+    toolApprovals: true,
   },
   pi: {
     label: "Pi",
@@ -115,7 +109,7 @@ const builtInAgentTraits: Readonly<Record<BuiltInAgentId, AgentTraits>> = {
     fastMode: false,
     documentAttachments: false,
     modelCatalog: "app-providers",
-    providerApis: [...providerApis],
+    toolApprovals: false,
   },
 };
 
@@ -139,8 +133,8 @@ function acpRegistryAgentTraits(agentId: AgentId): AgentTraits {
     thinkingLevels: "adapter",
     fastMode: false,
     documentAttachments: profile.documentAttachments === true,
-    modelCatalog: "adapter",
-    providerApis: [],
+    modelCatalog: "agent",
+    toolApprovals: true,
   };
 }
 
@@ -157,8 +151,8 @@ function retiredAgentTraits(agentId: AgentId): AgentTraits {
     thinkingLevels: null,
     fastMode: false,
     documentAttachments: false,
-    modelCatalog: "adapter",
-    providerApis: [],
+    modelCatalog: "agent",
+    toolApprovals: true,
   };
 }
 

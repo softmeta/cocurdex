@@ -124,24 +124,21 @@ export function SessionRuntimeMenu({
           { label: t("modelMenu.fastModeOff"), value: "off" },
         ]
       : [];
-  const openCodeRuntimeOptions =
-    agentType === "opencode"
-      ? getOpenCodeRuntimeOptions(model, providerSnapshot)
-      : { agents: [], variants: [] };
-  const openCodeAgentOptions =
-    agentType === "opencode" && supportsRuntimeAxis("agent")
-      ? openCodeRuntimeOptions.agents.map((agent) => ({
-          label: agent,
-          value: agent,
-        }))
-      : [];
-  const openCodeVariantOptions =
-    agentType === "opencode" && supportsRuntimeAxis("variant")
-      ? openCodeRuntimeOptions.variants.map((variant) => ({
-          label: variant,
-          value: variant,
-        }))
-      : [];
+  const openCodeRuntimeOptions = supportsRuntimeAxis("agent")
+    ? getOpenCodeRuntimeOptions(model, providerSnapshot)
+    : { agents: [], variants: [] };
+  const openCodeAgentOptions = supportsRuntimeAxis("agent")
+    ? openCodeRuntimeOptions.agents.map((agent) => ({
+        label: agent,
+        value: agent,
+      }))
+    : [];
+  const openCodeVariantOptions = supportsRuntimeAxis("variant")
+    ? openCodeRuntimeOptions.variants.map((variant) => ({
+        label: variant,
+        value: variant,
+      }))
+    : [];
   const openCodeAgentValue = resolveOpenCodeRuntimeValue(
     providerSnapshot?.openCodeAgent,
     openCodeRuntimeOptions.agents,

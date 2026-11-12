@@ -21,7 +21,6 @@ vi.mock("@/lib/ipc", () => ({
 }));
 
 const PI_AGENT: AgentId = "pi";
-const CODEX_AGENT: AgentId = "codex";
 const GROK_AGENT: AgentId = "acp:grok-build";
 
 const piItems: CompatibleProviderModel[] = [
@@ -102,39 +101,6 @@ describe("loadProviderModelOptions", () => {
     expect(result.defaultSelection).toMatchObject({
       modelId: "deepseek-v4-flash",
     });
-  });
-
-  it("keeps Codex models on the adapter-owned catalog", async () => {
-    desktopApiMock.getAgentProviderDefault.mockResolvedValue({
-      agentId: CODEX_AGENT,
-      providerId: "openrouter",
-      modelId: "third-party-model",
-      isDefault: true,
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
-    desktopApiMock.listCompatibleProvidersForAgent.mockResolvedValue([
-      {
-        provider: {
-          id: "codex",
-          name: "Codex",
-          baseUrl: "",
-          headersJson: null,
-        },
-        model: {
-          modelId: "gpt-5.5",
-          name: "GPT-5.5",
-          api: "openai-responses",
-        },
-      },
-      piItems[0],
-    ]);
-
-    const result = await loadProviderModelOptions(new Map(), CODEX_AGENT);
-
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.provider.id).toBe("codex");
-    expect(result.defaultSelection).toBeNull();
   });
 
   it("prefers the adapter preference when both selections are configured", () => {

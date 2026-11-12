@@ -40,14 +40,16 @@ function item(
 }
 
 describe("filterCompatibleProviderModels", () => {
-  it("keeps Codex on Responses-compatible models only", () => {
-    const models = filterCompatibleProviderModels("codex", [
-      item("openai-completions"),
-      item("openai-responses"),
-      item("anthropic-messages"),
-    ]);
-
-    expect(models.map(({ model }) => model.api)).toEqual(["openai-responses"]);
+  it("offers no app-configured models to agents that own their catalog", () => {
+    for (const agentId of ["codex", "claude-agent", "opencode"] as const) {
+      expect(
+        filterCompatibleProviderModels(agentId, [
+          item("openai-completions"),
+          item("openai-responses"),
+          item("anthropic-messages"),
+        ]),
+      ).toEqual([]);
+    }
   });
 
   it("lets Pi use app-managed provider apis", () => {

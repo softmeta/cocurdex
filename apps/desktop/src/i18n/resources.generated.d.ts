@@ -417,19 +417,6 @@ export default interface Resources {
       send: "Send";
       stop: "Stop";
     };
-    agentDescriptions: {
-      claudeCli: "Uses the Claude Agent installed and signed in on this computer";
-      claudeCode: "Only uses Anthropic Messages models from cocurdex Providers";
-      codex: "Fast code generation";
-      opencode: "Open-source alternative";
-      pi: "Built-in agent";
-    };
-    agents: {
-      claudeCli: "Claude Agent";
-      codex: "Codex";
-      opencode: "OpenCode";
-      pi: "Pi";
-    };
     git: {
       turnFiles_one: "{{count}} file";
       turnFiles_other: "{{count}} files";

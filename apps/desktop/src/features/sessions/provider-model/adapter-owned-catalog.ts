@@ -5,7 +5,7 @@ import {
 } from "@cocurdex/shared";
 
 export function usesAdapterOwnedModelCatalog(agentId: AgentId) {
-  return getAgentTraits(agentId).modelCatalog === "adapter";
+  return getAgentTraits(agentId).modelCatalog !== "app-providers";
 }
 
 export function usesLazyModelAxesProbe(agentId: AgentId) {

@@ -6,10 +6,7 @@ import type {
 } from "@cocurdex/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const listCodexProviderModelsMock = vi.hoisted(() => vi.fn());
-const listOpenCodeProviderModelsMock = vi.hoisted(() => vi.fn());
-const listClaudeCliProviderModelsMock = vi.hoisted(() => vi.fn());
-const listAcpRegistryProviderModelsMock = vi.hoisted(() => vi.fn());
+const listAgentModelsMock = vi.hoisted(() => vi.fn());
 const listPiProviderModelsMock = vi.hoisted(() => vi.fn());
 const listPiBuiltInProviderIdsMock = vi.hoisted(() => vi.fn());
 const listPiProviderTemplatesMock = vi.hoisted(() => vi.fn());
@@ -18,10 +15,7 @@ const probeAcpRegistryProviderModelAxesMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@cocurdex/agent-adapters", () => ({
   generatePiConversationTitle: generatePiConversationTitleMock,
-  listClaudeCliProviderModels: listClaudeCliProviderModelsMock,
-  listCodexProviderModels: listCodexProviderModelsMock,
-  listAcpRegistryProviderModels: listAcpRegistryProviderModelsMock,
-  listOpenCodeProviderModels: listOpenCodeProviderModelsMock,
+  listAgentModels: listAgentModelsMock,
   listPiBuiltInProviderIds: listPiBuiltInProviderIdsMock,
   listPiProviderModels: listPiProviderModelsMock,
   listPiProviderTemplates: listPiProviderTemplatesMock,
@@ -75,51 +69,40 @@ function createCredentials() {
 
 describe("DaemonProviderService", () => {
   beforeEach(() => {
-    listCodexProviderModelsMock.mockReset();
+    listAgentModelsMock.mockReset().mockReturnValue(null);
     listPiBuiltInProviderIdsMock.mockReset().mockReturnValue([]);
     listPiProviderModelsMock.mockReset();
   });
 
-  it("combines the Codex catalog with compatible provider models", async () => {
-    listCodexProviderModelsMock.mockResolvedValue(codexModels);
-    const service = new DaemonProviderService(
-      createState(),
-      createCredentials(),
-    );
-
-    await expect(
-      service.listCompatibleProviderModels("codex"),
-    ).resolves.toEqual(codexModels);
-    expect(listCodexProviderModelsMock).toHaveBeenCalledOnce();
-  });
-
-  it("returns only the Claude CLI catalog for claude-agent", async () => {
-    const claudeModels = [] as unknown as CompatibleProviderModel[];
-    listClaudeCliProviderModelsMock.mockResolvedValue(claudeModels);
+  it("returns an agent's own catalog without app-configured providers", async () => {
+    listAgentModelsMock.mockResolvedValue(codexModels);
     const state = createState();
     const service = new DaemonProviderService(state, createCredentials());
 
     await expect(
-      service.listCompatibleProviderModels("claude-agent"),
-    ).resolves.toBe(claudeModels);
+      service.listCompatibleProviderModels("codex", { forceRefresh: true }),
+    ).resolves.toBe(codexModels);
+    expect(listAgentModelsMock).toHaveBeenCalledWith("codex", {
+      forceRefresh: true,
+    });
     expect(state.listProviderConfigs).not.toHaveBeenCalled();
   });
 
-  it("forwards forced refreshes to registry agent catalogs", async () => {
-    listAcpRegistryProviderModelsMock.mockResolvedValue([]);
+  it("keeps the picker usable when an agent catalog probe fails", async () => {
+    listAgentModelsMock.mockImplementation(() =>
+      Promise.reject(new Error("probe failed")),
+    );
     const service = new DaemonProviderService(
       createState(),
       createCredentials(),
     );
 
-    await service.listCompatibleProviderModels("acp:grok-build", {
-      forceRefresh: true,
-    });
-
-    expect(listAcpRegistryProviderModelsMock).toHaveBeenCalledWith(
-      "acp:grok-build",
-      { forceRefresh: true },
-    );
+    await expect(
+      service.listCompatibleProviderModels("opencode"),
+    ).resolves.toEqual([]);
+    await expect(
+      service.listCompatibleProviderModels("opencode", { forceRefresh: true }),
+    ).rejects.toThrow("probe failed");
   });
 
   it("probes Devin's per-model axes on demand and not for other agents", async () => {
@@ -281,7 +264,7 @@ describe("DaemonProviderService", () => {
     await expect(
       service.listCompatibleProviderModels("claude-agent"),
     ).resolves.toEqual([]);
-    expect(listClaudeCliProviderModelsMock).not.toHaveBeenCalled();
+    expect(listAgentModelsMock).not.toHaveBeenCalled();
 
     await expect(
       service.probeAgentModelAxes("acp:devin", "claude-opus-5-5-medium"),

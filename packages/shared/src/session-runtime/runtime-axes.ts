@@ -184,8 +184,9 @@ export function getSessionRuntimeAxes(
       traits.fastMode && model.supportsFastMode
         ? (selection.fastMode ?? false)
         : null,
-    openCode:
-      agentId === "opencode" ? openCodeAxis(model, snapshot, selection) : null,
+    openCode: supportsInSessionRuntimeAxis(agentId, "agent")
+      ? openCodeAxis(model, snapshot, selection)
+      : null,
   };
 }
 

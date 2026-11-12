@@ -27,7 +27,7 @@ export function applySessionRuntime(
     ...(supportsInSessionRuntimeAxis(agentId, "speed")
       ? { serviceTier: runtime.serviceTier ?? null }
       : {}),
-    ...(agentId === "opencode"
+    ...(supportsInSessionRuntimeAxis(agentId, "agent")
       ? {
           openCodeAgent: runtime.openCodeAgent ?? null,
           openCodeVariant: runtime.openCodeVariant ?? null,

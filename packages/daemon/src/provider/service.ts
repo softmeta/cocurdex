@@ -1,8 +1,5 @@
 import {
-  listAcpRegistryProviderModels,
-  listClaudeCliProviderModels,
-  listCodexProviderModels,
-  listOpenCodeProviderModels,
+  listAgentModels,
   listPiBuiltInProviderIds,
   listPiProviderTemplates,
   probeAcpRegistryProviderModelAxes,
@@ -290,26 +287,20 @@ export class DaemonProviderService {
     if (await this.isAgentDisabled(agentId)) {
       return [];
     }
-    if (agentId === "claude-agent") {
+    const nativeModels = listAgentModels(agentId, options);
+    if (nativeModels) {
       try {
-        return await listClaudeCliProviderModels(undefined, undefined, options);
+        return await nativeModels;
       } catch (error) {
-        logDaemonDiagnostic(
-          "warn",
-          "providerModels.claudeCli.catalogProbeFailed",
-          {
-            error: error instanceof Error ? error.message : "Unknown error",
-          },
-        );
+        logDaemonDiagnostic("warn", "providerModels.agentCatalogProbeFailed", {
+          agentId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
         if (options.forceRefresh) {
           throw error;
         }
         return [];
       }
-    }
-
-    if (isAcpRegistryAgentId(agentId)) {
-      return listAcpRegistryProviderModels(agentId, options);
     }
 
     const [allProviders, allModels, signedOut] = await Promise.all([
@@ -346,25 +337,10 @@ export class DaemonProviderService {
         return model ? [{ provider, model }] : [];
       });
 
-    const compatibleItems = filterCompatibleProviderModels(agentId, [
+    return filterCompatibleProviderModels(agentId, [
       ...modelItems,
       ...providerDefaultItems,
     ]);
-
-    if (agentId === "opencode") {
-      return listOpenCodeProviderModels(options);
-    }
-
-    if (agentId === "pi") {
-      return compatibleItems;
-    }
-
-    if (agentId !== "codex") {
-      return compatibleItems;
-    }
-
-    const codexModels = await listCodexProviderModels(options);
-    return [...codexModels, ...compatibleItems];
   }
 
   async probeAgentModelAxes(

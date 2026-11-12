@@ -9,11 +9,11 @@ import type {
 } from "@cocurdex/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const generateCodexConversationTitleMock = vi.hoisted(() => vi.fn());
+const generateAgentConversationTitleMock = vi.hoisted(() => vi.fn());
 const generatePiConversationTitleMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@cocurdex/agent-adapters", () => ({
-  generateCodexConversationTitle: generateCodexConversationTitleMock,
+  generateAgentConversationTitle: generateAgentConversationTitleMock,
   generatePiConversationTitle: generatePiConversationTitleMock,
   listPiBuiltInProviderIds: () => [],
 }));
@@ -96,10 +96,11 @@ const payload = {
 describe("generateProviderSessionTitle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    generateAgentConversationTitleMock.mockReset().mockReturnValue(null);
   });
 
   it("uses the Codex CLI login even when an app title model is configured", async () => {
-    generateCodexConversationTitleMock.mockResolvedValue("Codex title");
+    generateAgentConversationTitleMock.mockResolvedValue("Codex title");
 
     const title = await generateProviderSessionTitle(
       deps(true),
@@ -107,10 +108,11 @@ describe("generateProviderSessionTitle", () => {
       payload,
     );
 
-    expect(generateCodexConversationTitleMock).toHaveBeenCalledWith(
+    expect(generateAgentConversationTitleMock).toHaveBeenCalledWith(
+      "codex",
       expect.objectContaining({
         message: payload.message,
-        model: "gpt-5.6-luna",
+        modelId: "gpt-5.6-luna",
       }),
     );
     expect(generatePiConversationTitleMock).not.toHaveBeenCalled();
@@ -149,7 +151,7 @@ describe("generateProviderSessionTitle", () => {
   });
 
   it("returns null when generation fails", async () => {
-    generateCodexConversationTitleMock.mockRejectedValue(
+    generateAgentConversationTitleMock.mockRejectedValue(
       new Error("Codex is not logged in"),
     );
 
@@ -167,6 +169,5 @@ describe("generateProviderSessionTitle", () => {
       ),
     ).resolves.toBeNull();
     expect(generatePiConversationTitleMock).not.toHaveBeenCalled();
-    expect(generateCodexConversationTitleMock).not.toHaveBeenCalled();
   });
 });

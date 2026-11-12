@@ -195,7 +195,7 @@ describe("getRuntimeModelItems", () => {
     ]);
   });
 
-  it("keeps only Codex built-in rows from cache (sanitize) and skips the global table", () => {
+  it("lists only the agent's cached catalog for Codex and skips the global table", () => {
     const builtIn = makeCachedItem(
       CODEX_BUILT_IN_PROVIDER_ID,
       "Codex",
@@ -203,18 +203,8 @@ describe("getRuntimeModelItems", () => {
       "gpt-5.3-codex",
       "openai-responses",
     );
-    const thirdParty = makeCachedItem(
-      "openrouter",
-      "OpenRouter",
-      "openai/gpt-5",
-      "GPT-5",
-      "openai-responses",
-    );
     providerModelCache.set("codex", {
-      result: {
-        defaultSelection: null,
-        items: [builtIn, thirdParty],
-      },
+      result: { defaultSelection: null, items: [builtIn] },
       updatedAt: Date.now(),
     });
 

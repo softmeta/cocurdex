@@ -1,5 +1,5 @@
-import { type AgentId, isAcpRegistryAgentId } from "@cocurdex/shared";
+import { type AgentId, getAgentTraits } from "@cocurdex/shared";
 
 export function shouldShowProviderGroupLabels(agentId: AgentId) {
-  return !isAcpRegistryAgentId(agentId) && agentId !== "claude-agent";
+  return getAgentTraits(agentId).modelCatalog !== "agent";
 }

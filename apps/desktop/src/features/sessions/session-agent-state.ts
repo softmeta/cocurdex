@@ -6,10 +6,8 @@ import {
   type AgentPermissionModeOption,
   type AgentProviderSnapshot,
   type AgentSessionMode,
-  BUILT_IN_AGENT_IDS,
-  type BuiltInAgentId,
+  DEFAULT_AGENT_ID,
   getAgentTraits,
-  getBuiltInAgentDescriptor,
   isAcpRegistryAgentId,
   isAgentId,
   isAgentPermissionModeSupportedForModel,
@@ -21,25 +19,13 @@ import { atom } from "jotai";
 import { i18n } from "@/i18n";
 import { resources } from "@/i18n/resources";
 import { isAgentReadyToStart } from "./adapter-status";
+import {
+  BUILT_IN_AGENT_DISPLAY_ORDER,
+  defaultAgentDescriptors,
+} from "./agent-options";
 
 const LAST_SELECTED_AGENT_STORAGE_KEY = "agents.desktop.last-selected-agent";
-const agentFallbackOrder: AgentId[] = [
-  "pi",
-  "codex",
-  "claude-agent",
-  "opencode",
-];
-
-export const agentLabels: Record<BuiltInAgentId, string> = {
-  "claude-agent": "Claude Agent",
-  codex: "Codex",
-  opencode: "OpenCode",
-  pi: "Pi",
-};
-
-export const agentsAtom = atom<AgentDescriptor[]>(
-  BUILT_IN_AGENT_IDS.map(getBuiltInAgentDescriptor),
-);
+export const agentsAtom = atom<AgentDescriptor[]>(defaultAgentDescriptors);
 
 export const availableAgentsAtom = atom((get) =>
   get(agentsAtom).filter(isAgentReadyToStart),
@@ -54,7 +40,7 @@ export function getAgentDisplayLabel(agentId: AgentId) {
       agentId.slice(ACP_REGISTRY_AGENT_ID_PREFIX.length)
     );
   }
-  return agentLabels[agentId] ?? agentId;
+  return getAgentTraits(agentId).label;
 }
 
 export const bootstrapAgentsAtom = atom(
@@ -94,46 +80,22 @@ export const applyAgentSessionModesAtom = atom(
 );
 
 function normalizeAgentId(agentType: unknown): AgentId {
-  return typeof agentType === "string" && isAgentId(agentType)
-    ? agentType
-    : "codex";
-}
-
-function getAgentLabel(agentType: unknown) {
-  const agentId = normalizeAgentId(agentType);
-  return isAcpRegistryAgentId(agentId)
-    ? getAgentDisplayLabel(agentId)
-    : i18n.t(`common:agents.${agentTypeToKey(agentId)}`);
-}
-
-function agentTypeToKey(normalizedAgentType: BuiltInAgentId) {
-  if (normalizedAgentType === "claude-agent") {
-    return "claudeCli";
-  }
-
-  return normalizedAgentType;
+  return (typeof agentType === "string" ? agentType : "") as AgentId;
 }
 
 export function getDefaultSessionTitle(agentType: unknown) {
   return i18n.t("sessions:defaultTitle", {
-    agentLabel: getAgentLabel(agentType),
+    agentLabel: getAgentDisplayLabel(normalizeAgentId(agentType)),
   });
 }
 
 export function isDefaultSessionTitle(title: string, agentType: AgentId) {
   const normalizedTitle = title.trim();
-  if (isAcpRegistryAgentId(agentType)) {
-    return normalizedTitle === getDefaultSessionTitle(agentType);
-  }
-  const agentKey = agentTypeToKey(agentType);
-  const localizedDefaultTitles = Object.values(resources).map(
-    ({ common, sessions }) =>
-      sessions.defaultTitle.replace("{{agentLabel}}", common.agents[agentKey]),
-  );
-
-  return (
-    normalizedTitle === getDefaultSessionTitle(agentType) ||
-    localizedDefaultTitles.includes(normalizedTitle)
+  const agentLabel = getAgentDisplayLabel(agentType);
+  return Object.values(resources).some(
+    ({ sessions }) =>
+      sessions.defaultTitle.replace("{{agentLabel}}", agentLabel) ===
+      normalizedTitle,
   );
 }
 
@@ -242,8 +204,6 @@ export function getSessionPermissionMode(
     : getDefaultPermissionMode(agents, session.agentType);
 }
 
-const DEFAULT_LAST_SELECTED_AGENT: AgentId = "pi";
-
 function getLastSelectedAgentStorage() {
   if (typeof window === "undefined") {
     return null;
@@ -259,16 +219,16 @@ function getLastSelectedAgentStorage() {
 function getStoredLastSelectedAgent(): AgentId {
   const storage = getLastSelectedAgentStorage();
   if (!storage) {
-    return DEFAULT_LAST_SELECTED_AGENT;
+    return DEFAULT_AGENT_ID;
   }
 
   try {
     const storedAgent = storage.getItem(LAST_SELECTED_AGENT_STORAGE_KEY);
     return storedAgent && isAgentId(storedAgent)
       ? storedAgent
-      : DEFAULT_LAST_SELECTED_AGENT;
+      : DEFAULT_AGENT_ID;
   } catch {
-    return DEFAULT_LAST_SELECTED_AGENT;
+    return DEFAULT_AGENT_ID;
   }
 }
 
@@ -285,13 +245,16 @@ function persistLastSelectedAgent(agentType: AgentId) {
 
 const lastSelectedAgentBaseAtom = atom<AgentId>(getStoredLastSelectedAgent());
 
-function getFirstAvailableAgent(agents: AgentDescriptor[]) {
+export function getFirstAvailableAgent(
+  agents: readonly AgentDescriptor[],
+): AgentId | null {
+  const ready = agents.filter(isAgentReadyToStart);
   return (
-    agentFallbackOrder.find((agentId) =>
-      agents.some(
-        (agent) => agent.id === agentId && isAgentReadyToStart(agent),
-      ),
-    ) ?? null
+    BUILT_IN_AGENT_DISPLAY_ORDER.find((agentId) =>
+      ready.some((agent) => agent.id === agentId),
+    ) ??
+    ready[0]?.id ??
+    null
   );
 }
 

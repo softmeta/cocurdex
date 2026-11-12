@@ -3,7 +3,7 @@ import type {
   AgentProviderSelection,
   CompatibleProviderModel,
 } from "@cocurdex/shared";
-import { CODEX_BUILT_IN_PROVIDER_ID, isAgentId } from "@cocurdex/shared";
+import { isAgentId } from "@cocurdex/shared";
 import { desktopApi } from "@/lib";
 import {
   usesAdapterOwnedModelCatalog,
@@ -97,41 +97,6 @@ function isProviderModelCacheResult(
   );
 }
 
-function sanitizeProviderModelCacheResult(
-  agentId: AgentId,
-  result: ProviderModelCacheResult,
-) {
-  if (agentId !== "codex") {
-    return result;
-  }
-
-  return {
-    items: result.items.filter(
-      (item) => item.provider.id === CODEX_BUILT_IN_PROVIDER_ID,
-    ),
-    defaultSelection:
-      result.defaultSelection?.providerId === CODEX_BUILT_IN_PROVIDER_ID
-        ? result.defaultSelection
-        : null,
-  };
-}
-
-function getSanitizedCacheEntry(cache: ProviderModelCache, agentId: AgentId) {
-  const entry = cache.get(agentId);
-  if (!entry?.result) {
-    return entry;
-  }
-
-  const result = sanitizeProviderModelCacheResult(agentId, entry.result);
-  if (result === entry.result) {
-    return entry;
-  }
-
-  const sanitizedEntry = { ...entry, result };
-  cache.set(agentId, sanitizedEntry);
-  return sanitizedEntry;
-}
-
 function hydrateProviderModelCache() {
   if (hasHydratedProviderModelCache) {
     return;
@@ -167,10 +132,7 @@ function hydrateProviderModelCache() {
       }
 
       providerModelCache.set(agentId as AgentId, {
-        result: sanitizeProviderModelCacheResult(
-          agentId as AgentId,
-          entry.result,
-        ),
+        result: entry.result,
         runtimeValidated: false,
         updatedAt: entry.updatedAt,
       });
@@ -213,7 +175,7 @@ export function getCachedProviderModelEntry(
 ) {
   hydrateProviderModelCache();
 
-  const entry = getSanitizedCacheEntry(cache, agentId);
+  const entry = cache.get(agentId);
   if (!entry?.result) {
     return null;
   }
@@ -256,7 +218,7 @@ export function loadProviderModelOptions(
 ) {
   hydrateProviderModelCache();
 
-  const entry = getSanitizedCacheEntry(cache, agentId);
+  const entry = cache.get(agentId);
   if (entry?.promise) {
     return entry.promise;
   }
@@ -275,10 +237,7 @@ export function loadProviderModelOptions(
     .then(([items, defaultSelection]) => {
       const resolvedSelection =
         defaultSelection ?? entry?.result?.defaultSelection ?? null;
-      const result = sanitizeProviderModelCacheResult(agentId, {
-        defaultSelection: resolvedSelection,
-        items,
-      });
+      const result = { defaultSelection: resolvedSelection, items };
       cache.set(agentId, {
         result,
         runtimeValidated: true,

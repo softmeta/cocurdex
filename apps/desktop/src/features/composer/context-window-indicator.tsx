@@ -5,7 +5,6 @@ import {
   type AgentThinkingLevel,
   getAgentTraits,
   getEffectiveThinkingLevel,
-  isAcpRegistryAgentId,
   PLAN_MODE_ID,
   type ReasoningEffort,
   type SessionRecord,
@@ -325,9 +324,7 @@ export function ContextWindowIndicator({
     : "";
 
   const ownsModelCatalog =
-    isAcpRegistryAgentId(session.agentType) ||
-    session.agentType === "claude-agent" ||
-    session.agentType === "codex";
+    getAgentTraits(session.agentType).modelCatalog === "agent";
   const usage = resolvedSessionId ? sessionUsage[resolvedSessionId] : undefined;
   const model = resolveRuntimeProviderModel(
     session.agentType,

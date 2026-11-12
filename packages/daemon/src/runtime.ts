@@ -510,9 +510,13 @@ export class AgentRuntimeManager {
     await sessionRuntime.runtime.setTitle?.(title);
   }
 
-  async generateSessionTitle(sessionId: string, message: string) {
-    const sessionRuntime = this.sessionRuntimes.get(sessionId);
-    return sessionRuntime?.runtime.generateTitle?.(message) ?? null;
+  async generateSessionTitle(
+    sessionId: string,
+    message: string,
+  ): Promise<string | null | undefined> {
+    const runtime = this.sessionRuntimes.get(sessionId)?.runtime;
+    if (!runtime?.generateTitle) return undefined;
+    return runtime.generateTitle(message);
   }
 
   async setSessionRuntimeConfigOption(

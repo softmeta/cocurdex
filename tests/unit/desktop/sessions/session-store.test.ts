@@ -25,6 +25,7 @@ import {
   createDraftSessionAtom,
   deleteSessionAtom,
   getDefaultPermissionMode,
+  getDefaultSessionTitle,
   getSessionPermissionMode,
   isDefaultSessionTitle,
   lastSelectedAgentAtom,
@@ -449,7 +450,7 @@ describe("permission mode helpers", () => {
     ).toBe(false);
   });
 
-  it("falls back when persisted sessions contain unknown agent ids", () => {
+  it("grants no capabilities to persisted sessions with unknown agent ids", () => {
     const agents = createStore().get(agentsAtom);
     const session = {
       ...baseSession,
@@ -457,14 +458,12 @@ describe("permission mode helpers", () => {
       permissionMode: "codex-auto",
     } as unknown as SessionRecord;
 
-    expect(getDefaultPermissionMode(agents, session.agentType)).toBe(
-      "codex-read-only",
-    );
+    expect(getDefaultPermissionMode(agents, session.agentType)).toBeNull();
     expect(
       supportsPermissionMode(agents, session.agentType, session.permissionMode),
-    ).toBe(true);
-    expect(getSessionPermissionMode(agents, session)).toBe("codex-auto");
-    expect(supportsPlanMode(agents, session.agentType)).toBe(true);
+    ).toBe(false);
+    expect(supportsPlanMode(agents, session.agentType)).toBe(false);
+    expect(getDefaultSessionTitle(session.agentType)).toContain("legacy-agent");
   });
 
   it("falls back from persisted Claude auto mode when the model is Haiku", () => {

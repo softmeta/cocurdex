@@ -3,7 +3,9 @@ import { type AgentId, type ProviderApi, providerApis } from "./contracts";
 import type { CompatibleProviderModel } from "./provider-contracts";
 
 export function getCompatibleProviderApis(agentId: AgentId): ProviderApi[] {
-  return [...getAgentTraits(agentId).providerApis];
+  return getAgentTraits(agentId).modelCatalog === "app-providers"
+    ? [...providerApis]
+    : [];
 }
 
 export function isApiCompatibleWithAgent(agentId: AgentId, api: ProviderApi) {

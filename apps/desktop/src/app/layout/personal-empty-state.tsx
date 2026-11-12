@@ -1,4 +1,7 @@
-import type { PersonalAgentRecord } from "@cocurdex/shared";
+import {
+  PERSONAL_AGENT_RUNTIME_ID,
+  type PersonalAgentRecord,
+} from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { Bot, Plus } from "lucide-react";
 import { useEffect } from "react";
@@ -60,7 +63,7 @@ export function PersonalEmptyState({
       }
     >
       <ChatComposer
-        agentType="pi"
+        agentType={PERSONAL_AGENT_RUNTIME_ID}
         draftKey="personal-empty"
         placeholderOverride={t("empty.placeholder")}
         runtimeControls={false}

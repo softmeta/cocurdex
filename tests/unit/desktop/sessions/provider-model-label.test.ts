@@ -5,7 +5,7 @@ describe("provider model menu display rules", () => {
   it.each([
     ["acp:grok-build", false],
     ["claude-agent", false],
-    ["codex", true],
+    ["codex", false],
     ["acp:cursor", false],
     ["acp:devin", false],
     ["opencode", true],

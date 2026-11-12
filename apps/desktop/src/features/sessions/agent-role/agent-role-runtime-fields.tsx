@@ -136,10 +136,9 @@ export function AgentRoleRuntimeFields({
           })),
         ]
       : [];
-  const openCodeRuntimeOptions =
-    agentId === "opencode"
-      ? getOpenCodeRuntimeOptions(selectedProviderModel?.model)
-      : { agents: [], variants: [] };
+  const openCodeRuntimeOptions = supportsInSessionRuntimeAxis(agentId, "agent")
+    ? getOpenCodeRuntimeOptions(selectedProviderModel?.model)
+    : { agents: [], variants: [] };
   const openCodeAgentDefaultValue = getDefaultOpenCodeAgent(
     openCodeRuntimeOptions,
   );

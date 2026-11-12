@@ -150,14 +150,16 @@ describe("daemon provider credentials", () => {
     expect(secrets.size).toBe(0);
   });
 
-  it("leaves native Codex credentials to its adapter", async () => {
+  it("reads no app credentials for agents that own their model catalog", async () => {
     const { service, state, snapshot } = fixture();
-    await expect(
-      service.forSession({
-        agentType: "codex",
-        providerSnapshot: snapshot,
-      } as SessionRecord),
-    ).resolves.toBeNull();
+    for (const agentType of ["codex", "claude-agent", "opencode"] as const) {
+      await expect(
+        service.forSession({
+          agentType,
+          providerSnapshot: snapshot,
+        } as SessionRecord),
+      ).resolves.toEqual({ ...snapshot, apiKey: null });
+    }
     expect(state.getProviderConfig).not.toHaveBeenCalled();
     expect(resolveAuth).not.toHaveBeenCalled();
   });

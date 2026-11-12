@@ -1,7 +1,4 @@
-import {
-  CODEX_BUILT_IN_PROVIDER_ID,
-  type CompatibleProviderModel,
-} from "@cocurdex/shared";
+import type { CompatibleProviderModel } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import { shouldPersistProviderDefault } from "@/features/new-session/new-session-card-provider-default";
 import { getDefaultProviderModelValue } from "@/features/sessions/provider-model/default-provider-model";
@@ -50,14 +47,14 @@ describe("getDefaultProviderModelValue", () => {
 
 describe("shouldPersistProviderDefault", () => {
   it.each([
-    ["claude-agent", "claude-agent", false],
-    ["acp:cursor", "acp:cursor", false],
-    ["acp:devin", "acp:devin", false],
-    ["acp:grok-build", "acp:grok-build", false],
-    ["opencode", "opencode", false],
-    ["pi", "openai", true],
-    ["codex", CODEX_BUILT_IN_PROVIDER_ID, false],
-  ] as const)("returns %s for %s/%s", (agentId, providerId, expected) => {
-    expect(shouldPersistProviderDefault(agentId, providerId)).toBe(expected);
+    ["claude-agent", false],
+    ["acp:cursor", false],
+    ["acp:devin", false],
+    ["acp:grok-build", false],
+    ["opencode", false],
+    ["pi", true],
+    ["codex", false],
+  ] as const)("returns %s for %s", (agentId, expected) => {
+    expect(shouldPersistProviderDefault(agentId)).toBe(expected);
   });
 });

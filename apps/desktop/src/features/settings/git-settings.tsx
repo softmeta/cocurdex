@@ -4,6 +4,7 @@ import type {
   ReasoningEffort,
 } from "@cocurdex/shared";
 import {
+  DEFAULT_AGENT_ID,
   getAgentTraits,
   getDefaultOpenCodeAgent,
   getOpenCodeRuntimeOptions,
@@ -11,6 +12,7 @@ import {
   getThinkingLevelOptions,
   resolveOpenCodeRuntimeValue,
   resolveThinkingLevel,
+  supportsInSessionRuntimeAxis,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
 import { useState, useSyncExternalStore } from "react";
@@ -43,7 +45,7 @@ export function GitSettingsPanel() {
   const { t } = useTranslation(["settings", "common", "sessions"]);
   const agents = useAtomValue(agentsAtom);
   const agentSelectOptions = buildAgentSelectOptions(agents);
-  const [agentId, setAgentId] = useState<AgentId>("pi");
+  const [agentId, setAgentId] = useState<AgentId>(DEFAULT_AGENT_ID);
   const [modelValue, setModelValue] = useState("");
   const [selection, setSelection] =
     useState<CommitMessageModelSelection | null>(null);
@@ -93,21 +95,20 @@ export function GitSettingsPanel() {
       : [];
   const codexReasoningDefaultValue =
     selectedProviderModel?.model.defaultReasoningEffort ?? "";
-  const codexServiceTierOptions =
-    agentId === "codex" && selectedProviderModel
-      ? [
-          { label: t("sessions:modelMenu.serviceTierStandard"), value: "" },
-          ...(selectedProviderModel.model.serviceTiers ?? []).map((tier) => ({
-            description: tier.description,
-            label: tier.name,
-            value: tier.id,
-          })),
-        ]
-      : [];
-  const openCodeRuntimeOptions =
-    agentId === "opencode"
-      ? getOpenCodeRuntimeOptions(selectedProviderModel?.model)
-      : { agents: [], variants: [] };
+  const codexServiceTierOptions = selectedProviderModel?.model.serviceTiers
+    ?.length
+    ? [
+        { label: t("sessions:modelMenu.serviceTierStandard"), value: "" },
+        ...(selectedProviderModel.model.serviceTiers ?? []).map((tier) => ({
+          description: tier.description,
+          label: tier.name,
+          value: tier.id,
+        })),
+      ]
+    : [];
+  const openCodeRuntimeOptions = supportsInSessionRuntimeAxis(agentId, "agent")
+    ? getOpenCodeRuntimeOptions(selectedProviderModel?.model)
+    : { agents: [], variants: [] };
   const openCodeAgentDefaultValue = getDefaultOpenCodeAgent(
     openCodeRuntimeOptions,
   );
@@ -133,7 +134,7 @@ export function GitSettingsPanel() {
     void (async () => {
       try {
         const nextSelection = await desktopApi.getCommitMessageModel();
-        const nextAgentId = nextSelection?.agentId ?? "pi";
+        const nextAgentId = nextSelection?.agentId ?? DEFAULT_AGENT_ID;
         const result = await loadProviderModelOptions(
           providerModelCache,
           nextAgentId,
@@ -314,9 +315,7 @@ export function GitSettingsPanel() {
               />
             }
             disabled={isLoading || isSaving}
-            emptyOptionLabel={
-              agentId === "claude-agent" ? undefined : noneLabel
-            }
+            emptyOptionLabel={noneLabel}
             isLoading={isLoading}
             reasoningEffortOptions={codexReasoningOptions}
             reasoningEffortDefaultValue={codexReasoningDefaultValue}

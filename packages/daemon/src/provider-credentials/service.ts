@@ -12,6 +12,7 @@ import type {
   ProviderAuthState,
   SessionRecord,
 } from "@cocurdex/shared";
+import { getAgentTraits } from "@cocurdex/shared";
 import type { DaemonState } from "../state";
 import { type CredentialVault, createCredentialVault } from "./vault";
 
@@ -97,7 +98,10 @@ export class ProviderCredentials {
   async forSession(
     session: SessionRecord,
   ): Promise<AgentRuntimeProviderConfig | null> {
-    if (session.agentType === "codex" || !session.providerSnapshot) return null;
+    if (!session.providerSnapshot) return null;
+    if (getAgentTraits(session.agentType).modelCatalog !== "app-providers") {
+      return { ...session.providerSnapshot, apiKey: null };
+    }
     return this.resolveSnapshot(session.providerSnapshot);
   }
 
