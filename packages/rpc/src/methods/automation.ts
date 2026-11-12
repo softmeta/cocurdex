@@ -12,6 +12,7 @@ import type {
   DelegatedWorkTarget,
   DelegationCatalog,
   DelegationCatalogQuery,
+  DraftPersonalAgentPayload,
   DuplicatePersonalAgentPayload,
   GreetPersonalAgentPayload,
   InboxItem,
@@ -37,6 +38,7 @@ import type {
   MemoryStatus,
   MemoryUpdateInput,
   MessageRecord,
+  PersonalAgentDraft,
   PersonalAgentRecord,
   RemoteWorkSendPayload,
   RemoteWorkStarted,
@@ -135,6 +137,7 @@ export type AutomationRequests = {
   "agentRole.save": SaveAgentRolePayload;
   "agentRole.delete": { id: string };
   "personalAgent.list": undefined;
+  "personalAgent.draft": DraftPersonalAgentPayload;
   "personalAgent.create": CreatePersonalAgentPayload;
   "personalAgent.greet": GreetPersonalAgentPayload;
   "personalAgent.update": UpdatePersonalAgentPayload;
@@ -224,6 +227,7 @@ export type AutomationResults = {
   "agentRole.save": AgentRoleRecord;
   "agentRole.delete": null;
   "personalAgent.list": PersonalAgentRecord[];
+  "personalAgent.draft": PersonalAgentDraft;
   "personalAgent.create": PersonalAgentRecord;
   "personalAgent.greet": boolean;
   "personalAgent.update": PersonalAgentRecord;

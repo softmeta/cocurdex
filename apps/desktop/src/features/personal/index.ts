@@ -1,6 +1,5 @@
 export { usePersonaGreeting } from "./persona-greeting-store";
 export { PersonaGreetingActivity, PersonaIntro } from "./persona-intro";
-export { pickPersonaName } from "./persona-name";
 export { personalApi } from "./personal-api";
 export {
   revalidatePersonalAgents,

@@ -23,6 +23,17 @@ export function usePersonalAgents(hostId: string) {
   );
 }
 
+export function useAssistantDraft(hostId: string | null) {
+  return useSWR(
+    hostId ? (["personalAgent.draft", hostId] as const) : null,
+    ([method, id]) =>
+      hostConnection(id).request(method, {
+        locale: isSupportedLocale(i18n.language) ? i18n.language : null,
+      }),
+    { ...DAEMON_READ, revalidateOnFocus: false },
+  );
+}
+
 export function useInbox(hostId: string) {
   return useSWR(
     ["inbox.list", hostId] as const,

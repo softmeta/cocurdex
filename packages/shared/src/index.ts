@@ -52,6 +52,7 @@ export * from "./notes";
 export * from "./orchestration";
 export * from "./pdf-annotations";
 export * from "./peer-messaging";
+export * from "./persona-name";
 export * from "./personal-agent";
 export * from "./provider-compatibility";
 export * from "./provider-contracts";

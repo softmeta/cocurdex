@@ -31,6 +31,9 @@ export const personalPayloadSchemas: PayloadSchemas = {
       soul: soulSchema,
     }),
   ),
+  "personalAgent.draft": exact<Payload<"personalAgent.draft">>()(
+    z.object({ locale: z.enum(supportedLocales).nullish() }),
+  ),
   "personalAgent.greet": exact<Payload<"personalAgent.greet">>()(
     z.object({
       id: idSchema,

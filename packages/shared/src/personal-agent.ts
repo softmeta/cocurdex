@@ -41,6 +41,15 @@ export interface UpdatePersonalAgentPayload {
   sortOrder?: number;
 }
 
+export interface DraftPersonalAgentPayload {
+  locale?: SupportedLocale | null;
+}
+
+export interface PersonalAgentDraft {
+  role: PersonalAgentRolePayload;
+  modelAvailable: boolean;
+}
+
 export interface DuplicatePersonalAgentPayload {
   id: string;
   name: string;

@@ -1604,6 +1604,9 @@ export default interface Resources {
       open: "Today's brief";
     };
     copyName: "{{name}} copy";
+    create: {
+      needsModel: "Set up a model first, then create your assistant.";
+    };
     delete: {
       cancel: "Cancel";
       confirm: "Delete";
@@ -1620,7 +1623,6 @@ export default interface Resources {
     };
     empty: {
       description: "An assistant remembers what matters to you, briefs you each morning, reminds you on time, and hands project work to coding agents.";
-      placeholder: "Tell your assistant what you need…";
       title: "Create your first assistant";
     };
     inbox: {
@@ -1645,7 +1647,6 @@ export default interface Resources {
       unmute: "Unmute";
       unpin: "Unpin";
     };
-    namePool: "Iris,Milo,Juno,Otto,Nora,Felix,Luna,Theo,Ivy,Leo,Hazel,Jasper,Ruby,Oscar,Mabel,Rowan,Clara,Hugo,Wren,Ezra,Ada,Silas,Vera,Arlo,June,Remy,Elsie,Finn,Pearl,Kai";
     overview: {
       archived: "Archived";
       cancelled: "Cancelled";

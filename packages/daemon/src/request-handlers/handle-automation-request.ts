@@ -166,6 +166,8 @@ export async function handleAutomationRequest(
       return service.scriptRuns.saveSettings(request.params);
     case "personalAgent.list":
       return service.personalAgents.list();
+    case "personalAgent.draft":
+      return service.personalAgents.draft(request.params);
     case "personalAgent.create":
       return service.personalAgents.create(request.params);
     case "personalAgent.greet":

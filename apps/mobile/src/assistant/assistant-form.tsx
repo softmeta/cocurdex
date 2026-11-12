@@ -4,7 +4,6 @@ import {
   PERSONAL_AGENT_SOUL_MAX_LENGTH,
   type PersonalAgentRecord,
   type PersonalAgentRolePayload,
-  personalAgentRoleDraft,
 } from "@cocurdex/shared";
 import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
@@ -20,12 +19,18 @@ import {
   FormSection,
   FormTextField,
   keyboardHidden,
+  ListNotice,
   ModalCloseButton,
   PendingIndicator,
   SheetAction,
   useOptionSheet,
 } from "@/ui";
-import { revalidateAssistant, usePersonalAgents } from "./assistant-queries";
+import {
+  greetPersonalAgent,
+  revalidateAssistant,
+  useAssistantDraft,
+  usePersonalAgents,
+} from "./assistant-queries";
 
 interface AssistantDraft {
   name: string;
@@ -39,23 +44,36 @@ type AssistantModel = Pick<
   "providerId" | "modelId" | "modelName"
 >;
 
-function draftOf(agent: PersonalAgentRecord | null): AssistantDraft {
+type Subject =
+  | { kind: "edit"; agent: PersonalAgentRecord }
+  | { kind: "create"; role: PersonalAgentRolePayload };
+
+function baseRole(subject: Subject): PersonalAgentRolePayload {
+  if (subject.kind === "create") return subject.role;
+  const {
+    id: _id,
+    createdAt: _c,
+    updatedAt: _u,
+    ...fields
+  } = subject.agent.role;
+  return fields;
+}
+
+function draftOf(subject: Subject): AssistantDraft {
+  const role = baseRole(subject);
   return {
-    name: agent?.role.name ?? "",
-    description: agent?.role.description ?? "",
-    instructions: agent?.role.instructions ?? "",
-    soul: agent?.soul ?? "",
+    name: role.name,
+    description: role.description ?? "",
+    instructions: role.instructions ?? "",
+    soul: subject.kind === "edit" ? (subject.agent.soul ?? "") : "",
   };
 }
 
 function rolePayload(
-  agent: PersonalAgentRecord | null,
+  subject: Subject,
   draft: AssistantDraft,
 ): PersonalAgentRolePayload {
-  const base: PersonalAgentRolePayload = agent
-    ? (({ id: _id, createdAt: _created, updatedAt: _updated, ...fields }) =>
-        fields)(agent.role)
-    : personalAgentRoleDraft(draft.name.trim());
+  const base = baseRole(subject);
   return {
     ...base,
     name: draft.name.trim(),
@@ -81,30 +99,53 @@ export function AssistantForm({
   agentId: string | null;
 }) {
   const agents = usePersonalAgents(host.hostId).data;
-  if (!agentId) return <Editor host={host} agent={null} />;
+  if (!agentId) return <CreateForm host={host} />;
   if (!agents) return <PendingIndicator />;
   const agent = agents.find((item) => item.id === agentId) ?? null;
   if (!agent) return <ModalCloseButton />;
-  return <Editor host={host} agent={agent} />;
+  return <Editor host={host} subject={{ kind: "edit", agent }} />;
 }
 
-function Editor({
-  host,
-  agent,
-}: {
-  host: SavedHost;
-  agent: PersonalAgentRecord | null;
-}) {
+function CreateForm({ host }: { host: SavedHost }) {
+  const { t } = useTranslation(["assistant", "sessions"]);
+  const draft = useAssistantDraft(host.hostId);
+  if (draft.data?.modelAvailable) {
+    return (
+      <Editor host={host} subject={{ kind: "create", role: draft.data.role }} />
+    );
+  }
+  if (!draft.data && !draft.error) return <PendingIndicator />;
+  return (
+    <>
+      <Stack.Screen options={{ title: t("form.newTitle") }} />
+      <ModalCloseButton />
+      <ListNotice
+        icon={{ ios: "cpu", android: "memory" }}
+        title={draft.error ? t("form.draftFailed") : t("form.needsModel")}
+        action={
+          draft.error
+            ? {
+                label: t("sessions:unavailable.retry"),
+                onPress: () => void draft.mutate(),
+              }
+            : undefined
+        }
+      />
+    </>
+  );
+}
+
+function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
   const { t } = useTranslation(["assistant", "sessions"]);
   const router = useRouter();
   const colors = useThemeColors();
-  const [initial] = useState(() => draftOf(agent));
+  const agent = subject.kind === "edit" ? subject.agent : null;
+  const [initial] = useState(() => draftOf(subject));
   const [draft, setDraft] = useState(initial);
-  const [model, setModel] = useState<AssistantModel>(() => ({
-    providerId: agent?.role.providerId ?? null,
-    modelId: agent?.role.modelId ?? null,
-    modelName: agent?.role.modelName ?? null,
-  }));
+  const [model, setModel] = useState<AssistantModel>(() => {
+    const { providerId, modelId, modelName } = baseRole(subject);
+    return { providerId, modelId, modelName };
+  });
   const models = useCompatibleModels(host.hostId, PERSONAL_AGENT_RUNTIME_ID);
   const open = useOptionSheet();
   const [saving, setSaving] = useState(false);
@@ -125,7 +166,7 @@ function Editor({
     setSaving(true);
     setFailed(false);
     const connection = hostConnection(host.hostId);
-    const role = { ...rolePayload(agent, draft), ...model };
+    const role = { ...rolePayload(subject, draft), ...model };
     const soul = draft.soul.trim() || null;
     try {
       const saved = agent
@@ -142,6 +183,7 @@ function Editor({
         router.back();
         return;
       }
+      greetPersonalAgent(host, saved.id);
       router.replace({
         pathname: "/session/[hostId]/[sessionId]",
         params: { hostId: host.hostId, sessionId: saved.homeSessionId },

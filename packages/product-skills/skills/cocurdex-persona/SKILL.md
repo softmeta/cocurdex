@@ -24,7 +24,7 @@ cocurdex persona send <persona> <message> [--wait] [--timeout <seconds>] --json
 cocurdex persona thread <persona> [--limit <n>] --json
 ```
 
-- Personas always run on Pi; pick a model the user has configured (`cocurdex provider list`).
+- Personas always run on Pi; pick a model the user has configured (`cocurdex provider list`). Without `--provider`/`--model`, `create` uses the default persona's model, else the first compatible one.
 - A muted persona (`--mute`) never notifies the desktop or the phone; what needs the user from its threads still shows in the assistant overview and `cocurdex inbox`.
 - `send` posts to the persona's home thread and returns the message id. With `--wait` it returns the reply once the turn settles, and fails with the persona's error when the turn fails. Without `--wait`, read the reply later with `thread`.
 - Instructions describe the job; the soul describes who the persona is to the user. Keep both short and specific, and pass long text with the `-file` flags.

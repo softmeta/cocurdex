@@ -3,6 +3,7 @@ import { PersonalAgentService } from "@cocurdex/daemon/internal/personal/persona
 import { type CocurdexDatabase, createCocurdexDatabase } from "@cocurdex/db";
 import {
   type AgentRoleRecord,
+  type CompatibleProviderModel,
   PERSONAL_WORKSPACE_ID,
   type PersonalAgentRolePayload,
   type SessionRecord,
@@ -34,6 +35,7 @@ interface Harness {
   failNextHomeSession: () => void;
   announcements: () => number;
   greetings: { sessionId: string; content: string }[];
+  models: CompatibleProviderModel[];
   writeGreeting: (
     write: (input: PersonaGreetingInput) => Promise<string | null>,
   ) => void;
@@ -54,6 +56,7 @@ async function createHarness(): Promise<Harness> {
   let announced = 0;
   let nextId = 0;
   const greetings: Harness["greetings"] = [];
+  const models: CompatibleProviderModel[] = [];
   let write: (input: PersonaGreetingInput) => Promise<string | null> =
     async () => null;
   const service = new PersonalAgentService({
@@ -97,6 +100,7 @@ async function createHarness(): Promise<Harness> {
       return session;
     },
     removeSession: (id) => database.sessions.delete(id),
+    listModels: async () => models,
     hasMessages: async (sessionId) =>
       greetings.some((greeting) => greeting.sessionId === sessionId),
     writeGreeting: (_sessionId, input) => write(input),
@@ -118,8 +122,38 @@ async function createHarness(): Promise<Harness> {
     },
     announcements: () => announced,
     greetings,
+    models,
     writeGreeting: (next) => {
       write = next;
+    },
+  };
+}
+
+function compatible(
+  providerId: string,
+  modelId: string,
+): CompatibleProviderModel {
+  return {
+    provider: {
+      id: providerId,
+      name: providerId,
+      baseUrl: "https://llm.example.invalid/v1",
+      enabled: true,
+      apiKeySecretId: null,
+      headersJson: null,
+      createdAt: now,
+      updatedAt: now,
+    },
+    model: {
+      providerId,
+      modelId,
+      name: `${modelId} name`,
+      api: "openai-completions",
+      enabled: true,
+      source: "manual",
+      capabilities: ["chat", "agent"],
+      createdAt: now,
+      updatedAt: now,
     },
   };
 }
@@ -192,6 +226,34 @@ describe("PersonalAgentService", () => {
         content: expect.stringContaining("我是小鹿"),
       },
     ]);
+  });
+
+  it("drafts an unused name and says when no model can run it", async () => {
+    await harness.service.create({ role: { ...coachRole, name: "Iris" } });
+    const draft = await harness.service.draft({ locale: "en-US" });
+    expect(draft.modelAvailable).toBe(false);
+    expect(draft.role).toMatchObject({ agentId: "pi", providerId: null });
+    expect(draft.role.name).not.toBe("Iris");
+    expect(draft.role.name).not.toBe("");
+  });
+
+  it("drafts and creates with the default assistant's model, else the first one", async () => {
+    harness.models.push(compatible("a", "first"), compatible("b", "second"));
+    const fresh = await harness.service.draft({ locale: "zh-CN" });
+    expect(fresh).toMatchObject({
+      modelAvailable: true,
+      role: { providerId: "a", modelId: "first", modelName: "first name" },
+    });
+    await harness.service.create({
+      role: { ...coachRole, providerId: "b", modelId: "second" },
+    });
+    expect(
+      (await harness.service.draft({ locale: "en-US" })).role,
+    ).toMatchObject({ providerId: "b", modelId: "second" });
+    const unset = await harness.service.create({
+      role: { ...coachRole, name: "Nova" },
+    });
+    expect(unset.role).toMatchObject({ providerId: "b", modelId: "second" });
   });
 
   it("lists the default first, then pinned agents, then creation order", async () => {

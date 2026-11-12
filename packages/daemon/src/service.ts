@@ -57,6 +57,7 @@ import {
   normalizeAgentRoleDescription,
   normalizeAgentRoleName,
   normalizeWorkspaceRootPaths,
+  PERSONAL_AGENT_RUNTIME_ID,
   PERSONAL_WORKSPACE_ID,
   primaryWorkspaceRootPath,
   principalHasScope,
@@ -375,6 +376,10 @@ export class CocurdexDaemonService {
           title: role.name,
         }),
       removeSession: (sessionId) => this.removeSession(sessionId),
+      listModels: () =>
+        this.providerService.listCompatibleProviderModels(
+          PERSONAL_AGENT_RUNTIME_ID,
+        ),
       hasMessages: async (sessionId) =>
         (await this.state.listMessagesBySessionId(sessionId)).length > 0,
       writeGreeting: async (sessionId, input) => {
