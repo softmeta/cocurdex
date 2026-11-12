@@ -31,11 +31,19 @@ const launcher = path.join(
 let server: Server;
 let downloadUrl: string;
 
-function run(command: string, args: string[]) {
+const windowsEnv = {
+  ComSpec: process.env.ComSpec,
+  PATHEXT: process.env.PATHEXT,
+  SystemDrive: process.env.SystemDrive,
+  windir: process.env.windir,
+};
+
+function run(command: string, args: string[], fullWindowsEnv = true) {
   return new Promise<string>((resolve, reject) => {
     const child = spawnCommand(command, args, {
       cwd: root,
       env: {
+        ...(fullWindowsEnv ? windowsEnv : {}),
         PATH: process.env.PATH,
         SystemRoot: process.env.SystemRoot,
         LOCALAPPDATA: root,
@@ -94,13 +102,11 @@ async function windowsStopProbe() {
   if (!isWindows) return "";
   const script = [
     `$l = '${launcher}'`,
-    "'Test-Path: ' + (Test-Path $l)",
-    "'Test-Path -LiteralPath: ' + (Test-Path -LiteralPath $l)",
-    "$ErrorActionPreference = 'Continue'",
-    "'stop: ' + ((& $l daemon stop --json 2>&1 | Out-String).Trim())",
+    "'ComSpec: ' + $env:ComSpec",
+    "try { 'status: ' + ((& $l daemon status --json 2>&1 | Out-String).Trim()) } catch { 'threw: ' + $_ }",
     "'exit: ' + $LASTEXITCODE",
   ].join("; ");
-  return run("powershell.exe", ["-NoProfile", "-Command", script]).catch(
+  return run("powershell.exe", ["-NoProfile", "-Command", script], false).catch(
     (error: Error) => error.message,
   );
 }
@@ -169,6 +175,7 @@ describe("headless install script", () => {
   });
 
   it("stops the running daemon to upgrade in place and starts it again", async () => {
+    console.info(`--- minimal env probe ---\n${await windowsStopProbe()}`);
     const before = await readDaemonMetadata(userDataPath);
     if (!isAlive(before.pid)) {
       throw new Error(
@@ -180,7 +187,7 @@ describe("headless install script", () => {
       const result = await install();
       if (!result.includes("Restarted the daemon")) {
         throw new Error(
-          `Install did not restart the daemon (old daemon ${before.pid} alive: ${isAlive(before.pid)}):\n${result}\n--- stop probe ---\n${await windowsStopProbe()}`,
+          `Install did not restart the daemon (old daemon ${before.pid} alive: ${isAlive(before.pid)}):\n${result}`,
         );
       }
       return result;
