@@ -153,7 +153,7 @@ export function ProviderModelsSection({
           >
             <TableHeader className="text-xs font-medium text-muted-foreground">
               <TableRow className="border-border/50">
-                <TableHead className="sticky start-0 top-0 z-20 w-full border-e border-border/40 bg-muted px-3 py-1.5">
+                <TableHead className="sticky start-0 top-0 z-20 border-e border-border/40 bg-muted px-3 py-1.5">
                   {t("providers.models.title")}
                 </TableHead>
                 <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5 text-end">
@@ -162,7 +162,7 @@ export function ProviderModelsSection({
                 <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5 text-end">
                   {t("providers.fields.outputLimit")}
                 </TableHead>
-                <TableHead className="sticky top-0 z-10 bg-muted px-3 py-1.5">
+                <TableHead className="sticky top-0 z-10 w-full bg-muted px-3 py-1.5">
                   {t("providers.models.columns.capabilities")}
                 </TableHead>
                 {mixedRuntimes ? (
@@ -185,12 +185,12 @@ export function ProviderModelsSection({
                 >
                   <TableCell className="sticky start-0 z-10 border-e border-border/40 bg-background px-3 py-2">
                     <div
-                      className="w-52 truncate font-medium"
+                      className="max-w-64 truncate font-medium"
                       title={model.name}
                     >
                       {model.name}
                     </div>
-                    <div className="mt-1 flex w-52 items-center gap-2 text-xs text-muted-foreground">
+                    <div className="mt-1 flex max-w-64 items-center gap-2 text-xs text-muted-foreground">
                       <span
                         className="truncate font-mono"
                         title={model.modelId}
@@ -351,7 +351,7 @@ function ModelCapabilities({ model }: { model: ProviderModelRecord }) {
   const capabilities = modelCapabilities(model);
   if (capabilities.length === 0) return "-";
   return (
-    <ul className="flex w-32 flex-wrap gap-x-2 gap-y-0.5">
+    <ul className="flex min-w-32 flex-wrap gap-x-2 gap-y-0.5">
       {capabilities.map((capability) => (
         <li key={capability}>
           {t(`providers.fields.capability.${capability}`)}
