@@ -145,9 +145,12 @@ describe("personas through the CLI", () => {
         "--name",
         "Scout",
       ]);
-      expect(scout.role.modelId).toBeNull();
       const started = await home(scout);
       expect(started?.modelId).toEqual(expect.any(String));
+      expect(scout.role).toMatchObject({
+        providerId: started?.providerId,
+        modelId: started?.modelId,
+      });
 
       await daemon.stop();
       daemon = await spawnDaemon({ userDataPath });

@@ -30,6 +30,12 @@ export default function AssistantScreen() {
       </>
     );
   }
+  const openCreate = gate("interact", () =>
+    router.push({
+      pathname: "/assistant-form/[hostId]",
+      params: { hostId: host.hostId },
+    }),
+  );
   return (
     <>
       <SessionModeHeader
@@ -39,16 +45,11 @@ export default function AssistantScreen() {
             key: "new",
             icon: { ios: "square.and.pencil", android: "edit_square" },
             label: t("assistant:form.newTitle"),
-            onPress: gate("interact", () =>
-              router.push({
-                pathname: "/assistant-form/[hostId]",
-                params: { hostId: host.hostId },
-              }),
-            ),
+            onPress: openCreate,
           },
         ]}
       />
-      <AssistantHome key={host.hostId} host={host} />
+      <AssistantHome key={host.hostId} host={host} onCreate={openCreate} />
     </>
   );
 }

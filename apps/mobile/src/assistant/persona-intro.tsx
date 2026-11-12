@@ -10,7 +10,7 @@ const SUGGESTIONS: {
   icon: { ios: SFSymbol; android: AndroidSymbol };
 }[] = [
   { key: "attention", icon: { ios: "bell", android: "notifications" } },
-  { key: "brief", icon: { ios: "calendar.badge.clock", android: "event" } },
+  { key: "brief", icon: { ios: "alarm", android: "alarm" } },
   { key: "memory", icon: { ios: "brain", android: "psychology" } },
 ];
 
@@ -38,11 +38,13 @@ export function PersonaIntro({ onPick }: { onPick(text: string): void }) {
             pressed && { backgroundColor: colors.muted },
           ]}
         >
-          <SymbolView
-            name={icon}
-            size={16}
-            tintColor={colors.mutedForeground}
-          />
+          <View style={styles.icon}>
+            <SymbolView
+              name={icon}
+              size={16}
+              tintColor={colors.mutedForeground}
+            />
+          </View>
           <Text
             numberOfLines={1}
             style={[styles.text, { color: colors.foreground }]}
@@ -97,5 +99,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
     borderRadius: 12,
   },
+  icon: { width: 20, alignItems: "center" },
   text: { flex: 1, fontSize: 15 },
 });

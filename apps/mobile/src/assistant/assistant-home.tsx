@@ -83,7 +83,13 @@ function previewLine(content: string) {
     .trim();
 }
 
-export function AssistantHome({ host }: { host: SavedHost }) {
+export function AssistantHome({
+  host,
+  onCreate,
+}: {
+  host: SavedHost;
+  onCreate(): void;
+}) {
   const { t } = useTranslation("assistant");
   const router = useRouter();
   const scrollIndicator = useScrollIndicatorWhileScrolling();
@@ -159,7 +165,8 @@ export function AssistantHome({ host }: { host: SavedHost }) {
           <ListNotice
             icon={{ ios: "sparkles", android: "auto_awesome" }}
             title={t("empty.title")}
-            description={t("empty.description", { host: host.name })}
+            description={t("empty.description")}
+            action={{ label: t("form.newTitle"), onPress: onCreate }}
           />
         }
         renderSectionHeader={({ section }) => {

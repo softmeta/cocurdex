@@ -23,7 +23,7 @@ export default interface Resources {
       title: "Today";
     };
     empty: {
-      description: "Create an assistant on {{host}} to see it here.";
+      description: "Assistants keep context, follow up on work, and report back to you.";
       title: "No assistants yet";
     };
     form: {

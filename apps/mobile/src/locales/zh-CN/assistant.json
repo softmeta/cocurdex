@@ -21,7 +21,7 @@
     "title": "今天"
   },
   "empty": {
-    "description": "在 {{host}} 上创建助理后会出现在这里。",
+    "description": "助理记住上下文、跟进工作，并向你汇报结果。",
     "title": "还没有助理"
   },
   "form": {

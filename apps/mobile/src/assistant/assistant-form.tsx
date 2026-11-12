@@ -4,12 +4,13 @@ import {
   PERSONAL_AGENT_SOUL_MAX_LENGTH,
   type PersonalAgentRecord,
   type PersonalAgentRolePayload,
+  resolveAgentRoleAvatar,
 } from "@cocurdex/shared";
 import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Keyboard, StyleSheet, Text } from "react-native";
-import { AvatarPicker, useCompatibleModels } from "@/agents";
+import { AvatarEmojiField, AvatarPicker, useCompatibleModels } from "@/agents";
 import { hostConnection } from "@/connection";
 import { ChoiceRow } from "@/session-runtime";
 import { useThemeColors } from "@/theme";
@@ -146,7 +147,11 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
     const { providerId, modelId, modelName } = baseRole(subject);
     return { providerId, modelId, modelName };
   });
-  const [avatar, setAvatar] = useState(() => baseRole(subject).avatar ?? null);
+  const [avatar, setAvatar] = useState(() => {
+    const role = baseRole(subject);
+    if (role.avatar || agent) return role.avatar ?? null;
+    return resolveAgentRoleAvatar({ id: "", avatar: null });
+  });
   const avatarChanged =
     agent !== null &&
     JSON.stringify(avatar) !== JSON.stringify(agent.role.avatar ?? null);
@@ -239,6 +244,10 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
         </FieldSection>
         <FieldSection title={t("form.avatar.title")}>
           <AvatarPicker
+            role={{ id: agent?.role.id ?? "", name: draft.name, avatar }}
+            onChange={setAvatar}
+          />
+          <AvatarEmojiField
             role={{ id: agent?.role.id ?? "", name: draft.name, avatar }}
             onChange={setAvatar}
           />

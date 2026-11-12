@@ -386,19 +386,20 @@ const TranscriptRow = memo(function TranscriptRow({
 function useStableActions(actions: TranscriptActions): TranscriptActions {
   const latest = useRef(actions);
   latest.current = actions;
-  const { hostId, fileRoot } = actions;
+  const { hostId, fileRoot, assistantRole } = actions;
   const canFork = actions.onFork !== null;
   return useMemo(
     () => ({
       hostId,
       fileRoot,
+      assistantRole,
       onOpenImage: (attachment) => latest.current.onOpenImage(attachment),
       onOpenTool: (toolCallId) => latest.current.onOpenTool(toolCallId),
       onFork: canFork
         ? (messageId) => latest.current.onFork?.(messageId)
         : null,
     }),
-    [hostId, fileRoot, canFork],
+    [hostId, fileRoot, assistantRole, canFork],
   );
 }
 

@@ -10,8 +10,9 @@ import {
 } from "@cocurdex/shared";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { space, useThemeColors } from "@/theme";
+import { FormTextField } from "@/ui";
 import { AVATAR_COLOR } from "./avatar-hue";
 import { RoleAvatar, type RoleAvatarSource } from "./role-avatar";
 
@@ -82,18 +83,15 @@ export function AvatarPicker({
   const preview = (avatar: AgentRoleAvatar) => ({ ...role, avatar });
   const setColor = (next: AgentRoleAvatarColor) =>
     onChange({ ...current, color: next });
-  const setEmoji = (text: string) => {
-    const next = normalizeAgentRoleAvatar({
-      kind: "emoji",
-      emoji: text,
-      color,
-    });
-    if (next) onChange(next);
-  };
 
   return (
     <View style={styles.picker}>
-      <View style={styles.grid} accessibilityLabel={t("form.avatar.shapes")}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.grid}
+        accessibilityLabel={t("form.avatar.shapes")}
+      >
         {AGENT_ROLE_AVATAR_SHAPES.map((option, index) => (
           <Tile
             key={option}
@@ -109,7 +107,7 @@ export function AvatarPicker({
             />
           </Tile>
         ))}
-      </View>
+      </ScrollView>
       <View style={styles.grid} accessibilityLabel={t("form.avatar.faces")}>
         {AGENT_ROLE_AVATAR_FACES.map((option) => (
           <Tile
@@ -127,7 +125,12 @@ export function AvatarPicker({
           </Tile>
         ))}
       </View>
-      <View style={styles.grid} accessibilityLabel={t("form.avatar.color")}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.grid}
+        accessibilityLabel={t("form.avatar.color")}
+      >
         {AGENT_ROLE_AVATAR_COLORS.map((option) => (
           <Tile
             key={option}
@@ -143,24 +146,14 @@ export function AvatarPicker({
             />
           </Tile>
         ))}
-      </View>
-      <TextInput
-        testID="assistant-form-avatar-emoji"
-        accessibilityLabel={t("form.avatar.custom")}
-        placeholder={t("form.avatar.custom")}
-        placeholderTextColor={colors.mutedForeground}
-        defaultValue={current.kind === "emoji" ? current.emoji : ""}
-        maxLength={8}
-        onChangeText={setEmoji}
-        style={[styles.emoji, { color: colors.foreground }]}
-      />
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   picker: { gap: space.sm, paddingVertical: space.sm },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: space.xs },
+  grid: { flexDirection: "row", gap: space.xs },
   tile: {
     width: TILE,
     height: TILE,
@@ -169,5 +162,32 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   swatch: { width: SWATCH, height: SWATCH, borderRadius: SWATCH / 2 },
-  emoji: { minHeight: TILE, fontSize: 17 },
 });
+
+export function AvatarEmojiField({
+  role,
+  onChange,
+}: {
+  role: RoleAvatarSource;
+  onChange(avatar: AgentRoleAvatar): void;
+}) {
+  const { t } = useTranslation("assistant");
+  const current = resolveAgentRoleAvatar(role);
+  return (
+    <FormTextField
+      testID="assistant-form-avatar-emoji"
+      accessibilityLabel={t("form.avatar.custom")}
+      placeholder={t("form.avatar.custom")}
+      defaultValue={current.kind === "emoji" ? current.emoji : ""}
+      maxLength={8}
+      onChangeText={(text) => {
+        const next = normalizeAgentRoleAvatar({
+          kind: "emoji",
+          emoji: text,
+          color: current.color,
+        });
+        if (next) onChange(next);
+      }}
+    />
+  );
+}
