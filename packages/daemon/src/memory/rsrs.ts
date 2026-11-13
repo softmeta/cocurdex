@@ -17,7 +17,7 @@ import {
   RSRS_CLI_PACKAGE,
   RSRS_CLI_VERSION,
 } from "@cocurdex/shared";
-import { callRuntimeTool, type RuntimeEndpoint } from "./runtime";
+import type { RsrsInvoke } from "./rsrs-invoke";
 
 const VERSION_TIMEOUT_MS = 20_000;
 const CONFIG_TIMEOUT_MS = 30_000;
@@ -655,7 +655,7 @@ export function parseRememberPayload(payload: Record<string, unknown>): {
 }
 
 export async function recallMemories(
-  executable: RsrsExecutable,
+  invoke: RsrsInvoke,
   input: {
     query: string;
     limit?: number;
@@ -665,8 +665,8 @@ export async function recallMemories(
 ) {
   const args = [
     "recall",
-    "--titles",
     "--json",
+    "--titles",
     "--limit",
     String(input.limit ?? 8),
   ];
@@ -674,10 +674,7 @@ export async function recallMemories(
     args.push("--project", input.project);
   }
   args.push(input.query);
-  const result = await runRsrs(executable, args, {
-    timeoutMs: input.timeoutMs ?? RECALL_TIMEOUT_MS,
-  });
-  const payload = parseRsrsJson(result.stdout);
+  const { payload } = await invoke(args, input.timeoutMs ?? RECALL_TIMEOUT_MS);
   return {
     items: parseRecallPayload(payload),
     error: rsrsErrorText(payload),
@@ -685,14 +682,11 @@ export async function recallMemories(
 }
 
 export async function showMemory(
-  executable: RsrsExecutable,
+  invoke: RsrsInvoke,
   id: string,
   timeoutMs = SHOW_TIMEOUT_MS,
 ) {
-  const result = await runRsrs(executable, ["show", id, "--json"], {
-    timeoutMs,
-  });
-  const payload = parseRsrsJson(result.stdout);
+  const { payload } = await invoke(["show", "--json", id], timeoutMs);
   return {
     entry: parseShowPayload(payload),
     error: rsrsErrorText(payload),
@@ -718,7 +712,7 @@ function appendFlag(args: string[], name: string, value: string | null) {
 }
 
 export async function rememberMemory(
-  executable: RsrsExecutable,
+  invoke: RsrsInvoke,
   input: RememberCommandInput,
   timeoutMs = REMEMBER_TIMEOUT_MS,
 ) {
@@ -737,8 +731,7 @@ export async function rememberMemory(
   }
   if (input.seeAlso?.length) args.push("--see-also", input.seeAlso.join(","));
   args.push(input.content);
-  const result = await runRsrs(executable, args, { timeoutMs });
-  const payload = parseRsrsJson(result.stdout);
+  const { payload } = await invoke(args, timeoutMs);
   return parseRememberPayload(payload);
 }
 
@@ -833,96 +826,6 @@ export async function installRsrs(input: {
     `Could not install the rsrs CLI. Install Node.js/npm and run "npm install -g ${pinned}". ${failures.join(" | ")}`,
     "install_failed",
   );
-}
-
-export function parseRuntimeRecallPayload(
-  payload: Record<string, unknown>,
-): MemoryRecallItem[] {
-  const details = Array.isArray(payload.details) ? payload.details : [];
-  return details.flatMap((entry) => {
-    const record = asRecord(entry);
-    const item = asRecord(record?.entry) ?? record;
-    const id = stringValue(item?.id);
-    if (!id) return [];
-    return [
-      {
-        id,
-        title: stringValue(item?.title) ?? id,
-        score: numberValue(record?.score),
-        importance: isMemoryImportance(item?.importance)
-          ? item.importance
-          : null,
-        updatedAt: stringValue(item?.updated_at),
-      },
-    ];
-  });
-}
-
-export async function recallMemoriesViaRuntime(
-  endpoint: RuntimeEndpoint,
-  input: {
-    query: string;
-    limit?: number;
-    project?: string | null;
-    timeoutMs?: number;
-  },
-) {
-  const args: Record<string, unknown> = {
-    query: input.query,
-    limit: input.limit ?? 8,
-  };
-  if (input.project) args.project = input.project;
-  const payload = await callRuntimeTool(
-    endpoint,
-    "memory_recall",
-    args,
-    input.timeoutMs ?? RECALL_TIMEOUT_MS,
-  );
-  return {
-    items: parseRuntimeRecallPayload(payload),
-    error: rsrsErrorText(payload),
-  };
-}
-
-export async function showMemoryViaRuntime(
-  endpoint: RuntimeEndpoint,
-  id: string,
-  timeoutMs = SHOW_TIMEOUT_MS,
-) {
-  const payload = await callRuntimeTool(
-    endpoint,
-    "memory_show",
-    { id },
-    timeoutMs,
-  );
-  return {
-    entry: parseShowPayload(payload),
-    error: rsrsErrorText(payload),
-  };
-}
-
-export async function rememberMemoryViaRuntime(
-  endpoint: RuntimeEndpoint,
-  input: RememberCommandInput,
-  timeoutMs = REMEMBER_TIMEOUT_MS,
-) {
-  const args: Record<string, unknown> = { content: input.content };
-  if (input.title) args.title = input.title;
-  if (input.importance) args.importance = input.importance;
-  if (input.type) args.type = input.type;
-  if (input.project) args.project = input.project;
-  if (input.parentId) args.parent = input.parentId;
-  if (input.force) args.force = true;
-  if (input.mergeIds?.length) args.merge_ids = input.mergeIds.join(",");
-  if (input.supersedes?.length) args.supersedes = input.supersedes.join(",");
-  if (input.seeAlso?.length) args.see_also = input.seeAlso;
-  const payload = await callRuntimeTool(
-    endpoint,
-    "memory_remember",
-    args,
-    timeoutMs,
-  );
-  return parseRememberPayload(payload);
 }
 
 export async function materializeNativeBinary(

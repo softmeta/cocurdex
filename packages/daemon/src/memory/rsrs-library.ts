@@ -9,46 +9,43 @@ import {
   asRecord,
   numberValue,
   parseEntryRecord,
-  parseRsrsJson,
   type RsrsExecutable,
   rsrsErrorText,
   runRsrs,
   stringValue,
 } from "./rsrs";
+import type { RsrsInvoke } from "./rsrs-invoke";
 
 const LIBRARY_READ_TIMEOUT_MS = 30_000;
 const LIBRARY_WRITE_TIMEOUT_MS = 120_000;
 const TRANSFER_TIMEOUT_MS = 600_000;
 
 async function runRsrsJson(
-  executable: RsrsExecutable,
+  invoke: RsrsInvoke,
   args: string[],
   timeoutMs: number,
 ) {
-  const result = await runRsrs(executable, [...args, "--json"], { timeoutMs });
-  let payload: Record<string, unknown> | null = null;
-  try {
-    payload = parseRsrsJson(result.stdout);
-  } catch {
-    payload = null;
-  }
-  const error = payload ? rsrsErrorText(payload) : null;
-  if (result.code !== 0 || !payload) {
-    const detail = error ?? result.stderr.trim();
+  const [command, ...rest] = args;
+  const { payload, exit } = await invoke(
+    [command, "--json", ...rest],
+    timeoutMs,
+  );
+  if (exit !== 0 || payload.status === "fail") {
     throw new Error(
-      detail || `rsrs ${args[0]} exited with code ${result.code ?? "unknown"}`,
+      rsrsErrorText(payload) ??
+        `rsrs ${command} exited with code ${exit ?? "unknown"}`,
     );
   }
   return payload;
 }
 
 export async function listMemories(
-  executable: RsrsExecutable,
+  invoke: RsrsInvoke,
   input: { limit: number; since?: string | null },
 ): Promise<MemoryEntry[]> {
   const args = ["list", "--limit", String(input.limit)];
   if (input.since) args.push("--since", input.since);
-  const payload = await runRsrsJson(executable, args, LIBRARY_READ_TIMEOUT_MS);
+  const payload = await runRsrsJson(invoke, args, LIBRARY_READ_TIMEOUT_MS);
   const details = Array.isArray(payload.details) ? payload.details : [];
   return details.flatMap((row) => {
     const entry = parseEntryRecord(row);
@@ -57,7 +54,7 @@ export async function listMemories(
 }
 
 export async function updateMemory(
-  executable: RsrsExecutable,
+  invoke: RsrsInvoke,
   input: MemoryUpdateInput,
 ) {
   const args = ["update", input.id];
@@ -67,15 +64,15 @@ export async function updateMemory(
   if (input.importance !== undefined) {
     args.push("--importance", input.importance);
   }
-  await runRsrsJson(executable, args, LIBRARY_WRITE_TIMEOUT_MS);
+  await runRsrsJson(invoke, args, LIBRARY_WRITE_TIMEOUT_MS);
 }
 
-export async function forgetMemory(executable: RsrsExecutable, id: string) {
-  await runRsrsJson(executable, ["forget", id], LIBRARY_WRITE_TIMEOUT_MS);
+export async function forgetMemory(invoke: RsrsInvoke, id: string) {
+  await runRsrsJson(invoke, ["forget", id], LIBRARY_WRITE_TIMEOUT_MS);
 }
 
-export async function restoreMemory(executable: RsrsExecutable, id: string) {
-  await runRsrsJson(executable, ["restore", id], LIBRARY_WRITE_TIMEOUT_MS);
+export async function restoreMemory(invoke: RsrsInvoke, id: string) {
+  await runRsrsJson(invoke, ["restore", id], LIBRARY_WRITE_TIMEOUT_MS);
 }
 
 function parseHistoryRow(value: unknown): MemoryHistoryEntry | null {
@@ -93,13 +90,13 @@ function parseHistoryRow(value: unknown): MemoryHistoryEntry | null {
 }
 
 export async function readMemoryHistory(
-  executable: RsrsExecutable,
+  invoke: RsrsInvoke,
   input: { id?: string | null; limit: number },
 ): Promise<MemoryHistoryEntry[]> {
   const args = ["history"];
   if (input.id) args.push(input.id);
   args.push("--limit", String(input.limit));
-  const payload = await runRsrsJson(executable, args, LIBRARY_READ_TIMEOUT_MS);
+  const payload = await runRsrsJson(invoke, args, LIBRARY_READ_TIMEOUT_MS);
   const details = Array.isArray(payload.details) ? payload.details : [];
   return details.flatMap((row) => {
     const entry = parseHistoryRow(row);
@@ -108,10 +105,10 @@ export async function readMemoryHistory(
 }
 
 export async function readMemoryRevision(
-  executable: RsrsExecutable,
+  invoke: RsrsInvoke,
 ): Promise<string | null> {
   const payload = await runRsrsJson(
-    executable,
+    invoke,
     ["memory-revision"],
     LIBRARY_READ_TIMEOUT_MS,
   );
@@ -121,16 +118,16 @@ export async function readMemoryRevision(
   return stringValue(revision);
 }
 
-export async function exportMemories(executable: RsrsExecutable, file: string) {
-  await runRsrsJson(executable, ["export", file], TRANSFER_TIMEOUT_MS);
+export async function exportMemories(invoke: RsrsInvoke, file: string) {
+  await runRsrsJson(invoke, ["export", file], TRANSFER_TIMEOUT_MS);
 }
 
 export async function importMemories(
-  executable: RsrsExecutable,
+  invoke: RsrsInvoke,
   file: string,
 ): Promise<MemoryImportResult> {
   const payload = await runRsrsJson(
-    executable,
+    invoke,
     ["import", file],
     TRANSFER_TIMEOUT_MS,
   );

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -6,19 +6,46 @@ const ENDPOINT_FILE = "endpoint.json";
 const RUNTIME_PROTOCOL_VERSION = 1;
 const PROBE_TIMEOUT_MS = 3_000;
 
+export interface RuntimeRequestScope {
+  account_id: string;
+  instance_id: string;
+  generation: number;
+}
+
 export interface RuntimeEndpoint {
   url: string;
   bin: string | null;
   pid: number | null;
+  scope?: RuntimeRequestScope | null;
 }
 
-export interface RuntimeToolCatalog {
-  at: number;
-  tools: Map<string, Set<string>>;
+export interface RsrsReply {
+  payload: Record<string, unknown>;
+  exit: number | null;
+}
+
+export class RuntimeUnreachableError extends Error {
+  override name = "RuntimeUnreachableError";
+}
+
+function resolveDataDir(dataDir?: string) {
+  return path.resolve(dataDir ?? path.join(homedir(), ".rsrs"));
 }
 
 function runtimeDir(dataDir?: string) {
-  return path.join(dataDir ?? path.join(homedir(), ".rsrs"), "runtime");
+  return path.join(resolveDataDir(dataDir), "runtime");
+}
+
+async function canonicalPath(value: string) {
+  return realpath(value).catch(() => path.resolve(value));
+}
+
+async function samePath(a: string, b: string, platform: NodeJS.Platform) {
+  const [left, right] = await Promise.all([canonicalPath(a), canonicalPath(b)]);
+  const caseInsensitive = platform === "win32" || platform === "darwin";
+  return caseInsensitive
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
 }
 
 function asObject(value: unknown) {
@@ -40,9 +67,30 @@ async function readEndpointUrl(dataDir?: string) {
   }
 }
 
-export async function probeRuntime(
+function healthScope(
+  health: Record<string, unknown>,
+): RuntimeRequestScope | null {
+  const { account_id, instance_id, generation } = health;
+  if (
+    typeof account_id !== "string" ||
+    !account_id ||
+    typeof instance_id !== "string" ||
+    !instance_id ||
+    typeof generation !== "number" ||
+    generation <= 0
+  ) {
+    return null;
+  }
+  return { account_id, instance_id, generation };
+}
+
+// The endpoint file can outlive its runtime, and the port it names may then be
+// served by a runtime of another data directory (another profile or a test
+// home). Health reports `data_dir`; refuse a runtime that serves a different one.
+async function probeRuntime(
   url: string,
   timeoutMs = PROBE_TIMEOUT_MS,
+  expectedDataDir?: string,
 ): Promise<RuntimeEndpoint | null> {
   try {
     const response = await fetch(`${url}/api/health`, {
@@ -52,11 +100,19 @@ export async function probeRuntime(
     const health = asObject(await response.json());
     if (health?.server !== "respire") return null;
     if (health.v !== RUNTIME_PROTOCOL_VERSION) return null;
+    if (
+      expectedDataDir &&
+      typeof health.data_dir === "string" &&
+      !(await samePath(health.data_dir, expectedDataDir, process.platform))
+    ) {
+      return null;
+    }
     const version = health.runtime_version ?? health.bin;
     return {
       url,
       bin: typeof version === "string" ? version : null,
       pid: typeof health.pid === "number" ? health.pid : null,
+      scope: healthScope(health),
     };
   } catch {
     return null;
@@ -67,93 +123,78 @@ export async function findRuntime(
   dataDir?: string,
 ): Promise<RuntimeEndpoint | null> {
   const url = await readEndpointUrl(dataDir);
-  return url ? probeRuntime(url) : null;
+  return url
+    ? probeRuntime(url, PROBE_TIMEOUT_MS, resolveDataDir(dataDir))
+    : null;
 }
 
-async function postRpc(
+function isConnectionRefused(error: unknown) {
+  const cause = (error as { cause?: { code?: unknown } })?.cause;
+  return cause?.code === "ECONNREFUSED";
+}
+
+// rsrs runtime RPC (`POST /api/rpc`, method `cli.exec`) runs the same argv the
+// rsrs CLI forwards to it, so every CLI flag is available without spawning a
+// process. Newer runtimes require the health identity as `scope` on business
+// requests; see respire-cli docs/runtime-control-contract.md.
+export async function execRuntimeCli(
   endpoint: RuntimeEndpoint,
-  body: Record<string, unknown>,
+  args: readonly string[],
   timeoutMs: number,
-) {
-  const response = await fetch(`${endpoint.url}/mcp`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!response.ok) {
-    throw new Error(`rsrs runtime returned HTTP ${response.status}`);
-  }
-  const payload = (await response.json()) as {
-    result?: unknown;
-    error?: { message?: string };
+): Promise<RsrsReply> {
+  const body: Record<string, unknown> = {
+    v: RUNTIME_PROTOCOL_VERSION,
+    id: crypto.randomUUID(),
+    method: "cli.exec",
+    args,
+    queue_wait_ms: timeoutMs,
   };
-  if (payload.error) {
-    throw new Error(payload.error.message ?? "rsrs runtime call failed");
+  if (endpoint.scope) {
+    const operationId = crypto.randomUUID();
+    body.scope = endpoint.scope;
+    body.operation_id = operationId;
+    body.idempotency_key = operationId;
   }
-  return payload.result;
-}
-
-function toolText(result: unknown) {
-  const content = (result as { content?: unknown })?.content;
-  if (!Array.isArray(content)) return null;
-  for (const block of content) {
-    const text = (block as { text?: unknown })?.text;
-    if (typeof text === "string" && text.trim()) return text;
+  let response: Response;
+  try {
+    response = await fetch(`${endpoint.url}/api/rpc`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      const timeout = new Error(
+        `rsrs ${args[0]} timed out after ${timeoutMs}ms`,
+        { cause: error },
+      );
+      timeout.name = "TimeoutError";
+      throw timeout;
+    }
+    if (isConnectionRefused(error)) {
+      throw new RuntimeUnreachableError("rsrs runtime refused the connection", {
+        cause: error,
+      });
+    }
+    throw error;
   }
-  return null;
-}
-
-export async function callRuntimeTool(
-  endpoint: RuntimeEndpoint,
-  name: string,
-  args: Record<string, unknown>,
-  timeoutMs: number,
-): Promise<Record<string, unknown>> {
-  const result = await postRpc(
-    endpoint,
-    {
-      jsonrpc: "2.0",
-      id: crypto.randomUUID(),
-      method: "tools/call",
-      params: { name, arguments: args },
-    },
-    timeoutMs,
-  );
-  const text = toolText(result);
-  if (!text) throw new Error(`rsrs runtime tool ${name} returned no payload`);
-  if ((result as { isError?: unknown })?.isError === true) {
-    throw new Error(text);
+  if (!response.ok) {
+    throw new RuntimeUnreachableError(
+      `rsrs runtime returned HTTP ${response.status}`,
+    );
   }
-  const parsed: unknown = JSON.parse(text);
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`rsrs runtime tool ${name} returned an unexpected payload`);
-  }
-  return parsed as Record<string, unknown>;
-}
-
-export async function listRuntimeTools(
-  endpoint: RuntimeEndpoint,
-  timeoutMs = PROBE_TIMEOUT_MS,
-): Promise<Map<string, Set<string>>> {
-  const result = await postRpc(
-    endpoint,
-    { jsonrpc: "2.0", id: crypto.randomUUID(), method: "tools/list" },
-    timeoutMs,
-  );
-  const tools = (result as { tools?: unknown })?.tools;
-  const catalog = new Map<string, Set<string>>();
-  if (!Array.isArray(tools)) return catalog;
-  for (const tool of tools) {
-    const name = (tool as { name?: unknown })?.name;
-    if (typeof name !== "string") continue;
-    const properties = (tool as { inputSchema?: { properties?: unknown } })
-      ?.inputSchema?.properties;
-    const args =
-      properties && typeof properties === "object"
-        ? new Set(Object.keys(properties))
-        : new Set<string>();
-    catalog.set(name, args);
-  }
-  return catalog;
+  const reply = asObject(await response.json());
+  const exit = typeof reply?.exit === "number" ? reply.exit : null;
+  const envelope = asObject(reply?.envelope);
+  if (envelope) return { payload: envelope, exit };
+  const code = typeof reply?.code === "string" ? reply.code : null;
+  const error =
+    typeof reply?.error === "string"
+      ? reply.error
+      : (code ?? "rsrs runtime call failed");
+  return {
+    payload: { status: "fail", summary: { reason: code }, errors: [error] },
+    exit: exit ?? 1,
+  };
 }

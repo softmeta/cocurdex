@@ -157,11 +157,17 @@ export function buildInput(content: string, attachments: MessageAttachment[]) {
   ];
 }
 
+export function codexShellReachesNetwork(
+  permissionMode: string | null | undefined,
+) {
+  return permissionMode === "codex-full-access";
+}
+
 export function createSandboxPolicy(
   payload: CreateAgentSessionPayload,
   permissionMode = payload.session.permissionMode,
 ) {
-  if (permissionMode === "codex-full-access") {
+  if (codexShellReachesNetwork(permissionMode)) {
     return { type: "dangerFullAccess" };
   }
 
