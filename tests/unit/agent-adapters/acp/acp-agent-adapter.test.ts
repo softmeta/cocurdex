@@ -1,5 +1,6 @@
 import {
   type InitializeResponse,
+  type NewSessionRequest,
   type PromptResponse,
   RequestError,
   type RequestPermissionRequest,
@@ -390,7 +391,9 @@ describe("AcpAgentAdapter", () => {
 
   it("passes the other workspace folders to agents that accept additional directories", async () => {
     async function openedSession(sessionCapabilities: object) {
-      const newSession = vi.fn(async () => ({ sessionId: "multi-root" }));
+      const newSession = vi.fn(async (_request: NewSessionRequest) => ({
+        sessionId: "multi-root",
+      }));
       const session = new AcpAgentAdapter(
         { args: [], command: "agy", descriptor },
         async () =>
