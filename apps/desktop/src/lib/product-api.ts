@@ -212,6 +212,7 @@ export const daemonProductApi: ProductRequestApi = {
   listProviderModels: (providerId) =>
     rpc("provider.fetchModels", { providerId }),
   listAllProviderModels: () => rpc("provider.listAllModels", {}),
+  refreshAllProviderModels: () => rpc("provider.refreshAllModels"),
   saveProviderModel: (model) => rpc("provider.model.save", { model }),
   deleteProviderModel: async (providerId, modelId) => {
     await rpc("provider.model.delete", { providerId, modelId });

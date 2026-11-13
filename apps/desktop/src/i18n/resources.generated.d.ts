@@ -3308,6 +3308,7 @@ export default interface Resources {
         delete: "Delete";
         newProvider: "New";
         refresh: "Refresh";
+        refreshAllModels: "Refresh all models";
         resetToDefault: "Reset to default";
         save: "Save";
       };
@@ -3469,6 +3470,7 @@ export default interface Resources {
         notConfigured: "Not configured";
       };
       status: {
+        allModelsRefreshed: "All models refreshed";
         deleteFailed: "Unable to delete provider";
         idExists: "Provider ID {{id}} already exists";
         importFailed: "Unable to import providers";
@@ -3485,6 +3487,7 @@ export default interface Resources {
         providerSaved: "Provider saved";
         refreshingModels: "Refreshing models...";
         saveFailed: "Unable to save provider";
+        someModelsRefreshFailed: "Could not refresh: {{providers}}";
       };
       templates: {
         description: "Pick a preset, save it, then choose an available authentication method.";

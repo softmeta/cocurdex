@@ -246,6 +246,7 @@ export const DAEMON_METHOD_SCOPES: Record<DaemonMethod, HostAccessScope> = {
   "provider.titleModel.probe": "execute",
   "provider.modelAxes.probe": "execute",
   "provider.fetchModels": "execute",
+  "provider.refreshAllModels": "execute",
   "git.generateCommitMessage": "execute",
   "workspace.save": "files.write",
   "workspace.delete": "files.write",

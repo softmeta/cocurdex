@@ -967,6 +967,7 @@
       "delete": "Delete",
       "newProvider": "New",
       "refresh": "Refresh",
+      "refreshAllModels": "Refresh all models",
       "resetToDefault": "Reset to default",
       "save": "Save"
     },
@@ -1128,6 +1129,7 @@
       "notConfigured": "Not configured"
     },
     "status": {
+      "allModelsRefreshed": "All models refreshed",
       "deleteFailed": "Unable to delete provider",
       "idExists": "Provider ID {{id}} already exists",
       "importFailed": "Unable to import providers",
@@ -1143,7 +1145,8 @@
       "providerDeleted": "Provider deleted",
       "providerSaved": "Provider saved",
       "refreshingModels": "Refreshing models...",
-      "saveFailed": "Unable to save provider"
+      "saveFailed": "Unable to save provider",
+      "someModelsRefreshFailed": "Could not refresh: {{providers}}"
     },
     "templates": {
       "description": "Pick a preset, save it, then choose an available authentication method.",

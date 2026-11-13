@@ -166,6 +166,17 @@ export class DaemonProviderService {
     );
   }
 
+  /** Refreshes every configured provider's catalog, like `pi update --models`. */
+  async refreshAllModels() {
+    const providers = await this.state.listProviderConfigs();
+    return Promise.all(
+      providers.map(async (provider) => ({
+        providerId: provider.id,
+        ...(await this.fetchModels(provider.id)),
+      })),
+    );
+  }
+
   async listAllModels(options: {
     providerIds?: string[];
     forceRefresh?: boolean;

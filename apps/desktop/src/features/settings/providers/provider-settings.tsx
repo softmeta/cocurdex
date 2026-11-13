@@ -6,11 +6,12 @@ import type {
   TitleModelSelection,
 } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
+import { RefreshCw } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppSearchInput } from "@/components";
-import { Button, Spinner } from "@/components/ui";
+import { Button, IconButton, Spinner } from "@/components/ui";
 import {
   bootstrapProviderModelsAtom,
   invalidateProviderModelCache,
@@ -173,6 +174,7 @@ export function ProviderSettingsPanel() {
   );
   const [isCreatingProvider, setIsCreatingProvider] = useState(false);
   const [pendingTemplateId, setPendingTemplateId] = useState("");
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
   const [providerQuery, setProviderQuery] = useState("");
   const [titleModelValue, setTitleModelValue] = useState("");
   const [titleModelProbe, setTitleModelProbe] = useState<
@@ -405,6 +407,32 @@ export function ProviderSettingsPanel() {
     await reload();
   }
 
+  async function refreshAllModels() {
+    setIsRefreshingAll(true);
+    try {
+      const results = await desktopApi.refreshAllProviderModels();
+      await reload();
+      const failed = results.filter((result) => result.error);
+      if (failed.length === 0) {
+        toast.success(t("providers.status.allModelsRefreshed"));
+        return;
+      }
+      toast.error(
+        t("providers.status.someModelsRefreshFailed", {
+          providers: failed.map((result) => result.providerId).join(", "),
+        }),
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("providers.status.modelsRefreshFailed"),
+      );
+    } finally {
+      setIsRefreshingAll(false);
+    }
+  }
+
   async function refreshModels(providerId: string) {
     const result = await desktopApi.listProviderModels(providerId);
     await reload();
@@ -589,6 +617,20 @@ export function ProviderSettingsPanel() {
                       onChange={(event) => setProviderQuery(event.target.value)}
                     />
                   </div>
+                  <IconButton
+                    aria-label={t("providers.actions.refreshAllModels")}
+                    disabled={isRefreshingAll || providers.length === 0}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => void refreshAllModels()}
+                  >
+                    <RefreshCw
+                      className={cn(
+                        "size-4",
+                        isRefreshingAll && "animate-spin",
+                      )}
+                    />
+                  </IconButton>
                   <JsonAddMenu
                     label={t("providers.actions.newProvider")}
                     messages={jsonMessages}

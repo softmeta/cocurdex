@@ -224,23 +224,15 @@ const MODEL_COLUMNS = [
 ] as const satisfies readonly (keyof ProviderModelRecord)[];
 
 async function refreshAllProviderModels(parsed: ParsedArgs) {
-  const results = await withDaemon(async () => {
-    const providers = await requestDaemon("provider.listConfigs");
-    return Promise.all(
-      providers.map(async (provider) => ({
-        providerId: provider.id,
-        result: await requestDaemon("provider.fetchModels", {
-          providerId: provider.id,
-        }),
-      })),
-    );
-  });
-  const failures = results.filter(({ result }) => result.error);
-  for (const { providerId, result } of failures) {
-    console.error(`Could not refresh ${providerId}: ${result.error}`);
+  const results = await withDaemon(() =>
+    requestDaemon("provider.refreshAllModels"),
+  );
+  const failures = results.filter((result) => result.error);
+  for (const { providerId, error } of failures) {
+    console.error(`Could not refresh ${providerId}: ${error}`);
   }
   printRows(
-    results.flatMap(({ result }) => result.models),
+    results.flatMap((result) => result.models),
     [...MODEL_COLUMNS],
     parsed,
   );

@@ -958,6 +958,7 @@
       "delete": "删除",
       "newProvider": "新建",
       "refresh": "刷新",
+      "refreshAllModels": "刷新全部模型",
       "resetToDefault": "恢复默认",
       "save": "保存"
     },
@@ -1117,6 +1118,7 @@
       "notConfigured": "未配置"
     },
     "status": {
+      "allModelsRefreshed": "全部模型已刷新",
       "deleteFailed": "无法删除服务商",
       "idExists": "服务商 ID {{id}} 已存在",
       "importFailed": "无法导入服务商",
@@ -1131,7 +1133,8 @@
       "providerDeleted": "服务商已删除",
       "providerSaved": "服务商已保存",
       "refreshingModels": "正在刷新模型...",
-      "saveFailed": "无法保存服务商"
+      "saveFailed": "无法保存服务商",
+      "someModelsRefreshFailed": "以下服务商刷新失败：{{providers}}"
     },
     "templates": {
       "description": "选择预设并保存，然后从服务商支持的认证方式中选择一种。",
