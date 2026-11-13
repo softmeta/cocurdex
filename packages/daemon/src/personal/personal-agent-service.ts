@@ -11,6 +11,7 @@ import {
   type GreetPersonalAgentPayload,
   matchSupportedLocale,
   normalizePersonalAgentSoul,
+  normalizePersonalAgentUserAddress,
   PERSONA_NAME_POOLS,
   type PersonalAgentDraft,
   type PersonalAgentRecord,
@@ -115,14 +116,26 @@ export class PersonalAgentService {
 
   personaForSession(
     session: Pick<SessionRecord, "id" | "sessionKind" | "agentRoleId">,
-  ): { id: string; roleId: string; soul: string | null } | null {
+  ): {
+    id: string;
+    roleId: string;
+    soul: string | null;
+    userAddress: string | null;
+  } | null {
     if (session.sessionKind !== "personal") return null;
     const row =
       this.deps.repository.findByHomeSession(session.id) ??
       (session.agentRoleId
         ? this.deps.repository.findByRole(session.agentRoleId)
         : null);
-    return row ? { id: row.id, roleId: row.roleId, soul: row.soul } : null;
+    return row
+      ? {
+          id: row.id,
+          roleId: row.roleId,
+          soul: row.soul,
+          userAddress: row.userAddress,
+        }
+      : null;
   }
 
   async draft(
@@ -155,7 +168,10 @@ export class PersonalAgentService {
       payload.role.providerId !== null
         ? payload.role
         : { ...payload.role, ...(await this.defaultModel(await this.list())) };
-    return this.insert(role, payload.soul ?? null);
+    return this.insert(role, {
+      soul: payload.soul ?? null,
+      userAddress: payload.userAddress ?? null,
+    });
   }
 
   private async defaultModel(agents: readonly PersonalAgentRecord[]) {
@@ -193,7 +209,13 @@ export class PersonalAgentService {
     if (await this.deps.hasMessages(row.homeSessionId)) return false;
     const role = await this.deps.getRole(row.roleId);
     if (!role) return false;
-    const input = { role, soul: row.soul, locale };
+    const input = {
+      role,
+      soul: row.soul,
+      userAddress: row.userAddress,
+      otherAddresses: this.otherUserAddresses(row.id),
+      locale,
+    };
     const written = await this.deps
       .writeGreeting(row.homeSessionId, input)
       .catch((error: unknown) => {
@@ -206,7 +228,8 @@ export class PersonalAgentService {
     if (await this.deps.hasMessages(row.homeSessionId)) return false;
     await this.deps.greet(
       row.homeSessionId,
-      written?.trim() || fallbackPersonaGreeting(role.name, locale),
+      written?.trim() ||
+        fallbackPersonaGreeting(role.name, row.userAddress, locale),
     );
     return true;
   }
@@ -226,6 +249,10 @@ export class PersonalAgentService {
         payload.soul === undefined
           ? row.soul
           : normalizePersonalAgentSoul(payload.soul),
+      userAddress:
+        payload.userAddress === undefined
+          ? row.userAddress
+          : normalizePersonalAgentUserAddress(payload.userAddress),
       pinnedAt,
       mutedAt,
       sortOrder: payload.sortOrder ?? row.sortOrder,
@@ -239,7 +266,10 @@ export class PersonalAgentService {
     const row = this.require(payload.id);
     const role = await this.deps.getRole(row.roleId);
     if (!role) throw new Error(`Agent role ${row.roleId} was not found.`);
-    return this.insert(roleCopy(role, payload.name), row.soul);
+    return this.insert(roleCopy(role, payload.name), {
+      soul: row.soul,
+      userAddress: row.userAddress,
+    });
   }
 
   async delete(id: string) {
@@ -266,7 +296,7 @@ export class PersonalAgentService {
 
   private async insert(
     rolePayload: PersonalAgentRolePayload,
-    soul: string | null,
+    persona: { soul: string | null; userAddress: string | null },
   ) {
     assertPersonalAgentRuntime(rolePayload.agentId);
     const role = await this.deps.saveRole({ ...rolePayload, id: undefined });
@@ -278,7 +308,8 @@ export class PersonalAgentService {
         id: crypto.randomUUID(),
         roleId: role.id,
         homeSessionId: session.id,
-        soul: normalizePersonalAgentSoul(soul),
+        soul: normalizePersonalAgentSoul(persona.soul),
+        userAddress: normalizePersonalAgentUserAddress(persona.userAddress),
         isDefault: this.deps.repository.getDefault() === null,
         pinnedAt: null,
         mutedAt: null,
@@ -294,6 +325,15 @@ export class PersonalAgentService {
       await this.deps.deleteRole(role.id);
       throw error;
     }
+  }
+
+  private otherUserAddresses(personaId: string) {
+    const addresses = this.deps.repository
+      .list()
+      .filter((row) => row.id !== personaId)
+      .map((row) => row.userAddress)
+      .filter((address): address is string => address !== null);
+    return [...new Set(addresses)];
   }
 
   private nextSortOrder() {
@@ -333,6 +373,7 @@ export class PersonalAgentService {
       role,
       homeSessionId: row.homeSessionId,
       soul: row.soul,
+      userAddress: row.userAddress,
       isDefault: row.isDefault,
       pinnedAt: row.pinnedAt,
       mutedAt: row.mutedAt,

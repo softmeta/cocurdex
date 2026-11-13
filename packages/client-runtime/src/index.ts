@@ -96,6 +96,8 @@ export {
   type ActivityKind,
   type ActivityState,
   getActivityState,
+  RESPONSE_STALL_MS,
+  responseStreamKey,
 } from "./session-activity-state";
 export * from "./session-list-view";
 export {

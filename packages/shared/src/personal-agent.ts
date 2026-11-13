@@ -5,6 +5,7 @@ import type { SupportedLocale } from "./locales";
 
 export const PERSONAL_WORKSPACE_ID = "personal";
 export const PERSONAL_AGENT_SOUL_MAX_LENGTH = 20_000;
+export const PERSONAL_AGENT_USER_ADDRESS_MAX_LENGTH = 40;
 export const PERSONAL_AGENT_RUNTIME_ID: AgentId = "pi";
 
 export interface PersonalAgentRecord {
@@ -12,6 +13,7 @@ export interface PersonalAgentRecord {
   role: AgentRoleRecord;
   homeSessionId: string;
   soul: string | null;
+  userAddress: string | null;
   isDefault: boolean;
   pinnedAt: string | null;
   mutedAt: string | null;
@@ -25,6 +27,7 @@ export type PersonalAgentRolePayload = Omit<SaveAgentRolePayload, "id">;
 export interface CreatePersonalAgentPayload {
   role: PersonalAgentRolePayload;
   soul?: string | null;
+  userAddress?: string | null;
 }
 
 export interface GreetPersonalAgentPayload {
@@ -36,6 +39,7 @@ export interface UpdatePersonalAgentPayload {
   id: string;
   role?: PersonalAgentRolePayload;
   soul?: string | null;
+  userAddress?: string | null;
   pinned?: boolean;
   muted?: boolean;
   sortOrder?: number;
@@ -95,6 +99,17 @@ export function isPersonalSession(session: Pick<SessionRecord, "sessionKind">) {
 
 export function normalizePersonalAgentSoul(soul: string | null | undefined) {
   const trimmed = soul?.trim().slice(0, PERSONAL_AGENT_SOUL_MAX_LENGTH);
+  return trimmed || null;
+}
+
+export function normalizePersonalAgentUserAddress(
+  address: string | null | undefined,
+) {
+  const trimmed = address
+    ?.replace(/\s+/g, " ")
+    .trim()
+    .slice(0, PERSONAL_AGENT_USER_ADDRESS_MAX_LENGTH)
+    .trim();
   return trimmed || null;
 }
 

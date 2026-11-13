@@ -105,6 +105,12 @@ export function createTextLoginUi() {
     showMessage(message) {
       console.log(message);
     },
+    showInfo(message, links) {
+      console.log(message);
+      for (const link of links) {
+        console.log(link.label ? `${link.label}: ${link.url}` : link.url);
+      }
+    },
     async prompt(prompt) {
       if (prompt.type === "select") {
         const answer = await ask(prompt.id, formatSelectPrompt(prompt), false);

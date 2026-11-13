@@ -958,6 +958,7 @@
       "delete": "删除",
       "newProvider": "新建",
       "refresh": "刷新",
+      "refreshAllModels": "刷新全部模型",
       "resetToDefault": "恢复默认",
       "save": "保存"
     },
@@ -1032,11 +1033,15 @@
       "reasoning": "支持推理",
       "runtime": {
         "anthropic-messages": "Anthropic Messages",
+        "azure-openai-responses": "Azure OpenAI Responses",
+        "bedrock-converse-stream": "Amazon Bedrock Converse",
         "google-generative-ai": "Google Generative AI",
+        "google-vertex": "Google Vertex AI",
         "mistral-conversations": "Mistral Conversations",
         "openai-codex-responses": "OpenAI Codex Responses",
         "openai-completions": "OpenAI Completions",
-        "openai-responses": "OpenAI Responses"
+        "openai-responses": "OpenAI Responses",
+        "pi-messages": "Pi Messages"
       },
       "thinkingLevelMap": "思考映射",
       "thinkingLevelMapHint": "将级别映射到 token 预算的 JSON 对象，例如 {\"high\":10000}",
@@ -1070,6 +1075,8 @@
       }
     },
     "list": {
+      "available": "可添加",
+      "configured": "已添加",
       "configuredCount": "已配置 {{count}} 个"
     },
     "manageLabel": "管理",
@@ -1098,6 +1105,7 @@
       "toggleFor": "启用或停用 {{model}}"
     },
     "searchPlaceholder": "搜索服务商...",
+    "searchPlaceholder_other": "搜索 {{count}} 个服务商...",
     "sections": {
       "advanced": "高级",
       "auth": "认证",
@@ -1113,6 +1121,7 @@
       "notConfigured": "未配置"
     },
     "status": {
+      "allModelsRefreshed": "全部模型已刷新",
       "deleteFailed": "无法删除服务商",
       "idExists": "服务商 ID {{id}} 已存在",
       "importFailed": "无法导入服务商",
@@ -1127,7 +1136,8 @@
       "providerDeleted": "服务商已删除",
       "providerSaved": "服务商已保存",
       "refreshingModels": "正在刷新模型...",
-      "saveFailed": "无法保存服务商"
+      "saveFailed": "无法保存服务商",
+      "someModelsRefreshFailed": "以下服务商刷新失败：{{providers}}"
     },
     "templates": {
       "description": "选择预设并保存，然后从服务商支持的认证方式中选择一种。",

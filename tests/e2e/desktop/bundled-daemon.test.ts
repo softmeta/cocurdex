@@ -78,6 +78,17 @@ describe("bundled daemon", () => {
     expect(status.packSkills.every((skill) => skill.description)).toBe(true);
   });
 
+  it("ships pi's package metadata beside it so pi.dev serves its catalogs", async () => {
+    const piPackage = JSON.parse(
+      await readFile(
+        path.join(path.dirname(bundledDaemonPath), "pi-package/package.json"),
+        "utf8",
+      ),
+    );
+    expect(piPackage.name).toBe("@earendil-works/pi-coding-agent");
+    expect(piPackage.version).toMatch(/^\d+\.\d+\.\d+/);
+  });
+
   it("connects to an MCP server through the bundled Pi runtime", async () => {
     await requestDaemon(
       "mcp.server.save",

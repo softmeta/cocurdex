@@ -1,4 +1,4 @@
-import type { SavedHost } from "@cocurdex/client-runtime";
+import { responseStreamKey, type SavedHost } from "@cocurdex/client-runtime";
 import {
   type AgentPlanApprovalOutcome,
   type ImageAttachment,
@@ -37,6 +37,7 @@ import { conversationTranscript } from "./conversation-transcript";
 import { pickImages, uploadImage } from "./image-attachments";
 import { type InteractionActions, InteractionDock } from "./interaction-dock";
 import {
+  observedMessages,
   observedPhase,
   type SessionPresentation,
   withTurnEnds,
@@ -57,6 +58,7 @@ import { StatusLine } from "./status-line";
 import { buildTranscript, pendingInteraction } from "./transcript";
 import { condenseTranscript } from "./transcript-activity";
 import { type TranscriptHandle, TranscriptView } from "./transcript-view";
+import { useResponseStall } from "./use-response-stall";
 
 function sessionSubtitle(
   observation: SessionObservationSnapshot | null,
@@ -128,6 +130,9 @@ export function SessionDetailScreen({
     observation?.session.status === "running" ||
     observation?.activeRun?.status === "running";
   const runStartedAt = runStartTime(observation);
+  const responseStalled = useResponseStall(
+    running ? responseStreamKey(observedMessages(observation)) : null,
+  );
   const [sends, setSends] = useState<readonly PendingSend[]>(() =>
     pendingSend ? [pendingSend] : [],
   );
@@ -158,7 +163,7 @@ export function SessionDetailScreen({
     const busy = running || unconfirmed.length > 0;
     const live = {
       running: busy,
-      phase: observedPhase(presentation, observation, running),
+      phase: observedPhase(presentation, observation, running, responseStalled),
       startedAt: runStartedAt,
     };
     const condensed =
@@ -186,6 +191,7 @@ export function SessionDetailScreen({
     runStartedAt,
     presentation,
     persona,
+    responseStalled,
   ]);
   const pending = observation
     ? pendingInteraction(observation.interactions)

@@ -15,6 +15,7 @@ function mapPersonalAgent(row: SqliteRow): PersonalAgentRow {
     roleId: String(row.role_id),
     homeSessionId: String(row.home_session_id),
     soul: nullableString(row.soul),
+    userAddress: nullableString(row.user_address),
     isDefault: Number(row.is_default) === 1,
     pinnedAt: nullableString(row.pinned_at),
     mutedAt: nullableString(row.muted_at),
@@ -59,11 +60,12 @@ export function createSqlitePersonalAgentRepository(
       database
         .prepare(
           `INSERT INTO personal_agents (
-             id, role_id, home_session_id, soul, is_default, pinned_at,
-             muted_at, sort_order, created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             id, role_id, home_session_id, soul, user_address, is_default,
+             pinned_at, muted_at, sort_order, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              soul = excluded.soul,
+             user_address = excluded.user_address,
              is_default = excluded.is_default,
              pinned_at = excluded.pinned_at,
              muted_at = excluded.muted_at,
@@ -75,6 +77,7 @@ export function createSqlitePersonalAgentRepository(
           agent.roleId,
           agent.homeSessionId,
           agent.soul,
+          agent.userAddress,
           agent.isDefault ? 1 : 0,
           agent.pinnedAt,
           agent.mutedAt,

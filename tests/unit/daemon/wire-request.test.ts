@@ -57,6 +57,14 @@ describe("authorizeDaemonRequest", () => {
     const error = new DaemonClientError(result.message, result.code);
     expect(isUnknownDaemonMethodError(error)).toBe(true);
 
+    expect(
+      authorizeDaemonRequest(
+        { kind: "local" },
+        "provider.fromTheFuture",
+        false,
+      ),
+    ).toMatchObject({ ok: false, message: result.message });
+
     const missingScope = authorizeDaemonRequest(device, "session.send", true);
     if (missingScope.ok) throw new Error("expected a rejection");
     expect(

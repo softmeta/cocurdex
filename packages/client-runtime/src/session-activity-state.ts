@@ -47,14 +47,24 @@ function isStreamingResponse(
   );
 }
 
+export const RESPONSE_STALL_MS = 4000;
+
+export function responseStreamKey(messages: readonly MessageRecord[]) {
+  const latest = messages.at(-1);
+  if (latest?.role !== "assistant") return null;
+  return `${latest.id}:${latest.content.length}`;
+}
+
 export function getActivityState({
   isRunning,
   messages,
+  responseStalled = false,
   status,
   toolCalls,
 }: {
   isRunning: boolean;
   messages: MessageRecord[];
+  responseStalled?: boolean;
   status?: SessionStatus;
   toolCalls: AgentToolCallRecord[];
 }): ActivityState {
@@ -95,6 +105,7 @@ export function getActivityState({
   }
 
   if (
+    !responseStalled &&
     latestMessage?.role === "assistant" &&
     isStreamingResponse(latestMessage, toolCalls)
   ) {

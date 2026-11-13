@@ -1,4 +1,5 @@
 import type {
+  ProviderAuthInfoLink,
   ProviderAuthLoginUpdate,
   ProviderAuthMethod,
   ProviderAuthPrompt,
@@ -19,6 +20,7 @@ export interface ProviderLoginUi {
   showAuthUrl(url: string, instructions: string | null): void;
   showDeviceCode(userCode: string, verificationUri: string): void;
   showMessage(message: string): void;
+  showInfo(message: string, links: ProviderAuthInfoLink[]): void;
   prompt(prompt: ProviderAuthPrompt): Promise<string>;
   dismissPrompt(promptId: string): void;
 }
@@ -68,6 +70,8 @@ export async function runProviderLogin(
           ui.showDeviceCode(update.userCode, update.verificationUri);
           break;
         case "info":
+          ui.showInfo(update.message, update.links ?? []);
+          break;
         case "progress":
           ui.showMessage(update.message);
           break;

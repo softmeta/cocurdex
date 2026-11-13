@@ -81,3 +81,85 @@
   border-top: 0;
   overflow: visible;
 }
+
+[data-markdown-table] {
+  --md-table-bg: var(--color-chat-code-block);
+  --md-table-rule: color-mix(in srgb, var(--foreground) 6%, transparent);
+  container-type: scroll-state;
+  background: var(--md-table-bg);
+}
+
+[data-theme="dark"] [data-markdown-table] {
+  --md-table-rule: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+
+[data-markdown-table][data-tone="editor"] {
+  --md-table-bg: var(--color-editor-chrome);
+}
+
+[data-markdown-table][data-tone="system"] {
+  --md-table-bg: var(--color-chat-system-bg);
+  --md-table-rule: var(--color-chat-system-border);
+}
+
+[data-markdown-table] :is(th, td) {
+  border-block-end: 1px solid var(--md-table-rule);
+}
+
+[data-markdown-table] tbody tr:last-child > td {
+  border-block-end: 0;
+}
+
+[data-markdown-table] tr:has(> :nth-child(3)) > :is(:first-child, :last-child) {
+  position: sticky;
+  z-index: 1;
+  background:
+    linear-gradient(var(--md-table-bg), var(--md-table-bg)),
+    var(--window-sticky-surface, var(--background));
+}
+
+[data-markdown-table] tr:has(> :nth-child(3)) > :first-child {
+  inset-inline-start: 0;
+}
+
+[data-markdown-table] tr:has(> :nth-child(3)) > :last-child {
+  inset-inline-end: 0;
+}
+
+[data-markdown-table]
+  tr:has(> :nth-child(3))
+  > :is(:first-child, :last-child)
+  > div {
+  max-width: 14em;
+}
+
+[data-markdown-table]
+  tr:has(> :nth-child(3))
+  > :is(:first-child, :last-child)::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: 1px;
+  background: var(--md-table-rule);
+  opacity: 0;
+}
+
+[data-markdown-table] tr:has(> :nth-child(3)) > :first-child::after {
+  inset-inline-end: 0;
+}
+
+[data-markdown-table] tr:has(> :nth-child(3)) > :last-child::after {
+  inset-inline-start: 0;
+}
+
+@container scroll-state(scrollable: inline-start) {
+  [data-markdown-table] tr:has(> :nth-child(3)) > :first-child::after {
+    opacity: 1;
+  }
+}
+
+@container scroll-state(scrollable: inline-end) {
+  [data-markdown-table] tr:has(> :nth-child(3)) > :last-child::after {
+    opacity: 1;
+  }
+}

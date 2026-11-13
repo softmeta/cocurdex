@@ -38,7 +38,7 @@ export function ModelParametersManage({
   return (
     <div className="flex flex-col items-start gap-1.5">
       <Label>{t("providers.manageLabel")}</Label>
-      {builtIn ? (
+      {builtIn && model.source !== "manual" ? (
         <Button
           className="-ms-2.5 text-muted-foreground"
           disabled={!model.overridden}

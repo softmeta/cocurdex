@@ -6,11 +6,12 @@ import type {
   TitleModelSelection,
 } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
+import { RefreshCw } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppSearchInput } from "@/components";
-import { Button, Spinner } from "@/components/ui";
+import { Button, IconButton, Spinner } from "@/components/ui";
 import {
   bootstrapProviderModelsAtom,
   invalidateProviderModelCache,
@@ -18,6 +19,7 @@ import {
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import { JsonAddMenu } from "../json-add-menu";
 import { JsonDropArea } from "../json-drop-area";
+import { SettingsListGroup } from "../settings-list-group";
 import { SettingsListItem } from "../settings-list-item";
 import {
   SettingsMasterDetail,
@@ -150,6 +152,11 @@ function mergeProviderModels(
   ];
 }
 
+/** Pi resolves an empty or `{placeholder}` template endpoint from env or login values. */
+function hasFixedEndpoint(baseUrl: string) {
+  return Boolean(baseUrl) && !baseUrl.includes("{");
+}
+
 export function ProviderSettingsPanel() {
   const { t } = useTranslation("settings");
   const bootstrapProviderModels = useSetAtom(bootstrapProviderModelsAtom);
@@ -168,6 +175,7 @@ export function ProviderSettingsPanel() {
   );
   const [isCreatingProvider, setIsCreatingProvider] = useState(false);
   const [pendingTemplateId, setPendingTemplateId] = useState("");
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
   const [providerQuery, setProviderQuery] = useState("");
   const [titleModelValue, setTitleModelValue] = useState("");
   const [titleModelProbe, setTitleModelProbe] = useState<
@@ -210,6 +218,9 @@ export function ProviderSettingsPanel() {
       .includes(providerFilterQuery);
   });
   const providerIds = new Set(providers.map((provider) => provider.id));
+  const providerTotal =
+    providers.length +
+    templates.filter((template) => !providerIds.has(template.id)).length;
   const filteredTemplates = templates.filter((template) => {
     if (providerIds.has(template.id)) return false;
     if (!providerFilterQuery) return true;
@@ -221,6 +232,11 @@ export function ProviderSettingsPanel() {
   const shouldShowProviderEditor =
     surface.kind === "provider" || surface.kind === "create";
   const presetProviderIds = new Set(templates.map((template) => template.id));
+  const openEndpointProviderIds = new Set(
+    templates
+      .filter((template) => !hasFixedEndpoint(template.baseUrl))
+      .map((template) => template.id),
+  );
   const editorAuthMethods =
     templates.find((template) => template.id === editorProvider.id)
       ?.authMethods ?? [];
@@ -286,7 +302,7 @@ export function ProviderSettingsPanel() {
     const id = draftProvider.id.trim();
     const name = draftProvider.name.trim();
     const baseUrl = draftProvider.baseUrl.trim();
-    if (!id || !name || !baseUrl) {
+    if (!id || !name || (!baseUrl && !presetProviderIds.has(id))) {
       toast.error(t("providers.status.missingFields"));
       return false;
     }
@@ -393,6 +409,32 @@ export function ProviderSettingsPanel() {
       return;
     }
     await reload();
+  }
+
+  async function refreshAllModels() {
+    setIsRefreshingAll(true);
+    try {
+      const results = await desktopApi.refreshAllProviderModels();
+      await reload();
+      const failed = results.filter((result) => result.error);
+      if (failed.length === 0) {
+        toast.success(t("providers.status.allModelsRefreshed"));
+        return;
+      }
+      toast.error(
+        t("providers.status.someModelsRefreshFailed", {
+          providers: failed.map((result) => result.providerId).join(", "),
+        }),
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("providers.status.modelsRefreshFailed"),
+      );
+    } finally {
+      setIsRefreshingAll(false);
+    }
   }
 
   async function refreshModels(providerId: string) {
@@ -574,11 +616,27 @@ export function ProviderSettingsPanel() {
                 <div className="flex shrink-0 items-center gap-2">
                   <div className="min-w-0 flex-1">
                     <AppSearchInput
-                      placeholder={t("providers.searchPlaceholder")}
+                      placeholder={t("providers.searchPlaceholder", {
+                        count: providerTotal,
+                      })}
                       value={providerQuery}
                       onChange={(event) => setProviderQuery(event.target.value)}
                     />
                   </div>
+                  <IconButton
+                    aria-label={t("providers.actions.refreshAllModels")}
+                    disabled={isRefreshingAll || providers.length === 0}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => void refreshAllModels()}
+                  >
+                    <RefreshCw
+                      className={cn(
+                        "size-4",
+                        isRefreshingAll && "animate-spin",
+                      )}
+                    />
+                  </IconButton>
                   <JsonAddMenu
                     label={t("providers.actions.newProvider")}
                     messages={jsonMessages}
@@ -589,7 +647,7 @@ export function ProviderSettingsPanel() {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-auto">
-                  <div className="flex flex-col gap-2 pe-1">
+                  <div className="flex flex-col gap-4 pe-1">
                     {filteredProviders.length === 0 &&
                     filteredTemplates.length === 0 ? (
                       <div className="flex w-full cursor-default flex-col items-start gap-0.5 px-3 py-2 text-start">
@@ -600,53 +658,66 @@ export function ProviderSettingsPanel() {
                       </div>
                     ) : (
                       <>
-                        {filteredProviders.map((provider) => {
-                          const isActive =
-                            surface.kind === "provider" &&
-                            surface.id === provider.id;
-                          const modelCount = models.filter(
-                            (model) => model.providerId === provider.id,
-                          ).length;
+                        {filteredProviders.length > 0 ? (
+                          <SettingsListGroup
+                            count={filteredProviders.length}
+                            label={t("providers.list.configured")}
+                          >
+                            {filteredProviders.map((provider) => {
+                              const isActive =
+                                surface.kind === "provider" &&
+                                surface.id === provider.id;
+                              const modelCount = models.filter(
+                                (model) => model.providerId === provider.id,
+                              ).length;
 
-                          return (
-                            <SettingsListItem
-                              isActive={isActive}
-                              key={provider.id}
-                              subtitle={t("providers.models.modelCount", {
-                                count: modelCount,
-                              })}
-                              title={provider.name}
-                              trailing={
-                                <span
-                                  className={cn(
-                                    "size-1.5 shrink-0 rounded-full",
-                                    provider.enabled
-                                      ? "bg-emerald-500/70"
-                                      : "bg-muted-foreground/30",
-                                  )}
+                              return (
+                                <SettingsListItem
+                                  isActive={isActive}
+                                  key={provider.id}
+                                  subtitle={t("providers.models.modelCount", {
+                                    count: modelCount,
+                                  })}
+                                  title={provider.name}
+                                  trailing={
+                                    <span
+                                      className={cn(
+                                        "size-1.5 shrink-0 rounded-full",
+                                        provider.enabled
+                                          ? "bg-emerald-500/70"
+                                          : "bg-muted-foreground/30",
+                                      )}
+                                    />
+                                  }
+                                  onClick={() => selectProvider(provider)}
                                 />
-                              }
-                              onClick={() => selectProvider(provider)}
-                            />
-                          );
-                        })}
-
-                        {filteredTemplates.map((template) => {
-                          const isActive =
-                            isCreatingProvider &&
-                            pendingTemplateId === template.id;
-                          return (
-                            <SettingsListItem
-                              isActive={isActive}
-                              key={`template:${template.id}`}
-                              subtitle={template.baseUrl}
-                              title={template.name}
-                              onClick={() =>
-                                startNewProviderFromTemplate(template.id)
-                              }
-                            />
-                          );
-                        })}
+                              );
+                            })}
+                          </SettingsListGroup>
+                        ) : null}
+                        {filteredTemplates.length > 0 ? (
+                          <SettingsListGroup
+                            count={filteredTemplates.length}
+                            label={t("providers.list.available")}
+                          >
+                            {filteredTemplates.map((template) => {
+                              const isActive =
+                                isCreatingProvider &&
+                                pendingTemplateId === template.id;
+                              return (
+                                <SettingsListItem
+                                  isActive={isActive}
+                                  key={`template:${template.id}`}
+                                  subtitle={template.baseUrl || template.id}
+                                  title={template.name}
+                                  onClick={() =>
+                                    startNewProviderFromTemplate(template.id)
+                                  }
+                                />
+                              );
+                            })}
+                          </SettingsListGroup>
+                        ) : null}
                       </>
                     )}
                   </div>
@@ -663,6 +734,7 @@ export function ProviderSettingsPanel() {
                       provider={editorProvider}
                       selectedProvider={selectedProvider}
                       selectedModels={selectedModels}
+                      openEndpointProviderIds={openEndpointProviderIds}
                       presetProviderIds={presetProviderIds}
                       onClearApiKey={clearApiKey}
                       onRefreshModels={refreshModels}

@@ -92,6 +92,7 @@ export type AgentsRequests = {
   "provider.model.delete": { providerId: string; modelId: string };
   "provider.model.reset": { providerId: string; modelId: string };
   "provider.fetchModels": { providerId: string };
+  "provider.refreshAllModels": undefined;
   "provider.listAllModels": {
     providerIds?: string[];
     forceRefresh?: boolean;
@@ -200,6 +201,9 @@ export type AgentsResults = {
   "provider.model.delete": null;
   "provider.model.reset": ProviderModelRecord;
   "provider.fetchModels": ProviderListModelsResult;
+  "provider.refreshAllModels": Array<
+    ProviderListModelsResult & { providerId: string }
+  >;
   "provider.listAllModels": ProviderModelRecord[];
   "provider.default.get": AgentProviderSelection | null;
   "provider.default.set": null;

@@ -21,17 +21,12 @@ import type {
 import {
   aggregateTurnFileChanges,
   createUnifiedDiff,
-  DEFAULT_MODEL_CONTEXT_WINDOW,
   errorKindForLog,
   hashLogValue,
-  hostForLog,
   isChatSession,
   piThinkingLevels,
 } from "@cocurdex/shared";
-import {
-  type ImageContent,
-  InMemoryCredentialStore,
-} from "@earendil-works/pi-ai";
+import type { ImageContent } from "@earendil-works/pi-ai";
 import {
   createAgentSession,
   createCodemodeExtension,
@@ -68,18 +63,15 @@ import { createPiChatResourceLoaderOptions } from "./pi-chat-session";
 import { handlePiCompactionEvent } from "./pi-compaction";
 import { onlyPiMcpServers } from "./pi-mcp-agents";
 import {
-  buildModelCost,
-  buildModelInput,
-  getNumber,
-  parseHeaders,
-  parseJsonObject,
-} from "./pi-model-utils";
+  createPiModelRuntime,
+  resolvePiRuntimeModel,
+} from "./pi-model-runtime";
+import { getNumber } from "./pi-model-utils";
 import { getPiAgentDir } from "./pi-paths";
 import {
   appendPostedMessages,
   type PiCustomMessageSink,
 } from "./pi-posted-messages";
-import { piRequestApiKey } from "./pi-provider-catalog";
 import { createPiRunPolicy } from "./pi-run-policy";
 import { forkPiProviderSession, readPiSessionFile } from "./pi-session-fork";
 import {
@@ -240,75 +232,7 @@ async function listPiSlashCommands(
   return skills;
 }
 
-async function registerRuntimeProvider(
-  modelRuntime: ModelRuntime,
-  providerConfig: RuntimeProviderConfig,
-) {
-  const api = providerConfig.api;
-  if (!api) {
-    return null;
-  }
-
-  const apiKey = piRequestApiKey(
-    providerConfig.providerId,
-    providerConfig.apiKey,
-  );
-  if (apiKey) {
-    await modelRuntime.setRuntimeApiKey(providerConfig.providerId, apiKey);
-  } else {
-    await modelRuntime.removeRuntimeApiKey(providerConfig.providerId);
-  }
-
-  const compat =
-    parseJsonObject(providerConfig.modelCompatJson) ??
-    parseJsonObject(providerConfig.providerCompatJson);
-
-  const resolvedBaseUrl =
-    providerConfig.modelBaseUrl || providerConfig.baseUrl || undefined;
-
-  logAdapterDiagnostic("info", "pi: registering provider model", {
-    providerId: providerConfig.providerId,
-    modelId: providerConfig.modelId,
-    api,
-    endpointHost: hostForLog(resolvedBaseUrl),
-    modelEndpointOverride: Boolean(providerConfig.modelBaseUrl),
-  });
-
-  modelRuntime.registerProvider(providerConfig.providerId, {
-    name: providerConfig.providerName,
-    baseUrl: providerConfig.baseUrl || undefined,
-    apiKey: apiKey || undefined,
-    api,
-    headers: parseHeaders(providerConfig.headersJson),
-    models: [
-      {
-        id: providerConfig.modelId,
-        name: providerConfig.modelName || providerConfig.modelId,
-        api,
-        baseUrl: resolvedBaseUrl,
-        reasoning:
-          providerConfig.supportsReasoning ??
-          Boolean(providerConfig.reasoningEffort),
-        thinkingLevelMap: parseJsonObject(
-          providerConfig.modelThinkingLevelMapJson,
-        ),
-        input: buildModelInput(providerConfig.modelCapabilities),
-        cost: buildModelCost(providerConfig.modelCostJson),
-        contextWindow:
-          providerConfig.modelContextWindow || DEFAULT_MODEL_CONTEXT_WINDOW,
-        maxTokens: providerConfig.modelMaxTokens ?? 0,
-        compat,
-      },
-    ],
-  });
-
-  return modelRuntime.getModel(
-    providerConfig.providerId,
-    providerConfig.modelId,
-  );
-}
-
-type PiModel = NonNullable<Awaited<ReturnType<typeof registerRuntimeProvider>>>;
+type PiModel = NonNullable<Awaited<ReturnType<typeof resolvePiRuntimeModel>>>;
 
 function getString(value: unknown) {
   return typeof value === "string" ? value : null;
@@ -773,12 +697,15 @@ export function createPiSdkAdapter(
 
           const agentDir = getPiAgentDir(payload.userDataPath);
           process.env.PI_CODING_AGENT_DIR = agentDir;
-          const modelRuntime = await sdk.ModelRuntime.create({
-            credentials: new InMemoryCredentialStore(),
-            modelsPath: null,
-            refreshOnCreate: false,
-          });
-          const model = await registerRuntimeProvider(
+          const modelRuntime = await createPiModelRuntime(
+            payload.userDataPath,
+            {
+              refresh: "cache",
+              providers: [providerConfig.providerId],
+              ModelRuntime: sdk.ModelRuntime,
+            },
+          );
+          const model = await resolvePiRuntimeModel(
             modelRuntime,
             providerConfig,
           );
@@ -891,7 +818,7 @@ export function createPiSdkAdapter(
           );
         }
 
-        const nextModel = await registerRuntimeProvider(
+        const nextModel = await resolvePiRuntimeModel(
           piModelRuntime,
           providerConfig,
         );

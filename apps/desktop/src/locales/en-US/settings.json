@@ -967,6 +967,7 @@
       "delete": "Delete",
       "newProvider": "New",
       "refresh": "Refresh",
+      "refreshAllModels": "Refresh all models",
       "resetToDefault": "Reset to default",
       "save": "Save"
     },
@@ -1041,11 +1042,15 @@
       "reasoning": "Supports reasoning",
       "runtime": {
         "anthropic-messages": "Anthropic Messages",
+        "azure-openai-responses": "Azure OpenAI Responses",
+        "bedrock-converse-stream": "Amazon Bedrock Converse",
         "google-generative-ai": "Google Generative AI",
+        "google-vertex": "Google Vertex AI",
         "mistral-conversations": "Mistral Conversations",
         "openai-codex-responses": "OpenAI Codex Responses",
         "openai-completions": "OpenAI Completions",
-        "openai-responses": "OpenAI Responses"
+        "openai-responses": "OpenAI Responses",
+        "pi-messages": "Pi Messages"
       },
       "thinkingLevelMap": "Thinking map",
       "thinkingLevelMapHint": "JSON object mapping levels to token budgets, e.g. {\"high\":10000}",
@@ -1080,6 +1085,8 @@
       }
     },
     "list": {
+      "available": "Available",
+      "configured": "Added",
       "configuredCount": "{{count}} configured"
     },
     "manageLabel": "Manage",
@@ -1109,6 +1116,8 @@
       "toggleFor": "Toggle {{model}}"
     },
     "searchPlaceholder": "Search providers...",
+    "searchPlaceholder_one": "Search {{count}} provider...",
+    "searchPlaceholder_other": "Search {{count}} providers...",
     "sections": {
       "advanced": "Advanced",
       "auth": "Auth",
@@ -1124,6 +1133,7 @@
       "notConfigured": "Not configured"
     },
     "status": {
+      "allModelsRefreshed": "All models refreshed",
       "deleteFailed": "Unable to delete provider",
       "idExists": "Provider ID {{id}} already exists",
       "importFailed": "Unable to import providers",
@@ -1139,7 +1149,8 @@
       "providerDeleted": "Provider deleted",
       "providerSaved": "Provider saved",
       "refreshingModels": "Refreshing models...",
-      "saveFailed": "Unable to save provider"
+      "saveFailed": "Unable to save provider",
+      "someModelsRefreshFailed": "Could not refresh: {{providers}}"
     },
     "templates": {
       "description": "Pick a preset, save it, then choose an available authentication method.",

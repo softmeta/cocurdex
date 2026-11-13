@@ -122,6 +122,64 @@ describe("built-in model parameter overrides", () => {
     expect(await listModels()).toEqual([catalogModel]);
   });
 
+  describe("a model added by hand", () => {
+    const added: ProviderModelRecord = {
+      ...catalogModel,
+      modelId: "mimo-v3-preview",
+      name: "MiMo V3 Preview",
+      source: "manual",
+      contextLimit: null,
+      outputLimit: null,
+      capabilities: undefined,
+      reasoning: undefined,
+    };
+
+    beforeEach(() => {
+      vi.stubGlobal("fetch", async () => new Response("", { status: 503 }));
+    });
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("stays listed beside the catalog after a refresh", async () => {
+      await service.saveProviderModel(added);
+
+      const refreshed = await service.fetchModels(provider.id);
+
+      expect(refreshed.models.map((model) => model.modelId)).toEqual([
+        added.modelId,
+        catalogModel.modelId,
+      ]);
+      expect(await listModels()).toEqual(refreshed.models);
+    });
+
+    it("yields to the catalog once it ships, marked so reset can drop the copy", async () => {
+      await service.saveProviderModel(added);
+      const shipped = {
+        ...added,
+        source: "api" as const,
+        contextLimit: 65_536,
+      };
+      clearBuiltInProviderModelsCache();
+      listPiProviderModelsMock.mockResolvedValue([catalogModel, shipped]);
+
+      expect(await listModels()).toEqual([
+        catalogModel,
+        { ...shipped, overridden: true },
+      ]);
+
+      await service.resetProviderModel(provider.id, added.modelId);
+
+      expect(await listModels()).toEqual([catalogModel, shipped]);
+    });
+
+    it("must use a runtime the provider's catalog runs on", async () => {
+      await expect(
+        service.saveProviderModel({ ...added, api: "anthropic-messages" }),
+      ).rejects.toThrow(/run on openai-completions/);
+      expect(await listModels()).toEqual([catalogModel]);
+    });
+  });
+
   it("refuses to reset a model the catalog does not ship", async () => {
     await expect(
       service.resetProviderModel(provider.id, "not-in-catalog"),

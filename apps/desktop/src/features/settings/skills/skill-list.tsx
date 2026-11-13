@@ -1,9 +1,9 @@
 import type { InstalledSkill } from "@cocurdex/shared";
 import { RefreshCw } from "lucide-react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { AppSearchInput } from "@/components";
 import { IconButton, Spinner, Text } from "@/components/ui";
+import { SettingsListGroup } from "../settings-list-group";
 import { SettingsListItem } from "../settings-list-item";
 import {
   type InstalledSkillGroups,
@@ -15,25 +15,6 @@ import {
   sourceDisplay,
 } from "./skill-library-model";
 import { SkillStatusDot } from "./skill-status-dot";
-
-function SkillGroup({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) {
-  return (
-    <section aria-label={label} className="flex flex-col gap-2">
-      <div className="flex h-5 items-center px-1">
-        <Text size="meta" tone="muted" weight="medium">
-          {label}
-        </Text>
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function SkillRow({
   selection,
@@ -130,7 +111,7 @@ export function SkillList({
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="flex flex-col gap-4 pe-1">
           {hasQuery ? null : (
-            <SkillGroup label={t("skills.list.builtin")}>
+            <SettingsListGroup label={t("skills.list.builtin")}>
               <SettingsListItem
                 dataAttributes={{ "data-skill-pack": "cocurdex" }}
                 isActive={
@@ -141,10 +122,14 @@ export function SkillList({
                 trailing={packDot ? <SkillStatusDot state={packDot} /> : null}
                 onClick={() => onSelect({ kind: "pack" })}
               />
-            </SkillGroup>
+            </SettingsListGroup>
           )}
           {sections.map((section) => (
-            <SkillGroup key={section.id} label={section.label}>
+            <SettingsListGroup
+              count={section.skills.length}
+              key={section.id}
+              label={section.label}
+            >
               {section.skills.map((skill) => (
                 <SkillRow
                   key={skillKey(skillRef(skill))}
@@ -153,7 +138,7 @@ export function SkillList({
                   onSelect={onSelect}
                 />
               ))}
-            </SkillGroup>
+            </SettingsListGroup>
           ))}
           {sections.length === 0 ? (
             <Text className="px-1" size="body" tone="muted">

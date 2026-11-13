@@ -59,6 +59,34 @@ const cliVersion =
     ? desktopPackageJson.version
     : "0.0.0";
 
+function piPackageBesideBundle() {
+  const piConfigModule = "/@earendil-works/pi-coding-agent/dist/config.js";
+  const packageDirLookup = "return findNodePackageDir(__dirname);";
+  let applied = false;
+  return {
+    name: "cocurdex-pi-package-beside-bundle",
+    transform(code, id) {
+      if (!id.replaceAll("\\", "/").endsWith(piConfigModule)) return null;
+      if (!code.includes(packageDirLookup)) {
+        throw new Error(`pi config.js no longer contains: ${packageDirLookup}`);
+      }
+      applied = true;
+      return {
+        code: code.replace(
+          packageDirLookup,
+          'return join(__dirname, "pi-package");',
+        ),
+        map: null,
+      };
+    },
+    buildEnd(error) {
+      if (!error && !applied) {
+        throw new Error("pi config.js was not bundled; pi-package not wired");
+      }
+    },
+  };
+}
+
 const quickjsWasmBesideDaemon = {
   name: "cocurdex-quickjs-wasm-beside-daemon",
   transform(code) {
@@ -121,6 +149,7 @@ await build({
   publicDir: false,
   logLevel: "warn",
   resolve: { alias },
+  plugins: [piPackageBesideBundle()],
   define: {
     __COCURDEX_CLI_VERSION__: JSON.stringify(cliVersion),
     ...buildPolicyDefine(),
@@ -158,6 +187,10 @@ const piThemeTarget = path.join(
   "pi-package/dist/modes/interactive/theme",
 );
 await mkdir(piThemeTarget, { recursive: true });
+await copyFile(
+  path.join(piPackagePath, "package.json"),
+  path.join(outDir, "pi-package/package.json"),
+);
 for (const theme of ["dark.json", "light.json"]) {
   await copyFile(
     path.join(piThemeSource, theme),
@@ -170,7 +203,7 @@ await build({
   publicDir: false,
   logLevel: "warn",
   resolve: { alias },
-  plugins: [quickjsWasmBesideDaemon],
+  plugins: [quickjsWasmBesideDaemon, piPackageBesideBundle()],
   define: buildPolicyDefine(),
   build: {
     outDir,

@@ -7,6 +7,7 @@ import { listConfiguredProviderModels } from "./models";
 
 export type ProviderModelState = Pick<
   DaemonState,
+  | "userDataPath"
   | "getAppSetting"
   | "getProviderConfig"
   | "listProviderConfigs"

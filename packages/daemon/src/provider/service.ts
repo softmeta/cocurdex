@@ -1,4 +1,5 @@
 import {
+  isPiBuiltInProviderId,
   listAgentModels,
   listPiBuiltInProviderIds,
   listPiProviderTemplates,
@@ -66,6 +67,9 @@ export class DaemonProviderService {
   }
 
   async saveProviderConfig(config: ProviderConfigRecord) {
+    if (!config.baseUrl.trim() && !isPiBuiltInProviderId(config.id)) {
+      throw new Error("A custom provider needs a base URL");
+    }
     await this.state.saveProviderConfig(config);
     return config;
   }
@@ -106,6 +110,7 @@ export class DaemonProviderService {
       model.modelId,
     );
     if (!catalog) {
+      await this.assertBuiltInProviderRunsApi(model);
       await this.state.saveProviderModel(model);
       return model;
     }
@@ -136,10 +141,30 @@ export class DaemonProviderService {
     return catalog;
   }
 
+  /** Pi runs a model added to a built-in provider on one of that provider's own runtimes. */
+  private async assertBuiltInProviderRunsApi(model: ProviderModelRecord) {
+    const config = await this.state.getProviderConfig(model.providerId);
+    if (!config || !isBuiltInProviderConfig(config)) return;
+    const apis = new Set(
+      (
+        await listConfiguredProviderModels(this.state, {
+          providerIds: [config.id],
+        })
+      )
+        .filter((candidate) => candidate.source !== "manual")
+        .map((candidate) => candidate.api),
+    );
+    if (apis.size > 0 && !apis.has(model.api)) {
+      throw new Error(
+        `${config.name} models run on ${[...apis].join(", ")}, not ${model.api}`,
+      );
+    }
+  }
+
   private async findCatalogModel(providerId: string, modelId: string) {
     const config = await this.state.getProviderConfig(providerId);
     if (!config || !isBuiltInProviderConfig(config)) return null;
-    return findBuiltInCatalogModel(config, modelId);
+    return findBuiltInCatalogModel(this.state, config, modelId);
   }
 
   async deleteProviderModel(providerId: string, modelId: string) {
@@ -159,6 +184,17 @@ export class DaemonProviderService {
       this.state,
       (id) => this.credentials.readApiKey(id),
       config,
+    );
+  }
+
+  /** Refreshes every configured provider's catalog, like `pi update --models`. */
+  async refreshAllModels() {
+    const providers = await this.state.listProviderConfigs();
+    return Promise.all(
+      providers.map(async (provider) => ({
+        providerId: provider.id,
+        ...(await this.fetchModels(provider.id)),
+      })),
     );
   }
 

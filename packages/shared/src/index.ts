@@ -57,6 +57,7 @@ export * from "./personal-agent";
 export * from "./provider-compatibility";
 export * from "./provider-contracts";
 export * from "./provider-json";
+export * from "./provider-model-api";
 export * from "./provider-model-override";
 export {
   createProviderSnapshotForModel,

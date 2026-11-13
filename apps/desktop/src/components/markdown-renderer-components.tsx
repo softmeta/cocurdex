@@ -70,6 +70,13 @@ const linkToneClassNames: Record<MarkdownRendererTone, string> = {
   editor: "text-editor-fg hover:text-editor-fg",
 };
 
+const TABLE_HEADER_TEXT: Record<MarkdownRendererTone, string> = {
+  assistant: "text-chat-fg-muted",
+  user: "text-chat-fg-muted",
+  system: "text-chat-system-fg",
+  editor: "text-editor-fg-muted",
+};
+
 export function createMarkdownComponents(
   tone: MarkdownRendererTone,
   options?: MarkdownComponentOptions,
@@ -217,51 +224,29 @@ export function createMarkdownComponents(
     table({ children }: { children?: ReactNode }) {
       return (
         <div
-          className={cn(
-            "my-1.5 min-w-0 max-w-full overflow-x-auto rounded-card [&_code]:rounded-control [&_code]:bg-foreground/8 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.9em]",
-            tone === "editor"
-              ? "bg-editor-chrome"
-              : tone === "system"
-                ? "bg-chat-system-bg"
-                : "bg-chat-code-block",
-          )}
+          data-markdown-table=""
+          data-tone={tone}
+          className="my-1.5 min-w-0 max-w-full overflow-x-auto rounded-card [&_code]:rounded-control [&_code]:bg-foreground/8 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.9em]"
         >
-          <table className="w-full border-collapse text-left text-sm in-data-streaming:table-fixed">
+          <table className="w-max min-w-full border-separate border-spacing-0 text-start text-sm in-data-streaming:w-full in-data-streaming:table-fixed">
             {children}
           </table>
         </div>
       );
     },
     thead({ children }: { children?: ReactNode }) {
-      return (
-        <thead
-          className={cn(
-            "border-b text-xs uppercase tracking-[0.12em]",
-            tone === "editor"
-              ? "border-editor-border text-editor-fg-muted"
-              : tone === "system"
-                ? "border-chat-system-border text-chat-system-fg"
-                : "border-foreground/6 text-chat-fg-muted dark:border-foreground/8",
-          )}
-        >
-          {children}
-        </thead>
-      );
+      return <thead className={TABLE_HEADER_TEXT[tone]}>{children}</thead>;
     },
     tbody({ children }: { children?: ReactNode }) {
       return <tbody>{children}</tbody>;
     },
     tr({ children }: { children?: ReactNode }) {
-      return (
-        <tr className="border-b border-foreground/3 last:border-b-0 dark:border-foreground/5">
-          {children}
-        </tr>
-      );
+      return <tr>{children}</tr>;
     },
     th({ children }: { children?: ReactNode }) {
       return (
-        <th className="px-3 py-2 align-top font-semibold break-words">
-          {children}
+        <th className="px-3 py-2 text-start align-bottom font-medium">
+          <div className="min-w-[3em] max-w-[28em] break-words">{children}</div>
         </th>
       );
     },
@@ -269,11 +254,11 @@ export function createMarkdownComponents(
       return (
         <td
           className={cn(
-            "px-3 py-2 align-top text-sm leading-[1.65] break-words",
+            "px-3 py-2 align-top leading-[1.65]",
             getToneTextClass(tone),
           )}
         >
-          {children}
+          <div className="min-w-[3em] max-w-[28em] break-words">{children}</div>
         </td>
       );
     },

@@ -200,6 +200,8 @@ async function handleProviderRequest(
       );
     case "provider.fetchModels":
       return providers.fetchModels(request.params.providerId);
+    case "provider.refreshAllModels":
+      return providers.refreshAllModels();
     case "provider.listAllModels":
       return providers.listAllModels(request.params);
     case "provider.listModels":

@@ -20,7 +20,10 @@ import {
 import { migrateNotesToCollaborativeDocs } from "./notes/note-schema";
 import { createOutboxSchemaSql } from "./outbox/schema";
 import { migratePersonasToPi } from "./personal/migrate-personas-to-pi";
-import { createPersonalAgentsSchemaSql } from "./personal/schema";
+import {
+  createPersonalAgentsSchemaSql,
+  PERSONAL_AGENT_USER_ADDRESS_COLUMN,
+} from "./personal/schema";
 import {
   createRoutinesSchemaSql,
   migrateRoutineReports,
@@ -37,7 +40,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 46;
+export const CURRENT_SCHEMA_VERSION = 47;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -472,6 +475,16 @@ function addRemoteDelegations(database: DatabaseSync): void {
   }
 }
 
+function addPersonalAgentUserAddress(database: DatabaseSync): void {
+  if (
+    !hasColumn(database, "personal_agents", PERSONAL_AGENT_USER_ADDRESS_COLUMN)
+  ) {
+    database.exec(
+      `ALTER TABLE personal_agents ADD COLUMN ${PERSONAL_AGENT_USER_ADDRESS_COLUMN} TEXT`,
+    );
+  }
+}
+
 function createRoutinesTables(database: DatabaseSync): void {
   database.exec(createRoutinesSchemaSql());
 }
@@ -671,6 +684,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [43, createDelegationsTable],
   [44, invalidateAntigravityContextUsage],
   [45, addRemoteDelegations],
+  [46, addPersonalAgentUserAddress],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

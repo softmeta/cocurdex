@@ -31,7 +31,7 @@ export function parseArgs(args: string[]): ParsedArgs {
       const key = arg.slice(2);
       const nextArg = args[index + 1];
 
-      if (!nextArg || nextArg.startsWith("--")) {
+      if (nextArg === undefined || nextArg.startsWith("--")) {
         flags.set(key, true);
         continue;
       }

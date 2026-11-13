@@ -193,7 +193,9 @@ describe("DaemonProviderService", () => {
         "anthropic",
       ]);
       listPiProviderModelsMock.mockImplementation(
-        async (provider: { id: string }) => [providerModel(provider.id)],
+        async (_userDataPath: string, providerId: string) => [
+          providerModel(providerId),
+        ],
       );
       const credentials = createCredentials();
       vi.mocked(credentials.readAuthState).mockImplementation(

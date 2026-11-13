@@ -64,7 +64,9 @@
     "newTitle": "新建助理",
     "save": "保存",
     "soul": "人设",
-    "soulPlaceholder": "语气、性格，以及和你说话的方式"
+    "soulPlaceholder": "语气、性格，以及和你说话的方式",
+    "userAddress": "怎么称呼你",
+    "userAddressPlaceholder": "名字或昵称；留空时它会先问你"
   },
   "inbox": {
     "kind": {

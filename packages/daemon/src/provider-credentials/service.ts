@@ -4,7 +4,6 @@ import {
   logoutPiProvider,
   readPiProviderAuthState,
   registerBundledPiProviderOAuthFlows,
-  resolvePiProviderAuth,
 } from "@cocurdex/agent-adapters/provider-auth";
 import type {
   AgentProviderSnapshot,
@@ -87,10 +86,7 @@ export class ProviderCredentials {
 
   async readApiKey(providerId: string) {
     const provider = await this.state.getProviderConfig(providerId);
-    if (!provider) return null;
-    const auth = await resolvePiProviderAuth(this.userDataPath, provider.id);
-    if (auth?.auth.apiKey) return auth.auth.apiKey;
-    return provider.apiKeySecretId
+    return provider?.apiKeySecretId
       ? this.vault.read(provider.apiKeySecretId)
       : null;
   }
@@ -109,31 +105,13 @@ export class ProviderCredentials {
     snapshot: AgentProviderSnapshot,
   ): Promise<AgentRuntimeProviderConfig> {
     const provider = await this.state.getProviderConfig(snapshot.providerId);
-    const auth = provider
-      ? await resolvePiProviderAuth(this.userDataPath, provider.id)
-      : undefined;
-    const apiKey =
-      auth?.auth.apiKey ??
-      (provider?.apiKeySecretId
-        ? await this.vault.read(provider.apiKeySecretId)
-        : null);
+    const apiKey = provider?.apiKeySecretId
+      ? await this.vault.read(provider.apiKeySecretId)
+      : null;
     if (provider?.apiKeySecretId && !apiKey)
       throw new Error(
         "Provider API key is missing; set it again in provider settings",
       );
-    let headersJson = snapshot.headersJson;
-    if (auth?.auth.headers) {
-      const headers = headersJson ? (JSON.parse(headersJson) as unknown) : {};
-      if (!headers || typeof headers !== "object" || Array.isArray(headers))
-        throw new Error("Provider headers must be an object");
-      headersJson = JSON.stringify({ ...headers, ...auth.auth.headers });
-    }
-    return {
-      ...snapshot,
-      apiKey,
-      baseUrl: auth?.auth.baseUrl ?? snapshot.baseUrl,
-      modelBaseUrl: auth?.auth.baseUrl ?? snapshot.modelBaseUrl,
-      headersJson,
-    };
+    return { ...snapshot, apiKey };
   }
 }

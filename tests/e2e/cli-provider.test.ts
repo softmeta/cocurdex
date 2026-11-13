@@ -1,3 +1,5 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import {
   type DaemonProcess,
   spawnDaemon,
@@ -131,6 +133,111 @@ describe("cocurdex provider CLI", () => {
     expect(exported.stdout).not.toContain("OLLAMA_API_KEY");
 
     await cli(["provider", "remove", "ollama"]);
+  });
+
+  it("refreshes every provider's models and reports the ones that fail", async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ data: [{ id: "served-model" }] }));
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const { port } = server.address() as AddressInfo;
+    try {
+      await cli([
+        "provider",
+        "add",
+        "served",
+        "--base-url",
+        `http://127.0.0.1:${port}/v1`,
+      ]);
+      await cli([
+        "provider",
+        "add",
+        "down",
+        "--base-url",
+        "http://127.0.0.1:9/v1",
+      ]);
+
+      const refreshed = await cli([
+        "provider",
+        "models",
+        "--refresh",
+        "--json",
+      ]);
+
+      expect(refreshed.code).toBe(1);
+      expect(refreshed.stderr).toContain("Could not refresh down");
+      expect(JSON.parse(refreshed.stdout)).toEqual([
+        expect.objectContaining({
+          providerId: "served",
+          modelId: "served-model",
+        }),
+      ]);
+    } finally {
+      await cli(["provider", "remove", "served"]);
+      await cli(["provider", "remove", "down"]);
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
+  it("adds a built-in provider without a default endpoint and sets one later", async () => {
+    const added = await cli([
+      "provider",
+      "add",
+      "azure",
+      "--template",
+      "azure",
+      "--json",
+    ]);
+    expect(added.code).toBe(0);
+    expect(JSON.parse(added.stdout)).toMatchObject({
+      id: "azure",
+      baseUrl: "",
+    });
+
+    const endpoint = "https://acme.openai.azure.example.invalid/openai/v1";
+    const updated = await cli([
+      "provider",
+      "update",
+      "azure",
+      "--base-url",
+      endpoint,
+      "--json",
+    ]);
+    expect(JSON.parse(updated.stdout)).toMatchObject({ baseUrl: endpoint });
+
+    await cli(["provider", "remove", "azure"]);
+  });
+
+  it("adds a model the built-in catalog lacks on the provider's own runtime", async () => {
+    await cli(["provider", "add", "google", "--template", "google"]);
+    await cli(["provider", "key", "set", "google"], "gemini-test-key\n");
+
+    const added = await cli([
+      "provider",
+      "model",
+      "add",
+      "google",
+      "gemini-from-the-future",
+      "--json",
+    ]);
+    expect(added.stderr).toBe("");
+    expect(JSON.parse(added.stdout)).toMatchObject({
+      modelId: "gemini-from-the-future",
+      api: "google-generative-ai",
+      source: "manual",
+    });
+
+    const listed = await cli(["provider", "models", "google", "--json"]);
+    const models: Array<{ modelId: string }> = JSON.parse(listed.stdout);
+    expect(models.length).toBeGreaterThan(1);
+    expect(models.map((model) => model.modelId)).toContain(
+      "gemini-from-the-future",
+    );
+
+    await cli(["provider", "remove", "google"]);
   });
 
   it("logs in to a template provider through daemon-driven prompts", async () => {

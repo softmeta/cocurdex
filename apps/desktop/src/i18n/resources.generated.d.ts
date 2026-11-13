@@ -1614,6 +1614,8 @@ export default interface Resources {
       soul: "Persona";
       soulPlaceholder: "Tone, personality, and how it talks to you";
       title: "Edit assistant";
+      userAddress: "How it addresses you";
+      userAddressPlaceholder: "Your name or nickname; it asks if left empty";
     };
     empty: {
       description: "An assistant remembers what matters to you, briefs you each morning, reminds you on time, and hands project work to coding agents.";
@@ -3306,6 +3308,7 @@ export default interface Resources {
         delete: "Delete";
         newProvider: "New";
         refresh: "Refresh";
+        refreshAllModels: "Refresh all models";
         resetToDefault: "Reset to default";
         save: "Save";
       };
@@ -3380,11 +3383,15 @@ export default interface Resources {
         reasoning: "Supports reasoning";
         runtime: {
           "anthropic-messages": "Anthropic Messages";
+          "azure-openai-responses": "Azure OpenAI Responses";
+          "bedrock-converse-stream": "Amazon Bedrock Converse";
           "google-generative-ai": "Google Generative AI";
+          "google-vertex": "Google Vertex AI";
           "mistral-conversations": "Mistral Conversations";
           "openai-codex-responses": "OpenAI Codex Responses";
           "openai-completions": "OpenAI Completions";
           "openai-responses": "OpenAI Responses";
+          "pi-messages": "Pi Messages";
         };
         thinkingLevelMap: "Thinking map";
         thinkingLevelMapHint: 'JSON object mapping levels to token budgets, e.g. {"high":10000}';
@@ -3419,6 +3426,8 @@ export default interface Resources {
         };
       };
       list: {
+        available: "Available";
+        configured: "Added";
         configuredCount: "{{count}} configured";
       };
       manageLabel: "Manage";
@@ -3448,6 +3457,8 @@ export default interface Resources {
         toggleFor: "Toggle {{model}}";
       };
       searchPlaceholder: "Search providers...";
+      searchPlaceholder_one: "Search {{count}} provider...";
+      searchPlaceholder_other: "Search {{count}} providers...";
       sections: {
         advanced: "Advanced";
         auth: "Auth";
@@ -3463,6 +3474,7 @@ export default interface Resources {
         notConfigured: "Not configured";
       };
       status: {
+        allModelsRefreshed: "All models refreshed";
         deleteFailed: "Unable to delete provider";
         idExists: "Provider ID {{id}} already exists";
         importFailed: "Unable to import providers";
@@ -3479,6 +3491,7 @@ export default interface Resources {
         providerSaved: "Provider saved";
         refreshingModels: "Refreshing models...";
         saveFailed: "Unable to save provider";
+        someModelsRefreshFailed: "Could not refresh: {{providers}}";
       };
       templates: {
         description: "Pick a preset, save it, then choose an available authentication method.";

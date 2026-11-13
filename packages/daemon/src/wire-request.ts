@@ -93,21 +93,25 @@ export function authorizeDaemonRequest(
       message: "Invalid daemon token",
     };
   }
-  if (principal.kind === "local") return { ok: true, principal };
   const scope =
     typeof method === "string" && Object.hasOwn(DAEMON_METHOD_SCOPES, method)
       ? DAEMON_METHOD_SCOPES[method as keyof typeof DAEMON_METHOD_SCOPES]
       : undefined;
-  if (!scope || !principalHasScope(principal, scope)) {
+  if (!scope) {
     return {
       ok: false,
       code: "FORBIDDEN",
-      message: scope
-        ? `This device is missing the ${scope} scope`
-        : UNKNOWN_DAEMON_METHOD_MESSAGE,
+      message: UNKNOWN_DAEMON_METHOD_MESSAGE,
     };
   }
-  return { ok: true, principal };
+  if (principal.kind === "local" || principalHasScope(principal, scope)) {
+    return { ok: true, principal };
+  }
+  return {
+    ok: false,
+    code: "FORBIDDEN",
+    message: `This device is missing the ${scope} scope`,
+  };
 }
 
 function unattendedExecutionLookup(

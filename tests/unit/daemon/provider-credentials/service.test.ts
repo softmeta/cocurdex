@@ -4,15 +4,7 @@ import type {
   ProviderConfigRecord,
   SessionRecord,
 } from "@cocurdex/shared";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const resolveAuth = vi.hoisted(() => vi.fn());
-vi.mock("@cocurdex/agent-adapters/provider-auth", () => ({
-  resolvePiProviderAuth: resolveAuth,
-  registerBundledPiProviderOAuthFlows: vi.fn(),
-}));
-
-beforeEach(() => resolveAuth.mockReset().mockResolvedValue(undefined));
+import { describe, expect, it, vi } from "vitest";
 
 function fixture() {
   const config: ProviderConfigRecord = {
@@ -69,7 +61,6 @@ describe("daemon provider credentials", () => {
       apiKey: null,
     });
     expect(vault.read).not.toHaveBeenCalled();
-    expect(resolveAuth).not.toHaveBeenCalled();
   });
   it("treats clearing a key for an unsaved provider as already cleared", async () => {
     const { service, vault, state } = fixture();
@@ -96,27 +87,12 @@ describe("daemon provider credentials", () => {
     expect(config.apiKeySecretId).toBeNull();
   });
 
-  it("applies refreshed OAuth headers and endpoint before stored API keys", async () => {
-    const { service, config, vault, snapshot } = fixture();
-    config.apiKeySecretId = "stored-secret";
-    resolveAuth.mockResolvedValue({
-      auth: {
-        apiKey: "oauth-token",
-        baseUrl: "https://oauth.example.invalid",
-        headers: { "x-account": "account" },
-      },
+  it("passes only the stored key and leaves a pi login to pi", async () => {
+    const { service, snapshot } = fixture();
+    await expect(service.resolveSnapshot(snapshot)).resolves.toEqual({
+      ...snapshot,
+      apiKey: null,
     });
-    const runtime = await service.resolveSnapshot(snapshot);
-    expect(runtime).toMatchObject({
-      apiKey: "oauth-token",
-      baseUrl: "https://oauth.example.invalid",
-      modelBaseUrl: "https://oauth.example.invalid",
-    });
-    expect(JSON.parse(runtime.headersJson as string)).toEqual({
-      "x-existing": "yes",
-      "x-account": "account",
-    });
-    expect(vault.read).not.toHaveBeenCalled();
   });
 
   it("rejects a missing configured key instead of falling back to stored ciphertext", async () => {
@@ -161,6 +137,5 @@ describe("daemon provider credentials", () => {
       ).resolves.toEqual({ ...snapshot, apiKey: null });
     }
     expect(state.getProviderConfig).not.toHaveBeenCalled();
-    expect(resolveAuth).not.toHaveBeenCalled();
   });
 });

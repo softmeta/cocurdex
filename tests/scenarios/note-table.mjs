@@ -64,8 +64,8 @@ function readTableLayout() {
   return {
     headerAlign: headerStyle.textAlign,
     headerBackground: headerStyle.backgroundColor,
-    cellBorderWidth: cellStyle.borderTopWidth,
-    cellBorderStyle: cellStyle.borderTopStyle,
+    cellBorderWidth: cellStyle.borderBottomWidth,
+    cellBorderStyle: cellStyle.borderBottomStyle,
     cellParagraphMargin: getComputedStyle(cellParagraph).marginTop,
     rowHeight: cell.parentElement.getBoundingClientRect().height,
     lineHeight: Number.parseFloat(cellStyle.lineHeight),

@@ -6,6 +6,7 @@ import {
   isAgentId,
   type ProviderAuthMethod,
   type ProviderConfigRecord,
+  type ProviderModelRecord,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
 import {
@@ -43,7 +44,7 @@ export function providerUsageLines() {
     "  cocurdex provider logout <id>",
     "  cocurdex provider key set <id>   (reads the key from stdin)",
     "  cocurdex provider key clear <id>",
-    "  cocurdex provider models <id> [--refresh] [--json]",
+    "  cocurdex provider models [<id>] [--refresh] [--json]   (--refresh without <id> refreshes every provider)",
     ...providerModelUsageLines(),
     "  cocurdex provider default [--agent <agent>] [--provider <id> --model <model-id>] [--json]",
     "  cocurdex provider import <file|->   (pi models.json format)",
@@ -85,8 +86,10 @@ async function addProvider(providerId: string, parsed: ParsedArgs) {
     throw new Error(`Provider template not found: ${templateId}`);
   }
   const name = stringFlag(parsed, "name") ?? template?.name ?? providerId;
-  const baseUrl = stringFlag(parsed, "base-url") ?? template?.baseUrl;
-  if (!baseUrl) throw new Error("Missing required --base-url or --template");
+  const baseUrl = stringFlag(parsed, "base-url") ?? template?.baseUrl ?? "";
+  if (!baseUrl && !template) {
+    throw new Error("Missing required --base-url or --template");
+  }
   const now = new Date().toISOString();
   const provider: ProviderConfigRecord = {
     id: providerId,
@@ -212,18 +215,42 @@ async function handleKeyCommand(args: string[]) {
   throw new Error(`Usage: ${usage}`);
 }
 
+const MODEL_COLUMNS = [
+  "providerId",
+  "modelId",
+  "name",
+  "api",
+  "enabled",
+] as const satisfies readonly (keyof ProviderModelRecord)[];
+
+async function refreshAllProviderModels(parsed: ParsedArgs) {
+  const results = await withDaemon(() =>
+    requestDaemon("provider.refreshAllModels"),
+  );
+  const failures = results.filter((result) => result.error);
+  for (const { providerId, error } of failures) {
+    console.error(`Could not refresh ${providerId}: ${error}`);
+  }
+  printRows(
+    results.flatMap((result) => result.models),
+    [...MODEL_COLUMNS],
+    parsed,
+  );
+  if (failures.length > 0) process.exitCode = 1;
+}
+
 async function listModels(providerId: string | undefined, parsed: ParsedArgs) {
-  const columns = ["providerId", "modelId", "name", "api", "enabled"] as const;
-  if (parsed.flags.has("refresh")) {
-    const id = requireArg(
-      providerId,
-      "cocurdex provider models <id> --refresh",
-    );
+  const columns = MODEL_COLUMNS;
+  if (parsed.flags.has("refresh") && providerId) {
     const result = await withDaemon(() =>
-      requestDaemon("provider.fetchModels", { providerId: id }),
+      requestDaemon("provider.fetchModels", { providerId }),
     );
     if (result.error) throw new Error(result.error);
     printRows(result.models, [...columns], parsed);
+    return;
+  }
+  if (parsed.flags.has("refresh")) {
+    await refreshAllProviderModels(parsed);
     return;
   }
   const models = await withDaemon(() =>

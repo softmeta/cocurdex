@@ -529,6 +529,9 @@ export interface ProductApi {
   logoutProviderAuth(providerId: string): Promise<void>;
   listProviderModels(providerId: string): Promise<ProviderListModelsResult>;
   listAllProviderModels(): Promise<ProviderModelRecord[]>;
+  refreshAllProviderModels(): Promise<
+    Array<ProviderListModelsResult & { providerId: string }>
+  >;
   saveProviderModel(model: ProviderModelRecord): Promise<ProviderModelRecord>;
   deleteProviderModel(providerId: string, modelId: string): Promise<void>;
   resetProviderModel(

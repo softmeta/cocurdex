@@ -67,7 +67,7 @@ export function AgentRoleSettingsPanel() {
           <ul className="flex flex-col divide-y divide-border/60">
             {roles.map((role) => (
               <li className="flex items-start gap-3 py-3.5" key={role.id}>
-                <AgentRoleAvatar role={role} size="lg" />
+                <AgentRoleAvatar role={role} showAgent={false} size="lg" />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <Text truncate weight="medium">
                     {role.name}

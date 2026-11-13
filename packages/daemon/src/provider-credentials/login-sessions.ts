@@ -187,8 +187,18 @@ export class ProviderLoginSessions {
 function toLoginUpdate(
   event: Parameters<LoginInteraction["notify"]>[0],
 ): ProviderAuthLoginUpdate {
-  if (event.type === "info" || event.type === "progress") {
-    return { type: event.type, message: event.message };
+  if (event.type === "info") {
+    return {
+      type: "info",
+      message: event.message,
+      links: (event.links ?? []).map((link) => ({
+        label: link.label ?? null,
+        url: link.url,
+      })),
+    };
+  }
+  if (event.type === "progress") {
+    return { type: "progress", message: event.message };
   }
   if (event.type === "auth_url") {
     return {

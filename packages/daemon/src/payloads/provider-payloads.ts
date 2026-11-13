@@ -40,7 +40,7 @@ const commitMessageModelSelectionSchema = z.object({
 const providerConfigSchema = z.object({
   id: providerIdSchema,
   name: z.string().min(1).max(256),
-  baseUrl: boundedTextSchema(4096).min(1),
+  baseUrl: boundedTextSchema(4096),
   enabled: z.boolean(),
   apiKeySecretId: z.string().max(256).nullable(),
   headersJson: providerJsonFieldSchema,

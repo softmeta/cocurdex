@@ -5,6 +5,7 @@ import {
 import {
   PERSONAL_AGENT_RUNTIME_ID,
   PERSONAL_AGENT_SOUL_MAX_LENGTH,
+  PERSONAL_AGENT_USER_ADDRESS_MAX_LENGTH,
   type PersonalAgentRecord,
   type PersonalAgentRolePayload,
   resolveAgentRoleAvatar,
@@ -41,6 +42,7 @@ interface AssistantDraft {
   description: string;
   instructions: string;
   soul: string;
+  userAddress: string;
 }
 
 type AssistantModel = Pick<
@@ -70,6 +72,8 @@ function draftOf(subject: Subject): AssistantDraft {
     description: role.description ?? "",
     instructions: role.instructions ?? "",
     soul: subject.kind === "edit" ? (subject.agent.soul ?? "") : "",
+    userAddress:
+      subject.kind === "edit" ? (subject.agent.userAddress ?? "") : "",
   };
 }
 
@@ -91,7 +95,8 @@ function sameDraft(left: AssistantDraft, right: AssistantDraft) {
     left.name.trim() === right.name.trim() &&
     left.description.trim() === right.description.trim() &&
     left.instructions.trim() === right.instructions.trim() &&
-    left.soul.trim() === right.soul.trim()
+    left.soul.trim() === right.soul.trim() &&
+    left.userAddress.trim() === right.userAddress.trim()
   );
 }
 
@@ -186,14 +191,20 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
     const connection = hostConnection(host.hostId);
     const role = { ...rolePayload(subject, draft), ...model, avatar };
     const soul = draft.soul.trim() || null;
+    const userAddress = draft.userAddress.trim() || null;
     try {
       const saved = agent
         ? await connection.request("personalAgent.update", {
             id: agent.id,
             role,
             soul,
+            userAddress,
           })
-        : await connection.request("personalAgent.create", { role, soul });
+        : await connection.request("personalAgent.create", {
+            role,
+            soul,
+            userAddress,
+          });
       await revalidateAssistant(host.hostId);
       Keyboard.dismiss();
       await keyboardHidden();
@@ -306,6 +317,16 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
             multiline
             style={styles.multiline}
             onChangeText={field("instructions")}
+          />
+        </FieldSection>
+        <FieldSection title={t("form.userAddress")}>
+          <FormTextField
+            testID="assistant-form-user-address"
+            accessibilityLabel={t("form.userAddress")}
+            placeholder={t("form.userAddressPlaceholder")}
+            defaultValue={initial.userAddress}
+            maxLength={PERSONAL_AGENT_USER_ADDRESS_MAX_LENGTH}
+            onChangeText={field("userAddress")}
           />
         </FieldSection>
         <FieldSection title={t("form.soul")}>

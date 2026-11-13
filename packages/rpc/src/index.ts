@@ -90,6 +90,7 @@ export const DAEMON_NO_PARAM_METHODS = {
   "note.list": true,
   "provider.listConfigs": true,
   "provider.listTemplates": true,
+  "provider.refreshAllModels": true,
   "provider.titleModel.get": true,
   "network.proxy.get": true,
   "agent.runLimits.get": true,

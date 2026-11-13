@@ -1291,7 +1291,7 @@ export class MemoryService {
       });
       return null;
     }
-    if (!runtime?.baseUrl || !runtime.modelId) return null;
+    if (!runtime?.modelId) return null;
     const { provider, model } = buildSnapshotProviderRecords(runtime);
     const controller = new AbortController();
     const timer = setTimeout(
@@ -1301,6 +1301,7 @@ export class MemoryService {
     timer.unref?.();
     try {
       return await generatePiMemoryDigest({
+        userDataPath: this.options.userDataPath,
         provider,
         model,
         apiKey: runtime.apiKey ?? null,
