@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CocurdexMark } from "@/components/cocurdex-mark";
 import { AgentRoleAvatar } from "@/features/sessions";
-import { cn, useMountEffect } from "@/lib";
+import { useMountEffect } from "@/lib";
 import { useChatAssistantRole, useChatPresentation } from "../chat-display";
 import { useActivityMotion } from "./use-activity-motion";
 import type { LiveActivityText } from "./use-live-activity-text";
@@ -119,17 +119,15 @@ function WorkActivityLabel({
       </span>
       {text.title ? (
         <span
-          className={cn(
-            "activity-shimmer",
-            text.secondary ? "shrink-0" : "min-w-0 truncate",
-          )}
+          className="activity-shimmer min-w-0 max-w-md truncate"
+          title={text.title}
         >
           {text.title}
         </span>
       ) : null}
       {text.secondary ? (
         <span
-          className="activity-shimmer min-w-0 truncate font-mono [font-variant-ligatures:none]"
+          className="activity-shimmer min-w-0 max-w-md shrink-[999] truncate font-mono [font-variant-ligatures:none]"
           title={text.secondary}
         >
           {text.secondary}

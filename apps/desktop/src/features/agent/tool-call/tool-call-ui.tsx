@@ -46,17 +46,15 @@ function ToolCallTriggerRow({ toolCall }: { toolCall: AgentToolCallRecord }) {
       <ToolCallRowIcon className="shrink-0" toolCall={toolCall} />
       {title ? (
         <span
-          className={cn(
-            "text-chat-fg-muted",
-            secondary ? "shrink-0" : "min-w-0 truncate",
-          )}
+          className="min-w-0 max-w-md truncate text-chat-fg-muted"
+          title={title}
         >
           {title}
         </span>
       ) : null}
       {secondary ? (
         <span
-          className="min-w-0 max-w-md truncate font-mono text-chat-fg-muted/70 [font-variant-ligatures:none]"
+          className="min-w-0 max-w-md shrink-[999] truncate font-mono text-chat-fg-muted/70 [font-variant-ligatures:none]"
           title={secondary}
         >
           {secondary}
