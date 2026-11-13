@@ -29,6 +29,7 @@ function createUi(answer = "code-123") {
     showAuthUrl: vi.fn(),
     showDeviceCode: vi.fn(),
     showMessage: vi.fn(),
+    showInfo: vi.fn(),
     prompt: vi.fn(async () => answer),
     dismissPrompt: vi.fn(),
   };

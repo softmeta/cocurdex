@@ -1,7 +1,6 @@
 import {
   type ProviderApi,
   type ProviderAuthMethodRecord,
-  type ProviderConfigRecord,
   type ProviderModelCapability,
   type ProviderModelRecord,
   type ProviderTemplateRecord,
@@ -13,8 +12,6 @@ import {
   getBuiltinProviders,
 } from "@earendil-works/pi-ai/providers/all";
 
-const supportedApis = new Set<ProviderApi>(providerApis);
-
 const providerBaseUrls: Record<string, string> = {
   "cloudflare-ai-gateway":
     "https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/compat",
@@ -24,15 +21,19 @@ const providerBaseUrls: Record<string, string> = {
   "opencode-go": "https://opencode.ai/zen/go/v1",
 };
 
-function isProviderApi(api: Api): api is ProviderApi {
-  return supportedApis.has(api as ProviderApi);
+const supportedApis = new Set<string>(providerApis);
+
+export function isPiProviderApi(api: Api): api is ProviderApi {
+  return supportedApis.has(api);
 }
 
-function getSupportedProviderModels(provider: Provider): Model<ProviderApi>[] {
-  const models = provider
-    .getModels()
-    .filter((model): model is Model<ProviderApi> => isProviderApi(model.api));
-  return models;
+function findBuiltinProvider(providerId: string) {
+  return builtinProviders().find((provider) => provider.id === providerId);
+}
+
+export function getPiTemplateBaseUrl(providerId: string) {
+  const provider = findBuiltinProvider(providerId);
+  return provider ? getTemplateBaseUrl(provider) : undefined;
 }
 
 function getTemplateBaseUrl(provider: Provider) {
@@ -40,11 +41,7 @@ function getTemplateBaseUrl(provider: Provider) {
 }
 
 function isTemplateProvider(provider: Provider) {
-  return (
-    getSupportedProviderModels(provider).length > 0 &&
-    Boolean(provider.auth.oauth || provider.auth.apiKey?.login) &&
-    Boolean(getTemplateBaseUrl(provider))
-  );
+  return Boolean(provider.auth.oauth || provider.auth.apiKey);
 }
 
 function getProviderAuthMethods(provider: Provider) {
@@ -57,7 +54,7 @@ function getProviderAuthMethods(provider: Provider) {
       isSubscription: provider.auth.oauth.isSubscription ?? false,
     });
   }
-  if (provider.auth.apiKey?.login) {
+  if (provider.auth.apiKey) {
     methods.push({
       type: "api_key",
       name: provider.auth.apiKey.name,
@@ -128,26 +125,23 @@ export function listPiBuiltInProviderIds(): string[] {
   return getBuiltinProviders();
 }
 
+export function isPiBuiltInProviderId(providerId: string) {
+  return listPiBuiltInProviderIds().includes(providerId);
+}
+
 const KEYLESS_PROVIDER_API_KEY = "cocurdex-keyless";
 
 export function piRequestApiKey(providerId: string, apiKey: string | null) {
   if (apiKey) return apiKey;
-  return listPiBuiltInProviderIds().includes(providerId)
-    ? null
-    : KEYLESS_PROVIDER_API_KEY;
+  return isPiBuiltInProviderId(providerId) ? null : KEYLESS_PROVIDER_API_KEY;
 }
 
-export async function listPiProviderModels(
-  config: Pick<ProviderConfigRecord, "id">,
-): Promise<ProviderModelRecord[] | null> {
-  const provider = builtinProviders().find((item) => item.id === config.id);
-  if (!provider || !isTemplateProvider(provider)) {
-    return null;
-  }
-
+export function mapPiModelsToRecords(
+  providerId: string,
+  models: readonly Model<Api>[],
+): ProviderModelRecord[] {
   const now = new Date().toISOString();
-
-  return getSupportedProviderModels(provider).map((model) =>
-    mapPiModelToRecord(config.id, model, now),
-  );
+  return models
+    .filter((model): model is Model<ProviderApi> => isPiProviderApi(model.api))
+    .map((model) => mapPiModelToRecord(providerId, model, now));
 }

@@ -54,6 +54,7 @@ function createState(input: {
   models: ProviderModelRecord[];
 }) {
   return {
+    userDataPath: "/user-data",
     listProviderConfigs: vi.fn(async () => input.providers),
     listProviderModels: vi.fn(async () => input.models),
     listProviderModelOverrides: vi.fn(async () => []),
@@ -114,7 +115,11 @@ describe("listConfiguredProviderModels", () => {
 
     const models = await listConfiguredProviderModels(state);
 
-    expect(listPiProviderModelsMock).toHaveBeenCalledWith(builtInProvider);
+    expect(listPiProviderModelsMock).toHaveBeenCalledWith(
+      "/user-data",
+      "anthropic",
+      { refresh: "cache" },
+    );
     expect(models).toEqual([model]);
   });
 

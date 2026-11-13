@@ -88,7 +88,7 @@ export class DaemonState {
   private readonly toolOutputs: ToolOutputStore;
   private readonly storageMaintenance: StorageMaintenance;
 
-  constructor(userDataPath: string) {
+  constructor(readonly userDataPath: string) {
     this.database = createCocurdexDatabase(getDatabasePath(userDataPath));
     this.toolOutputs = createToolOutputStore(userDataPath);
     this.storageMaintenance = new StorageMaintenance({

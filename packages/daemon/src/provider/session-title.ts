@@ -92,7 +92,7 @@ async function resolveSessionTitleModel(
   session: SessionRecord,
 ): Promise<TitleModelRecords | null> {
   const runtime = await deps.resolveSessionProvider(session);
-  if (!runtime?.baseUrl || !runtime.modelId) {
+  if (!runtime?.modelId) {
     return null;
   }
   const configured = await findConfiguredProviderModel(
@@ -126,6 +126,7 @@ export async function generateProviderSessionTitle(
   const modelId = session.providerSnapshot?.modelId;
   const generation = records
     ? generatePiConversationTitle({
+        userDataPath: deps.state.userDataPath,
         provider: records.provider,
         model: records.model,
         apiKey: records.apiKey,
@@ -189,6 +190,7 @@ export async function generateSessionText(
   );
   try {
     return await generatePiText({
+      userDataPath: deps.state.userDataPath,
       provider: records.provider,
       model: records.model,
       apiKey: records.apiKey,

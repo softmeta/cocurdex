@@ -1032,11 +1032,15 @@
       "reasoning": "支持推理",
       "runtime": {
         "anthropic-messages": "Anthropic Messages",
+        "azure-openai-responses": "Azure OpenAI Responses",
+        "bedrock-converse-stream": "Amazon Bedrock Converse",
         "google-generative-ai": "Google Generative AI",
+        "google-vertex": "Google Vertex AI",
         "mistral-conversations": "Mistral Conversations",
         "openai-codex-responses": "OpenAI Codex Responses",
         "openai-completions": "OpenAI Completions",
-        "openai-responses": "OpenAI Responses"
+        "openai-responses": "OpenAI Responses",
+        "pi-messages": "Pi Messages"
       },
       "thinkingLevelMap": "思考映射",
       "thinkingLevelMapHint": "将级别映射到 token 预算的 JSON 对象，例如 {\"high\":10000}",

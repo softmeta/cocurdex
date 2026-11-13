@@ -1,21 +1,17 @@
-import path from "node:path";
 import type { ProviderAuthMethod, ProviderAuthState } from "@cocurdex/shared";
-import type { AuthInteraction, AuthResult } from "@earendil-works/pi-ai";
+import type { AuthInteraction } from "@earendil-works/pi-ai";
 import { registerBunOAuthFlows as registerBundledPiOAuthFlows } from "@earendil-works/pi-ai/bun-oauth";
-import { ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
+import { SettingsManager } from "@earendil-works/pi-coding-agent";
+import { logAdapterDiagnostic } from "../diagnostics";
+import { createPiModelRuntime } from "./pi-model-runtime";
 import { getPiAgentDir } from "./pi-paths";
 
 export function registerBundledPiProviderOAuthFlows() {
   registerBundledPiOAuthFlows();
 }
 
-async function createProviderAuthRuntime(userDataPath: string) {
-  const agentDir = getPiAgentDir(userDataPath);
-  return ModelRuntime.create({
-    authPath: path.join(agentDir, "auth.json"),
-    modelsPath: null,
-    refreshOnCreate: false,
-  });
+function createProviderAuthRuntime(userDataPath: string) {
+  return createPiModelRuntime(userDataPath);
 }
 
 export async function readPiProviderAuthState(
@@ -39,13 +35,7 @@ export async function readPiProviderAuthState(
   };
 }
 
-export async function resolvePiProviderAuth(
-  userDataPath: string,
-  providerId: string,
-): Promise<AuthResult | undefined> {
-  const runtime = await createProviderAuthRuntime(userDataPath);
-  return runtime.getAuth(providerId);
-}
+const CATALOG_REFRESH_TIMEOUT_MS = 15_000;
 
 export async function loginPiProvider(
   userDataPath: string,
@@ -62,6 +52,18 @@ export async function loginPiProvider(
     });
   } finally {
     await settings.flush();
+  }
+  const refreshed = await runtime.refresh({
+    providers: [providerId],
+    signal: AbortSignal.timeout(CATALOG_REFRESH_TIMEOUT_MS),
+  });
+  const error = refreshed.errors.get(providerId);
+  if (error || refreshed.aborted) {
+    logAdapterDiagnostic("warn", "pi: catalog refresh after login failed", {
+      providerId,
+      aborted: refreshed.aborted,
+      error: error?.message,
+    });
   }
 }
 

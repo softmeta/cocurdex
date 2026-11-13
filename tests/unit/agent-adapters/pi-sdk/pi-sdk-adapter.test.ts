@@ -18,6 +18,7 @@ function createSessionPayload(
       createAgentSessionOptions?: Record<string, unknown>;
       createAgentSessionCalls?: number;
       modelRuntimeOptions?: Record<string, unknown>;
+      refreshOptions?: Record<string, unknown>;
       resourceLoaderOptions?: Record<string, unknown>;
       provider?: RegisteredProvider;
       runtimeApiKey?: unknown[];
@@ -85,6 +86,7 @@ function createFakeSdk(
     createAgentSessionOptions?: Record<string, unknown>;
     createAgentSessionCalls?: number;
     modelRuntimeOptions?: Record<string, unknown>;
+    refreshOptions?: Record<string, unknown>;
     resourceLoaderOptions?: Record<string, unknown>;
     provider?: RegisteredProvider;
     runtimeApiKey?: unknown[];
@@ -113,6 +115,13 @@ function createFakeSdk(
       }
     });
     removeRuntimeApiKey = vi.fn();
+    refresh = vi.fn(async (options: Record<string, unknown>) => {
+      if (capture) {
+        capture.refreshOptions = options;
+      }
+      return { errors: new Map(), aborted: false };
+    });
+    getModels = vi.fn(() => []);
 
     registerProvider = vi.fn(
       (providerId: string, config: Record<string, unknown>) => {
@@ -423,12 +432,13 @@ describe("createPiSdkAdapter", () => {
     expect(builtIn.runtimeApiKey).toBeUndefined();
   });
 
-  it("registers Pi model with provider api and model metadata", async () => {
+  it("registers a custom provider's model with its api and metadata", async () => {
     const events: AgentEvent[] = [];
     const capture: { provider?: RegisteredProvider } = {};
     const session = createSessionPayload(events, {
       capture,
       providerOverride: {
+        providerId: "local-llm",
         api: "anthropic-messages",
         providerCompatJson: JSON.stringify({ providerLevel: true }),
         modelCompatJson: JSON.stringify({ stream: false }),
@@ -461,19 +471,44 @@ describe("createPiSdkAdapter", () => {
     expect(model.compat).toEqual({ stream: false });
   });
 
-  it("injects the Cocurdex API key into Pi runtime auth for the same provider id", async () => {
+  it("keeps a built-in provider in Pi and layers on only the key and model edits", async () => {
     const events: AgentEvent[] = [];
     const capture: {
+      createAgentSessionOptions?: Record<string, unknown>;
       provider?: RegisteredProvider;
       runtimeApiKey?: unknown[];
     } = {};
-    const session = createSessionPayload(events, { capture });
+    const session = createSessionPayload(events, {
+      capture,
+      providerOverride: {
+        baseUrl: "https://proxy.example.invalid/v1",
+        modelCapabilities: ["agent", "chat"],
+      },
+    });
 
     await session.sendMessage({ content: "hello", history: [] });
 
     expect(capture.runtimeApiKey).toEqual(["openrouter", "sk-test"]);
-    expect(capture.provider?.providerId).toBe("openrouter");
-    expect(capture.provider?.config.apiKey).toBe("sk-test");
+    expect(capture.provider).toBeUndefined();
+    expect(capture.createAgentSessionOptions?.model).toMatchObject({
+      provider: "openrouter",
+      id: "model",
+      baseUrl: "https://proxy.example.invalid/v1",
+      input: ["text"],
+    });
+  });
+
+  it("leaves a built-in provider's endpoint to Pi when it matches the catalog", async () => {
+    const capture: { createAgentSessionOptions?: Record<string, unknown> } = {};
+    await createSessionPayload([], { capture }).sendMessage({
+      content: "hello",
+      history: [],
+    });
+
+    expect(capture.createAgentSessionOptions?.model).not.toHaveProperty(
+      "baseUrl",
+      "https://openrouter.ai/api/v1",
+    );
   });
 
   it("refreshes runtime auth when the selected model does not change", async () => {
@@ -507,7 +542,10 @@ describe("createPiSdkAdapter", () => {
     const capture: { provider?: RegisteredProvider } = {};
     const session = createSessionPayload(events, {
       capture,
-      providerOverride: { modelCapabilities: ["agent", "chat"] },
+      providerOverride: {
+        providerId: "local-llm",
+        modelCapabilities: ["agent", "chat"],
+      },
     });
 
     await session.sendMessage({ content: "hello", history: [] });
@@ -564,7 +602,11 @@ describe("createPiSdkAdapter", () => {
     });
 
     expect(capture.createAgentSessionCalls).toBe(1);
-    expect(capture.setModel).toEqual({ provider: "openrouter", id: "model" });
+    expect(capture.setModel).toMatchObject({
+      provider: "openrouter",
+      id: "model",
+      api: "anthropic-messages",
+    });
   });
 
   it("streams Pi SDK text events into Cocurdex messages", async () => {

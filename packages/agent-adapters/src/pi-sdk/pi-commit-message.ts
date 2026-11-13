@@ -1,17 +1,3 @@
-import type {
-  ProviderConfigRecord,
-  ProviderModelRecord,
-} from "@cocurdex/shared";
-import type { Api, Context, Model } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai/compat";
-import {
-  buildModelCost,
-  buildModelInput,
-  parseHeaders,
-  parseJsonObject,
-} from "./pi-model-utils";
-import { piRequestApiKey } from "./pi-provider-catalog";
-
 const COMMIT_MESSAGE_PROMPT = `You write a complete git commit message.
 
 Output exactly this structure:
@@ -44,30 +30,8 @@ ${changeSummary}
 </change_summary>`;
 }
 
-const COMMIT_MESSAGE_MAX_TOKENS = 512;
+const _COMMIT_MESSAGE_MAX_TOKENS = 512;
 const MAX_SUBJECT_LENGTH = 72;
-
-function buildPiCommitModel(
-  provider: ProviderConfigRecord,
-  model: ProviderModelRecord,
-): Model<Api> {
-  return {
-    id: model.modelId,
-    name: model.name || model.modelId,
-    api: model.api,
-    provider: provider.id,
-    baseUrl: model.baseUrl || provider.baseUrl,
-    reasoning: model.reasoning ?? false,
-    thinkingLevelMap: parseJsonObject(model.thinkingLevelMapJson),
-    input: buildModelInput(model.capabilities),
-    cost: buildModelCost(model.costJson),
-    contextWindow: model.contextLimit ?? 0,
-    maxTokens: model.outputLimit ?? 0,
-    headers: parseHeaders(provider.headersJson),
-    compat:
-      parseJsonObject(model.compatJson) ?? parseJsonObject(provider.compatJson),
-  } as Model<Api>;
-}
 
 export function normalizeGeneratedCommitMessage(raw: string): string | null {
   const lines = raw.split(/\r?\n/).map((line) => {
@@ -109,42 +73,4 @@ export function normalizeGeneratedCommitMessage(raw: string): string | null {
   }
 
   return `${title}\n\n${bodyItems.map((item) => `- ${item}`).join("\n")}`;
-}
-
-export async function generatePiCommitMessage(params: {
-  provider: ProviderConfigRecord;
-  model: ProviderModelRecord;
-  apiKey: string | null;
-  changeSummary: string;
-  signal?: AbortSignal;
-}): Promise<string | null> {
-  const model = buildPiCommitModel(params.provider, params.model);
-  const context: Context = {
-    systemPrompt: COMMIT_MESSAGE_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: params.changeSummary,
-        timestamp: Date.now(),
-      },
-    ],
-  };
-
-  const result = await completeSimple(model, context, {
-    apiKey: piRequestApiKey(params.provider.id, params.apiKey) ?? undefined,
-    signal: params.signal,
-    maxTokens: COMMIT_MESSAGE_MAX_TOKENS,
-  });
-
-  if (result.stopReason === "error" || result.stopReason === "aborted") {
-    throw new Error(
-      result.errorMessage || `Commit message generation ${result.stopReason}`,
-    );
-  }
-
-  const text = result.content
-    .flatMap((block) => (block.type === "text" ? [block.text] : []))
-    .join(" ");
-
-  return normalizeGeneratedCommitMessage(text);
 }

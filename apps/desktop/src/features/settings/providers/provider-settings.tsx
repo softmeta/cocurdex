@@ -286,7 +286,7 @@ export function ProviderSettingsPanel() {
     const id = draftProvider.id.trim();
     const name = draftProvider.name.trim();
     const baseUrl = draftProvider.baseUrl.trim();
-    if (!id || !name || !baseUrl) {
+    if (!id || !name || (!baseUrl && !presetProviderIds.has(id))) {
       toast.error(t("providers.status.missingFields"));
       return false;
     }
@@ -639,7 +639,7 @@ export function ProviderSettingsPanel() {
                             <SettingsListItem
                               isActive={isActive}
                               key={`template:${template.id}`}
-                              subtitle={template.baseUrl}
+                              subtitle={template.baseUrl || template.id}
                               title={template.name}
                               onClick={() =>
                                 startNewProviderFromTemplate(template.id)

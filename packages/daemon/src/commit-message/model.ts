@@ -44,7 +44,10 @@ async function resolveConfiguredModel(
   );
   if (!provider) return undefined;
   const persisted = await state.listProviderModels(provider.id);
-  const builtIn = (await listPiProviderModels(provider)) ?? [];
+  const builtIn =
+    (await listPiProviderModels(state.userDataPath, provider.id, {
+      refresh: "cache",
+    })) ?? [];
   const models = new Map(builtIn.map((model) => [model.modelId, model]));
   for (const model of persisted) models.set(model.modelId, model);
   const apis = getCompatibleProviderApis(selection.agentId);

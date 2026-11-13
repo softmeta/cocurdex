@@ -1,4 +1,5 @@
 import {
+  isPiBuiltInProviderId,
   listAgentModels,
   listPiBuiltInProviderIds,
   listPiProviderTemplates,
@@ -66,6 +67,9 @@ export class DaemonProviderService {
   }
 
   async saveProviderConfig(config: ProviderConfigRecord) {
+    if (!config.baseUrl.trim() && !isPiBuiltInProviderId(config.id)) {
+      throw new Error("A custom provider needs a base URL");
+    }
     await this.state.saveProviderConfig(config);
     return config;
   }
@@ -139,7 +143,7 @@ export class DaemonProviderService {
   private async findCatalogModel(providerId: string, modelId: string) {
     const config = await this.state.getProviderConfig(providerId);
     if (!config || !isBuiltInProviderConfig(config)) return null;
-    return findBuiltInCatalogModel(config, modelId);
+    return findBuiltInCatalogModel(this.state, config, modelId);
   }
 
   async deleteProviderModel(providerId: string, modelId: string) {

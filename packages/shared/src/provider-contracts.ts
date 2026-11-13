@@ -64,8 +64,14 @@ export type ProviderAuthPrompt =
       }>;
     };
 
+export interface ProviderAuthInfoLink {
+  label: string | null;
+  url: string;
+}
+
 export type ProviderAuthLoginUpdate =
-  | { type: "info" | "progress"; message: string }
+  | { type: "info"; message: string; links?: ProviderAuthInfoLink[] }
+  | { type: "progress"; message: string }
   | { type: "auth_url"; url: string; instructions: string | null }
   | {
       type: "device_code";

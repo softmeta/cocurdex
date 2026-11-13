@@ -70,6 +70,7 @@ function session(overrides: Partial<SessionRecord>): SessionRecord {
 function deps(withTitleModel: boolean): SessionTitleDeps {
   return {
     state: {
+      userDataPath: "/user-data",
       getAppSetting: async () =>
         withTitleModel
           ? JSON.stringify({

@@ -67,9 +67,13 @@ export const providerApis = [
   "openai-completions",
   "openai-responses",
   "openai-codex-responses",
+  "azure-openai-responses",
   "anthropic-messages",
+  "bedrock-converse-stream",
   "google-generative-ai",
+  "google-vertex",
   "mistral-conversations",
+  "pi-messages",
 ] as const;
 
 export type ProviderApi = (typeof providerApis)[number];

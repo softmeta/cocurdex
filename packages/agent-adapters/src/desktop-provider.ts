@@ -5,15 +5,16 @@ export { generateCodexConversationTitle } from "./codex/codex-title";
 export { listOpenCodeProviderModels } from "./opencode/opencode-models";
 export {
   buildAgentCommitMessagePrompt,
-  generatePiCommitMessage,
   normalizeGeneratedCommitMessage,
 } from "./pi-sdk/pi-commit-message";
 export {
+  isPiBuiltInProviderId,
   listPiBuiltInProviderIds,
-  listPiProviderModels,
   listPiProviderTemplates,
 } from "./pi-sdk/pi-provider-catalog";
+export { listPiProviderModels } from "./pi-sdk/pi-provider-models";
 export {
   generatePiConversationTitle,
   generatePiText,
+  type PiTextModel,
 } from "./pi-sdk/pi-title";

@@ -1041,11 +1041,15 @@
       "reasoning": "Supports reasoning",
       "runtime": {
         "anthropic-messages": "Anthropic Messages",
+        "azure-openai-responses": "Azure OpenAI Responses",
+        "bedrock-converse-stream": "Amazon Bedrock Converse",
         "google-generative-ai": "Google Generative AI",
+        "google-vertex": "Google Vertex AI",
         "mistral-conversations": "Mistral Conversations",
         "openai-codex-responses": "OpenAI Codex Responses",
         "openai-completions": "OpenAI Completions",
-        "openai-responses": "OpenAI Responses"
+        "openai-responses": "OpenAI Responses",
+        "pi-messages": "Pi Messages"
       },
       "thinkingLevelMap": "Thinking map",
       "thinkingLevelMapHint": "JSON object mapping levels to token budgets, e.g. {\"high\":10000}",

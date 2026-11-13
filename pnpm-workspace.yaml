@@ -59,7 +59,7 @@ allowBuilds:
   protobufjs: false
   react-native-enriched-markdown: true
 patchedDependencies:
-  '@earendil-works/pi-coding-agent@1.5.0': patches/@earendil-works__pi-coding-agent@1.5.0.patch
+  '@earendil-works/pi-coding-agent@1.5.2': patches/@earendil-works__pi-coding-agent@1.5.2.patch
   '@expo/ui@58.0.22': patches/@expo__ui@58.0.22.patch
   react-native-enriched-markdown@1.1.1: patches/react-native-enriched-markdown@1.1.1.patch
   react-native-screens@4.30.0: patches/react-native-screens@4.30.0.patch

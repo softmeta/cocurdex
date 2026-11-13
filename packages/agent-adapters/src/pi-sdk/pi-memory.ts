@@ -77,6 +77,7 @@ export function parsePiMemoryDigest(raw: string | null): PiMemoryDigest | null {
 }
 
 export async function generatePiMemoryDigest(params: {
+  userDataPath: string;
   provider: ProviderConfigRecord;
   model: ProviderModelRecord;
   apiKey: string | null;
@@ -86,6 +87,7 @@ export async function generatePiMemoryDigest(params: {
   signal?: AbortSignal;
 }): Promise<PiMemoryDigest | null> {
   const text = await generatePiText({
+    userDataPath: params.userDataPath,
     provider: params.provider,
     model: params.model,
     apiKey: params.apiKey,

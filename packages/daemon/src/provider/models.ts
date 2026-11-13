@@ -21,7 +21,10 @@ const builtInProviderModelsCache = new Map<
 
 type ProviderModelListState = Pick<
   DaemonState,
-  "listProviderConfigs" | "listProviderModels" | "listProviderModelOverrides"
+  | "userDataPath"
+  | "listProviderConfigs"
+  | "listProviderModels"
+  | "listProviderModelOverrides"
 >;
 
 interface StoredProviderModelOverride {
@@ -32,6 +35,8 @@ interface StoredProviderModelOverride {
 
 type ProviderModelState = ProviderModelListState &
   Pick<DaemonState, "saveProviderModel">;
+
+type PiCatalogState = Pick<DaemonState, "userDataPath">;
 
 export function isBuiltInProviderConfig(
   config: Pick<ProviderConfigRecord, "id">,
@@ -44,6 +49,7 @@ export function clearBuiltInProviderModelsCache() {
 }
 
 async function listCachedPiProviderModels(
+  state: PiCatalogState,
   provider: ProviderConfigRecord,
   { forceRefresh = false }: { forceRefresh?: boolean } = {},
 ) {
@@ -58,7 +64,9 @@ async function listCachedPiProviderModels(
   }
 
   try {
-    const models = await listPiProviderModels(provider);
+    const models = await listPiProviderModels(state.userDataPath, provider.id, {
+      refresh: forceRefresh ? "network" : "cache",
+    });
     if (!models) {
       return null;
     }
@@ -103,10 +111,13 @@ function mergeConfiguredProviderModels(
 }
 
 export async function findBuiltInCatalogModel(
+  state: PiCatalogState,
   provider: ProviderConfigRecord,
   modelId: string,
 ) {
-  const models = await listCachedPiProviderModels(provider).catch(() => null);
+  const models = await listCachedPiProviderModels(state, provider).catch(
+    () => null,
+  );
   return models?.find((model) => model.modelId === modelId) ?? null;
 }
 
@@ -131,7 +142,7 @@ export async function listConfiguredProviderModels(
         .map(async (provider) => {
           try {
             return (
-              (await listCachedPiProviderModels(provider, {
+              (await listCachedPiProviderModels(state, provider, {
                 forceRefresh: options.forceRefresh,
               })) ?? []
             );
@@ -229,7 +240,7 @@ export async function fetchProviderModels(
   config: ProviderConfigRecord,
 ): Promise<ProviderListModelsResult> {
   try {
-    const piModels = await listCachedPiProviderModels(config, {
+    const piModels = await listCachedPiProviderModels(state, config, {
       forceRefresh: true,
     });
     if (piModels) {

@@ -1,3 +1,5 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import {
   type DaemonProcess,
   spawnDaemon,
@@ -131,6 +133,53 @@ describe("cocurdex provider CLI", () => {
     expect(exported.stdout).not.toContain("OLLAMA_API_KEY");
 
     await cli(["provider", "remove", "ollama"]);
+  });
+
+  it("refreshes every provider's models and reports the ones that fail", async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ data: [{ id: "served-model" }] }));
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const { port } = server.address() as AddressInfo;
+    try {
+      await cli([
+        "provider",
+        "add",
+        "served",
+        "--base-url",
+        `http://127.0.0.1:${port}/v1`,
+      ]);
+      await cli([
+        "provider",
+        "add",
+        "down",
+        "--base-url",
+        "http://127.0.0.1:9/v1",
+      ]);
+
+      const refreshed = await cli([
+        "provider",
+        "models",
+        "--refresh",
+        "--json",
+      ]);
+
+      expect(refreshed.code).toBe(1);
+      expect(refreshed.stderr).toContain("Could not refresh down");
+      expect(JSON.parse(refreshed.stdout)).toEqual([
+        expect.objectContaining({
+          providerId: "served",
+          modelId: "served-model",
+        }),
+      ]);
+    } finally {
+      await cli(["provider", "remove", "served"]);
+      await cli(["provider", "remove", "down"]);
+      await new Promise((resolve) => server.close(resolve));
+    }
   });
 
   it("logs in to a template provider through daemon-driven prompts", async () => {

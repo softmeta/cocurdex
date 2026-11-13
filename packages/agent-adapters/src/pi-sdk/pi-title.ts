@@ -2,15 +2,12 @@ import type {
   ProviderConfigRecord,
   ProviderModelRecord,
 } from "@cocurdex/shared";
-import type { Api, Context, Model } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai/compat";
+import { createProviderSnapshotForModel } from "@cocurdex/shared";
+import type { Context } from "@earendil-works/pi-ai";
 import {
-  buildModelCost,
-  buildModelInput,
-  parseHeaders,
-  parseJsonObject,
-} from "./pi-model-utils";
-import { piRequestApiKey } from "./pi-provider-catalog";
+  createPiModelRuntime,
+  resolvePiRuntimeModel,
+} from "./pi-model-runtime";
 
 const TITLE_PROMPT = `Summarize the user's first message into a concise chat title.
 
@@ -23,50 +20,6 @@ Rules:
 
 const TITLE_MAX_TOKENS = 512;
 
-const OPENCODE_SESSION_HEADER = "x-opencode-session";
-const OPENCODE_PROVIDER_IDS = new Set(["opencode", "opencode-go"]);
-
-export function withOpenCodeSession(
-  provider: ProviderConfigRecord,
-  headers: Record<string, string> | undefined,
-  sessionId: string | undefined,
-) {
-  if (!sessionId || !OPENCODE_PROVIDER_IDS.has(provider.id)) return headers;
-  const present = Object.keys(headers ?? {}).some(
-    (key) => key.toLowerCase() === OPENCODE_SESSION_HEADER,
-  );
-  return present
-    ? headers
-    : { ...headers, [OPENCODE_SESSION_HEADER]: sessionId };
-}
-
-function buildPiTitleModel(
-  provider: ProviderConfigRecord,
-  model: ProviderModelRecord,
-  sessionId?: string,
-): Model<Api> {
-  return {
-    id: model.modelId,
-    name: model.name || model.modelId,
-    api: model.api,
-    provider: provider.id,
-    baseUrl: model.baseUrl || provider.baseUrl,
-    reasoning: model.reasoning ?? false,
-    thinkingLevelMap: parseJsonObject(model.thinkingLevelMapJson),
-    input: buildModelInput(model.capabilities),
-    cost: buildModelCost(model.costJson),
-    contextWindow: model.contextLimit ?? 0,
-    maxTokens: model.outputLimit ?? 0,
-    headers: withOpenCodeSession(
-      provider,
-      parseHeaders(provider.headersJson),
-      sessionId,
-    ),
-    compat:
-      parseJsonObject(model.compatJson) ?? parseJsonObject(provider.compatJson),
-  } as Model<Api>;
-}
-
 function normalizeTitle(raw: string): string | null {
   const trimmed = raw.trim().replace(/^["'`]+|["'`]+$/g, "");
   if (!trimmed) {
@@ -77,21 +30,40 @@ function normalizeTitle(raw: string): string | null {
   return chars.length > 64 ? `${chars.slice(0, 60).join("")}…` : trimmed;
 }
 
-export async function generatePiText(params: {
+export interface PiTextModel {
+  userDataPath: string;
   provider: ProviderConfigRecord;
   model: ProviderModelRecord;
   apiKey: string | null;
-  systemPrompt: string;
-  message: string;
-  maxTokens: number;
-  sessionId?: string;
-  signal?: AbortSignal;
-}): Promise<string | null> {
-  const model = buildPiTitleModel(
-    params.provider,
-    params.model,
-    params.sessionId,
-  );
+}
+
+export async function generatePiText(
+  params: PiTextModel & {
+    systemPrompt: string;
+    message: string;
+    maxTokens: number;
+    sessionId?: string;
+    signal?: AbortSignal;
+  },
+): Promise<string | null> {
+  const providerConfig = {
+    ...createProviderSnapshotForModel({
+      provider: params.provider,
+      model: params.model,
+    }),
+    apiKey: params.apiKey,
+  };
+  const runtime = await createPiModelRuntime(params.userDataPath, {
+    refresh: "cache",
+    providers: [params.provider.id],
+    signal: params.signal,
+  });
+  const model = await resolvePiRuntimeModel(runtime, providerConfig);
+  if (!model) {
+    throw new Error(
+      `Pi has no model ${params.model.modelId} for provider ${params.provider.id}`,
+    );
+  }
   const context: Context = {
     systemPrompt: params.systemPrompt,
     messages: [
@@ -99,10 +71,10 @@ export async function generatePiText(params: {
     ],
   };
 
-  const result = await completeSimple(model, context, {
-    apiKey: piRequestApiKey(params.provider.id, params.apiKey) ?? undefined,
+  const result = await runtime.completeSimple(model, context, {
     signal: params.signal,
     maxTokens: params.maxTokens,
+    sessionId: params.sessionId,
   });
 
   if (result.stopReason === "error" || result.stopReason === "aborted") {
@@ -119,15 +91,15 @@ export async function generatePiText(params: {
   );
 }
 
-export async function generatePiConversationTitle(params: {
-  provider: ProviderConfigRecord;
-  model: ProviderModelRecord;
-  apiKey: string | null;
-  message: string;
-  sessionId?: string;
-  signal?: AbortSignal;
-}): Promise<string | null> {
+export async function generatePiConversationTitle(
+  params: PiTextModel & {
+    message: string;
+    sessionId?: string;
+    signal?: AbortSignal;
+  },
+): Promise<string | null> {
   const text = await generatePiText({
+    userDataPath: params.userDataPath,
     provider: params.provider,
     model: params.model,
     apiKey: params.apiKey,

@@ -15,6 +15,7 @@ const TITLE_PROBE_MESSAGE =
 
 type TitleModelState = Pick<
   DaemonState,
+  | "userDataPath"
   | "getAppSetting"
   | "setAppSetting"
   | "getProviderConfig"
@@ -100,6 +101,7 @@ export async function probeTitleModel(
 
   try {
     const title = await generatePiConversationTitle({
+      userDataPath: state.userDataPath,
       provider,
       model,
       apiKey,

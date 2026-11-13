@@ -53,6 +53,15 @@ export async function createTuiLoginUi(providerId: string, title: string) {
     showMessage(message) {
       dialog.showProgress(message);
     },
+    showInfo(message, links) {
+      dialog.showInfo(
+        message,
+        links.map((link) => ({
+          label: link.label ?? undefined,
+          url: link.url,
+        })),
+      );
+    },
     async prompt(prompt) {
       if (prompt.type === "select") return askSelect(prompt);
       if (prompt.type === "manual_code") {

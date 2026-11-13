@@ -1,4 +1,5 @@
 import type {
+  ProviderAuthInfoLink,
   ProviderAuthMethod,
   ProviderAuthMethodRecord,
   ProviderAuthPrompt,
@@ -45,6 +46,10 @@ export function ProviderAuthSection({
   const [isBusy, setIsBusy] = useState(false);
   const [prompt, setPrompt] = useState<ProviderAuthPrompt | null>(null);
   const [promptValue, setPromptValue] = useState("");
+  const [info, setInfo] = useState<{
+    message: string;
+    links: ProviderAuthInfoLink[];
+  } | null>(null);
   const [deviceCode, setDeviceCode] = useState<{
     userCode: string;
     verificationUri: string;
@@ -78,6 +83,7 @@ export function ProviderAuthSection({
     setPrompt(null);
     setPromptValue("");
     setDeviceCode(null);
+    setInfo(null);
     setIsBusy(true);
     try {
       const { loginId } = await desktopApi.startProviderAuthLogin(
@@ -91,7 +97,11 @@ export function ProviderAuthSection({
       showProgress(t("providers.auth.starting"));
       while (loginIdRef.current === loginId) {
         const update = await desktopApi.nextProviderAuthLogin(loginId);
-        if (update.type === "info" || update.type === "progress") {
+        if (update.type === "info") {
+          setInfo({ message: update.message, links: update.links ?? [] });
+          continue;
+        }
+        if (update.type === "progress") {
           showProgress(update.message);
           continue;
         }
@@ -149,13 +159,14 @@ export function ProviderAuthSection({
     } finally {
       loginIdRef.current = null;
       setDeviceCode(null);
+      setInfo(null);
       setIsBusy(false);
     }
   }
 
   async function handlePromptSubmit() {
     const loginId = loginIdRef.current;
-    if (!loginId || !prompt || !promptValue) {
+    if (!loginId || !prompt || (prompt.type === "select" && !promptValue)) {
       return;
     }
     await desktopApi.respondProviderAuthLogin(loginId, prompt.id, promptValue);
@@ -168,6 +179,7 @@ export function ProviderAuthSection({
     loginIdRef.current = null;
     setPrompt(null);
     setDeviceCode(null);
+    setInfo(null);
     setIsBusy(false);
     if (loginId) {
       toast.dismiss(loginId);
@@ -295,6 +307,26 @@ export function ProviderAuthSection({
         );
       })}
 
+      {info ? (
+        <div className="grid gap-1 py-2">
+          <Text size="meta" tone="muted">
+            {info.message}
+          </Text>
+          {info.links.map((link) => (
+            <Button
+              className="justify-start px-0"
+              key={link.url}
+              size="sm"
+              type="button"
+              variant="link"
+              onClick={() => void desktopApi.openExternal(link.url)}
+            >
+              <ExternalLink className="size-4" />
+              {link.label ?? link.url}
+            </Button>
+          ))}
+        </div>
+      ) : null}
       {prompt ? (
         <form
           className="flex min-h-12 flex-wrap items-center justify-between gap-x-3 gap-y-2 py-2"
@@ -340,7 +372,11 @@ export function ProviderAuthSection({
             >
               {t("providers.auth.cancel")}
             </Button>
-            <Button disabled={!promptValue} size="sm" type="submit">
+            <Button
+              disabled={prompt.type === "select" && !promptValue}
+              size="sm"
+              type="submit"
+            >
               {t("providers.auth.continue")}
             </Button>
           </div>
