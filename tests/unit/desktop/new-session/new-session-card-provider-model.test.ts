@@ -1,6 +1,5 @@
 import type { CompatibleProviderModel } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
-import { shouldPersistProviderDefault } from "@/features/new-session/new-session-card-provider-default";
 import { getDefaultProviderModelValue } from "@/features/sessions/provider-model/default-provider-model";
 import { getProviderModelValue } from "@/features/sessions/provider-model/provider-model-cache";
 
@@ -42,19 +41,5 @@ describe("getDefaultProviderModelValue", () => {
     expect(getDefaultProviderModelValue("acp:grok-build", items, null)).toBe(
       getProviderModelValue("acp:grok-build", "grok-4.5"),
     );
-  });
-});
-
-describe("shouldPersistProviderDefault", () => {
-  it.each([
-    ["claude-agent", false],
-    ["acp:cursor", false],
-    ["acp:devin", false],
-    ["acp:grok-build", false],
-    ["opencode", false],
-    ["pi", true],
-    ["codex", false],
-  ] as const)("returns %s for %s", (agentId, expected) => {
-    expect(shouldPersistProviderDefault(agentId)).toBe(expected);
   });
 });

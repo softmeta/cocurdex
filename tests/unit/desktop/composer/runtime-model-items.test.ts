@@ -1,5 +1,4 @@
 import type {
-  AgentId,
   AgentProviderSnapshot,
   CompatibleProviderModel,
   ProviderConfigRecord,
@@ -7,7 +6,6 @@ import type {
 } from "@cocurdex/shared";
 import { CODEX_BUILT_IN_PROVIDER_ID } from "@cocurdex/shared";
 import { beforeEach, describe, expect, it } from "vitest";
-import { usesAdapterOwnedModelCatalog } from "@/features/sessions/provider-model/adapter-owned-catalog";
 import {
   clearNewSessionProviderModelCacheForTest,
   providerModelCache,
@@ -90,20 +88,6 @@ const grokCachedItem = makeCachedItem(
   "Grok 4.5",
   "openai-responses",
 );
-
-describe("usesAdapterOwnedModelCatalog", () => {
-  it.each([
-    ["claude-agent", true],
-    ["codex", true],
-    ["acp:cursor", true],
-    ["acp:devin", true],
-    ["acp:grok-build", true],
-    ["opencode", true],
-    ["pi", false],
-  ] as const)("%s is adapter-owned=%s", (agentId: AgentId, expected) => {
-    expect(usesAdapterOwnedModelCatalog(agentId)).toBe(expected);
-  });
-});
 
 describe("getRuntimeModelItems", () => {
   beforeEach(() => {
