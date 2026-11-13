@@ -2,16 +2,15 @@ import type { ViewFull } from "@cocurdex/shared";
 import { SymbolView } from "expo-symbols";
 import { type ReactElement, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  type HostInstance,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-} from "react-native";
+import { type HostInstance, Pressable, StyleSheet, Text } from "react-native";
 import { useHostSessions } from "@/sessions";
 import { layout, space, useThemeColors } from "@/theme";
-import { measureAnchor, useAnchoredMenu, useOptionSheet } from "@/ui";
+import {
+  EdgeFadeScrollRow,
+  measureAnchor,
+  useAnchoredMenu,
+  useOptionSheet,
+} from "@/ui";
 import { IssuePriorityMark } from "./issue-priority-mark";
 import { IssueStatusMark } from "./issue-status-mark";
 
@@ -149,15 +148,13 @@ export function useIssueFieldChips({
   };
 
   const bar = (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
+    <EdgeFadeScrollRow
       keyboardShouldPersistTaps="always"
       style={styles.bar}
       contentContainerStyle={styles.chips}
     >
       {BAR_FIELDS.map(chip)}
-    </ScrollView>
+    </EdgeFadeScrollRow>
   );
 
   return { chip, bar, menu: menu.menu };

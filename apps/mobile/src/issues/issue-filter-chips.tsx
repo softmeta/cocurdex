@@ -1,8 +1,9 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
 import { SymbolView } from "expo-symbols";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import { layout, space, useThemeColors } from "@/theme";
+import { EdgeFadeScrollRow } from "@/ui";
 import { useIssueFilterOptions } from "./issue-filter-options";
 import { setIssueFilters, useIssueFilters } from "./issue-filter-store";
 import { ISSUE_FILTER_FIELDS, toggledIssueFilter } from "./issue-filters";
@@ -23,9 +24,7 @@ export function IssueFilterChips({ host }: { host: SavedHost }) {
   );
   if (chips.length === 0) return null;
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
+    <EdgeFadeScrollRow
       contentContainerStyle={styles.chips}
       testID="issue-filter-chips"
     >
@@ -64,7 +63,7 @@ export function IssueFilterChips({ host }: { host: SavedHost }) {
           </Pressable>
         );
       })}
-    </ScrollView>
+    </EdgeFadeScrollRow>
   );
 }
 

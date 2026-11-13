@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import { layout, space, useThemeColors } from "@/theme";
+import { EdgeFadeScrollRow } from "@/ui";
 
 const CHIP_HIT_SLOP = { top: 6, bottom: 6 };
 
@@ -62,10 +63,8 @@ export function SessionGroupChips({
 }) {
   const { t } = useTranslation("sessions");
   return (
-    <ScrollView
-      horizontal
+    <EdgeFadeScrollRow
       accessibilityRole="tablist"
-      showsHorizontalScrollIndicator={false}
       style={styles.bar}
       contentContainerStyle={styles.chips}
       testID="session-group-chips"
@@ -87,7 +86,7 @@ export function SessionGroupChips({
           onPress={() => onSelect(chip.key)}
         />
       ))}
-    </ScrollView>
+    </EdgeFadeScrollRow>
   );
 }
 

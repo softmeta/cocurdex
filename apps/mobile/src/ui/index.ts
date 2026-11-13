@@ -12,6 +12,7 @@ export { BrandHost } from "./brand-host";
 export { CircleButton } from "./circle-button";
 export { CloseButton } from "./close-button";
 export type { ConfirmRequest } from "./confirm-request";
+export { EdgeFadeScrollRow } from "./edge-fade-scroll-row";
 export { FieldSection } from "./field-section";
 export { useFloatingSurface } from "./floating-surface";
 export { Form } from "./form";
