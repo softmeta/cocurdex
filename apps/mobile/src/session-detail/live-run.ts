@@ -1,6 +1,7 @@
 import { type ActivityKind, getActivityState } from "@cocurdex/client-runtime";
 import type {
   AgentTurnCompletedEvent,
+  MessageRecord,
   SessionObservationSnapshot,
 } from "@cocurdex/shared";
 import type { CondensedItem, LivePhase } from "./transcript-activity";
@@ -17,21 +18,30 @@ export function livePhase(
   return "working";
 }
 
+export function observedMessages(
+  observation: SessionObservationSnapshot | null,
+): MessageRecord[] {
+  if (!observation) return [];
+  const finished = new Set(observation.messages.map((message) => message.id));
+  return [
+    ...observation.messages,
+    ...observation.activeMessages.filter(
+      (message) => !finished.has(message.id),
+    ),
+  ];
+}
+
 export function observedPhase(
   presentation: SessionPresentation,
   observation: SessionObservationSnapshot | null,
   running: boolean,
+  responseStalled: boolean,
 ): LivePhase {
   if (!observation) return livePhase(presentation, "planning");
-  const finished = new Set(observation.messages.map((message) => message.id));
   const { kind } = getActivityState({
     isRunning: running,
-    messages: [
-      ...observation.messages,
-      ...observation.activeMessages.filter(
-        (message) => !finished.has(message.id),
-      ),
-    ],
+    messages: observedMessages(observation),
+    responseStalled,
     status: observation.session.status,
     toolCalls: [...observation.toolCalls],
   });

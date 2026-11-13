@@ -1,4 +1,8 @@
-import { getActivityState, resolveJumpButton } from "@cocurdex/client-runtime";
+import {
+  getActivityState,
+  resolveJumpButton,
+  responseStreamKey,
+} from "@cocurdex/client-runtime";
 import type {
   AgentQuestionRequestRecord,
   MessageAttachment,
@@ -47,6 +51,7 @@ import { useChatBottomStick } from "./use-chat-bottom-stick";
 import { useChatScrollState } from "./use-chat-scroll-state";
 import { useChatViewPerfMarkers } from "./use-chat-view-perf-markers";
 import { useOlderTranscriptLoader } from "./use-older-transcript";
+import { useResponseStall } from "./use-response-stall";
 import { useSentPromptAnchor } from "./use-sent-prompt-anchor";
 import {
   type ChatTimelineScrollHandle,
@@ -175,15 +180,19 @@ export function ChatView({
 
     return model;
   }, [messages, perfSessionId, questions, toolCalls, transcriptMessages]);
+  const responseStalled = useResponseStall(
+    isRunning ? responseStreamKey(messages) : null,
+  );
   const activity = useMemo(
     () =>
       getActivityState({
         isRunning,
         messages,
+        responseStalled,
         status,
         toolCalls,
       }),
-    [isRunning, messages, status, toolCalls],
+    [isRunning, messages, responseStalled, status, toolCalls],
   );
   const callbacksRef = useRef({
     onAnswerQuestion,

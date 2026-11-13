@@ -20,6 +20,7 @@ const { CHAT_WORKSPACE_ID, createProviderSnapshotForModel } = await tsImport(
 
 const TITLE = "Chat wording check";
 const REPLY = "Chat wording reply finished.";
+const STALLED_PART = "Checking on the helpers.";
 const UI_TIMEOUT_MS = 30_000;
 const args = readScenarioArgs();
 let stub;
@@ -128,6 +129,45 @@ runScenario("chat-mode-labels", {
           { pending },
         );
         return { pending: labels.thinking };
+      },
+    ],
+    [
+      "a reply that stops arriving mid-run reads as thinking again",
+      async ({ session, sessionId, labels }) => {
+        const gate = deferred();
+        stub.plan = {
+          kind: "script",
+          turns: [{ text: [STALLED_PART, gate.promise, REPLY] }],
+        };
+        await daemonRequest(session, "session.send", {
+          sessionId,
+          messageId: crypto.randomUUID(),
+          content: "Start, then pause.",
+          attachments: [],
+        });
+        await stub.nextRequest();
+        await session.waitUntil(
+          (text) => document.body.textContent.includes(text),
+          STALLED_PART,
+          UI_TIMEOUT_MS,
+        );
+        await session.waitUntil(
+          ([part, thinking]) => {
+            const text =
+              document.querySelector("[data-testid=chat-timeline]")
+                ?.textContent ?? "";
+            return text.includes(part) && text.includes(thinking);
+          },
+          [STALLED_PART, labels.thinking],
+          UI_TIMEOUT_MS,
+        );
+        gate.resolve();
+        await session.waitUntil(
+          (text) => document.body.textContent.includes(text),
+          REPLY,
+          UI_TIMEOUT_MS,
+        );
+        return { stalled: labels.thinking };
       },
     ],
     [

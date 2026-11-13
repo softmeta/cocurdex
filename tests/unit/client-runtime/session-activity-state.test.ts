@@ -122,6 +122,17 @@ describe("getActivityState while replying", () => {
     },
   );
 
+  it("returns to thinking once the reply text stops arriving mid-run", () => {
+    expect(
+      getActivityState({
+        isRunning: true,
+        messages: [reply],
+        responseStalled: true,
+        toolCalls: [toolCall("done", "completed")],
+      }),
+    ).toEqual({ kind: "thinking", tone: "running", toolActivityId: "done" });
+  });
+
   it("returns to thinking after a tool follows the reply", () => {
     expect(
       getActivityState({
