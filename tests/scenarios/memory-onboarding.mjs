@@ -172,7 +172,7 @@ runScenario("memory-onboarding", {
         await session.waitUntil(
           (text) =>
             document.body.textContent.includes(text) &&
-            document.body.textContent.includes("rsrs keygen"),
+            document.body.textContent.includes("cocurdex memory install"),
           label,
           UI_TIMEOUT_MS,
         );
