@@ -211,6 +211,35 @@ describe("cocurdex provider CLI", () => {
     await cli(["provider", "remove", "azure"]);
   });
 
+  it("adds a model the built-in catalog lacks on the provider's own runtime", async () => {
+    await cli(["provider", "add", "google", "--template", "google"]);
+    await cli(["provider", "key", "set", "google"], "gemini-test-key\n");
+
+    const added = await cli([
+      "provider",
+      "model",
+      "add",
+      "google",
+      "gemini-from-the-future",
+      "--json",
+    ]);
+    expect(added.stderr).toBe("");
+    expect(JSON.parse(added.stdout)).toMatchObject({
+      modelId: "gemini-from-the-future",
+      api: "google-generative-ai",
+      source: "manual",
+    });
+
+    const listed = await cli(["provider", "models", "google", "--json"]);
+    const models: Array<{ modelId: string }> = JSON.parse(listed.stdout);
+    expect(models.length).toBeGreaterThan(1);
+    expect(models.map((model) => model.modelId)).toContain(
+      "gemini-from-the-future",
+    );
+
+    await cli(["provider", "remove", "google"]);
+  });
+
   it("logs in to a template provider through daemon-driven prompts", async () => {
     const providerId = "cloudflare-workers-ai";
     const added = await cli([

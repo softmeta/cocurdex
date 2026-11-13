@@ -3,15 +3,11 @@ import {
   type ProviderApi,
   type ProviderModelCapability,
   type ProviderModelRecord,
+  preferredProviderModelApi,
   providerApis,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
-import {
-  getRequiredFlag,
-  type ParsedArgs,
-  printResult,
-  stringFlag,
-} from "./parse-args";
+import { type ParsedArgs, printResult, stringFlag } from "./parse-args";
 
 const modelCapabilities: readonly ProviderModelCapability[] = [
   "agent",
@@ -22,7 +18,7 @@ const modelCapabilities: readonly ProviderModelCapability[] = [
 
 export function providerModelUsageLines() {
   return [
-    "  cocurdex provider model add <id> <model-id> --api <api> [--name <name>]",
+    "  cocurdex provider model add <id> <model-id> [--api <api>] [--name <name>]   (--api defaults to the runtime the provider's models use)",
     "  cocurdex provider model set <id> <model-id> [--enable|--disable] [--api <api>] [--context <tokens>|none] [--output <tokens>|none] [--capabilities <a,b>] [--reasoning on|off]",
     "  cocurdex provider model reset <id> <model-id>",
     "  cocurdex provider model remove <id> <model-id>",
@@ -111,12 +107,28 @@ async function findModel(providerId: string, modelId: string) {
   return model;
 }
 
+async function resolveNewModelApi(providerId: string, parsed: ParsedArgs) {
+  const api = stringFlag(parsed, "api");
+  if (api) return parseProviderApi(api);
+  const models = await withDaemon(() =>
+    requestDaemon("provider.listAllModels", { providerIds: [providerId] }),
+  );
+  const preferred = preferredProviderModelApi(models);
+  if (!preferred) {
+    throw new Error(
+      `Missing --api: ${providerId} has no models to infer it from`,
+    );
+  }
+  return preferred;
+}
+
 async function addModel(args: string[], parsed: ParsedArgs) {
   const { providerId, modelId } = requireModelArgs(
     args[1],
     args[2],
-    "cocurdex provider model add <id> <model-id> --api <api>",
+    "cocurdex provider model add <id> <model-id> [--api <api>]",
   );
+  const api = await resolveNewModelApi(providerId, parsed);
   const now = new Date().toISOString();
   const model = await withDaemon(() =>
     requestDaemon("provider.model.save", {
@@ -124,7 +136,7 @@ async function addModel(args: string[], parsed: ParsedArgs) {
         providerId,
         modelId,
         name: stringFlag(parsed, "name") ?? modelId,
-        api: parseProviderApi(getRequiredFlag(parsed, "api")),
+        api,
         enabled: true,
         source: "manual",
         createdAt: now,

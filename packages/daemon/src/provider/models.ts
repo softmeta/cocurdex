@@ -104,7 +104,13 @@ function mergeConfiguredProviderModels(
     const key = modelKey(catalog);
     const legacy = persistedByKey.get(key);
     persistedByKey.delete(key);
-    const base = legacy ? { ...catalog, enabled: legacy.enabled } : catalog;
+    const base = legacy
+      ? {
+          ...catalog,
+          enabled: legacy.enabled,
+          ...(legacy.source === "manual" ? { overridden: true } : {}),
+        }
+      : catalog;
     return applyProviderModelOverride(base, overrideByKey.get(key) ?? {});
   });
   return [...persistedByKey.values(), ...catalogModels];
@@ -254,7 +260,12 @@ export async function fetchProviderModels(
 
       await saveFetchedProviderModels(state, config, models);
 
-      return { models, error: null };
+      return {
+        models: await listConfiguredProviderModels(state, {
+          providerIds: [config.id],
+        }),
+        error: null,
+      };
     }
   } catch {}
 
@@ -306,7 +317,12 @@ export async function fetchProviderModels(
 
     await saveFetchedProviderModels(state, config, models);
 
-    return { models, error: null };
+    return {
+      models: await listConfiguredProviderModels(state, {
+        providerIds: [config.id],
+      }),
+      error: null,
+    };
   } catch (error) {
     return {
       models: await state.listProviderModels(config.id),

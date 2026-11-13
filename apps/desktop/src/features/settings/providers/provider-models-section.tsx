@@ -1,6 +1,8 @@
-import type {
-  ProviderConfigRecord,
-  ProviderModelRecord,
+import {
+  type ProviderApi,
+  type ProviderConfigRecord,
+  type ProviderModelRecord,
+  preferredProviderModelApi,
 } from "@cocurdex/shared";
 import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -132,13 +134,12 @@ export function ProviderModelsSection({
           <RefreshCw className={cn("size-4", isRefreshing && "animate-spin")} />
           {t("providers.actions.refresh")}
         </Button>
-        {builtIn ? null : (
-          <AddModelDialog
-            draftModel={draftModel}
-            onDraftModelChange={onDraftModelChange}
-            onSaveModel={onSaveModel}
-          />
-        )}
+        <AddModelDialog
+          defaultApi={preferredProviderModelApi(selectedModels)}
+          draftModel={draftModel}
+          onDraftModelChange={onDraftModelChange}
+          onSaveModel={onSaveModel}
+        />
       </div>
 
       <div className="overflow-hidden rounded-control bg-muted">
@@ -253,12 +254,14 @@ export function ProviderModelsSection({
 }
 
 interface AddModelDialogProps {
+  defaultApi?: ProviderApi;
   draftModel: ProviderModelRecord;
   onDraftModelChange(model: ProviderModelRecord): void;
   onSaveModel(model: ProviderModelRecord): Promise<void>;
 }
 
 function AddModelDialog({
+  defaultApi,
   draftModel,
   onDraftModelChange,
   onSaveModel,
@@ -271,8 +274,15 @@ function AddModelDialog({
     setIsOpen(false);
   }
 
+  function changeOpen(open: boolean) {
+    if (open && defaultApi && !draftModel.modelId) {
+      onDraftModelChange({ ...draftModel, api: defaultApi });
+    }
+    setIsOpen(open);
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={changeOpen}>
       <DialogTrigger asChild>
         <Button
           className="shrink-0"
