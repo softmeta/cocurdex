@@ -29,7 +29,8 @@ jobs:
     outputs:
       run_native: ${{ steps.verified.outputs.hit != 'true' && steps.scope.outputs.run_native || 'false' }}
       run_linux: ${{ steps.verified.outputs.hit != 'true' && steps.scope.outputs.run_linux || 'false' }}
-      run_mobile: ${{ github.event_name != 'merge_group' && (github.event_name == 'push' || steps.verified.outputs.mobile_hit != 'true') && steps.scope.outputs.run_mobile || 'false' }}
+      run_mobile: ${{ github.event_name != 'merge_group' && steps.verified.outputs.mobile_hit != 'true' && steps.scope.outputs.run_mobile || 'false' }}
+      warm_mobile_cache: ${{ github.event_name == 'push' && steps.scope.outputs.run_mobile || 'false' }}
       affected: ${{ steps.scope.outputs.affected }}
       scm_base: ${{ steps.scope.outputs.base }}
       verified: ${{ steps.verified.outputs.hit == 'true' }}
@@ -327,7 +328,7 @@ jobs:
   mobile-prepare:
     name: Mobile app (${{ matrix.platform }})
     needs: changes
-    if: needs.changes.outputs.run_mobile == 'true'
+    if: needs.changes.outputs.run_mobile == 'true' || needs.changes.outputs.warm_mobile_cache == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     continue-on-error: true
@@ -392,6 +393,7 @@ jobs:
           path: .mobile-native/android
           key: mobile-native-v3-android-${{ steps.fingerprint.outputs.hash }}
       - name: Repack app and bundle daemon
+        if: needs.changes.outputs.run_mobile == 'true'
         env:
           READY: ${{ steps.native.outputs.cache-hit == 'true' || matrix.platform == 'android' }}
         run: |
@@ -413,6 +415,7 @@ jobs:
           wait "${daemon}"
       - name: Upload mobile app
         id: upload
+        if: needs.changes.outputs.run_mobile == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: mobile-app-${{ matrix.platform }}
