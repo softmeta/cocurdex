@@ -51,7 +51,6 @@ export function PersonaEditDialog({
   return (
     <AgentRoleEditDialog
       agentLocked
-      size="default"
       descriptionPlaceholder={t("edit.descriptionPlaceholder")}
       onOpenChange={onOpenChange}
       open={agent !== null || draft !== null}

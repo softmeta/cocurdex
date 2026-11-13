@@ -21,9 +21,10 @@ export interface AgentRoleAvatarSource {
 export type AvatarSource = Omit<AgentRoleAvatarSource, "agentId"> &
   Partial<Pick<AgentRoleAvatarSource, "agentId">>;
 
-type AgentRoleAvatarSize = "sm" | "md" | "lg" | "xl";
+type AgentRoleAvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 
 const sizeClassName: Record<AgentRoleAvatarSize, string> = {
+  xs: "size-4 text-2xs",
   sm: "size-5 text-meta",
   md: "size-7 text-body",
   lg: "size-9 text-display",
@@ -31,6 +32,7 @@ const sizeClassName: Record<AgentRoleAvatarSize, string> = {
 };
 
 const emojiSizeClassName: Record<AgentRoleAvatarSize, string> = {
+  xs: "text-avatar-emoji-sm",
   sm: "text-avatar-emoji-sm",
   md: "text-avatar-emoji-md",
   lg: "text-avatar-emoji-lg",
@@ -38,6 +40,7 @@ const emojiSizeClassName: Record<AgentRoleAvatarSize, string> = {
 };
 
 const placeholderIconClassName: Record<AgentRoleAvatarSize, string> = {
+  xs: "size-2.5",
   sm: "size-3",
   md: "size-3.5",
   lg: "size-4",
@@ -45,6 +48,7 @@ const placeholderIconClassName: Record<AgentRoleAvatarSize, string> = {
 };
 
 const badgeClassName: Record<AgentRoleAvatarSize, string> = {
+  xs: "size-2",
   sm: "size-2.5",
   md: "size-3",
   lg: "size-3.5",

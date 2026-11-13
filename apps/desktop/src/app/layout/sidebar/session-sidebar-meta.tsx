@@ -7,9 +7,9 @@ function SessionMetaIcon({ item }: { item: SessionMetaItem }) {
   if (item.role) {
     return (
       <AgentRoleAvatar
-        className="size-4 text-2xs"
         role={item.role}
         showAgent={Boolean(item.showRoleAgent)}
+        size="xs"
       />
     );
   }

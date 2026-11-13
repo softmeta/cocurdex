@@ -327,30 +327,26 @@ function AgentDetailContent({
   return (
     <>
       <DialogHeader className="pe-8">
-        <div className="flex min-w-0 items-start gap-3">
-          <AgentIcon agentId={agent.id} className="mt-0.5 size-5 shrink-0" />
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="flex min-w-0 items-baseline gap-2">
-              <DialogTitle className="truncate">{agent.label}</DialogTitle>
-              {status.version && status.kind !== "disabled" ? (
-                <Text className="font-mono" size="meta" tone="muted">
-                  v{status.version}
-                </Text>
-              ) : null}
-            </div>
-            <DialogDescription className="flex min-w-0 items-center gap-1.5">
-              <AdapterStatusDot kind={status.kind} />
-              <span className="shrink-0">{statusLabel}</span>
-              {detail ? (
-                <span className="min-w-0 truncate" title={detail}>
-                  · {detail}
-                </span>
-              ) : null}
-            </DialogDescription>
-          </div>
-        </div>
+        <DialogTitle className="flex min-w-0 items-center gap-2">
+          <AgentIcon agentId={agent.id} className="size-4 shrink-0" />
+          <span className="truncate">{agent.label}</span>
+          {status.version && status.kind !== "disabled" ? (
+            <Text className="shrink-0 font-mono" size="meta" tone="muted">
+              v{status.version}
+            </Text>
+          ) : null}
+        </DialogTitle>
+        <DialogDescription className="flex min-w-0 items-center gap-1.5">
+          <AdapterStatusDot kind={status.kind} />
+          <span className="shrink-0">{statusLabel}</span>
+          {detail ? (
+            <span className="min-w-0 truncate" title={detail}>
+              · {detail}
+            </span>
+          ) : null}
+        </DialogDescription>
       </DialogHeader>
-      <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-start gap-x-4 gap-y-3.5">
+      <div className="grid grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-6 gap-y-3">
         {canToggleEnabled ? (
           <DetailField label={t("adapters.detail.enabled")}>
             <Switch
