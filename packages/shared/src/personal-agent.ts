@@ -52,6 +52,7 @@ export interface DraftPersonalAgentPayload {
 export interface PersonalAgentDraft {
   role: PersonalAgentRolePayload;
   modelAvailable: boolean;
+  userAddress?: string | null;
 }
 
 export interface DuplicatePersonalAgentPayload {

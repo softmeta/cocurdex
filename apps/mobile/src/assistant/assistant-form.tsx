@@ -52,7 +52,11 @@ type AssistantModel = Pick<
 
 type Subject =
   | { kind: "edit"; agent: PersonalAgentRecord }
-  | { kind: "create"; role: PersonalAgentRolePayload };
+  | {
+      kind: "create";
+      role: PersonalAgentRolePayload;
+      userAddress: string | null;
+    };
 
 function baseRole(subject: Subject): PersonalAgentRolePayload {
   if (subject.kind === "create") return subject.role;
@@ -73,7 +77,9 @@ function draftOf(subject: Subject): AssistantDraft {
     instructions: role.instructions ?? "",
     soul: subject.kind === "edit" ? (subject.agent.soul ?? "") : "",
     userAddress:
-      subject.kind === "edit" ? (subject.agent.userAddress ?? "") : "",
+      (subject.kind === "edit"
+        ? subject.agent.userAddress
+        : subject.userAddress) ?? "",
   };
 }
 
@@ -120,7 +126,14 @@ function CreateForm({ host }: { host: SavedHost }) {
   const draft = useAssistantDraft(host.hostId);
   if (draft.data?.modelAvailable) {
     return (
-      <Editor host={host} subject={{ kind: "create", role: draft.data.role }} />
+      <Editor
+        host={host}
+        subject={{
+          kind: "create",
+          role: draft.data.role,
+          userAddress: draft.data.userAddress ?? null,
+        }}
+      />
     );
   }
   if (!draft.data && !draft.error) return <PendingIndicator />;
