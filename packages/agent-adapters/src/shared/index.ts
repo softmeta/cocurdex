@@ -11,3 +11,4 @@ export {
 } from "./provider-session-state";
 export * from "./rate-limits";
 export * from "./session-recovery";
+export * from "./workspace-roots";

@@ -1,5 +1,6 @@
 import {
   type InitializeResponse,
+  type NewSessionRequest,
   type PromptResponse,
   RequestError,
   type RequestPermissionRequest,
@@ -385,6 +386,60 @@ describe("AcpAgentAdapter", () => {
       cwd: "/workspace",
       mcpServers: [],
       _meta: { antigravity: { disabledTools: ["run_workflow"] } },
+    });
+  });
+
+  it("passes the other workspace folders to agents that accept additional directories", async () => {
+    async function openedSession(sessionCapabilities: object) {
+      const newSession = vi.fn(async (_request: NewSessionRequest) => ({
+        sessionId: "multi-root",
+      }));
+      const session = new AcpAgentAdapter(
+        { args: [], command: "agy", descriptor },
+        async () =>
+          createAcpConnection({
+            initialize: async () => ({
+              protocolVersion: 1,
+              agentCapabilities: { sessionCapabilities },
+            }),
+            newSession: newSession as AcpConnection["newSession"],
+          }),
+      ).createSession(
+        {
+          session: {
+            id: "multi-root-session",
+            workspaceId: "workspace-1",
+            title: "Multi root",
+            agentType: "acp:grok-build",
+            status: "idle",
+            writeMode: "native-write",
+            sessionModeId: null,
+            createdAt: "2026-07-24T00:00:00.000Z",
+            updatedAt: "2026-07-24T00:00:00.000Z",
+            lastMessageAt: null,
+          },
+          workspaceRootPath: "/workspace",
+          workspaceRootPaths: [
+            "/workspace",
+            "/research",
+            "/notes",
+            "/research",
+          ],
+        },
+        () => undefined,
+      );
+      await session.sendMessage({ content: "Hi", history: [] });
+      return newSession.mock.calls[0]?.[0];
+    }
+
+    expect(await openedSession({ additionalDirectories: {} })).toEqual({
+      cwd: "/workspace",
+      mcpServers: [],
+      additionalDirectories: ["/research", "/notes"],
+    });
+    expect(await openedSession({})).toEqual({
+      cwd: "/workspace",
+      mcpServers: [],
     });
   });
 

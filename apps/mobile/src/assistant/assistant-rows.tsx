@@ -129,7 +129,11 @@ export function AgentRow({
       ]}
       testID={`assistant-${agent.id}`}
     >
-      <RoleAvatar role={agent.role} size={layout.avatarTile} />
+      <RoleAvatar
+        role={agent.role}
+        size={layout.avatarTile}
+        working={status === "running"}
+      />
       <View style={styles.agentText}>
         <View style={styles.line}>
           <Text

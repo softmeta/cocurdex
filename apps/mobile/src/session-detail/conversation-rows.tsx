@@ -55,7 +55,7 @@ export function WorkingLine({
   const label = useSettledLabel(wanted, wanted);
   return (
     <View style={styles.working} accessibilityLiveRegion="polite">
-      {role ? <RoleAvatar role={role} size={18} /> : null}
+      {role ? <RoleAvatar role={role} size={18} working /> : null}
       <ShimmerText
         text={label}
         baseColor={colors.mutedForeground}

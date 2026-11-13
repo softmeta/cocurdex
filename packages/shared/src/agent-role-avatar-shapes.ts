@@ -17,6 +17,21 @@ export const AGENT_ROLE_AVATAR_VIEWBOX = 24;
 
 export const AGENT_ROLE_AVATAR_REST_GAZE = { x: 0.9, y: -0.7 } as const;
 
+export const AGENT_ROLE_AVATAR_WORKING_MOTION = {
+  bobMs: 1100,
+  bobShare: 0.08,
+  glanceMs: 4200,
+  glance: [
+    { at: 0, x: 0 },
+    { at: 0.12, x: 0 },
+    { at: 0.3, x: -1.4 },
+    { at: 0.46, x: -1.4 },
+    { at: 0.64, x: 1.2 },
+    { at: 0.8, x: 1.2 },
+    { at: 1, x: 0 },
+  ],
+} as const;
+
 export const AGENT_ROLE_AVATAR_FACES = [
   "dots",
   "happy",

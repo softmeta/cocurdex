@@ -108,7 +108,12 @@ export function PersonalAgentRow({
           onClick={() => actions.onSelect(agent)}
           render={<button type="button" />}
         >
-          <AgentRoleAvatar role={agent.role} showAgent={false} size="lg" />
+          <AgentRoleAvatar
+            role={agent.role}
+            showAgent={false}
+            size="lg"
+            working={isRunning}
+          />
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="flex min-w-0 items-center gap-1.5">
               <SidebarOverflowTitle>{agent.role.name}</SidebarOverflowTitle>
