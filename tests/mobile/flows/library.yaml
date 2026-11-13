@@ -164,6 +164,7 @@ appId: dev.cocurdex.mobile
     commands:
       - pressKey: Enter
 - inputText: ${NEW_NOTE_BODY}
+- waitForAnimationToEnd
 - tapOn:
     id: note-format-bold
 - waitForAnimationToEnd
