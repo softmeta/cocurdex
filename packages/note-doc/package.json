@@ -12,16 +12,16 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@tiptap/core": "^3.32.2",
+    "@tiptap/core": "^3.33.1",
     "@tiptap/extension-code-block": "^3.32.0",
-    "@tiptap/extension-image": "^3.32.2",
+    "@tiptap/extension-image": "^3.33.1",
     "@tiptap/extension-list": "^3.32.0",
-    "@tiptap/extension-table": "^3.32.2",
-    "@tiptap/markdown": "^3.32.2",
-    "@tiptap/pm": "^3.32.2",
-    "@tiptap/starter-kit": "^3.32.2",
-    "@tiptap/y-tiptap": "^3.0.12",
-    "lib0": "^0.2.119",
+    "@tiptap/extension-table": "^3.33.1",
+    "@tiptap/markdown": "^3.33.1",
+    "@tiptap/pm": "^3.33.1",
+    "@tiptap/starter-kit": "^3.33.1",
+    "@tiptap/y-tiptap": "^3.3.0",
+    "lib0": "^0.2.120",
     "yjs": "^13.6.33"
   },
   "devDependencies": {
