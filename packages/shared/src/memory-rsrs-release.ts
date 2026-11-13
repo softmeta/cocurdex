@@ -1,4 +1,8 @@
-import type { MemoryPlatform } from "./memory";
+export interface MemoryPlatform {
+  os: string;
+  arch: string;
+  libc?: "glibc" | "musl";
+}
 
 export const RSRS_CLI_VERSION = "2.0.0-dev.3";
 export const RSRS_CLI_RELEASE_BASE_URL = `https://github.com/risense-ai/respire-cli/releases/download/v${RSRS_CLI_VERSION}`;

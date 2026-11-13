@@ -1,4 +1,4 @@
-import { rsrsCliAsset } from "./memory-rsrs-release";
+import { type MemoryPlatform, rsrsCliAsset } from "./memory-rsrs-release";
 
 export const MEMORY_SETTINGS_KEY = "memory";
 export const MEMORY_POLICY_TOOL_NAME = "memory_policy";
@@ -165,12 +165,6 @@ export interface MemoryRecallStatus {
   outcome: MemoryRecallOutcome;
   error: string | null;
   at: string;
-}
-
-export interface MemoryPlatform {
-  os: string;
-  arch: string;
-  libc?: "glibc" | "musl";
 }
 
 export function memoryPlatformSupportsRsrs(platform: MemoryPlatform) {
