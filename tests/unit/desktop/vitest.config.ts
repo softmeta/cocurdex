@@ -41,6 +41,8 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    pool: "vmThreads",
+    vmMemoryLimit: "768MB",
     setupFiles: ["./setup.ts"],
   },
 });

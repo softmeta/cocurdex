@@ -1,7 +1,43 @@
 import "@testing-library/jest-dom/vitest";
+import { webcrypto } from "node:crypto";
+import {
+  CompressionStream as NodeCompressionStream,
+  DecompressionStream as NodeDecompressionStream,
+  ReadableStream as NodeReadableStream,
+  TextDecoderStream as NodeTextDecoderStream,
+  TextEncoderStream as NodeTextEncoderStream,
+  TransformStream as NodeTransformStream,
+  WritableStream as NodeWritableStream,
+} from "node:stream/web";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 import { i18n } from "@/i18n";
+
+// The vmThreads pool runs each file in a VM realm whose jsdom window lacks
+// Node's web streams and WebCrypto: https://vitest.dev/config/pool#vmthreads
+for (const [name, value] of Object.entries({
+  CompressionStream: NodeCompressionStream,
+  DecompressionStream: NodeDecompressionStream,
+  ReadableStream: NodeReadableStream,
+  TextDecoderStream: NodeTextDecoderStream,
+  TextEncoderStream: NodeTextEncoderStream,
+  TransformStream: NodeTransformStream,
+  WritableStream: NodeWritableStream,
+})) {
+  if (!(name in globalThis)) {
+    Object.defineProperty(globalThis, name, {
+      configurable: true,
+      value,
+      writable: true,
+    });
+  }
+}
+if (!globalThis.crypto?.subtle) {
+  Object.defineProperty(globalThis, "crypto", {
+    configurable: true,
+    value: webcrypto,
+  });
+}
 
 Object.defineProperty(window, "innerWidth", {
   configurable: true,
