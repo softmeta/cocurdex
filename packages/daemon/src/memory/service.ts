@@ -793,11 +793,25 @@ export class MemoryService {
       input,
       partition,
     );
-    const result = await this.remember({
+    const scopedInput = {
       ...validated,
       project: memoryPartitionProject(partition),
-    });
-    return scopeRememberCandidates(this.provider, result, partition);
+    };
+    const result = await this.remember(scopedInput);
+    const scoped = await scopeRememberCandidates(
+      this.provider,
+      result,
+      partition,
+    );
+    // rsrs deduplicates a write against the whole library, not the `--project`
+    // it targets. When every candidate lies in another partition, nothing here
+    // can absorb the write, so it is stored as new.
+    const onlyForeignCandidates =
+      scoped.action === "candidates" &&
+      result.candidates.length > 0 &&
+      scoped.candidates.length === 0;
+    if (!onlyForeignCandidates) return scoped;
+    return this.remember({ ...scopedInput, force: true });
   }
 
   async showIn(

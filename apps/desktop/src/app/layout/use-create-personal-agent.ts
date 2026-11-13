@@ -17,7 +17,7 @@ export function useCreatePersonalAgent() {
     try {
       const draft = await personalApi.draft();
       if (draft.modelAvailable) {
-        setDraft(draft.role);
+        setDraft(draft);
         return;
       }
       toast.info(t("create.needsModel"));

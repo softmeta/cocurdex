@@ -265,7 +265,7 @@ async function createPersona(parsed: ParsedArgs) {
     requestDaemon("personalAgent.create", {
       role: { ...personalAgentRoleDraft(name), ...changes },
       soul: soul ?? null,
-      userAddress: userAddress ?? null,
+      ...(userAddress === undefined ? {} : { userAddress }),
     }),
   );
 }

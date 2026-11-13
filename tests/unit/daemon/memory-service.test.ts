@@ -130,7 +130,7 @@ if (command === "--version") {
   ] });
 } else if (command === "memory-revision") {
   send({ command: "memory-revision", status: "ok", summary: { profile: "/tmp/rsrs", revision: "8c1de196" } });
-} else if (command === "forget" && args[1] === "missing") {
+} else if (command === "forget" && args.includes("missing")) {
   send({ command: "cli", status: "fail", summary: { reason: "runtime_error" }, errors: ["not found #missing"] });
   process.exit(1);
 } else {
@@ -220,15 +220,8 @@ describe("MemoryService with a fake rsrs CLI", () => {
       });
       request.on("end", () => {
         const body = JSON.parse(text);
-        if (body.params?.name === "memory_remember") writes += 1;
-        const result =
-          body.method === "tools/list"
-            ? { tools: [] }
-            : {
-                isError: true,
-                content: [{ type: "text", text: "Write response unavailable" }],
-              };
-        response.end(JSON.stringify({ jsonrpc: "2.0", result }));
+        if (body.args?.[0] === "remember") writes += 1;
+        response.end("not json");
       });
     });
     await new Promise<void>((resolve) =>
@@ -363,10 +356,10 @@ describe("MemoryService with a fake rsrs CLI", () => {
       .map((line) => JSON.parse(line) as string[]);
     expect(calls).toContainEqual([
       "history",
+      "--json",
       "me-1",
       "--limit",
       "50",
-      "--json",
     ]);
   });
 
@@ -474,14 +467,15 @@ describe("MemoryService with a fake rsrs CLI", () => {
         body += chunk;
       });
       request.on("end", () => {
-        const { method, params } = JSON.parse(body);
-        requests.push(params?.name ?? method);
-        const reply = () =>
-          response.end(
-            JSON.stringify({ jsonrpc: "2.0", result: { tools: [] } }),
-          );
-        if (method === "tools/list") reply();
-        else setTimeout(reply, 1_000);
+        const { args } = JSON.parse(body);
+        requests.push(args[0]);
+        setTimeout(
+          () =>
+            response.end(
+              JSON.stringify({ v: 1, ok: true, exit: 0, envelope: {} }),
+            ),
+          1_000,
+        );
       });
     });
     await new Promise<void>((resolve) =>
@@ -506,9 +500,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
       const probesAfterFirstTurn = probes();
       expect(await recall()).toBeNull();
       expect(probes()).toBe(probesAfterFirstTurn);
-      expect(requests.filter((name) => name === "memory_recall")).toHaveLength(
-        2,
-      );
+      expect(requests.filter((name) => name === "recall")).toHaveLength(2);
       expect((await service.getStatus()).lastRecall).toMatchObject({
         outcome: "failed",
         error: expect.stringContaining("timed out"),

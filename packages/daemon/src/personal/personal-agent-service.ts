@@ -160,6 +160,7 @@ export class PersonalAgentService {
         }),
       },
       modelAvailable: model !== null,
+      userAddress: this.knownUserAddress(),
     };
   }
 
@@ -170,7 +171,10 @@ export class PersonalAgentService {
         : { ...payload.role, ...(await this.defaultModel(await this.list())) };
     return this.insert(role, {
       soul: payload.soul ?? null,
-      userAddress: payload.userAddress ?? null,
+      userAddress:
+        payload.userAddress === undefined
+          ? this.knownUserAddress()
+          : payload.userAddress,
     });
   }
 
@@ -325,6 +329,14 @@ export class PersonalAgentService {
       await this.deps.deleteRole(role.id);
       throw error;
     }
+  }
+
+  private knownUserAddress() {
+    const latest = this.deps.repository
+      .list()
+      .filter((row) => row.userAddress !== null)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+    return latest?.userAddress ?? null;
   }
 
   private otherUserAddresses(personaId: string) {

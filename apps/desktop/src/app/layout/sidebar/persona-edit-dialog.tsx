@@ -1,8 +1,8 @@
 import {
   PERSONAL_AGENT_SOUL_MAX_LENGTH,
   PERSONAL_AGENT_USER_ADDRESS_MAX_LENGTH,
+  type PersonalAgentDraft,
   type PersonalAgentRecord,
-  type PersonalAgentRolePayload,
   type SaveAgentRolePayload,
 } from "@cocurdex/shared";
 import { useState } from "react";
@@ -18,7 +18,7 @@ export function PersonaEditDialog({
   onOpenChange,
 }: {
   agent?: PersonalAgentRecord | null;
-  draft?: PersonalAgentRolePayload | null;
+  draft?: PersonalAgentDraft | null;
   onCreated?(created: PersonalAgentRecord): void;
   onOpenChange(open: boolean): void;
 }) {
@@ -27,7 +27,9 @@ export function PersonaEditDialog({
     agent?.role.instructions ?? "",
   );
   const [soul, setSoul] = useState(agent?.soul ?? "");
-  const [userAddress, setUserAddress] = useState(agent?.userAddress ?? "");
+  const [userAddress, setUserAddress] = useState(
+    agent?.userAddress ?? draft?.userAddress ?? "",
+  );
 
   const save = async (payload: SaveAgentRolePayload) => {
     const { id: _id, ...fields } = payload;
@@ -54,7 +56,7 @@ export function PersonaEditDialog({
       descriptionPlaceholder={t("edit.descriptionPlaceholder")}
       onOpenChange={onOpenChange}
       open={agent !== null || draft !== null}
-      role={agent?.role ?? draft}
+      role={agent?.role ?? draft?.role ?? null}
       save={save}
       title={t("edit.title")}
     >

@@ -21,13 +21,11 @@ import {
   readRsrsPolicy,
   readRsrsStatus,
   recallMemories,
-  recallMemoriesViaRuntime,
   rememberMemory,
-  rememberMemoryViaRuntime,
   resolveRsrsExecutable,
   showMemory,
-  showMemoryViaRuntime,
 } from "./rsrs";
+import { cliInvoke, type RsrsInvoke } from "./rsrs-invoke";
 import {
   exportMemories,
   forgetMemory,
@@ -40,10 +38,10 @@ import {
   updateMemory,
 } from "./rsrs-library";
 import {
-  callRuntimeTool,
+  execRuntimeCli,
   findRuntime,
-  listRuntimeTools,
   type RuntimeEndpoint,
+  RuntimeUnreachableError,
 } from "./runtime";
 
 const CACHE_MS = 30_000;
@@ -68,24 +66,6 @@ function isTimeoutError(error: unknown) {
   );
 }
 
-export function startBudget(timeoutMs: number | undefined) {
-  const startedAt = performance.now();
-  const remaining = () =>
-    timeoutMs === undefined
-      ? undefined
-      : Math.max(0, Math.floor(timeoutMs - (performance.now() - startedAt)));
-  return {
-    remaining,
-    remainingOrThrow(operation: string) {
-      const left = remaining();
-      if (left === 0) {
-        throw new Error(`${operation} timed out after ${timeoutMs}ms`);
-      }
-      return left;
-    },
-  };
-}
-
 class TaskQueue {
   private tail: Promise<void> = Promise.resolve();
 
@@ -105,7 +85,6 @@ export class RsrsMemoryProvider implements MemoryProvider {
   private resolvedAt = 0;
   private endpoint: RuntimeEndpoint | null = null;
   private endpointCheckedAt = 0;
-  private tools: Map<string, Set<string>> | null = null;
   private policyText: string | null = null;
   private capabilitySet: MemoryProviderCapabilities | null = null;
   private injected: { agents: string[]; at: number } | null = null;
@@ -190,31 +169,27 @@ export class RsrsMemoryProvider implements MemoryProvider {
       });
   }
 
-  private async adoptEndpoint(endpoint: RuntimeEndpoint | null) {
+  private adoptEndpoint(endpoint: RuntimeEndpoint | null) {
     this.endpoint = endpoint;
     this.endpointCheckedAt = this.nowMs();
-    this.tools = endpoint
-      ? await listRuntimeTools(endpoint).catch(() => null)
-      : null;
     return endpoint;
   }
 
   invalidateRuntime() {
     this.endpoint = null;
     this.endpointCheckedAt = 0;
-    this.tools = null;
   }
 
   async runtimeStatus() {
     const endpoint = await this.runtime();
     if (!endpoint) return null;
     try {
-      const payload = await callRuntimeTool(
+      const { payload } = await execRuntimeCli(
         endpoint,
-        "memory_status",
-        {},
+        ["status", "--json"],
         5_000,
       );
+      if (payload.status === "fail") throw new Error("status failed");
       return { bin: endpoint.bin ?? null, payload };
     } catch (error) {
       logDaemonDiagnostic("info", "memory.runtimeStatusFailed", {
@@ -225,25 +200,35 @@ export class RsrsMemoryProvider implements MemoryProvider {
     }
   }
 
-  private runtimeSupports(tool: string, argument: string) {
-    return this.tools?.get(tool)?.has(argument) ?? false;
-  }
-
-  private async viaRuntime<T>(
-    endpoint: RuntimeEndpoint | null,
-    call: (endpoint: RuntimeEndpoint) => Promise<T>,
-    fallback: () => Promise<T>,
-  ): Promise<T> {
-    if (!endpoint) return fallback();
-    try {
-      return await call(endpoint);
-    } catch (error) {
-      logDaemonDiagnostic("info", "memory.runtimeCallFailed", {
-        error: errorMessage(error),
-      });
-      if (!isTimeoutError(error)) this.invalidateRuntime();
-      return fallback();
-    }
+  private invoker(
+    executable: RsrsExecutable,
+    kind: "read" | "write",
+  ): RsrsInvoke {
+    return async (args, timeoutMs) => {
+      const startedAt = performance.now();
+      const left = () =>
+        Math.max(0, Math.floor(timeoutMs - (performance.now() - startedAt)));
+      const endpoint = await this.runtime();
+      if (endpoint) {
+        try {
+          return await execRuntimeCli(endpoint, args, left());
+        } catch (error) {
+          const unreached = error instanceof RuntimeUnreachableError;
+          if (!unreached && (kind === "write" || isTimeoutError(error))) {
+            throw error;
+          }
+          logDaemonDiagnostic("info", "memory.runtimeCallFailed", {
+            error: errorMessage(error),
+          });
+          this.invalidateRuntime();
+        }
+      }
+      const remaining = left();
+      if (remaining === 0) {
+        throw new Error(`rsrs ${args[0]} timed out after ${timeoutMs}ms`);
+      }
+      return cliInvoke(executable)(args, remaining);
+    };
   }
 
   async available() {
@@ -257,7 +242,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
       const executable = await this.requireExecutable();
       const status = await readRsrsStatus(executable, RUNTIME_START_TIMEOUT_MS);
       if (!status.hasKeys || status.workspaceMode === "off") return;
-      const result = await recallMemories(executable, {
+      const result = await recallMemories(this.invoker(executable, "read"), {
         query: "Cocurdex memory readiness",
         project: "cocurdex/me",
         limit: 1,
@@ -302,41 +287,17 @@ export class RsrsMemoryProvider implements MemoryProvider {
 
   async recall(input: MemoryProviderRecallInput) {
     const executable = await this.requireExecutable();
-    const budget = startBudget(input.timeoutMs);
-    return this.reads.run(async () => {
-      const endpoint = await this.runtime();
-      const useRuntime =
-        endpoint !== null &&
-        (!input.project || this.runtimeSupports("memory_recall", "project"));
-      return this.viaRuntime(
-        useRuntime ? endpoint : null,
-        (target) =>
-          recallMemoriesViaRuntime(target, {
-            query: input.query,
-            limit: input.limit,
-            project: input.project,
-            timeoutMs: budget.remaining(),
-          }),
-        () =>
-          recallMemories(executable, {
-            query: input.query,
-            limit: input.limit,
-            project: input.project,
-            timeoutMs: budget.remainingOrThrow("rsrs recall"),
-          }),
-      );
+    return recallMemories(this.invoker(executable, "read"), {
+      query: input.query,
+      limit: input.limit,
+      project: input.project,
+      timeoutMs: input.timeoutMs,
     });
   }
 
   async show(id: string, timeoutMs?: number) {
     const executable = await this.requireExecutable();
-    return this.reads.run(async () =>
-      this.viaRuntime(
-        await this.runtime(),
-        (target) => showMemoryViaRuntime(target, id, timeoutMs),
-        () => showMemory(executable, id, timeoutMs),
-      ),
-    );
+    return showMemory(this.invoker(executable, "read"), id, timeoutMs);
   }
 
   async list(input: MemoryProviderListInput): Promise<MemoryEntry[]> {
@@ -345,7 +306,10 @@ export class RsrsMemoryProvider implements MemoryProvider {
       ? Math.max(input.limit, PARTITION_LIST_WINDOW)
       : input.limit;
     const entries = await this.reads.run(() =>
-      listMemories(executable, { limit: window, since: input.since }),
+      listMemories(this.invoker(executable, "read"), {
+        limit: window,
+        since: input.since,
+      }),
     );
     const matching = input.project
       ? entries.filter((entry) => entry.project === input.project)
@@ -356,15 +320,8 @@ export class RsrsMemoryProvider implements MemoryProvider {
   async remember(input: MemoryRememberInput): Promise<MemoryRememberResult> {
     const executable = await this.requireExecutable();
     return this.writes.run(async () => {
-      const endpoint = await this.runtime();
-      const useRuntime =
-        endpoint !== null &&
-        (!input.project ||
-          this.runtimeSupports("memory_remember", "project")) &&
-        !input.tags?.length;
-      if (!useRuntime || !endpoint) return rememberMemory(executable, input);
       try {
-        return await rememberMemoryViaRuntime(endpoint, input);
+        return await rememberMemory(this.invoker(executable, "write"), input);
       } catch (error) {
         throw new Error(
           `Memory write could not be confirmed; inspect the library before retrying. ${errorMessage(error)}`,
@@ -376,36 +333,48 @@ export class RsrsMemoryProvider implements MemoryProvider {
 
   async update(input: MemoryUpdateInput) {
     const executable = await this.requireExecutable();
-    await this.writes.run(() => updateMemory(executable, input));
+    await this.writes.run(() =>
+      updateMemory(this.invoker(executable, "write"), input),
+    );
   }
 
   async forget(id: string) {
     const executable = await this.requireExecutable();
-    await this.writes.run(() => forgetMemory(executable, id));
+    await this.writes.run(() =>
+      forgetMemory(this.invoker(executable, "write"), id),
+    );
   }
 
   async restore(id: string) {
     const executable = await this.requireExecutable();
-    await this.writes.run(() => restoreMemory(executable, id));
+    await this.writes.run(() =>
+      restoreMemory(this.invoker(executable, "write"), id),
+    );
   }
 
   async history(input: { id: string | null; limit: number }) {
     const executable = await this.requireExecutable();
-    return this.reads.run(() => readMemoryHistory(executable, input));
+    return this.reads.run(() =>
+      readMemoryHistory(this.invoker(executable, "read"), input),
+    );
   }
 
   async revision() {
     const executable = await this.requireExecutable();
-    return readMemoryRevision(executable);
+    return readMemoryRevision(this.invoker(executable, "read"));
   }
 
   async exportTo(file: string) {
     const executable = await this.requireExecutable();
-    await this.reads.run(() => exportMemories(executable, file));
+    await this.reads.run(() =>
+      exportMemories(this.invoker(executable, "read"), file),
+    );
   }
 
   async importFrom(file: string): Promise<MemoryImportResult> {
     const executable = await this.requireExecutable();
-    return this.writes.run(() => importMemories(executable, file));
+    return this.writes.run(() =>
+      importMemories(this.invoker(executable, "write"), file),
+    );
   }
 }

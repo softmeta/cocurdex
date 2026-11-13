@@ -114,7 +114,7 @@ import {
 } from "./host-access/host-key-store";
 import { InboxService } from "./inbox/inbox-service";
 import { DaemonMcpService } from "./mcp-service";
-import { MemoryService } from "./memory";
+import { hostShellReachesMemory, MemoryService } from "./memory";
 import { OutboxService, routineRunAlert } from "./outbox";
 import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
@@ -2509,6 +2509,7 @@ export class CocurdexDaemonService {
     const hostInjectsMemory =
       !persona &&
       !chatSession &&
+      hostShellReachesMemory(session) &&
       (await this.memory.injectsInto(session.agentType));
     const memoryGate = await this.memory.beginTurn({
       sessionId: session.id,

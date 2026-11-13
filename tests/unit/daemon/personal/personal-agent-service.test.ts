@@ -228,11 +228,19 @@ describe("PersonalAgentService", () => {
     ]);
   });
 
-  it("keeps each assistant's own way to address the user and asks when it has none", async () => {
+  it("carries the known way to address the user into a new assistant and asks only when none is set", async () => {
     const coach = await harness.service.create({ role: coachRole });
+    expect(coach.userAddress).toBeNull();
     await harness.service.update({ id: coach.id, userAddress: "  Boss  " });
+
+    const draft = await harness.service.draft({ locale: "en-US" });
+    expect(draft.userAddress).toBe("Boss");
     const writer = await harness.service.create({
       role: { ...coachRole, name: "Writer" },
+    });
+    const stranger = await harness.service.create({
+      role: { ...coachRole, name: "Stranger" },
+      userAddress: null,
     });
     const written: PersonaGreetingInput[] = [];
     harness.writeGreeting(async (input) => {
@@ -241,14 +249,16 @@ describe("PersonalAgentService", () => {
     });
 
     await harness.service.greet({ id: writer.id, locale: "en-US" });
+    await harness.service.greet({ id: stranger.id, locale: "en-US" });
+    await harness.service.update({ id: writer.id, userAddress: "Chief" });
 
     expect((await harness.service.get(coach.id))?.userAddress).toBe("Boss");
-    expect((await harness.service.get(writer.id))?.userAddress).toBeNull();
-    expect(written[0]).toMatchObject({
-      userAddress: null,
-      otherAddresses: ["Boss"],
-    });
-    expect(harness.greetings[0]?.content).toContain("what should I call you?");
+    expect((await harness.service.get(writer.id))?.userAddress).toBe("Chief");
+    expect(written[0]).toMatchObject({ userAddress: "Boss" });
+    expect(harness.greetings[0]?.content).toContain("Hi Boss");
+    expect(harness.greetings[0]?.content).not.toContain("call you");
+    expect(written[1]).toMatchObject({ userAddress: null });
+    expect(harness.greetings[1]?.content).toContain("what should I call you?");
   });
 
   it("drafts an unused name and says when no model can run it", async () => {

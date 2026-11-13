@@ -1,9 +1,42 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 
 const args = process.argv.slice(2).filter((arg) => arg !== "--json");
 const command = args[0];
 const statePath = process.env.FAKE_RSRS_STATE;
 const send = (value) => process.stdout.write(JSON.stringify(value));
+
+// The daemon runs memory commands concurrently (partition recalls in
+// parallel), so each invocation holds a lock around its read-modify-write of
+// the shared state file.
+const LOCK_STALE_MS = 10_000;
+
+function lockState() {
+  if (!statePath) return;
+  const lock = `${statePath}.lock`;
+  const pause = new Int32Array(new SharedArrayBuffer(4));
+  for (;;) {
+    try {
+      mkdirSync(lock);
+      process.on("exit", () => rmSync(lock, { recursive: true, force: true }));
+      return;
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      const age =
+        Date.now() - (statSync(lock, { throwIfNoEntry: false })?.mtimeMs ?? 0);
+      if (age > LOCK_STALE_MS) rmSync(lock, { recursive: true, force: true });
+      Atomics.wait(pause, 0, 0, 10);
+    }
+  }
+}
+
+lockState();
 
 const HELP = `rsrs 1.0.0
 

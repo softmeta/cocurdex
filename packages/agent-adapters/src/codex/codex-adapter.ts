@@ -42,6 +42,7 @@ import type {
 } from "./codex-app-server-client";
 import {
   buildInput,
+  codexShellReachesNetwork,
   createSandboxPolicy,
   getItem,
   isRecord,
@@ -208,7 +209,7 @@ function createCodexSandboxMode(
   payload: CreateAgentSessionPayload,
   permissionMode = payload.session.permissionMode,
 ) {
-  if (permissionMode === "codex-full-access") {
+  if (codexShellReachesNetwork(permissionMode)) {
     return "danger-full-access";
   }
 

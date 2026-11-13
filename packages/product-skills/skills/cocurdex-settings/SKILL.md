@@ -59,6 +59,7 @@ Long-term memory runs on the rsrs CLI (`rsrs-cli`) and keeps its store in `~/.rs
 - Account: `cocurdex memory cloud register --user <name>` creates an rsrs account, `cocurdex memory cloud signin --user <name>` signs in on this device, `cocurdex memory cloud signout` stops sync and keeps the local store, and `cocurdex memory cloud keys` reprints the recovery key. Registering prints the recovery key once: tell the user to save it, since it is the only way to decrypt their memories on another device.
 - Credentials are the user's step. The password and recovery key come from a hidden prompt, or from piped stdin when the command is not attached to a terminal; never pass them as flags, ask for them in chat, or repeat them. Suggest Settings → Memory → Multi-device sync for the user, and the `cocurdex memory cloud` command when they want the terminal.
 - A machine without an rsrs identity cannot store anything: `memory_remember` returns `skipped` with that reason and the fix (register or sign in). Registering or signing in turns sync on; a local-only identity (`rsrs keygen`) keeps everything on this device.
+- `memory_remember` returns `failed` when rsrs could not store the entry (for example its runtime did not answer): nothing was saved and nothing retries it, so tell the user it was not saved instead of promising to save it later. A thrown "could not be confirmed" error means the outcome is unknown: recall before writing again.
 
 ## Providers
 

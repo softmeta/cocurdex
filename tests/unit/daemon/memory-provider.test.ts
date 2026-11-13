@@ -8,6 +8,8 @@ import {
   type MemoryEntry,
   type MemoryHistoryEntry,
   type MemoryRecallItem,
+  type MemoryRememberInput,
+  type MemoryRememberResult,
   type MemorySettings,
   memoryPartitionOf,
   memoryPartitionProject,
@@ -100,7 +102,7 @@ class InMemoryProvider implements MemoryProvider {
       .filter((item) => !input.project || item.project === input.project)
       .slice(0, input.limit);
   }
-  async remember(input: { title: string; content: string }) {
+  async remember(input: MemoryRememberInput): Promise<MemoryRememberResult> {
     const id = `m${this.live.size + 1}`;
     this.live.set(id, { ...entry(id, null), ...input });
     this.remembered.push(input.title);
@@ -242,6 +244,42 @@ describe("MemoryService over a MemoryProvider", () => {
     ).rejects.toThrow("partition");
     expect(provider.remembered).toEqual([]);
     expect(provider.live.has("foreign")).toBe(true);
+  });
+
+  it("stores a partition write whose only similar memories live in other partitions", async () => {
+    const { service, provider } = createService();
+    provider.live.set("foreign", entry("foreign", "cocurdex/agent/other"));
+    const store = provider.remember.bind(provider);
+    provider.remember = async (input: MemoryRememberInput) =>
+      input.force
+        ? store(input)
+        : {
+            action: "candidates" as const,
+            id: null,
+            title: null,
+            candidates: [
+              {
+                id: "foreign",
+                title: "Title foreign",
+                score: 0.9,
+                importance: "important" as const,
+                updatedAt: null,
+              },
+            ],
+            message: null,
+          };
+
+    const result = await service.rememberIn(
+      {
+        title: "Calls me Heisenberg",
+        content: "Address the user as Heisenberg",
+      },
+      { kind: "agent", agentId: "coach" },
+    );
+
+    expect(result.action).toBe("created");
+    expect(provider.remembered).toEqual(["Calls me Heisenberg"]);
+    expect(provider.live.get("foreign")?.title).toBe("Title foreign");
   });
 
   it("lists one partition without entries from other partitions", async () => {
