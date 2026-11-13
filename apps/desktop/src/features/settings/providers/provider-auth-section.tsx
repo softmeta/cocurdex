@@ -3,7 +3,6 @@ import type {
   ProviderAuthMethod,
   ProviderAuthMethodRecord,
   ProviderAuthPrompt,
-  ProviderAuthState,
 } from "@cocurdex/shared";
 import {
   Copy,
@@ -21,6 +20,7 @@ import { Button, Input, Spinner, Text } from "@/components/ui";
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import { SettingsSelect } from "../settings-select";
 import { providerAuthSourceLabel } from "./auth-source-label";
+import { useProviderAuthQuery } from "./provider-queries";
 
 function AuthMethodIcon({ method }: { method: ProviderAuthMethod }) {
   return method === "oauth" ? (
@@ -42,7 +42,16 @@ export function ProviderAuthSection({
   onAuthChange(): Promise<void>;
 }) {
   const { t } = useTranslation("settings");
-  const [auth, setAuth] = useState<ProviderAuthState | null>(null);
+  const { data: auth, mutate: reloadAuth } = useProviderAuthQuery(
+    providerId,
+    (readError) => {
+      toast.error(
+        readError instanceof Error
+          ? readError.message
+          : t("providers.auth.readFailed"),
+      );
+    },
+  );
   const [isBusy, setIsBusy] = useState(false);
   const [prompt, setPrompt] = useState<ProviderAuthPrompt | null>(null);
   const [promptValue, setPromptValue] = useState("");
@@ -56,19 +65,7 @@ export function ProviderAuthSection({
   } | null>(null);
   const loginIdRef = useRef<string | null>(null);
 
-  async function reloadAuth() {
-    const nextAuth = await desktopApi.readProviderAuth(providerId);
-    setAuth(nextAuth);
-  }
-
   useMountEffect(() => {
-    void reloadAuth().catch((readError) => {
-      toast.error(
-        readError instanceof Error
-          ? readError.message
-          : t("providers.auth.readFailed"),
-      );
-    });
     return () => {
       const loginId = loginIdRef.current;
       if (loginId) {
@@ -222,6 +219,7 @@ export function ProviderAuthSection({
     <SettingsGroup title={t("providers.auth.title")}>
       {methods.map((method) => {
         const isActive = auth?.type === method.type;
+        const hasAuth = auth !== undefined;
         return (
           <div
             className="flex min-h-14 flex-wrap items-center justify-between gap-3 py-3"
@@ -240,69 +238,70 @@ export function ProviderAuthSection({
                 </Text>
               </div>
             </div>
-            {isActive ? (
-              <div className="flex items-center gap-2">
-                <Text size="meta" tone="muted">
-                  {providerAuthSourceLabel(t, auth)}
-                </Text>
-                {isDraft ? (
+            {hasAuth &&
+              (isActive ? (
+                <div className="flex items-center gap-2">
+                  <Text size="meta" tone="muted">
+                    {providerAuthSourceLabel(t, auth)}
+                  </Text>
+                  {isDraft ? (
+                    <Button
+                      disabled={isBusy}
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                      onClick={() => void handleAddProvider()}
+                    >
+                      {isBusy ? (
+                        <Spinner size="sm" />
+                      ) : (
+                        <Plus className="size-4" />
+                      )}
+                      {t("providers.auth.addProvider")}
+                    </Button>
+                  ) : (
+                    <Button
+                      disabled={isBusy}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                      onClick={() => void handleLogout()}
+                    >
+                      <LogOut className="size-4" />
+                      {t("providers.auth.signOut")}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {isBusy && !prompt ? (
+                    <Button
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                      onClick={() => void handleCancel()}
+                    >
+                      {t("providers.auth.cancel")}
+                    </Button>
+                  ) : null}
                   <Button
                     disabled={isBusy}
                     size="sm"
                     type="button"
                     variant="secondary"
-                    onClick={() => void handleAddProvider()}
+                    onClick={() => void handleLogin(method.type)}
                   >
                     {isBusy ? (
                       <Spinner size="sm" />
                     ) : (
-                      <Plus className="size-4" />
+                      <AuthMethodIcon method={method.type} />
                     )}
-                    {t("providers.auth.addProvider")}
+                    {method.type === "oauth"
+                      ? t("providers.auth.signIn")
+                      : t("providers.auth.setApiKey")}
                   </Button>
-                ) : (
-                  <Button
-                    disabled={isBusy}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                    onClick={() => void handleLogout()}
-                  >
-                    <LogOut className="size-4" />
-                    {t("providers.auth.signOut")}
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                {isBusy && !prompt ? (
-                  <Button
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                    onClick={() => void handleCancel()}
-                  >
-                    {t("providers.auth.cancel")}
-                  </Button>
-                ) : null}
-                <Button
-                  disabled={isBusy}
-                  size="sm"
-                  type="button"
-                  variant="secondary"
-                  onClick={() => void handleLogin(method.type)}
-                >
-                  {isBusy ? (
-                    <Spinner size="sm" />
-                  ) : (
-                    <AuthMethodIcon method={method.type} />
-                  )}
-                  {method.type === "oauth"
-                    ? t("providers.auth.signIn")
-                    : t("providers.auth.setApiKey")}
-                </Button>
-              </div>
-            )}
+                </div>
+              ))}
           </div>
         );
       })}
