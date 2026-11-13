@@ -327,29 +327,41 @@ appId: dev.cocurdex.mobile
       platform: iOS
     commands:
       - tapOn:
-          point: 5%, 9%
+          id: BackButton
 - runFlow:
     when:
       platform: Android
     commands:
       - back
 - extendedWaitUntil:
-    visible: ${ISSUE_DESCRIPTION}
+    visible:
+      id: issue-field-links
     timeout: 5000
-- retry:
-    maxRetries: 3
+- runFlow:
+    when:
+      platform: iOS
     commands:
-      - runFlow:
-          when:
-            platform: iOS
-          commands:
-            - tapOn:
-                point: 5%, 9%
-      - runFlow:
-          when:
-            platform: Android
-          commands:
-            - back
-      - extendedWaitUntil:
-          visible: ${NOTE_PARENT_TITLE}
-          timeout: 3000
+      - tapOn:
+          id: BackButton
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible: ${ISSUE_LINK_TEXT}
+    timeout: 5000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: BackButton
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- extendedWaitUntil:
+    visible: ${NOTE_PARENT_TITLE}
+    timeout: 5000
