@@ -1,4 +1,7 @@
-import type { DaemonRequest } from "@cocurdex/rpc";
+import {
+  type DaemonRequest,
+  UNKNOWN_DAEMON_METHOD_MESSAGE,
+} from "@cocurdex/rpc";
 import { DAEMON_METHOD_SCOPES } from "@cocurdex/rpc/method-scopes";
 import {
   type HostPrincipal,
@@ -101,7 +104,7 @@ export function authorizeDaemonRequest(
       code: "FORBIDDEN",
       message: scope
         ? `This device is missing the ${scope} scope`
-        : "Unknown daemon method",
+        : UNKNOWN_DAEMON_METHOD_MESSAGE,
     };
   }
   return { ok: true, principal };

@@ -2,6 +2,8 @@ import { useLocalSearchParams } from "expo-router";
 import { useSavedHosts } from "@/hosts";
 import { SessionDetailScreen } from "@/session-detail";
 
+export { RouteErrorBoundary as ErrorBoundary } from "@/ui";
+
 export default function SessionRoute() {
   const { hostId, sessionId } = useLocalSearchParams<{
     hostId: string;

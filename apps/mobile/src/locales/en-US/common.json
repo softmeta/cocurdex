@@ -48,6 +48,10 @@
     "empty": "No matches",
     "placeholder": "Search"
   },
+  "routeError": {
+    "retry": "Try again",
+    "title": "Something went wrong on this screen"
+  },
   "screens": {
     "approve": "Approve on Computer",
     "archived": "Archived Sessions",

@@ -1,7 +1,8 @@
-import type {
-  DaemonMethod,
-  DaemonRequestPayloadByMethod,
-  DaemonResultByMethod,
+import {
+  type DaemonMethod,
+  type DaemonRequestPayloadByMethod,
+  type DaemonResultByMethod,
+  isUnknownDaemonMethodError,
 } from "@cocurdex/rpc";
 import {
   createDaemonRpcClient,
@@ -53,6 +54,8 @@ const CONNECTION_LOSS_CODES = new Set([
 ]);
 const DEFAULT_COMMAND_ATTEMPTS = 5;
 const unknownPosition: DaemonEventMeta = { epoch: null, seq: null };
+
+export { isUnknownDaemonMethodError };
 
 export function isConnectionLoss(error: unknown) {
   const code = (error as { code?: unknown } | null)?.code;

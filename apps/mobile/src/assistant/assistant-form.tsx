@@ -1,4 +1,7 @@
-import type { SavedHost } from "@cocurdex/client-runtime";
+import {
+  isUnknownDaemonMethodError,
+  type SavedHost,
+} from "@cocurdex/client-runtime";
 import {
   PERSONAL_AGENT_RUNTIME_ID,
   PERSONAL_AGENT_SOUL_MAX_LENGTH,
@@ -123,6 +126,11 @@ function CreateForm({ host }: { host: SavedHost }) {
       <ListNotice
         icon={{ ios: "cpu", android: "memory" }}
         title={draft.error ? t("form.draftFailed") : t("form.needsModel")}
+        description={
+          isUnknownDaemonMethodError(draft.error)
+            ? t("sessions:unavailable.hostOutdated")
+            : undefined
+        }
         action={
           draft.error
             ? {

@@ -328,6 +328,7 @@
   },
   "unavailable": {
     "description": "请确认电脑没有休眠并已联网，且手机能通过本地网络或中继访问它。",
+    "hostOutdated": "电脑上的 Cocurdex 版本过旧，更新后再试。",
     "retry": "重试",
     "title": "连不上 {{host}}"
   }

@@ -2,7 +2,12 @@ import "@/runtime";
 import "@/i18n";
 import { pathBaseName } from "@cocurdex/shared";
 import { NavigationBar } from "expo-navigation-bar";
-import { Stack, ThemeProvider, usePathname } from "expo-router";
+import {
+  type ErrorBoundaryProps,
+  Stack,
+  ThemeProvider,
+  usePathname,
+} from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -17,7 +22,7 @@ import {
   useThemeColors,
   useThemeName,
 } from "@/theme";
-import { useHeaderOptions } from "@/ui";
+import { RouteErrorBoundary, useHeaderOptions } from "@/ui";
 
 const PAIR_PRESENTATION = Platform.OS === "ios" ? "formSheet" : "modal";
 const PUSH_ANIMATION =
@@ -42,6 +47,15 @@ const VIEWER_ANIMATION = Platform.OS === "android" ? "fade" : "default";
 function fileScreenTitle(params: object | undefined) {
   const path = params && "path" in params ? params.path : undefined;
   return typeof path === "string" ? pathBaseName(path) : "";
+}
+
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  return (
+    <>
+      <RouteErrorBoundary {...props} />
+      <LaunchReady />
+    </>
+  );
 }
 
 export default function RootLayout() {
