@@ -86,8 +86,10 @@ async function addProvider(providerId: string, parsed: ParsedArgs) {
     throw new Error(`Provider template not found: ${templateId}`);
   }
   const name = stringFlag(parsed, "name") ?? template?.name ?? providerId;
-  const baseUrl = stringFlag(parsed, "base-url") ?? template?.baseUrl;
-  if (!baseUrl) throw new Error("Missing required --base-url or --template");
+  const baseUrl = stringFlag(parsed, "base-url") ?? template?.baseUrl ?? "";
+  if (!baseUrl && !template) {
+    throw new Error("Missing required --base-url or --template");
+  }
   const now = new Date().toISOString();
   const provider: ProviderConfigRecord = {
     id: providerId,

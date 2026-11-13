@@ -150,6 +150,11 @@ function mergeProviderModels(
   ];
 }
 
+/** Pi resolves an empty or `{placeholder}` template endpoint from env or login values. */
+function hasFixedEndpoint(baseUrl: string) {
+  return Boolean(baseUrl) && !baseUrl.includes("{");
+}
+
 export function ProviderSettingsPanel() {
   const { t } = useTranslation("settings");
   const bootstrapProviderModels = useSetAtom(bootstrapProviderModelsAtom);
@@ -221,6 +226,11 @@ export function ProviderSettingsPanel() {
   const shouldShowProviderEditor =
     surface.kind === "provider" || surface.kind === "create";
   const presetProviderIds = new Set(templates.map((template) => template.id));
+  const openEndpointProviderIds = new Set(
+    templates
+      .filter((template) => !hasFixedEndpoint(template.baseUrl))
+      .map((template) => template.id),
+  );
   const editorAuthMethods =
     templates.find((template) => template.id === editorProvider.id)
       ?.authMethods ?? [];
@@ -663,6 +673,7 @@ export function ProviderSettingsPanel() {
                       provider={editorProvider}
                       selectedProvider={selectedProvider}
                       selectedModels={selectedModels}
+                      openEndpointProviderIds={openEndpointProviderIds}
                       presetProviderIds={presetProviderIds}
                       onClearApiKey={clearApiKey}
                       onRefreshModels={refreshModels}

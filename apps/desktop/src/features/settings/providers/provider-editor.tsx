@@ -32,6 +32,7 @@ interface ProviderEditorProps {
   selectedProvider?: ProviderConfigRecord;
   selectedModels: ProviderModelRecord[];
   authMethods: ProviderAuthMethodRecord[];
+  openEndpointProviderIds: Set<string>;
   presetProviderIds: Set<string>;
   onClearApiKey(providerId: string): Promise<void>;
   onRefreshModels(providerId: string): Promise<{ error?: string }>;
@@ -53,6 +54,7 @@ export function ProviderEditor({
   authMethods,
   selectedProvider,
   selectedModels,
+  openEndpointProviderIds,
   presetProviderIds,
   onClearApiKey,
   onRefreshModels,
@@ -126,6 +128,7 @@ export function ProviderEditor({
           apiKey={apiKey}
           draftProvider={draftProvider}
           managedAuth={authMethods.length > 0}
+          openEndpointProviderIds={openEndpointProviderIds}
           presetProviderIds={presetProviderIds}
           selectedProvider={selectedProvider}
           onApiKeyChange={setApiKey}

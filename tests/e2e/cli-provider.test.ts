@@ -182,6 +182,35 @@ describe("cocurdex provider CLI", () => {
     }
   });
 
+  it("adds a built-in provider without a default endpoint and sets one later", async () => {
+    const added = await cli([
+      "provider",
+      "add",
+      "azure",
+      "--template",
+      "azure",
+      "--json",
+    ]);
+    expect(added.code).toBe(0);
+    expect(JSON.parse(added.stdout)).toMatchObject({
+      id: "azure",
+      baseUrl: "",
+    });
+
+    const endpoint = "https://acme.openai.azure.example.invalid/openai/v1";
+    const updated = await cli([
+      "provider",
+      "update",
+      "azure",
+      "--base-url",
+      endpoint,
+      "--json",
+    ]);
+    expect(JSON.parse(updated.stdout)).toMatchObject({ baseUrl: endpoint });
+
+    await cli(["provider", "remove", "azure"]);
+  });
+
   it("logs in to a template provider through daemon-driven prompts", async () => {
     const providerId = "cloudflare-workers-ai";
     const added = await cli([

@@ -21,6 +21,7 @@ interface ProviderDetailsSectionProps {
   apiKey: string;
   draftProvider: ProviderConfigRecord;
   managedAuth?: boolean;
+  openEndpointProviderIds: Set<string>;
   presetProviderIds: Set<string>;
   selectedProvider?: ProviderConfigRecord;
   onApiKeyChange(apiKey: string): void;
@@ -35,6 +36,7 @@ export function ProviderDetailsSection({
   apiKey,
   draftProvider,
   managedAuth = false,
+  openEndpointProviderIds,
   presetProviderIds,
   selectedProvider,
   onApiKeyChange,
@@ -50,6 +52,8 @@ export function ProviderDetailsSection({
   const hasStoredApiKey = Boolean(draftProvider.apiKeySecretId);
   const isPresetProvider = presetProviderIds.has(draftProvider.id);
   const isIdLocked = isPresetProvider || Boolean(selectedProvider);
+  const isEndpointEditable =
+    !isPresetProvider || openEndpointProviderIds.has(draftProvider.id);
 
   return (
     <>
@@ -109,7 +113,7 @@ export function ProviderDetailsSection({
           <FieldCaption>{t("providers.fields.baseUrl")}</FieldCaption>
           <Input
             className={fieldClass}
-            disabled={isPresetProvider}
+            disabled={!isEndpointEditable}
             placeholder="e.g. https://api.openai.com/v1"
             value={draftProvider.baseUrl}
             onChange={(event) =>
@@ -170,7 +174,7 @@ export function ProviderDetailsSection({
             />
           </div>
         ) : null}
-        {!isPresetProvider ? (
+        {isEndpointEditable ? (
           <div className="flex flex-wrap items-center justify-end gap-3">
             <Button
               size="sm"
