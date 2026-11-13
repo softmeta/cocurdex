@@ -5,6 +5,7 @@ import { AppSearchInput } from "@/components";
 import { Badge, DropdownMenuItem, Text } from "@/components/ui";
 import { JsonAddMenu } from "../json-add-menu";
 import type { JsonTextHandler } from "../json-file-import";
+import { SettingsListGroup } from "../settings-list-group";
 import { SettingsListItem } from "../settings-list-item";
 import {
   type McpSelection,
@@ -37,15 +38,15 @@ function McpServerGroup({
 }: McpServerGroupProps) {
   const { t } = useTranslation("settings");
   return (
-    <section aria-label={label} className="flex flex-col gap-2">
-      <div className="flex h-5 items-center gap-2 px-1">
-        <Text size="meta" tone="muted" weight="medium">
-          {label}
-        </Text>
-        {readOnly ? (
+    <SettingsListGroup
+      badge={
+        readOnly ? (
           <Badge variant="outline">{t("mcp.list.readOnly")}</Badge>
-        ) : null}
-      </div>
+        ) : null
+      }
+      count={servers.length}
+      label={label}
+    >
       {servers.map(([name, config]) => (
         <SettingsListItem
           dataAttributes={{ "data-mcp-server": name, "data-mcp-scope": scope }}
@@ -64,7 +65,7 @@ function McpServerGroup({
           onClick={() => onSelect({ scope, name })}
         />
       ))}
-    </section>
+    </SettingsListGroup>
   );
 }
 

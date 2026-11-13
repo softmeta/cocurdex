@@ -19,6 +19,7 @@ import {
 import { cn, desktopApi, useMountEffect } from "@/lib";
 import { JsonAddMenu } from "../json-add-menu";
 import { JsonDropArea } from "../json-drop-area";
+import { SettingsListGroup } from "../settings-list-group";
 import { SettingsListItem } from "../settings-list-item";
 import {
   SettingsMasterDetail,
@@ -641,7 +642,7 @@ export function ProviderSettingsPanel() {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-auto">
-                  <div className="flex flex-col gap-2 pe-1">
+                  <div className="flex flex-col gap-4 pe-1">
                     {filteredProviders.length === 0 &&
                     filteredTemplates.length === 0 ? (
                       <div className="flex w-full cursor-default flex-col items-start gap-0.5 px-3 py-2 text-start">
@@ -652,53 +653,66 @@ export function ProviderSettingsPanel() {
                       </div>
                     ) : (
                       <>
-                        {filteredProviders.map((provider) => {
-                          const isActive =
-                            surface.kind === "provider" &&
-                            surface.id === provider.id;
-                          const modelCount = models.filter(
-                            (model) => model.providerId === provider.id,
-                          ).length;
+                        {filteredProviders.length > 0 ? (
+                          <SettingsListGroup
+                            count={filteredProviders.length}
+                            label={t("providers.list.configured")}
+                          >
+                            {filteredProviders.map((provider) => {
+                              const isActive =
+                                surface.kind === "provider" &&
+                                surface.id === provider.id;
+                              const modelCount = models.filter(
+                                (model) => model.providerId === provider.id,
+                              ).length;
 
-                          return (
-                            <SettingsListItem
-                              isActive={isActive}
-                              key={provider.id}
-                              subtitle={t("providers.models.modelCount", {
-                                count: modelCount,
-                              })}
-                              title={provider.name}
-                              trailing={
-                                <span
-                                  className={cn(
-                                    "size-1.5 shrink-0 rounded-full",
-                                    provider.enabled
-                                      ? "bg-emerald-500/70"
-                                      : "bg-muted-foreground/30",
-                                  )}
+                              return (
+                                <SettingsListItem
+                                  isActive={isActive}
+                                  key={provider.id}
+                                  subtitle={t("providers.models.modelCount", {
+                                    count: modelCount,
+                                  })}
+                                  title={provider.name}
+                                  trailing={
+                                    <span
+                                      className={cn(
+                                        "size-1.5 shrink-0 rounded-full",
+                                        provider.enabled
+                                          ? "bg-emerald-500/70"
+                                          : "bg-muted-foreground/30",
+                                      )}
+                                    />
+                                  }
+                                  onClick={() => selectProvider(provider)}
                                 />
-                              }
-                              onClick={() => selectProvider(provider)}
-                            />
-                          );
-                        })}
-
-                        {filteredTemplates.map((template) => {
-                          const isActive =
-                            isCreatingProvider &&
-                            pendingTemplateId === template.id;
-                          return (
-                            <SettingsListItem
-                              isActive={isActive}
-                              key={`template:${template.id}`}
-                              subtitle={template.baseUrl || template.id}
-                              title={template.name}
-                              onClick={() =>
-                                startNewProviderFromTemplate(template.id)
-                              }
-                            />
-                          );
-                        })}
+                              );
+                            })}
+                          </SettingsListGroup>
+                        ) : null}
+                        {filteredTemplates.length > 0 ? (
+                          <SettingsListGroup
+                            count={filteredTemplates.length}
+                            label={t("providers.list.available")}
+                          >
+                            {filteredTemplates.map((template) => {
+                              const isActive =
+                                isCreatingProvider &&
+                                pendingTemplateId === template.id;
+                              return (
+                                <SettingsListItem
+                                  isActive={isActive}
+                                  key={`template:${template.id}`}
+                                  subtitle={template.baseUrl || template.id}
+                                  title={template.name}
+                                  onClick={() =>
+                                    startNewProviderFromTemplate(template.id)
+                                  }
+                                />
+                              );
+                            })}
+                          </SettingsListGroup>
+                        ) : null}
                       </>
                     )}
                   </div>

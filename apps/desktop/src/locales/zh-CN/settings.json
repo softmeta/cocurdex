@@ -1075,6 +1075,8 @@
       }
     },
     "list": {
+      "available": "可添加",
+      "configured": "已添加",
       "configuredCount": "已配置 {{count}} 个"
     },
     "manageLabel": "管理",

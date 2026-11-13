@@ -3426,6 +3426,8 @@ export default interface Resources {
         };
       };
       list: {
+        available: "Available";
+        configured: "Added";
         configuredCount: "{{count}} configured";
       };
       manageLabel: "Manage";
