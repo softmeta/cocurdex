@@ -30,6 +30,7 @@ import type {
 import { hashLogValue } from "@cocurdex/shared";
 import { logAdapterDiagnostic } from "../diagnostics";
 import {
+  additionalWorkspaceRoots,
   logOutgoingPromptForDiagnostics,
   serializeProviderSessionState,
 } from "../shared";
@@ -178,6 +179,21 @@ function buildAcpInitializeRequest(
     },
     _meta: initializeMeta,
   };
+}
+
+function acpAdditionalDirectories(
+  payload: CreateAgentSessionPayload,
+  initialized: InitializeResponse,
+) {
+  const supported =
+    initialized.agentCapabilities?.sessionCapabilities?.additionalDirectories !=
+    null;
+  return supported
+    ? additionalWorkspaceRoots(
+        payload.workspaceRootPath,
+        payload.workspaceRootPaths,
+      )
+    : [];
 }
 
 export class AcpAgentAdapter implements AgentAdapter {
@@ -763,6 +779,7 @@ export class AcpAgentAdapter implements AgentAdapter {
             payload,
             response.agentCapabilities?.mcpCapabilities,
           ),
+          additionalDirectories: acpAdditionalDirectories(payload, response),
           sessionMeta: this.options.sessionMeta?.(response),
           history,
           payload,
@@ -1170,6 +1187,7 @@ export class AcpAgentAdapter implements AgentAdapter {
     connection,
     providerSessionId,
     mcpServers,
+    additionalDirectories,
     sessionMeta,
     history,
     payload,
@@ -1179,6 +1197,7 @@ export class AcpAgentAdapter implements AgentAdapter {
     connection: AcpConnection;
     providerSessionId: string | null | undefined;
     mcpServers: AcpInjectedMcpServer[];
+    additionalDirectories: string[];
     sessionMeta: Record<string, unknown> | undefined;
     history: SendAgentMessagePayload["history"];
     payload: CreateAgentSessionPayload;
@@ -1190,6 +1209,9 @@ export class AcpAgentAdapter implements AgentAdapter {
           sessionId: providerSessionId,
           cwd: payload.workspaceRootPath,
           mcpServers,
+          ...(additionalDirectories.length > 0
+            ? { additionalDirectories }
+            : {}),
           ...(sessionMeta ? { _meta: sessionMeta } : {}),
         });
         logAdapterDiagnostic("info", "[AcpAgentAdapter] session opened", {
@@ -1235,6 +1257,9 @@ export class AcpAgentAdapter implements AgentAdapter {
           sessionId: providerSessionId,
           cwd: payload.workspaceRootPath,
           mcpServers,
+          ...(additionalDirectories.length > 0
+            ? { additionalDirectories }
+            : {}),
           ...(Object.keys(loadMeta).length > 0 ? { _meta: loadMeta } : {}),
         });
         logAdapterDiagnostic("info", "[AcpAgentAdapter] session opened", {
@@ -1283,6 +1308,7 @@ export class AcpAgentAdapter implements AgentAdapter {
     const response = await connection.newSession({
       cwd: payload.workspaceRootPath,
       mcpServers,
+      ...(additionalDirectories.length > 0 ? { additionalDirectories } : {}),
       ...(sessionMeta ? { _meta: sessionMeta } : {}),
     });
     logAdapterDiagnostic("info", "[AcpAgentAdapter] session opened", {

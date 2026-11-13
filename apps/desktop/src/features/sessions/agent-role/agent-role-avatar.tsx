@@ -10,6 +10,7 @@ import { cn } from "@/lib";
 import { AgentIcon } from "../agent-icon";
 import { AgentRoleAvatarShapeGlyph } from "./agent-role-avatar-shape";
 import { agentRoleAvatarColorClassName } from "./agent-role-avatar-style";
+import { useWorkingMotion } from "./use-working-motion";
 
 export interface AgentRoleAvatarSource {
   id: string;
@@ -61,13 +62,16 @@ export function AgentRoleAvatar({
   role,
   showAgent = true,
   size = "sm",
+  working = false,
 }: {
   className?: string;
   placeholder?: ReactNode;
   role: AvatarSource;
   showAgent?: boolean;
   size?: AgentRoleAvatarSize;
+  working?: boolean;
 }) {
+  const workingMotion = useWorkingMotion(working);
   const avatar = resolveAgentRoleAvatar(role);
   const isShape = avatar.kind === "shape";
 
@@ -75,6 +79,7 @@ export function AgentRoleAvatar({
     <span
       aria-hidden
       data-avatar=""
+      ref={workingMotion}
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center rounded-full font-medium leading-none select-none",
         sizeClassName[size],

@@ -67,7 +67,7 @@ function AssistantActivityLabel({ text }: { text: LiveActivityText }) {
   return (
     <span className="flex min-w-0 items-center gap-2 text-chat-fg-muted">
       {role ? (
-        <AgentRoleAvatar role={role} showAgent={false} size="sm" />
+        <AgentRoleAvatar role={role} showAgent={false} size="sm" working />
       ) : null}
       {text.handling ? (
         <span className="activity-shimmer truncate">

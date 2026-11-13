@@ -1,16 +1,10 @@
-import { workspacePathsEqual } from "@cocurdex/shared";
+import { additionalWorkspaceRoots } from "../shared/workspace-roots";
 
 export function renderPiWorkspaceRootsPrompt(
   primaryRootPath: string,
   rootPaths: readonly string[] = [],
 ): string | null {
-  const otherRootPaths = rootPaths.filter(
-    (rootPath, index) =>
-      !workspacePathsEqual(rootPath, primaryRootPath) &&
-      rootPaths.findIndex((candidate) =>
-        workspacePathsEqual(candidate, rootPath),
-      ) === index,
-  );
+  const otherRootPaths = additionalWorkspaceRoots(primaryRootPath, rootPaths);
   if (otherRootPaths.length === 0) return null;
   return [
     "This workspace spans multiple local folders. Your working directory is the primary folder; the others are available on disk at these absolute paths:",
