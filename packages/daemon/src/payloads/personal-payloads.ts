@@ -1,5 +1,6 @@
 import {
   PERSONAL_AGENT_SOUL_MAX_LENGTH,
+  PERSONAL_AGENT_USER_ADDRESS_MAX_LENGTH,
   supportedLocales,
 } from "@cocurdex/shared";
 import { z } from "zod";
@@ -23,12 +24,17 @@ const roleSchema = z.looseObject({
 });
 
 const soulSchema = z.string().max(PERSONAL_AGENT_SOUL_MAX_LENGTH).nullish();
+const userAddressSchema = z
+  .string()
+  .max(PERSONAL_AGENT_USER_ADDRESS_MAX_LENGTH * 4)
+  .nullish();
 
 export const personalPayloadSchemas: PayloadSchemas = {
   "personalAgent.create": loose<Payload<"personalAgent.create">>()(
     z.object({
       role: roleSchema,
       soul: soulSchema,
+      userAddress: userAddressSchema,
     }),
   ),
   "personalAgent.draft": exact<Payload<"personalAgent.draft">>()(
@@ -45,6 +51,7 @@ export const personalPayloadSchemas: PayloadSchemas = {
       id: idSchema,
       role: roleSchema.optional(),
       soul: soulSchema,
+      userAddress: userAddressSchema,
       pinned: z.boolean().optional(),
       muted: z.boolean().optional(),
       sortOrder: z.number().finite().optional(),

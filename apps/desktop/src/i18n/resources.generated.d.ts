@@ -1614,6 +1614,8 @@ export default interface Resources {
       soul: "Persona";
       soulPlaceholder: "Tone, personality, and how it talks to you";
       title: "Edit assistant";
+      userAddress: "How it addresses you";
+      userAddressPlaceholder: "Your name or nickname; it asks if left empty";
     };
     empty: {
       description: "An assistant remembers what matters to you, briefs you each morning, reminds you on time, and hands project work to coding agents.";

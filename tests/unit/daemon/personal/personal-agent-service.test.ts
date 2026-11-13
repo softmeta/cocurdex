@@ -228,6 +228,29 @@ describe("PersonalAgentService", () => {
     ]);
   });
 
+  it("keeps each assistant's own way to address the user and asks when it has none", async () => {
+    const coach = await harness.service.create({ role: coachRole });
+    await harness.service.update({ id: coach.id, userAddress: "  Boss  " });
+    const writer = await harness.service.create({
+      role: { ...coachRole, name: "Writer" },
+    });
+    const written: PersonaGreetingInput[] = [];
+    harness.writeGreeting(async (input) => {
+      written.push(input);
+      throw new Error("no model");
+    });
+
+    await harness.service.greet({ id: writer.id, locale: "en-US" });
+
+    expect((await harness.service.get(coach.id))?.userAddress).toBe("Boss");
+    expect((await harness.service.get(writer.id))?.userAddress).toBeNull();
+    expect(written[0]).toMatchObject({
+      userAddress: null,
+      otherAddresses: ["Boss"],
+    });
+    expect(harness.greetings[0]?.content).toContain("what should I call you?");
+  });
+
   it("drafts an unused name and says when no model can run it", async () => {
     await harness.service.create({ role: { ...coachRole, name: "Iris" } });
     const draft = await harness.service.draft({ locale: "en-US" });

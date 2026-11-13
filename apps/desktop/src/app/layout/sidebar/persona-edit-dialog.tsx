@@ -1,12 +1,13 @@
 import {
   PERSONAL_AGENT_SOUL_MAX_LENGTH,
+  PERSONAL_AGENT_USER_ADDRESS_MAX_LENGTH,
   type PersonalAgentRecord,
   type PersonalAgentRolePayload,
   type SaveAgentRolePayload,
 } from "@cocurdex/shared";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Field, FieldLabel, Textarea } from "@/components/ui";
+import { Field, FieldLabel, Input, Textarea } from "@/components/ui";
 import { personalApi, revalidatePersonalAgents } from "@/features/personal";
 import { AgentRoleEditDialog } from "@/features/sessions/agent-role";
 
@@ -26,16 +27,22 @@ export function PersonaEditDialog({
     agent?.role.instructions ?? "",
   );
   const [soul, setSoul] = useState(agent?.soul ?? "");
+  const [userAddress, setUserAddress] = useState(agent?.userAddress ?? "");
 
   const save = async (payload: SaveAgentRolePayload) => {
     const { id: _id, ...fields } = payload;
     const role = { ...fields, instructions: instructions.trim() || null };
     if (agent) {
-      const saved = await personalApi.update({ id: agent.id, role, soul });
+      const saved = await personalApi.update({
+        id: agent.id,
+        role,
+        soul,
+        userAddress,
+      });
       return saved.role;
     }
     if (!draft) throw new Error("No assistant to save");
-    const created = await personalApi.create({ role, soul });
+    const created = await personalApi.create({ role, soul, userAddress });
     await revalidatePersonalAgents();
     onCreated?.(created);
     return created.role;
@@ -62,6 +69,18 @@ export function PersonaEditDialog({
           placeholder={t("edit.instructionsPlaceholder")}
           value={instructions}
           onChange={(event) => setInstructions(event.target.value)}
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="persona-user-address">
+          {t("edit.userAddress")}
+        </FieldLabel>
+        <Input
+          id="persona-user-address"
+          maxLength={PERSONAL_AGENT_USER_ADDRESS_MAX_LENGTH}
+          placeholder={t("edit.userAddressPlaceholder")}
+          value={userAddress}
+          onChange={(event) => setUserAddress(event.target.value)}
         />
       </Field>
       <Field>

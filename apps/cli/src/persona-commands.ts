@@ -25,8 +25,8 @@ export function personaUsageLines() {
   return [
     "  cocurdex persona list [--json]",
     "  cocurdex persona show <persona> [--json]",
-    "  cocurdex persona create --name <name> [--provider <id> --model <id>] [--description <text>] [--instructions <text>|--instructions-file <path>] [--soul <text>|--soul-file <path>] [--json]",
-    "  cocurdex persona update <persona> [--name <name>] [--provider <id> --model <id>] [--description <text>] [--instructions <text>|--instructions-file <path>] [--soul <text>|--soul-file <path>] [--pin|--unpin] [--mute|--unmute] [--json]",
+    "  cocurdex persona create --name <name> [--provider <id> --model <id>] [--description <text>] [--instructions <text>|--instructions-file <path>] [--soul <text>|--soul-file <path>] [--user-address <text>] [--json]",
+    "  cocurdex persona update <persona> [--name <name>] [--provider <id> --model <id>] [--description <text>] [--instructions <text>|--instructions-file <path>] [--soul <text>|--soul-file <path>] [--user-address <text>] [--pin|--unpin] [--mute|--unmute] [--json]",
     "  cocurdex persona duplicate <persona> --name <name> [--json]",
     "  cocurdex persona delete <persona>",
     "  cocurdex persona send <persona> <message> [--wait] [--timeout <seconds>] [--json]",
@@ -43,6 +43,7 @@ function personaRow(agent: PersonalAgentRecord) {
     default: agent.isDefault,
     pinned: agent.pinnedAt !== null,
     muted: agent.mutedAt !== null,
+    userAddress: agent.userAddress ?? "",
     homeSessionId: agent.homeSessionId,
   };
 }
@@ -250,14 +251,21 @@ async function readThread(args: string[], parsed: ParsedArgs) {
   );
 }
 
+function userAddressFlag(parsed: ParsedArgs) {
+  const value = parsed.flags.get("user-address");
+  return typeof value === "string" ? value : undefined;
+}
+
 async function createPersona(parsed: ParsedArgs) {
   const changes = await roleChanges(parsed);
   const name = getRequiredFlag(parsed, "name");
   const soul = await textFlag(parsed, "soul");
+  const userAddress = userAddressFlag(parsed);
   return withDaemon(() =>
     requestDaemon("personalAgent.create", {
       role: { ...personalAgentRoleDraft(name), ...changes },
       soul: soul ?? null,
+      userAddress: userAddress ?? null,
     }),
   );
 }
@@ -265,6 +273,7 @@ async function createPersona(parsed: ParsedArgs) {
 async function updatePersona(args: string[], parsed: ParsedArgs) {
   const changes = await roleChanges(parsed);
   const soul = await textFlag(parsed, "soul");
+  const userAddress = userAddressFlag(parsed);
   const pinned = toggleFlag(parsed, "pin", "unpin");
   const muted = toggleFlag(parsed, "mute", "unmute");
   return withDaemon(async () => {
@@ -274,6 +283,7 @@ async function updatePersona(args: string[], parsed: ParsedArgs) {
       payload.role = { ...rolePayload(agent), ...changes };
     }
     if (soul !== undefined) payload.soul = soul;
+    if (userAddress !== undefined) payload.userAddress = userAddress;
     if (pinned !== undefined) payload.pinned = pinned;
     if (muted !== undefined) payload.muted = muted;
     return requestDaemon("personalAgent.update", payload);

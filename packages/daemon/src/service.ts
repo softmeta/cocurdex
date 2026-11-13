@@ -71,6 +71,7 @@ import {
 import { AcpRegistryService, AgentAuthService } from "./acp-registry";
 import {
   AgentToolBridge,
+  registerAssistantTools,
   registerHistoryTools,
   registerMemoryTools,
   registerMessagingTools,
@@ -789,6 +790,12 @@ export class CocurdexDaemonService {
         this.delegations.reporting(sessionId)
           ? this.delegations.recordReport(sessionId, report)
           : this.remoteWork.recordReport(sessionId, report),
+    });
+    registerAssistantTools(this.agentTools.registry, {
+      personaOf,
+      setUserAddress: async (personaId, userAddress) =>
+        (await this.personalAgents.update({ id: personaId, userAddress }))
+          .userAddress,
     });
     registerRoutineTools(this.agentTools.registry, {
       personaOf,
@@ -2538,6 +2545,7 @@ export class CocurdexDaemonService {
           ...personaSystemSections({
             instructions: personaRole?.instructions ?? null,
             soul: persona.soul,
+            userAddress: persona.userAddress,
           }),
           ...(routine
             ? { [ROUTINE_RUN_SECTION]: routineRunSection(routine) }

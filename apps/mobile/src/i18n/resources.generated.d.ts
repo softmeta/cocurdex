@@ -67,6 +67,8 @@ export default interface Resources {
       save: "Save";
       soul: "Persona";
       soulPlaceholder: "Tone, personality, and how it talks to you";
+      userAddress: "How it addresses you";
+      userAddressPlaceholder: "Your name or nickname; it asks if left empty";
     };
     inbox: {
       kind: {

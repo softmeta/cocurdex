@@ -574,6 +574,7 @@ runScenario("personal-agents", {
         await session.send("Input.insertText", { text: "Coach" });
         for (const [label, text] of [
           ["personal:edit.instructions", "Plan workouts"],
+          ["personal:edit.userAddress", "Captain"],
           ["personal:edit.soul", "Speak briefly"],
         ]) {
           const [field] = await waitForRole(session, {
@@ -615,6 +616,11 @@ runScenario("personal-agents", {
         );
         const saved = (await personas(session)).find(
           (agent) => agent.role.name === "Coach",
+        );
+        check(
+          saved?.userAddress === "Captain",
+          "the edit dialog saves how the assistant addresses the user",
+          { userAddress: saved?.userAddress },
         );
         const greeted = await waitForMessages(
           session,

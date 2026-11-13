@@ -3,6 +3,7 @@ export interface PersonalAgentRow {
   roleId: string;
   homeSessionId: string;
   soul: string | null;
+  userAddress: string | null;
   isDefault: boolean;
   pinnedAt: string | null;
   mutedAt: string | null;

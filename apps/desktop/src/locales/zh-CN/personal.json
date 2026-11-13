@@ -79,7 +79,9 @@
     "instructionsPlaceholder": "这个助理负责什么、应该怎么做事",
     "soul": "人设",
     "soulPlaceholder": "语气、性格，以及和你说话的方式",
-    "title": "编辑助理"
+    "title": "编辑助理",
+    "userAddress": "怎么称呼你",
+    "userAddressPlaceholder": "名字或昵称；留空时它会先问你"
   },
   "empty": {
     "description": "助理会记住你在意的事，每天早上给你简报，按时提醒你，也能把项目里的活儿交给编程助手。",

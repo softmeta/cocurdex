@@ -26,6 +26,7 @@ export const PERSONA_SYSTEM_SECTION = "assistant_persona";
 export interface PersonaPromptSource {
   instructions: string | null;
   soul: string | null;
+  userAddress: string | null;
 }
 
 const PERSONA_VOICE = [
@@ -38,13 +39,24 @@ const PERSONA_VOICE = [
   "Leave out technical details about tools, sessions, and how you work unless the user asks.",
 ].join(" ");
 
+const SAVE_ADDRESS =
+  "When the user tells you what to call them, or asks to be called something else, save it with the assistant_set_user_address tool in the same turn.";
+
+function userAddressGuidance(userAddress: string | null) {
+  if (userAddress) {
+    return `Address the user as "${userAddress}" whenever you speak to them, including progress updates, reports, and routine results. ${SAVE_ADDRESS}`;
+  }
+  return `You do not know yet what to call the user. Do not guess a name; if you have not asked yet, ask once, naturally, how they would like to be addressed. ${SAVE_ADDRESS}`;
+}
+
 export function buildPersonaSystemSection(source: PersonaPromptSource) {
+  const voice = `${PERSONA_VOICE}\n\n${userAddressGuidance(source.userAddress)}`;
   const parts = [source.instructions, source.soul]
     .map((part) => part?.trim())
     .filter((part): part is string => Boolean(part));
-  if (parts.length === 0) return PERSONA_VOICE;
+  if (parts.length === 0) return voice;
   return [
-    PERSONA_VOICE,
+    voice,
     "The user wrote these instructions for you. Follow them in every turn; they take precedence over the defaults above.",
     ...parts,
   ].join("\n\n");

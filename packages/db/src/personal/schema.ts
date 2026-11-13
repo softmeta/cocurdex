@@ -5,6 +5,7 @@ export function createPersonalAgentsSchemaSql(): string {
       role_id TEXT NOT NULL UNIQUE,
       home_session_id TEXT NOT NULL UNIQUE,
       soul TEXT,
+      user_address TEXT,
       is_default INTEGER NOT NULL DEFAULT 0,
       pinned_at TEXT,
       muted_at TEXT,
@@ -19,3 +20,5 @@ export function createPersonalAgentsSchemaSql(): string {
       ON personal_agents(is_default) WHERE is_default = 1;
   `;
 }
+
+export const PERSONAL_AGENT_USER_ADDRESS_COLUMN = "user_address";

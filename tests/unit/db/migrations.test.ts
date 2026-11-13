@@ -1290,6 +1290,39 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds the persona user address from version 46 and keeps personas", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE personal_agents DROP COLUMN user_address");
+    const now = "2026-11-13T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Personal', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, created_at, updated_at)
+      VALUES ('r1', 'Coach', 'pi', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Coach', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO personal_agents (id, role_id, home_session_id, soul, is_default, created_at, updated_at)
+      VALUES ('p1', 'r1', 's1', 'Calm', 1, '${now}', '${now}');
+      PRAGMA user_version = 46;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, soul, is_default, user_address FROM personal_agents",
+        )
+        .all(),
+    ).toEqual([{ id: "p1", soul: "Calm", is_default: 1, user_address: null }]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
   it("adds remote delegation columns from version 45 and keeps delegations", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);
