@@ -110,7 +110,7 @@ export function registerMemoryTools(
       group: "memory",
       name: "remember",
       description:
-        "Store one reusable fact, decision, lesson, or procedure in long-term memory. Recall first and prefer update/merge/attach over a new entry. important = a future session must reuse it; trivial = a diary line. Never store passwords, API tokens, private keys, or other secrets. If the result reports candidates, read them and choose merge/attach instead of forcing a new entry. If the action is skipped, its message names the fix (install rsrs, turn memory on, or register an rsrs account); relay it to the user instead of retrying.",
+        "Store one reusable fact, decision, lesson, or procedure in long-term memory. Recall first and prefer update/merge/attach over a new entry. important = a future session must reuse it; trivial = a diary line. Never store passwords, API tokens, private keys, or other secrets. If the result reports candidates, read them and choose merge/attach instead of forcing a new entry. If the action is skipped, its message names the fix (install rsrs, turn memory on, or register an rsrs account); relay it to the user instead of retrying. If the action is failed, nothing was saved: tell the user so, and do not promise to save it later, since nothing retries it. An error saying the write could not be confirmed means it may or may not have been saved; recall before writing it again.",
       inputSchema: {
         type: "object",
         properties: {

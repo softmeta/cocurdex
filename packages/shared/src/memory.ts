@@ -365,7 +365,7 @@ export interface MemoryRememberInput {
 }
 
 export interface MemoryRememberResult {
-  action: "created" | "candidates" | "merged" | "skipped";
+  action: "created" | "candidates" | "merged" | "skipped" | "failed";
   id: string | null;
   title: string | null;
   candidates: MemoryRecallItem[];

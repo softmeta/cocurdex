@@ -303,39 +303,35 @@ export class RsrsMemoryProvider implements MemoryProvider {
   async recall(input: MemoryProviderRecallInput) {
     const executable = await this.requireExecutable();
     const budget = startBudget(input.timeoutMs);
-    return this.reads.run(async () => {
-      const endpoint = await this.runtime();
-      const useRuntime =
-        endpoint !== null &&
-        (!input.project || this.runtimeSupports("memory_recall", "project"));
-      return this.viaRuntime(
-        useRuntime ? endpoint : null,
-        (target) =>
-          recallMemoriesViaRuntime(target, {
-            query: input.query,
-            limit: input.limit,
-            project: input.project,
-            timeoutMs: budget.remaining(),
-          }),
-        () =>
-          recallMemories(executable, {
-            query: input.query,
-            limit: input.limit,
-            project: input.project,
-            timeoutMs: budget.remainingOrThrow("rsrs recall"),
-          }),
-      );
-    });
+    const endpoint = await this.runtime();
+    const useRuntime =
+      endpoint !== null &&
+      (!input.project || this.runtimeSupports("memory_recall", "project"));
+    return this.viaRuntime(
+      useRuntime ? endpoint : null,
+      (target) =>
+        recallMemoriesViaRuntime(target, {
+          query: input.query,
+          limit: input.limit,
+          project: input.project,
+          timeoutMs: budget.remaining(),
+        }),
+      () =>
+        recallMemories(executable, {
+          query: input.query,
+          limit: input.limit,
+          project: input.project,
+          timeoutMs: budget.remainingOrThrow("rsrs recall"),
+        }),
+    );
   }
 
   async show(id: string, timeoutMs?: number) {
     const executable = await this.requireExecutable();
-    return this.reads.run(async () =>
-      this.viaRuntime(
-        await this.runtime(),
-        (target) => showMemoryViaRuntime(target, id, timeoutMs),
-        () => showMemory(executable, id, timeoutMs),
-      ),
+    return this.viaRuntime(
+      await this.runtime(),
+      (target) => showMemoryViaRuntime(target, id, timeoutMs),
+      () => showMemory(executable, id, timeoutMs),
     );
   }
 
@@ -362,9 +358,10 @@ export class RsrsMemoryProvider implements MemoryProvider {
         (!input.project ||
           this.runtimeSupports("memory_remember", "project")) &&
         !input.tags?.length;
-      if (!useRuntime || !endpoint) return rememberMemory(executable, input);
       try {
-        return await rememberMemoryViaRuntime(endpoint, input);
+        return useRuntime && endpoint
+          ? await rememberMemoryViaRuntime(endpoint, input)
+          : await rememberMemory(executable, input);
       } catch (error) {
         throw new Error(
           `Memory write could not be confirmed; inspect the library before retrying. ${errorMessage(error)}`,

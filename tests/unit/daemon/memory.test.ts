@@ -233,6 +233,24 @@ describe("rsrs JSON parsing", () => {
     });
   });
 
+  it("reports a remember that rsrs could not perform as failed, not skipped", () => {
+    expect(
+      parseRememberPayload({
+        command: "cli",
+        status: "fail",
+        summary: {},
+        items: [],
+        errors: [
+          "runtime_transport: http://127.0.0.1:1/api/health: timed out reading response",
+        ],
+      }),
+    ).toMatchObject({
+      action: "failed",
+      id: null,
+      message: expect.stringMatching(/^Nothing was saved\. runtime_transport/),
+    });
+  });
+
   it("preserves real rsrs pending candidates without treating them as recall rows", () => {
     expect(
       parseRememberPayload({

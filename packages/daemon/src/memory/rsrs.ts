@@ -585,7 +585,7 @@ export function parseEntryRecord(value: unknown): MemoryEntry | null {
 }
 
 export function parseRememberPayload(payload: Record<string, unknown>): {
-  action: "created" | "candidates" | "merged" | "skipped";
+  action: "created" | "candidates" | "merged" | "skipped" | "failed";
   id: string | null;
   title: string | null;
   candidates: MemoryRecallItem[];
@@ -625,6 +625,15 @@ export function parseRememberPayload(payload: Record<string, unknown>): {
   }
   if (rawAction === "merged" || rawAction === "merge") {
     return { action: "merged", id, title, candidates: [], message };
+  }
+  if (payload.status === "fail") {
+    return {
+      action: "failed",
+      id: null,
+      title: null,
+      candidates: [],
+      message: `Nothing was saved. ${message ?? "rsrs reported a failure."}`,
+    };
   }
   if (pending || candidates.length > 0) {
     const actions = stringArray(payload.actions).join("\n");
