@@ -433,10 +433,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { platform: android, os: ubuntu-latest, pr_run: dark-zh-CN, shard: pairing }
-          - { platform: android, os: ubuntu-latest, pr_run: dark-zh-CN, shard: transcript }
-          - { platform: android, os: ubuntu-latest, pr_run: dark-zh-CN, shard: compose }
-          - { platform: android, os: ubuntu-latest, pr_run: dark-zh-CN, shard: library }
+          - { platform: android, os: ubuntu-latest, shard: pairing }
+          - { platform: android, os: ubuntu-latest, shard: transcript }
+          - { platform: android, os: ubuntu-latest, shard: compose }
+          - { platform: android, os: ubuntu-latest, shard: library }
     env:
       MAESTRO_VERSION: 2.11.0
       ANDROID_SYSTEM_IMAGE: system-images;android-36;google_apis;x86_64
@@ -527,17 +527,12 @@ jobs:
           echo no | "${tools}/avdmanager" create avd --force --name cocurdex-ci --package "${ANDROID_SYSTEM_IMAGE}" --device pixel_6
       - name: Run mobile flows
         env:
-          ALL_RUNS: ${{ github.event_name == 'push' }}
-          PR_RUN: ${{ matrix.pr_run }}
           COCURDEX_TEST_ARTIFACTS_DIR: ${{ runner.temp }}/mobile-tests
         run: |
           args=(--platform ${{ matrix.platform }} --app "${APP_DIR}/$(ls "${APP_DIR}")")
           IFS=- read -ra flows <<< "${{ matrix.shard }}"
           for flow in "${flows[@]}"; do args+=(--flow "${flow}"); done
           args+=(--fixture-db "${RUNNER_TEMP}/fixture-db")
-          if [[ "${ALL_RUNS}" != "true" ]]; then
-            args+=(--run "${PR_RUN}")
-          fi
           args+=(--avd cocurdex-ci)
           pnpm --filter @cocurdex/mobile-e2e flows -- "${args[@]}"
       - name: Upload mobile test artifacts

@@ -28,6 +28,7 @@ export {
   type HostEventListener,
   type HostReadOptions,
   isConnectionLoss,
+  isUnknownDaemonMethodError,
 } from "./host-connection";
 export * from "./list-time-label";
 export * from "./local-session-title";

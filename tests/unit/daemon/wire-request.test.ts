@@ -1,4 +1,6 @@
 import { authorizeDaemonRequest } from "@cocurdex/daemon/internal/wire-request";
+import { isUnknownDaemonMethodError } from "@cocurdex/rpc";
+import { DaemonClientError } from "@cocurdex/rpc/client";
 import { describe, expect, it } from "vitest";
 
 const device = {
@@ -43,5 +45,24 @@ describe("authorizeDaemonRequest", () => {
       ok: false,
       code: "FORBIDDEN",
     });
+  });
+
+  it("rejects a method the daemon lacks so a newer client can tell the host is outdated", () => {
+    const result = authorizeDaemonRequest(
+      device,
+      "assistant.fromTheFuture",
+      true,
+    );
+    if (result.ok) throw new Error("expected a rejection");
+    const error = new DaemonClientError(result.message, result.code);
+    expect(isUnknownDaemonMethodError(error)).toBe(true);
+
+    const missingScope = authorizeDaemonRequest(device, "session.send", true);
+    if (missingScope.ok) throw new Error("expected a rejection");
+    expect(
+      isUnknownDaemonMethodError(
+        new DaemonClientError(missingScope.message, missingScope.code),
+      ),
+    ).toBe(false);
   });
 });

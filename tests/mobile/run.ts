@@ -30,6 +30,7 @@ const RUNS: { appearance: Appearance; locale: SupportedLocale }[] = [
   { appearance: "light", locale: "en-US" },
   { appearance: "dark", locale: "zh-CN" },
 ];
+const DEFAULT_RUN_IDS = ["dark-zh-CN"];
 const SYSTEM_CONTINUE: Record<SupportedLocale, string> = {
   "en-US": "Continue",
   "zh-CN": "继续|Continue",
@@ -246,15 +247,15 @@ function runId({ appearance, locale }: (typeof RUNS)[number]) {
 }
 
 function selectRuns(requested: string[] | undefined) {
-  if (!requested) return RUNS;
+  const selected = requested ?? DEFAULT_RUN_IDS;
   const known = RUNS.map(runId);
-  const unknown = requested.filter((id) => !known.includes(id));
+  const unknown = selected.filter((id) => !known.includes(id));
   if (unknown.length > 0) {
     throw new Error(
       `--run must be one of ${known.join(", ")}, not ${unknown.join(", ")}`,
     );
   }
-  return RUNS.filter((run) => requested.includes(runId(run)));
+  return RUNS.filter((run) => selected.includes(runId(run)));
 }
 
 const FLOWS = ["pairing", "transcript", "compose", "library"] as const;

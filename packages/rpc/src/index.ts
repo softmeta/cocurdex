@@ -16,6 +16,10 @@ import type {
 
 export type * from "./daemon-status.ts";
 export {
+  isUnknownDaemonMethodError,
+  UNKNOWN_DAEMON_METHOD_MESSAGE,
+} from "./unknown-method.ts";
+export {
   DAEMON_WEBSOCKET_PROTOCOL,
   daemonWebSocketProtocols,
   readDaemonWebSocketToken,

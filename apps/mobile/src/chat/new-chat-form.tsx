@@ -1,5 +1,6 @@
 import {
   getChatThinkingLevelOptions,
+  isUnknownDaemonMethodError,
   NEW_CHAT_THINKING_LEVEL,
   resolveChatThinkingLevel,
   type SavedHost,
@@ -198,6 +199,11 @@ function ChatDraft({
             <ListNotice
               icon={{ ios: "bubble.left", android: "chat_bubble" }}
               title={models.error ? t("chat.modelsFailed") : t("chat.noModels")}
+              description={
+                isUnknownDaemonMethodError(models.error)
+                  ? t("unavailable.hostOutdated")
+                  : undefined
+              }
               action={
                 models.error
                   ? {

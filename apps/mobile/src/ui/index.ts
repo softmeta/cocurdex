@@ -49,6 +49,7 @@ export type {
   OptionSheetRequest,
 } from "./option-sheet-store";
 export { PendingIndicator } from "./pending-indicator";
+export { RouteErrorBoundary } from "./route-error-boundary";
 export {
   Decorative,
   FolderIcon,

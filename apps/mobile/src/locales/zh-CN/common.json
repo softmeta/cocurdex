@@ -42,6 +42,10 @@
     "empty": "没有匹配项",
     "placeholder": "搜索"
   },
+  "routeError": {
+    "retry": "重试",
+    "title": "这个页面出错了"
+  },
   "screens": {
     "approve": "在电脑上批准",
     "archived": "已归档会话",

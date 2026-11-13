@@ -446,6 +446,9 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: write
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -500,7 +503,6 @@ jobs:
       - name: Upload headless archive
         if: github.ref_type == 'tag'
         working-directory: apps/desktop/release/headless
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           HEADLESS_TARGET: ${{ matrix.target }}

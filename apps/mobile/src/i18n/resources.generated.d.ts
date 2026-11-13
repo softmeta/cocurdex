@@ -174,6 +174,10 @@ export default interface Resources {
       empty: "No matches";
       placeholder: "Search";
     };
+    routeError: {
+      retry: "Try again";
+      title: "Something went wrong on this screen";
+    };
     screens: {
       approve: "Approve on Computer";
       archived: "Archived Sessions";
@@ -797,6 +801,7 @@ export default interface Resources {
     };
     unavailable: {
       description: "Check that the computer is awake and online, and reachable on your network or through its relay.";
+      hostOutdated: "Cocurdex on the computer is out of date. Update it and try again.";
       retry: "Try Again";
       title: "Can't reach {{host}}";
     };
