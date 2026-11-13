@@ -164,3 +164,18 @@ export async function writeMemoryInstallState(
 ) {
   await store.setAppSetting(MEMORY_INSTALL_STATE_KEY, JSON.stringify(state));
 }
+
+export const MEMORY_RSRS_RPC_PORT_KEY = "memory.rsrsRpcPort";
+
+export async function readRsrsRpcPort(store: MemorySettingsStore) {
+  const raw = await store.getAppSetting(MEMORY_RSRS_RPC_PORT_KEY);
+  const port = raw ? Number(JSON.parse(raw)) : Number.NaN;
+  return Number.isInteger(port) && port > 0 && port < 65_536 ? port : null;
+}
+
+export async function writeRsrsRpcPort(
+  store: MemorySettingsStore,
+  port: number,
+) {
+  await store.setAppSetting(MEMORY_RSRS_RPC_PORT_KEY, JSON.stringify(port));
+}

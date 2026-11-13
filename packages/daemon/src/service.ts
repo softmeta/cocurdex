@@ -114,7 +114,7 @@ import {
 } from "./host-access/host-key-store";
 import { InboxService } from "./inbox/inbox-service";
 import { DaemonMcpService } from "./mcp-service";
-import { hostShellReachesMemory, MemoryService } from "./memory";
+import { MemoryService } from "./memory";
 import { OutboxService, routineRunAlert } from "./outbox";
 import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
@@ -557,13 +557,17 @@ export class CocurdexDaemonService {
       getSession: (sessionId) => this.state.getSession(sessionId),
       getTeamId: (sessionId) => this.team.teamIdForSession(sessionId),
       getLeadRoster: (sessionId) => this.team.rosterForLead(sessionId),
-      memoryInstructions: (hasMemoryTools, caller) =>
-        hasMemoryTools
-          ? this.memory.agentInstructions(
-              true,
-              caller.sessionKind === "personal",
-            )
-          : undefined,
+      memoryInstructions: async (hasMemoryTools, caller) => {
+        if (!hasMemoryTools) return undefined;
+        if (caller.sessionKind === "personal") {
+          return this.memory.agentInstructions(true, true);
+        }
+        const session = await this.state.getSession(caller.sessionId);
+        const hostRsrs = session
+          ? await this.memory.hostInstructsRsrs(session.agentType)
+          : false;
+        return this.memory.agentInstructions(true, false, hostRsrs);
+      },
     });
     this.peerMessaging = new PeerMessagingService({
       getSession: (sessionId) => this.state.getSession(sessionId),
@@ -2506,22 +2510,16 @@ export class CocurdexDaemonService {
     const persona = this.personalAgents.personaForSession(session);
     if (sessionKind === "personal" && !persona)
       throw new Error("Personal assistant memory scope is unavailable.");
-    const hostInjectsMemory =
-      !persona &&
-      !chatSession &&
-      hostShellReachesMemory(session) &&
-      (await this.memory.injectsInto(session.agentType));
     const memoryGate = await this.memory.beginTurn({
       sessionId: session.id,
       mode: chatSession ? "chat" : "agent",
       enforce:
         !chatSession &&
         sessionKind !== "personal" &&
-        sessionKind !== "subagent" &&
-        !hostInjectsMemory,
+        sessionKind !== "subagent",
     });
     const memoryContext =
-      (!chatSession && sessionKind === "subagent") || hostInjectsMemory
+      !chatSession && sessionKind === "subagent"
         ? null
         : await this.memory.buildTurnContext(
             session,

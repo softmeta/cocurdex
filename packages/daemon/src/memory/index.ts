@@ -7,7 +7,6 @@ export {
   buildTurnDiaryLine,
   conversationTurns,
 } from "./digest";
-export { hostShellReachesMemory } from "./host-memory";
 export {
   MemoryService,
   type MemoryServiceOptions,

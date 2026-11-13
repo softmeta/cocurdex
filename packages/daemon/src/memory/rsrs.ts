@@ -1,6 +1,4 @@
-import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import path from "node:path";
 import {
   buildChildProcessEnv,
   killProcessTree,
@@ -13,9 +11,6 @@ import {
   type MemoryEntry,
   type MemoryImportance,
   type MemoryRecallItem,
-  type MemorySettings,
-  RSRS_CLI_PACKAGE,
-  RSRS_CLI_VERSION,
 } from "@cocurdex/shared";
 import type { RsrsInvoke } from "./rsrs-invoke";
 
@@ -25,9 +20,7 @@ const DOCTOR_TIMEOUT_MS = 180_000;
 const RECALL_TIMEOUT_MS = 25_000;
 const SHOW_TIMEOUT_MS = 25_000;
 const REMEMBER_TIMEOUT_MS = 180_000;
-const INSTALL_TIMEOUT_MS = 300_000;
 const POLICY_TIMEOUT_MS = 30_000;
-const INJECT_TARGETS_TIMEOUT_MS = 10_000;
 const CLOUD_AUTH_TIMEOUT_MS = 120_000;
 const MAX_OUTPUT_BYTES = 2_000_000;
 
@@ -49,7 +42,7 @@ export interface RsrsCommandFailure extends Error {
 
 export interface RsrsExecutable {
   command: string;
-  source: "configured" | "native" | "path";
+  env: Readonly<Record<string, string>>;
 }
 
 export interface RsrsCloudSummary {
@@ -78,7 +71,6 @@ export interface RsrsDoctorResult {
 export interface RsrsCommandOptions {
   timeoutMs?: number;
   cwd?: string;
-  env?: NodeJS.ProcessEnv;
 }
 
 function stripAnsi(text: string) {
@@ -106,7 +98,7 @@ export async function runRsrs(
   options: RsrsCommandOptions = {},
 ): Promise<RsrsRunResult> {
   const timeoutMs = options.timeoutMs ?? VERSION_TIMEOUT_MS;
-  const extraEnv: NodeJS.ProcessEnv = {};
+  const extraEnv: NodeJS.ProcessEnv = { ...executable.env };
   for (const name of ["RSRS_LIBC", "RESPIRE_LIBC", "ONEMEMORY_LIBC"]) {
     const value = process.env[name];
     if (value) extraEnv[name] = value;
@@ -121,7 +113,7 @@ export async function runRsrs(
     const stderr: Buffer[] = [];
     const child = spawnCommand(executable.command, args, {
       cwd: options.cwd ?? homedir(),
-      env: options.env ?? env,
+      env,
       stdio: ["ignore", "pipe", "pipe"],
     });
     const finish = (result: RsrsRunResult | Error) => {
@@ -243,50 +235,6 @@ export function rsrsErrorText(payload: Record<string, unknown>) {
 export function parseVersion(stdout: string) {
   const match = /(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)/.exec(stdout);
   return match?.[1] ?? null;
-}
-
-async function exists(filePath: string) {
-  try {
-    const info = await stat(filePath);
-    return info.isFile();
-  } catch {
-    return false;
-  }
-}
-
-export async function resolveRsrsExecutable(
-  settings: MemorySettings,
-): Promise<RsrsExecutable | null> {
-  if (settings.cliPath) {
-    const configured = {
-      command: settings.cliPath,
-      source: "configured" as const,
-    };
-    try {
-      const result = await runRsrs(configured, ["--version"], {
-        timeoutMs: 5_000,
-      });
-      if (result.code === 0 || parseVersion(result.stdout)) {
-        return configured;
-      }
-    } catch {}
-  }
-  const nativeName = process.platform === "win32" ? "rsrs.exe" : "rsrs";
-  const nativePath = path.join(homedir(), ".rsrs", "bin", nativeName);
-  if (await exists(nativePath)) {
-    return { command: nativePath, source: "native" };
-  }
-  try {
-    const result = await runRsrs(
-      { command: "rsrs", source: "path" },
-      ["--version"],
-      { timeoutMs: VERSION_TIMEOUT_MS },
-    );
-    if (result.code === 0 || parseVersion(result.stdout)) {
-      return { command: "rsrs", source: "path" };
-    }
-  } catch {}
-  return null;
 }
 
 export async function readRsrsVersion(
@@ -742,18 +690,84 @@ export async function readRsrsPolicy(executable: RsrsExecutable) {
   return result.stdout.trim();
 }
 
-const INJECTED_HOST_STATES = new Set(["present", "stale", "partial"]);
+const RUNTIME_INSTALL_TIMEOUT_MS = 15 * 60_000;
+const RUNTIME_CONTROL_TIMEOUT_MS = 120_000;
+const MODEL_INSTALL_TIMEOUT_MS = 60 * 60_000;
+
+async function runRsrsStep(
+  executable: RsrsExecutable,
+  args: readonly string[],
+  timeoutMs: number,
+) {
+  const result = await runRsrs(executable, args, { timeoutMs });
+  const payload = parseOptionalJson(result.stdout);
+  if (result.code === 0 && payload?.status !== "fail") return payload;
+  const reason =
+    (payload ? rsrsErrorText(payload) : null) ||
+    result.stderr.trim() ||
+    result.stdout.trim() ||
+    `exit ${result.code ?? "unknown"}`;
+  throw commandError(
+    `rsrs ${args.slice(0, 2).join(" ")} failed: ${reason}`,
+    "setup_failed",
+    result.stderr,
+  );
+}
+
+export function installRsrsRuntime(executable: RsrsExecutable) {
+  return runRsrsStep(
+    executable,
+    ["runtime", "install", "--json"],
+    RUNTIME_INSTALL_TIMEOUT_MS,
+  );
+}
+
+export function startRsrsRuntime(executable: RsrsExecutable) {
+  return runRsrsStep(
+    executable,
+    ["runtime", "start", "--json"],
+    RUNTIME_CONTROL_TIMEOUT_MS,
+  );
+}
+
+export function stopRsrsRuntime(executable: RsrsExecutable) {
+  return runRsrsStep(
+    executable,
+    ["runtime", "stop", "--json"],
+    RUNTIME_CONTROL_TIMEOUT_MS,
+  );
+}
+
+export function createRsrsLocalKeys(executable: RsrsExecutable) {
+  return runRsrsStep(
+    executable,
+    ["keygen", "--json"],
+    RUNTIME_CONTROL_TIMEOUT_MS,
+  );
+}
+
+export function installRsrsModel(executable: RsrsExecutable) {
+  return runRsrsStep(
+    executable,
+    ["model", "install", "--json"],
+    MODEL_INSTALL_TIMEOUT_MS,
+  );
+}
+
+const INJECT_TARGETS_TIMEOUT_MS = 10_000;
+
+// `rsrs inject --targets` reports, per host agent, whether its global
+// instruction file carries the rsrs block; 2.x reports `fresh` or `stale`
+// for an injected block and `absent` otherwise.
+const INJECTED_HOST_STATES = new Set(["fresh", "stale", "partial", "present"]);
 
 export function parseInjectedHosts(payload: Record<string, unknown>) {
   const details = Array.isArray(payload.details) ? payload.details : [];
   return details.flatMap((detail) => {
-    if (!detail || typeof detail !== "object") return [];
-    const { id, state } = detail as { id?: unknown; state?: unknown };
-    return typeof id === "string" &&
-      typeof state === "string" &&
-      INJECTED_HOST_STATES.has(state)
-      ? [id]
-      : [];
+    const record = asRecord(detail);
+    const id = stringValue(record?.id);
+    const state = stringValue(record?.state);
+    return id && state && INJECTED_HOST_STATES.has(state) ? [id] : [];
   });
 }
 
@@ -762,87 +776,4 @@ export async function readInjectedHosts(executable: RsrsExecutable) {
     timeoutMs: INJECT_TARGETS_TIMEOUT_MS,
   });
   return parseInjectedHosts(parseRsrsJson(result.stdout));
-}
-
-const LEGACY_RSRS_CLI_PACKAGE = "@rsrsai/cli";
-
-function quoteForShell(value: string) {
-  return /\s/.test(value) ? JSON.stringify(value) : value;
-}
-
-export async function installRsrs(input: {
-  env?: NodeJS.ProcessEnv;
-  timeoutMs?: number;
-}): Promise<{ command: string; output: string }> {
-  const timeoutMs = input.timeoutMs ?? INSTALL_TIMEOUT_MS;
-  const pinned = `${RSRS_CLI_PACKAGE}@${RSRS_CLI_VERSION}`;
-  const attempts: Array<{
-    command: string;
-    args: string[];
-    removeLegacy: string[];
-  }> = [
-    {
-      command: "npm",
-      args: ["install", "-g", pinned],
-      removeLegacy: ["uninstall", "-g", LEGACY_RSRS_CLI_PACKAGE],
-    },
-    {
-      command: "pnpm",
-      args: ["add", "-g", pinned],
-      removeLegacy: ["remove", "-g", LEGACY_RSRS_CLI_PACKAGE],
-    },
-  ];
-  const failures: string[] = [];
-  for (const attempt of attempts) {
-    try {
-      await runRsrs(
-        { command: attempt.command, source: "path" },
-        attempt.removeLegacy,
-        { timeoutMs, env: input.env, cwd: homedir() },
-      ).catch(() => null);
-      const result = await runRsrs(
-        { command: attempt.command, source: "path" },
-        attempt.args,
-        { timeoutMs, env: input.env, cwd: homedir() },
-      );
-      if (result.code === 0) {
-        return {
-          command: `${attempt.command} ${attempt.args.map(quoteForShell).join(" ")}`,
-          output: result.stdout,
-        };
-      }
-      failures.push(
-        `${attempt.command} exited with ${result.code ?? "unknown"}: ${
-          result.stderr.trim() || result.stdout.trim() || "no output"
-        }`,
-      );
-    } catch (error) {
-      failures.push(
-        error instanceof Error ? error.message : `${attempt.command} failed`,
-      );
-    }
-  }
-  throw commandError(
-    `Could not install the rsrs CLI. Install Node.js/npm and run "npm install -g ${pinned}". ${failures.join(" | ")}`,
-    "install_failed",
-  );
-}
-
-export async function materializeNativeBinary(
-  executable: RsrsExecutable,
-): Promise<RsrsExecutable | null> {
-  try {
-    const result = await runRsrs(executable, ["v"], {
-      timeoutMs: VERSION_TIMEOUT_MS,
-    });
-    if (result.code !== 0) return null;
-  } catch {
-    return null;
-  }
-  const nativeName = process.platform === "win32" ? "rsrs.exe" : "rsrs";
-  const nativePath = path.join(homedir(), ".rsrs", "bin", nativeName);
-  if (await exists(nativePath)) {
-    return { command: nativePath, source: "native" };
-  }
-  return executable;
 }

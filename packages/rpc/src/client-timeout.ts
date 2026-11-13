@@ -39,7 +39,7 @@ const METHOD_TIMEOUTS: Partial<Record<DaemonMethod, number>> = {
   "memory.show": 60_000,
   "memory.remember": 4 * 60_000,
   "memory.session.save": 5 * 60_000,
-  "memory.install": 6 * 60_000,
+  "memory.install": 90 * 60_000,
   "memory.doctor": 4 * 60_000,
   "memory.cloud.connect": 3 * 60_000,
   "memory.cloud.disconnect": 90_000,

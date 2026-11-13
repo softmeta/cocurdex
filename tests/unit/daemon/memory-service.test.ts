@@ -179,6 +179,7 @@ async function createService(
     platform?: { os: string; arch: string };
     turnRecallBudgetMs?: number;
     startRuntime?: boolean;
+    userLibraryHome?: string;
   } = {},
 ) {
   const directory = await temp.create("cocurdex-memory-");
@@ -188,6 +189,7 @@ async function createService(
     enabled: true,
     agent: { injectContext: true, tools: true },
     chat: { recall: true, saveTurns: true, saveOnEnd: true },
+    userLibrary: options.userLibraryHome !== undefined,
     cliPath: executable,
   };
   const state = createState(settings);
@@ -199,6 +201,7 @@ async function createService(
     device: "test-host",
     platform: options.platform,
     rsrsDataDir: directory,
+    userLibraryHome: options.userLibraryHome,
     startRuntime: options.startRuntime ?? false,
     turnRecallBudgetMs: options.turnRecallBudgetMs,
     now: () => new Date("2026-10-28T10:00:02.000Z"),
@@ -206,7 +209,109 @@ async function createService(
   return { service, state, logPath, directory };
 }
 
+async function startUserRuntime(home: string) {
+  const dataDir = path.join(home, ".rsrs");
+  const commands: string[][] = [];
+  const server = createServer((request, response) => {
+    if (request.url === "/api/health") {
+      response.end(
+        JSON.stringify({ server: "respire", v: 1, data_dir: dataDir }),
+      );
+      return;
+    }
+    let text = "";
+    request.on("data", (chunk) => {
+      text += chunk;
+    });
+    request.on("end", () => {
+      const args = (JSON.parse(text) as { args: string[] }).args;
+      commands.push(args);
+      const details =
+        args[0] === "recall"
+          ? [
+              { id: "u-1", title: "Recall title", score: 0.95 },
+              { id: "u-2", title: "Deploys with bun", score: 0.7 },
+            ]
+          : {
+              entry: {
+                id: args[2],
+                title: "Deploys with bun",
+                content: "The user deploys with bun",
+                importance: "important",
+                tags: [],
+              },
+            };
+      response.end(
+        JSON.stringify({
+          ok: true,
+          exit: 0,
+          envelope: { command: args[0], status: "ok", details },
+        }),
+      );
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  await mkdir(path.join(dataDir, "runtime"), { recursive: true });
+  await writeFile(path.join(dataDir, "session.json"), "{}", "utf8");
+  await writeFile(
+    path.join(dataDir, "runtime", "endpoint.json"),
+    JSON.stringify({ url: `http://127.0.0.1:${port}` }),
+    "utf8",
+  );
+  return { commands, close: () => new Promise((r) => server.close(r)) };
+}
+
 describe("MemoryService with a fake rsrs CLI", () => {
+  it("adds the user's own rsrs store to recall as read-only reference", async () => {
+    const home = await temp.create("cocurdex-user-home-");
+    const runtime = await startUserRuntime(home);
+    try {
+      const { service } = await createService({ userLibraryHome: home });
+
+      expect((await service.getStatus()).userLibrary).toEqual({
+        detected: true,
+        reachable: true,
+      });
+      const result = await service.recall({ query: "deploy" });
+      expect(result.items.map((item) => item.id)).toEqual([
+        "memory-1",
+        "user:u-2",
+      ]);
+      const entry = await service.show("user:u-2");
+      expect(entry).toMatchObject({
+        id: "user:u-2",
+        content: "The user deploys with bun",
+      });
+      await expect(service.forget("user:u-2")).rejects.toThrow("read-only");
+      await expect(
+        service.update({ id: "user:u-2", content: "Deploys with pnpm" }),
+      ).rejects.toThrow("read-only");
+      await expect(
+        service.remember({
+          title: "Deploys with pnpm",
+          content: "The user deploys with pnpm",
+          supersedes: ["user:u-2"],
+        }),
+      ).rejects.toThrow("read-only");
+      expect(runtime.commands.map((args) => args[0])).toEqual([
+        "recall",
+        "show",
+      ]);
+      expect(runtime.commands[1]).toEqual(["show", "--json", "u-2"]);
+
+      const partitioned = await service.recallIn({ query: "deploy" }, [
+        { kind: "me" },
+      ]);
+      expect(
+        partitioned.items.some((item) => item.id.startsWith("user:")),
+      ).toBe(false);
+      expect(runtime.commands).toHaveLength(2);
+    } finally {
+      await runtime.close();
+    }
+  });
+
   it("does not replay a runtime write through the CLI when its outcome is unconfirmed", async () => {
     let writes = 0;
     const server = createServer((request, response) => {
@@ -265,7 +370,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
     const { service } = await createService({ identityMissing: true });
     const status = await service.getStatus(true);
     expect(status.available).toBe(true);
-    expect(status.error).toContain("rsrs keygen");
+    expect(status.error).toContain("cocurdex memory install");
     expect(status.cloud.hasKeys).toBe(false);
   });
 

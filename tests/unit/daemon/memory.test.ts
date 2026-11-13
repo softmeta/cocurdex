@@ -7,6 +7,7 @@ import {
   buildMemoryBrief,
 } from "@cocurdex/daemon/internal/memory/digest";
 import {
+  parseInjectedHosts,
   parseRecallPayload,
   parseRememberPayload,
   parseRsrsJson,
@@ -420,5 +421,23 @@ describe("memory gates", () => {
     const nudge = buildGateNudge();
     expect(nudge).toContain("Gate 2 (store) was missed");
     expect(nudge).toContain("memory_remember");
+  });
+});
+
+describe("parseInjectedHosts", () => {
+  it("treats the rsrs 2.x fresh and stale blocks as injected", () => {
+    const payload = {
+      details: [
+        { id: "claude", state: "fresh" },
+        { id: "codex", state: "stale" },
+        { id: "pi", state: "absent" },
+        { id: "opencode", state: "fresh" },
+      ],
+    };
+    expect(parseInjectedHosts(payload)).toEqual([
+      "claude",
+      "codex",
+      "opencode",
+    ]);
   });
 });

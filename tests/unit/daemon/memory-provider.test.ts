@@ -21,6 +21,7 @@ const ENABLED: MemorySettings = {
   enabled: true,
   agent: { injectContext: true, tools: true },
   chat: { recall: true, saveTurns: true, saveOnEnd: true },
+  userLibrary: false,
   cliPath: null,
 };
 

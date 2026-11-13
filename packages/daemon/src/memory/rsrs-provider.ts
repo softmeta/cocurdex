@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import type {
   MemoryEntry,
   MemoryImportResult,
@@ -15,16 +16,18 @@ import type {
   MemoryProviderRecallInput,
 } from "./provider";
 import {
-  materializeNativeBinary,
+  parseVersion,
   type RsrsExecutable,
   readInjectedHosts,
   readRsrsPolicy,
   readRsrsStatus,
   recallMemories,
   rememberMemory,
-  resolveRsrsExecutable,
+  runRsrs,
   showMemory,
+  stopRsrsRuntime,
 } from "./rsrs";
+import { managedRsrsPath, type RsrsHome, rsrsHomeEnv } from "./rsrs-install";
 import { cliInvoke, type RsrsInvoke } from "./rsrs-invoke";
 import {
   exportMemories,
@@ -50,9 +53,28 @@ const PARTITION_LIST_WINDOW = 500;
 
 export interface RsrsMemoryProviderOptions {
   settings(): MemorySettings;
-  dataDir?: string;
+  home(): Promise<RsrsHome>;
+  os: string;
   startRuntime?: boolean;
   now(): Date;
+}
+
+async function isFile(file: string) {
+  return stat(file).then(
+    (info) => info.isFile(),
+    () => false,
+  );
+}
+
+async function answersVersion(executable: RsrsExecutable) {
+  try {
+    const result = await runRsrs(executable, ["--version"], {
+      timeoutMs: 5_000,
+    });
+    return result.code === 0 || parseVersion(result.stdout) !== null;
+  } catch {
+    return false;
+  }
 }
 
 function errorMessage(error: unknown) {
@@ -104,13 +126,34 @@ export class RsrsMemoryProvider implements MemoryProvider {
     if (!force && this.nowMs() - this.resolvedAt < CACHE_MS) {
       return this.resolved;
     }
-    const found = await resolveRsrsExecutable(this.options.settings());
-    this.resolved =
-      found?.source === "path"
-        ? ((await materializeNativeBinary(found)) ?? found)
-        : found;
+    this.resolved = await this.findExecutable();
     this.resolvedAt = this.nowMs();
     return this.resolved;
+  }
+
+  private async findExecutable(): Promise<RsrsExecutable | null> {
+    const home = await this.options.home();
+    const env = rsrsHomeEnv(home);
+    const configured = this.options.settings().cliPath;
+    if (configured) {
+      const executable = { command: configured, env };
+      return (await answersVersion(executable)) ? executable : null;
+    }
+    const command = managedRsrsPath(home.dataDir, this.options.os);
+    return (await isFile(command)) ? { command, env } : null;
+  }
+
+  async stopRuntime() {
+    const executable = await this.executable();
+    this.warming = null;
+    this.invalidateRuntime();
+    if (!executable || !(await this.runtime(false))) return;
+    await stopRsrsRuntime(executable).catch((error: unknown) => {
+      logDaemonDiagnostic("info", "memory.runtimeStopFailed", {
+        error: errorMessage(error),
+      });
+    });
+    this.invalidateRuntime();
   }
 
   forgetExecutable() {
@@ -137,14 +180,15 @@ export class RsrsMemoryProvider implements MemoryProvider {
     return executable;
   }
 
-  async runtime(): Promise<RuntimeEndpoint | null> {
+  async runtime(start = true): Promise<RuntimeEndpoint | null> {
     if (this.endpoint && this.nowMs() - this.endpointCheckedAt < CACHE_MS) {
       return this.endpoint;
     }
     const executable = await this.executable();
     if (!executable) return null;
-    const endpoint = await findRuntime(this.options.dataDir);
-    if (!endpoint && this.options.startRuntime !== false) {
+    const { dataDir } = await this.options.home();
+    const endpoint = await findRuntime(dataDir);
+    if (!endpoint && start && this.options.startRuntime !== false) {
       this.startRuntimeInBackground(executable);
     }
     return this.adoptEndpoint(endpoint);
@@ -155,7 +199,8 @@ export class RsrsMemoryProvider implements MemoryProvider {
       executable,
       RUNTIME_START_TIMEOUT_MS,
     )
-      .then(() => findRuntime(this.options.dataDir))
+      .then(() => this.options.home())
+      .then((home) => findRuntime(home.dataDir))
       .then(async (endpoint) => {
         if (endpoint) await this.adoptEndpoint(endpoint);
       })

@@ -1,62 +1,105 @@
-import { chmod, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import path from "node:path";
-import { installRsrs } from "@cocurdex/daemon/internal/memory/rsrs";
-import { RSRS_CLI_PACKAGE, RSRS_CLI_VERSION } from "@cocurdex/shared";
+import {
+  installManagedRsrsCli,
+  managedRsrsPath,
+} from "@cocurdex/daemon/internal/memory/rsrs-install";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const temp = createTempDirs();
+const served = new Map<string, Buffer>();
+let requests: string[] = [];
+let baseUrl = "";
 
-afterAll(() => temp.cleanup());
-
-async function createFakeNpm(directory: string, logPath: string) {
-  const scriptPath = path.join(directory, "fake-npm.mjs");
-  await writeFile(
-    scriptPath,
-    `import { appendFileSync } from "node:fs";
-appendFileSync(${JSON.stringify(logPath)}, JSON.stringify(process.argv.slice(2)) + "\\n");
-`,
-    "utf8",
-  );
-  const shimPath = path.join(
-    directory,
-    process.platform === "win32" ? "npm.cmd" : "npm",
-  );
-  await writeFile(
-    shimPath,
-    process.platform === "win32"
-      ? `@echo off\r\n"${process.execPath}" "${scriptPath}" %*\r\n`
-      : `#!/bin/sh\nexec "${process.execPath}" "${scriptPath}" "$@"\n`,
-    "utf8",
-  );
-  if (process.platform !== "win32") {
-    await chmod(shimPath, 0o755);
+const server = createServer((request, response) => {
+  const name = (request.url ?? "").slice(1);
+  requests.push(name);
+  const body = served.get(name);
+  if (!body) {
+    response.statusCode = 404;
+    response.end();
+    return;
   }
-  const inherited = process.env.PATH ?? process.env.Path ?? "";
+  response.end(body);
+});
+
+beforeAll(async () => {
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
+
+afterAll(async () => {
+  await new Promise((resolve) => server.close(resolve));
+  await temp.cleanup();
+});
+
+function assetFor(file: string, bytes: Buffer, sha256?: string) {
+  served.set(file, bytes);
   return {
-    ...process.env,
-    PATH: `${directory}${path.delimiter}${inherited}`,
+    target: "test-target",
+    file,
+    sha256: sha256 ?? createHash("sha256").update(bytes).digest("hex"),
+    size: bytes.length,
   };
 }
 
-describe("installRsrs", () => {
-  it("replaces the retired @rsrsai/cli package with the pinned rsrs-cli", async () => {
-    const directory = await temp.create("cocurdex-rsrs-install-");
-    const logPath = path.join(directory, "npm.log");
-    const env = await createFakeNpm(directory, logPath);
+describe("installManagedRsrsCli", () => {
+  it("installs the pinned CLI into the private home once and keeps it", async () => {
+    requests = [];
+    const dataDir = await temp.create("cocurdex-rsrs-home-");
+    const asset = assetFor("rsrs-ok", Buffer.from("pinned rsrs build"));
+    const input = { dataDir, os: process.platform, asset, baseUrl };
 
-    const result = await installRsrs({ env, timeoutMs: 30_000 });
+    const first = await installManagedRsrsCli(input);
+    const second = await installManagedRsrsCli(input);
 
-    const pinned = `${RSRS_CLI_PACKAGE}@${RSRS_CLI_VERSION}`;
-    expect(result.command).toBe(`npm install -g ${pinned}`);
-    const calls = (await readFile(logPath, "utf8"))
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as string[]);
-    expect(calls).toEqual([
-      ["uninstall", "-g", "@rsrsai/cli"],
-      ["install", "-g", pinned],
+    const target = managedRsrsPath(dataDir, process.platform);
+    expect(first).toEqual({ command: target, replaced: false });
+    expect(second).toEqual({ command: target, replaced: false });
+    expect(await readFile(target, "utf8")).toBe("pinned rsrs build");
+    if (process.platform !== "win32") {
+      expect((await stat(target)).mode & 0o111).not.toBe(0);
+    }
+    expect(requests).toEqual(["rsrs-ok"]);
+  });
+
+  it("refuses a download whose digest differs and keeps the installed CLI", async () => {
+    const dataDir = await temp.create("cocurdex-rsrs-home-");
+    const good = assetFor("rsrs-good", Buffer.from("previous build"));
+    await installManagedRsrsCli({
+      dataDir,
+      os: process.platform,
+      asset: good,
+      baseUrl,
+    });
+    let stopped = false;
+    const tampered = assetFor(
+      "rsrs-tampered",
+      Buffer.from("tampered build!"),
+      createHash("sha256").update("expected build!").digest("hex"),
+    );
+
+    await expect(
+      installManagedRsrsCli({
+        dataDir,
+        os: process.platform,
+        asset: tampered,
+        baseUrl,
+        beforeReplace: async () => {
+          stopped = true;
+        },
+      }),
+    ).rejects.toThrow("Checksum mismatch");
+
+    const target = managedRsrsPath(dataDir, process.platform);
+    expect(await readFile(target, "utf8")).toBe("previous build");
+    expect(await readdir(path.dirname(target))).toEqual([
+      path.basename(target),
     ]);
-    expect(calls.flat()).not.toContain(`${RSRS_CLI_PACKAGE}@latest`);
+    expect(stopped).toBe(false);
   });
 });

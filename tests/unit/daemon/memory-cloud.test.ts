@@ -138,6 +138,7 @@ async function createService(options: FakeOptions = {}) {
     enabled: true,
     agent: { injectContext: true, tools: true },
     chat: { recall: true, saveTurns: true, saveOnEnd: true },
+    userLibrary: false,
     cliPath: fake.executable,
   };
   const values = new Map<string, string>([
