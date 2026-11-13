@@ -70,6 +70,20 @@ const linkToneClassNames: Record<MarkdownRendererTone, string> = {
   editor: "text-editor-fg hover:text-editor-fg",
 };
 
+const TABLE_RULE: Record<MarkdownRendererTone, string> = {
+  assistant: "border-foreground/6 dark:border-foreground/8",
+  user: "border-foreground/6 dark:border-foreground/8",
+  system: "border-chat-system-border",
+  editor: "border-foreground/6 dark:border-foreground/8",
+};
+
+const TABLE_HEADER_TEXT: Record<MarkdownRendererTone, string> = {
+  assistant: "text-chat-fg-muted",
+  user: "text-chat-fg-muted",
+  system: "text-chat-system-fg",
+  editor: "text-editor-fg-muted",
+};
+
 export function createMarkdownComponents(
   tone: MarkdownRendererTone,
   options?: MarkdownComponentOptions,
@@ -236,12 +250,8 @@ export function createMarkdownComponents(
       return (
         <thead
           className={cn(
-            "border-b text-xs uppercase tracking-[0.12em]",
-            tone === "editor"
-              ? "border-editor-border text-editor-fg-muted"
-              : tone === "system"
-                ? "border-chat-system-border text-chat-system-fg"
-                : "border-foreground/6 text-chat-fg-muted dark:border-foreground/8",
+            "text-xs uppercase tracking-[0.12em]",
+            TABLE_HEADER_TEXT[tone],
           )}
         >
           {children}
@@ -253,7 +263,9 @@ export function createMarkdownComponents(
     },
     tr({ children }: { children?: ReactNode }) {
       return (
-        <tr className="border-b border-foreground/3 last:border-b-0 dark:border-foreground/5">
+        <tr
+          className={cn("border-b [tbody_&]:last:border-b-0", TABLE_RULE[tone])}
+        >
           {children}
         </tr>
       );
