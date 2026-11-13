@@ -18,6 +18,12 @@ export function SidebarFormSwitcher({
   const { t } = useTranslation(["sessions", "chat", "personal"]);
   const options = [
     {
+      value: "personal",
+      label: t("personal:sidebar.title"),
+      description: t("personal:sidebar.hint"),
+      icon: <Contact className="size-3.5" />,
+    },
+    {
       value: "workspaces",
       label: t("sessions:sidebar.workspacesGroup"),
       description: t("sessions:sidebar.workspacesHint"),
@@ -28,12 +34,6 @@ export function SidebarFormSwitcher({
       label: t("chat:sidebar.title"),
       description: t("chat:sidebar.hint"),
       icon: <MessageCircle className="size-3.5" />,
-    },
-    {
-      value: "personal",
-      label: t("personal:sidebar.title"),
-      description: t("personal:sidebar.hint"),
-      icon: <Contact className="size-3.5" />,
     },
   ] as const;
   const current = options.find((option) => option.value === value);

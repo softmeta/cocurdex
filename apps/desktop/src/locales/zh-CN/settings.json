@@ -1105,6 +1105,7 @@
       "toggleFor": "启用或停用 {{model}}"
     },
     "searchPlaceholder": "搜索服务商...",
+    "searchPlaceholder_other": "搜索 {{count}} 个服务商...",
     "sections": {
       "advanced": "高级",
       "auth": "认证",

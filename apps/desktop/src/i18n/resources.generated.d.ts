@@ -3457,6 +3457,8 @@ export default interface Resources {
         toggleFor: "Toggle {{model}}";
       };
       searchPlaceholder: "Search providers...";
+      searchPlaceholder_one: "Search {{count}} provider...";
+      searchPlaceholder_other: "Search {{count}} providers...";
       sections: {
         advanced: "Advanced";
         auth: "Auth";

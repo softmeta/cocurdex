@@ -14,7 +14,10 @@ export function SettingsListGroup({
 }) {
   return (
     <section aria-label={label} className="flex flex-col gap-2">
-      <div className="flex h-5 items-center gap-2 px-1">
+      <div
+        className="sticky top-0 z-10 flex h-5 items-center gap-2 bg-app px-1"
+        data-window-sticky=""
+      >
         <Text size="meta" tone="muted" weight="medium">
           {label}
         </Text>

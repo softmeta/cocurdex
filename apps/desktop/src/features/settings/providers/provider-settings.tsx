@@ -218,6 +218,9 @@ export function ProviderSettingsPanel() {
       .includes(providerFilterQuery);
   });
   const providerIds = new Set(providers.map((provider) => provider.id));
+  const providerTotal =
+    providers.length +
+    templates.filter((template) => !providerIds.has(template.id)).length;
   const filteredTemplates = templates.filter((template) => {
     if (providerIds.has(template.id)) return false;
     if (!providerFilterQuery) return true;
@@ -613,7 +616,9 @@ export function ProviderSettingsPanel() {
                 <div className="flex shrink-0 items-center gap-2">
                   <div className="min-w-0 flex-1">
                     <AppSearchInput
-                      placeholder={t("providers.searchPlaceholder")}
+                      placeholder={t("providers.searchPlaceholder", {
+                        count: providerTotal,
+                      })}
                       value={providerQuery}
                       onChange={(event) => setProviderQuery(event.target.value)}
                     />
