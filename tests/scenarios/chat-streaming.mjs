@@ -366,7 +366,7 @@ runScenario("chat-streaming", {
               ...sections(55, 70),
               "Reading control finished.",
             ],
-            intervalMs: 80,
+            intervalMs: 16,
           };
           await daemonRequest(session, "session.send", {
             sessionId: configured.id,

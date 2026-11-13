@@ -46,8 +46,14 @@ function collectIconButtons() {
       !button.closest('[role="dialog"], [role="menu"]') &&
       visible(button),
   );
-  window.__iconButtons = buttons;
-  return buttons.length;
+  window.__checkedIconButtons ??= new WeakSet();
+  window.__iconButtons = buttons.filter(
+    (button) => !window.__checkedIconButtons.has(button),
+  );
+  for (const button of window.__iconButtons) {
+    window.__checkedIconButtons.add(button);
+  }
+  return { total: buttons.length, fresh: window.__iconButtons.length };
 }
 
 function iconButtonCenter(index) {
@@ -95,11 +101,11 @@ async function moveMouse(session, point) {
 }
 
 async function inspectIconButtons(session) {
-  const count = await session.run(collectIconButtons);
+  const { total, fresh } = await session.run(collectIconButtons);
   const oversized = await session.run(oversizedGlyphs, MAX_GLYPH_RATIO);
   const missing = [];
   const stacked = [];
-  for (let index = 0; index < count; index += 1) {
+  for (let index = 0; index < fresh; index += 1) {
     const target = await session.run(iconButtonCenter, index);
     await moveMouse(session, target);
     const surfaces = await session
@@ -110,7 +116,7 @@ async function inspectIconButtons(session) {
     await moveMouse(session, REST_POINT);
     await session.waitUntil(noHoverSurface, undefined, HOVER_TIMEOUT_MS);
   }
-  return { count, missing, stacked, oversized };
+  return { count: total, checked: fresh, missing, stacked, oversized };
 }
 
 function viewStep(view) {
@@ -119,7 +125,7 @@ function viewStep(view) {
     async ({ session }) => {
       await showPanelView(session, view);
       await VIEW_READY[view]?.(session);
-      const { count, missing, stacked, oversized } =
+      const { count, checked, missing, stacked, oversized } =
         await inspectIconButtons(session);
       check(count > 0, `no icon-only buttons found in the ${view} view`);
       check(missing.length === 0, "icon-only buttons without a hint", missing);
@@ -129,7 +135,7 @@ function viewStep(view) {
       check(oversized.length === 0, "icon glyphs that fill their button", {
         oversized,
       });
-      return { count };
+      return { count, checked };
     },
   ];
 }
