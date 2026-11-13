@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import type { ProviderAuthPrompt } from "@cocurdex/shared";
 import {
   type ProviderLoginUi,
@@ -7,13 +5,6 @@ import {
 } from "./run-provider-login";
 
 type SelectPrompt = Extract<ProviderAuthPrompt, { type: "select" }>;
-
-function usePackagedPiAssets() {
-  const packagedPiDir = fileURLToPath(new URL("./pi-package", import.meta.url));
-  if (!process.env.PI_PACKAGE_DIR && existsSync(packagedPiDir)) {
-    process.env.PI_PACKAGE_DIR = packagedPiDir;
-  }
-}
 
 export async function createTuiLoginUi(providerId: string, title: string) {
   const [
@@ -23,7 +14,6 @@ export async function createTuiLoginUi(providerId: string, title: string) {
     import("@earendil-works/pi-coding-agent"),
     import("@earendil-works/pi-tui"),
   ]);
-  usePackagedPiAssets();
   initTheme();
   const tui = new TuiMainScreen(new ProcessTerminal());
   const dialog = new LoginDialogComponent(tui, providerId, () => {}, title);
