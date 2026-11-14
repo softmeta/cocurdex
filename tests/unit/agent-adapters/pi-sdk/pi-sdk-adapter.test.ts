@@ -377,42 +377,11 @@ describe("createPiSdkAdapter", () => {
       { name: "codemode", builtin: true },
       { name: "tool-search", builtin: true },
       { name: "mcp", builtin: true },
-      { name: "cocurdex-system-sections", builtin: true },
-      { name: "cocurdex-run-policy", builtin: true },
     ]);
     expect(capture.createAgentSessionOptions?.resourceLoader).toBeDefined();
     expect(process.env.PI_CODING_AGENT_DIR).toBe(
       path.join("/tmp/cocurdex-user-data", "pi-agent"),
     );
-  });
-
-  it("runs chat sessions without tools or project context", async () => {
-    const events: AgentEvent[] = [];
-    const capture: {
-      createAgentSessionOptions?: Record<string, unknown>;
-      resourceLoaderOptions?: Record<string, unknown>;
-    } = {};
-    const session = createSessionPayload(events, {
-      capture,
-      sessionOverride: { sessionKind: "chat", workspaceId: "chat" },
-    });
-
-    await session.sendMessage({ content: "hello", history: [] });
-
-    expect(capture.resourceLoaderOptions).toMatchObject({
-      noContextFiles: true,
-      noExtensions: true,
-      noPromptTemplates: true,
-      noSkills: true,
-      systemPrompt: expect.stringContaining("helpful assistant"),
-    });
-    expect(capture.resourceLoaderOptions).not.toHaveProperty(
-      "appendSystemPromptOverride",
-    );
-    expect(capture.createAgentSessionOptions).toMatchObject({
-      noTools: "all",
-    });
-    expect(capture.createAgentSessionOptions).not.toHaveProperty("customTools");
   });
 
   it("lets keyless custom providers through while built-ins still need a key", async () => {

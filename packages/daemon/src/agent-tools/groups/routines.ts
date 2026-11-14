@@ -136,6 +136,7 @@ export function registerRoutineTools(
     descriptor: {
       group: "routine",
       name: "list",
+      readOnly: true,
       description:
         "List your scheduled routines: what each asks you to do, when it runs next, and whether it is paused.",
       inputSchema: {
@@ -246,6 +247,7 @@ export function registerRoutineTools(
     descriptor: {
       group: "routine",
       name: "runs",
+      readOnly: true,
       description:
         "Read the recent runs of one of your routines with their status, summary, and error, newest first.",
       inputSchema: {

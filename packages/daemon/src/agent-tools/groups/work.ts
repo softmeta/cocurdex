@@ -54,6 +54,7 @@ export function registerWorkTools(
     descriptor: {
       group: "work",
       name: "catalog",
+      readOnly: true,
       description:
         "List what you can delegate coding work to: the user's workspaces (code repositories), their saved agent roles, their team templates, and the other computers paired with this one (hosts). Pass host to list the workspaces and agent roles on that computer instead. Read it before work_start when you do not know the ids.",
       inputSchema: {
@@ -141,6 +142,7 @@ export function registerWorkTools(
     descriptor: {
       group: "work",
       name: "list",
+      readOnly: true,
       description:
         "List the work sessions you delegated, newest first, with their state (running, completed, failed, cancelled, interrupted, idle, archived), what each waits for (permission, question, plan) when the user must answer in it, and the paired computer (host) it runs on, if any.",
       inputSchema: {

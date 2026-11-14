@@ -452,8 +452,9 @@ describe("routines", () => {
       expect(tools).toContain("routine_report");
       expect(tools).not.toContain("write");
       expect(tools).not.toContain("bash");
+      expect(tools).toEqual(expect.arrayContaining(["read", "ls", "grep"]));
       expect(toolResults(stub.requests[1]).join("\n")).toMatch(
-        /Tool write not found|read-and-draft access/,
+        /Tool write is not available|read-and-draft access/,
       );
 
       const inbox = await cli<InboxItem[]>(["inbox"]);

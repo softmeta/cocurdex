@@ -419,6 +419,7 @@ export function registerSettingsTools(
     descriptor: {
       group: "settings",
       name: "list",
+      readOnly: true,
       description:
         "List the Cocurdex settings that can be inspected or changed from chat, with their scope, tier, storage, and value schema.",
       inputSchema: {
@@ -444,6 +445,7 @@ export function registerSettingsTools(
     descriptor: {
       group: "settings",
       name: "get",
+      readOnly: true,
       description:
         "Read the current value of a Cocurdex setting for this session's workspace, plus any pending proposal awaiting user confirmation.",
       inputSchema: {

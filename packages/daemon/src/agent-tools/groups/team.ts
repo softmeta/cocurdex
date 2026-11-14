@@ -106,6 +106,7 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "list_roles",
+      readOnly: true,
       description:
         "List saved agent roles (id, name, description of what the role is good at, agent type, model, permission mode) you can pass as agentRoleId when spawning a teammate.",
       inputSchema: {
@@ -121,6 +122,7 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "list_templates",
+      readOnly: true,
       description:
         "List user-defined team templates. Each template has a description of what the team is for and lists its members, their roles, and their standing instructions. The first member is the lead that runs the session; the rest are its teammates.",
       inputSchema: {
@@ -136,6 +138,7 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "roster",
+      readOnly: true,
       description:
         "Show the roster of the team the user assigned to your session: the team's purpose and each teammate's name, role, and standing instructions. Returns null when no roster is assigned. With a roster you coordinate: plan tasks first, then spawn only the roster members the plan needs.",
       inputSchema: {
@@ -184,6 +187,7 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "task_list",
+      readOnly: true,
       description:
         "List the team's shared tasks with status, assignee session id, prerequisites (blockedBy, blocked), and review evidence.",
       inputSchema: {

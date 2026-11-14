@@ -125,6 +125,8 @@ export interface AgentSession {
   rewindNativeWorkspaceChanges?(
     input: NativeWorkspaceRewindInput,
   ): Promise<NativeWorkspaceRewindResult>;
+  /** Its run outlives the daemon process: shutdown disposes it without stopping the run. */
+  readonly resumesAfterRestart?: boolean;
   stop(): void | Promise<void>;
   dispose(): void | Promise<void>;
 }

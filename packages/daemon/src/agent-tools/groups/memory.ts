@@ -55,6 +55,7 @@ export function registerMemoryTools(
     descriptor: {
       group: "memory",
       name: "recall",
+      readOnly: true,
       description:
         "Search long-term memory through Respire (rsrs). Personal assistants search their own partition and shared about-me facts; other agent sessions search user-wide memory. Returns compact ids and titles; use memory_show before relying on an entry. Query with concrete keywords, not pronouns. Empty results are normal. A non-null error signals unavailable or incomplete recall; relay it instead of treating it as an empty store.",
       inputSchema: {
@@ -87,6 +88,7 @@ export function registerMemoryTools(
     descriptor: {
       group: "memory",
       name: "show",
+      readOnly: true,
       description:
         "Read one long-term memory entry in full by id. Use it after memory_recall before making decisions or quoting the memory.",
       inputSchema: {
