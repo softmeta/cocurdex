@@ -53,6 +53,7 @@ import { logDaemonDiagnostic } from "../diagnostics";
 import { buildSnapshotProviderRecords } from "../provider/session-title";
 import type { DaemonState } from "../state";
 import {
+  appendTurnDiaryLine,
   buildAgentMemoryPolicy,
   buildMemoryBrief,
   buildSessionDigestFallback,
@@ -1294,7 +1295,7 @@ export class MemoryService {
       : message;
     const query = buildMemoryRecallQuery({
       project: null,
-      title: session.sessionKind === "personal" ? null : session.title,
+      title: personal || mode === "chat" ? null : session.title,
       message: messageWithContext,
     });
     if (!query) return null;
@@ -1323,6 +1324,11 @@ export class MemoryService {
       });
       if (result.items.length === 0) return null;
     }
+    const ownDiary = (await readMemoryCaptures(this.options.state))[session.id];
+    result = {
+      ...result,
+      items: result.items.filter((item) => item.id !== ownDiary?.memoryId),
+    };
     if (result.items.length === 0) {
       this.noteRecall(session.id, mode, "empty", null);
       return null;
@@ -1443,28 +1449,52 @@ export class MemoryService {
       device: this.device,
       at: assistant.createdAt,
     });
-    const result = await this.remember({
-      content: redactMemorySecrets(line),
-      title: `Cocurdex ${surface}：${compactDigestText(session.title, 48)}`,
-      importance: "trivial",
-      force: true,
-    });
-    if (!result.id) {
-      return {
-        saved: false,
-        memoryId: null,
-        reason: result.message ?? "not-written",
-      };
+    const title = `Cocurdex ${surface}：${compactDigestText(session.title, 48)}`;
+    const diary =
+      previous?.kind === "turn" &&
+      previous.memoryId &&
+      previous.provider === this.provider.id
+        ? await this.show(previous.memoryId).catch((error) => {
+            logDaemonDiagnostic("info", "memory.turnDiaryUnavailable", {
+              error: errorMessage(error),
+              sessionId,
+            });
+            return null;
+          })
+        : null;
+    let memoryId: string;
+    if (diary && previous?.memoryId) {
+      await this.update({
+        id: previous.memoryId,
+        title,
+        content: appendTurnDiaryLine(diary.content, redactMemorySecrets(line)),
+      });
+      memoryId = previous.memoryId;
+    } else {
+      const result = await this.remember({
+        content: redactMemorySecrets(line),
+        title,
+        importance: "trivial",
+        force: true,
+      });
+      if (!result.id) {
+        return {
+          saved: false,
+          memoryId: null,
+          reason: result.message ?? "not-written",
+        };
+      }
+      memoryId = result.id;
     }
     await writeMemoryCapture(this.options.state, sessionId, {
       provider: this.provider.id,
-      memoryId: result.id,
+      memoryId,
       savedAt: this.now().toISOString(),
       lastAssistantMessageId: assistant.id,
       kind: "turn",
     });
     this.broadcast();
-    return { saved: true, memoryId: result.id, reason: null };
+    return { saved: true, memoryId, reason: null };
   }
 
   async saveSession(
