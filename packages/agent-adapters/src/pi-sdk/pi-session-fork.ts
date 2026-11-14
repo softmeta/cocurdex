@@ -3,13 +3,23 @@ import type { ForkProviderSessionPayload } from "@cocurdex/agent-core";
 import type { AgentProviderSessionRecord } from "@cocurdex/shared";
 import type { SessionManager } from "@earendil-works/pi-coding-agent";
 import { serializeProviderSessionState } from "../shared";
-import { findPiUserMessageEntry } from "./pi-chat-session";
 import { getPiAgentDir } from "./pi-paths";
 
 interface PiBranchEntry {
   id: string;
   type: string;
   message?: { role?: string };
+}
+
+function findPiUserMessageEntry(
+  branch: readonly PiBranchEntry[],
+  userMessageIndex: number,
+) {
+  return (
+    branch.filter(
+      (entry) => entry.type === "message" && entry.message?.role === "user",
+    )[userMessageIndex] ?? null
+  );
 }
 
 export function readPiSessionFile(providerStateJson: string) {

@@ -728,12 +728,27 @@ importers:
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../shared
+      '@earendil-works/chord':
+        specifier: 1.5.2
+        version: 1.5.2(esbuild@0.28.2)(ws@8.22.1)
       '@earendil-works/pi-ai':
         specifier: 1.5.2
         version: 1.5.2(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.2(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(undici@8.12.3)(ws@8.22.1)(zod@4.6.7)
+      '@earendil-works/pi-codemode':
+        specifier: 1.5.2
+        version: 1.5.2
       '@earendil-works/pi-coding-agent':
         specifier: 1.5.2
         version: 1.5.2(patch_hash=eea185123377d66f00f08016338c464e53cc871fd7637c3bcd217739d28f13ff)(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.2(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(ws@8.22.1)(zod@4.6.7)
+      '@earendil-works/pi-durable':
+        specifier: 1.5.2
+        version: 1.5.2(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.2(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(esbuild@0.28.2)(supports-color@7.2.0)(undici@8.12.3)(ws@8.22.1)(zod@4.6.7)
+      '@earendil-works/pi-mcp':
+        specifier: 1.5.2
+        version: 1.5.2
+      '@earendil-works/pi-schema':
+        specifier: 1.5.2
+        version: 1.5.2
       '@opencode/client':
         specifier: 2.2.5
         version: 2.2.5(effect@4.0.6)
@@ -1159,6 +1174,9 @@ importers:
       '@cocurdex/test-fixtures':
         specifier: workspace:*
         version: link:../../fixtures
+      '@cocurdex/test-harness':
+        specifier: workspace:*
+        version: link:../../harness
       '@earendil-works/pi-ai':
         specifier: 1.5.2
         version: 1.5.2(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.2(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(undici@8.12.3)(ws@8.22.1)(zod@4.6.7)
@@ -2315,6 +2333,21 @@ packages:
   '@dotenvx/primitives@0.8.0':
     resolution: {integrity: sha512-VYJy0uhFm9zTJ1TxBaW/pA8bjbOM/OttaNMwZ1RHG4JKyRG7DhSdiqD1ipQoAyoD22olUtxbP78W9xY3Wd11bg==}
 
+  '@earendil-works/chord@1.5.2':
+    resolution: {integrity: sha512-3g088g7qVXL2cpRAKWjj9za6RLls9FBnuUo5c0hBZ0xCftBQjae0opS+34M22vdXTVE7BNqkRG/FPc9BsM7eEg==}
+    engines: {node: '>=22.19.0'}
+    peerDependencies:
+      esbuild: ^0.28.1
+      react: 19.3.0
+      ws: ^8.21.0
+    peerDependenciesMeta:
+      esbuild:
+        optional: true
+      react:
+        optional: true
+      ws:
+        optional: true
+
   '@earendil-works/pi-agent-core@1.5.2':
     resolution: {integrity: sha512-ie5mejS7mGfXt//9As7i3LfxVXdktZvF1JP4EQsUXTp4mU437h23MNGx7wXZ5VYs3YiG/Qnj3e7OZ2HC069OMw==}
     engines: {node: '>=22.19.0'}
@@ -2332,6 +2365,10 @@ packages:
     resolution: {integrity: sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA==}
     engines: {node: '>=22.19.0'}
     hasBin: true
+
+  '@earendil-works/pi-durable@1.5.2':
+    resolution: {integrity: sha512-zDB3anbI/yD0IG+VVY+g5tU+c5XOVqQAFwLkXRMiqZb4p/afWro0voZtLNoRAWcDA2r73kvmH6kKin9Ka8l55g==}
+    engines: {node: '>=22.19.0'}
 
   '@earendil-works/pi-mcp@1.5.2':
     resolution: {integrity: sha512-zU1UgeXDlbixPqGEWD7Ql0brEMIpYr7aEWjoEE5h5enJbM/kQ2jIr7lN8JoR80oUnq1fJSU7SC8kLx2Fx/IZYg==}
@@ -3873,6 +3910,9 @@ packages:
 
   '@silvia-odwyer/photon-node@0.3.4':
     resolution: {integrity: sha512-bnly4BKB3KDTFxrUIcgCLbaeVVS8lrAkri1pEzskpmxu9MdfGQTy8b8EgcD83ywD3RPMsIulY8xJH5Awa+t9fA==}
+
+  '@silvia-odwyer/photon@0.3.3':
+    resolution: {integrity: sha512-8BhUjEch4slwRe8uXnaA4vcA5uiiOTT90UMsxulOj2gN98X1p0q9Z4Ysk4DkD05uNgbR9XoSqtZ37w+33w4QKQ==}
 
   '@simple-git/args-pathspec@1.0.4':
     resolution: {integrity: sha512-EtMX6XjRWSastG2SdkmSQByPtJ9dx/NIjnHbpQPCYt62j4RmSx5rgLTGpw0YCjF5h191gZOmBfheOT23cRSFdw==}
@@ -10619,6 +10659,14 @@ snapshots:
 
   '@dotenvx/primitives@0.8.0': {}
 
+  '@earendil-works/chord@1.5.2(esbuild@0.28.2)(ws@8.22.1)':
+    dependencies:
+      '@earendil-works/pi-schema': 1.5.2
+      '@earendil-works/pi-telemetry': 1.5.2
+    optionalDependencies:
+      esbuild: 0.28.2
+      ws: 8.22.1
+
   '@earendil-works/pi-agent-core@1.5.2(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(undici@8.12.3)(ws@8.22.1)(zod@4.6.7)':
     dependencies:
       '@earendil-works/pi-ai': 1.5.2(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(undici@8.12.3)(ws@8.22.1)(zod@4.6.7)
@@ -10775,6 +10823,30 @@ snapshots:
       - bufferutil
       - kerberos
       - supports-color
+      - utf-8-validate
+      - ws
+      - zod
+
+  '@earendil-works/pi-durable@1.5.2(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.2(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(esbuild@0.28.2)(supports-color@7.2.0)(undici@8.12.3)(ws@8.22.1)(zod@4.6.7)':
+    dependencies:
+      '@earendil-works/chord': 1.5.2(esbuild@0.28.2)(ws@8.22.1)
+      '@earendil-works/pi-ai': 1.5.2(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.2(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(undici@8.12.3)(ws@8.22.1)(zod@4.6.7)
+      '@earendil-works/pi-codemode': 1.5.2
+      '@earendil-works/pi-schema': 1.5.2
+      '@earendil-works/pi-telemetry': 1.5.2
+      '@silvia-odwyer/photon': 0.3.3
+      diff: 8.0.4
+    transitivePeerDependencies:
+      - '@aws-sdk/credential-provider-node'
+      - '@modelcontextprotocol/sdk'
+      - '@smithy/hash-node'
+      - '@smithy/signature-v4'
+      - bufferutil
+      - esbuild
+      - kerberos
+      - react
+      - supports-color
+      - undici
       - utf-8-validate
       - ws
       - zod
@@ -12493,6 +12565,8 @@ snapshots:
   '@shikijs/vscode-textmate@10.1.0': {}
 
   '@silvia-odwyer/photon-node@0.3.4': {}
+
+  '@silvia-odwyer/photon@0.3.3': {}
 
   '@simple-git/args-pathspec@1.0.4': {}
 

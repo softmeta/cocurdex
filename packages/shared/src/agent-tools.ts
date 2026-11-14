@@ -25,6 +25,10 @@ export interface AgentToolDescriptor {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
+  /** The tool only reads, so a call cut off by a restart may run again. */
+  readOnly?: true;
+  /** Offered to the model only after a tool search finds it, to keep every request small. */
+  deferred?: true;
 }
 
 export interface AgentToolCallerContext {

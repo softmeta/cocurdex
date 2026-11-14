@@ -788,7 +788,10 @@ export class AgentRuntimeManager {
     return true;
   }
 
-  async disposeSessionRuntime(sessionId: string) {
+  async disposeSessionRuntime(
+    sessionId: string,
+    { shuttingDown = false }: { shuttingDown?: boolean } = {},
+  ) {
     this.clearPendingSessionWork(sessionId);
     const sessionRuntime = this.sessionRuntimes.get(sessionId);
 
@@ -800,8 +803,9 @@ export class AgentRuntimeManager {
     this.agentTools?.revoke(sessionId);
     this.emitAgentEvent({ type: "session.runtime.released", sessionId });
     const failures: unknown[] = [];
+    const keepRun = shuttingDown && sessionRuntime.runtime.resumesAfterRestart;
     try {
-      await sessionRuntime.runtime.stop();
+      if (!keepRun) await sessionRuntime.runtime.stop();
     } catch (error) {
       failures.push(error);
     }
@@ -839,7 +843,7 @@ export class AgentRuntimeManager {
     const failures: unknown[] = [];
     for (const sessionId of Array.from(this.sessionRuntimes.keys())) {
       try {
-        await this.disposeSessionRuntime(sessionId);
+        await this.disposeSessionRuntime(sessionId, { shuttingDown: true });
       } catch (error) {
         failures.push(error);
       }
