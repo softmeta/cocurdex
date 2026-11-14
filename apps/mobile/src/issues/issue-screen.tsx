@@ -7,6 +7,7 @@ import type {
 } from "@cocurdex/shared";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useLinkedEntitiesSheet } from "@/entity-links";
@@ -16,6 +17,8 @@ import {
   Form,
   FormRow,
   FormSection,
+  FormSupportingText,
+  FormText,
   HeaderButtons,
   ListNotice,
   PendingIndicator,
@@ -152,10 +155,52 @@ function SubIssueRow({
       leading={
         <IssueStatusMark category={issue.statusCategory} label={issue.status} />
       }
-      supporting={issue.identifier}
+      trailing={<FormSupportingText>{issue.identifier}</FormSupportingText>}
     >
-      {issue.title}
+      <FormText numberOfLines={1}>{issue.title}</FormText>
     </FormRow>
+  );
+}
+
+const SUB_ISSUES_SHOWN = 3;
+
+function SubIssues({
+  hostId,
+  issues,
+}: {
+  hostId: string;
+  issues: readonly IssueSummary[];
+}) {
+  const { t } = useTranslation("issues");
+  const router = useRouter();
+  const [expanded, setExpanded] = useState(false);
+  const done = issues.filter(
+    (child) => child.statusCategory === "completed",
+  ).length;
+  const shown = expanded ? issues : issues.slice(0, SUB_ISSUES_SHOWN);
+  const hidden = issues.length - shown.length;
+  return (
+    <FormSection title={t("subIssues", { done, total: issues.length })}>
+      {shown.map((child) => (
+        <SubIssueRow
+          key={child.id}
+          issue={child}
+          onPress={() =>
+            router.push({
+              pathname: "/issue/[hostId]/[issueId]",
+              params: { hostId, issueId: child.id },
+            })
+          }
+        />
+      ))}
+      {hidden > 0 ? (
+        <FormRow testID="issue-children-more" onPress={() => setExpanded(true)}>
+          <FormText tone="tint">
+            {t("showMoreSubIssues", { count: hidden })}
+          </FormText>
+        </FormRow>
+      ) : null}
+    </FormSection>
   );
 }
 
@@ -193,9 +238,6 @@ export function IssueScreen({
 
   const children = detail.data?.children ?? [];
   const sessions = detail.data?.sessions ?? [];
-  const doneChildren = children.filter(
-    (child) => child.statusCategory === "completed",
-  ).length;
   const description = issue.description?.trim() ?? "";
 
   return (
@@ -258,25 +300,7 @@ export function IssueScreen({
           </FormSection>
         ) : null}
         {children.length > 0 ? (
-          <FormSection
-            title={t("subIssues", {
-              done: doneChildren,
-              total: children.length,
-            })}
-          >
-            {children.map((child) => (
-              <SubIssueRow
-                key={child.id}
-                issue={child}
-                onPress={() =>
-                  router.push({
-                    pathname: "/issue/[hostId]/[issueId]",
-                    params: { hostId: host.hostId, issueId: child.id },
-                  })
-                }
-              />
-            ))}
-          </FormSection>
+          <SubIssues hostId={host.hostId} issues={children} />
         ) : null}
       </Form>
     </>

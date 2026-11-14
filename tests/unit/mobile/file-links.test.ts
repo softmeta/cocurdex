@@ -116,6 +116,14 @@ describe("padInlineCode", () => {
     );
   });
 
+  it("pads code spans fenced by several backticks as one span", () => {
+    expect(
+      padInlineCode("Escapes `` \\` `` and `` x `~/x` **b** y `` stay code."),
+    ).toBe(
+      `Escapes \`\`${pad}\\\`${pad}\`\` and \`\`${pad}x \`~/x\` **b** y${pad}\`\` stay code.`,
+    );
+  });
+
   it("leaves link labels without code untouched", () => {
     expect(padInlineCode("[docs](https://example.invalid)")).toBe(
       "[docs](https://example.invalid)",

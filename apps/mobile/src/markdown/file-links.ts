@@ -14,7 +14,7 @@ export interface FileLinkTarget {
 
 const FENCE = /(```[\s\S]*?```|~~~[\s\S]*?~~~)/g;
 const LINK_OR_CODE =
-  /\[((?:[^\]\\]|\\.)*)\]\(\s*<?([^>\s)]+)>?(\s+"[^"]*")?\s*\)|`([^`\n]+)`/g;
+  /\[((?:[^\]\\]|\\.)*)\]\(\s*<?([^>\s)]+)>?(\s+"[^"]*")?\s*\)|(?<!`)(`+)(?!`)([^\n]*?[^`\n])\4(?!`)/g;
 const RESERVED_HREF = /^(?:#|[a-z][a-z0-9+.-]+:)/i;
 
 function targetFor(
@@ -84,12 +84,24 @@ function mapProse(
     .join("");
 }
 
+// CommonMark strips one space on each side of a code span whose content is
+// not all spaces, so "`` `x` ``" renders as "`x`".
+function codeSpanText(raw: string) {
+  const padded = raw.startsWith(" ") && raw.endsWith(" ") && raw.trim() !== "";
+  return padded ? raw.slice(1, -1) : raw;
+}
+
+function matchCode(match: RegExpMatchArray) {
+  const [, , , , ticks, raw] = match;
+  if (ticks === undefined || raw === undefined) return null;
+  return { ticks, text: codeSpanText(raw) };
+}
+
 function matchTarget(match: RegExpMatchArray, root: string | null) {
-  const [, , href, , code] = match;
+  const [, , href] = match;
   if (href !== undefined) return hrefTarget(href, root);
-  return code === undefined
-    ? null
-    : targetFor(parseFilePathCandidate(code), root);
+  const code = matchCode(match);
+  return code ? targetFor(parseFilePathCandidate(code.text), root) : null;
 }
 
 export function collectFileLinkTargets(
@@ -114,25 +126,28 @@ export function linkFilePaths(
   return mapProse(markdown, (match) => {
     const target = matchTarget(match, root);
     if (!target || !existing.has(target.path)) return null;
-    const [whole, label, , title, code] = match;
-    if (code !== undefined) return `[${whole}](${fileLinkHref(target)})`;
+    const [whole, label, , title] = match;
+    if (matchCode(match)) return `[${whole}](${fileLinkHref(target)})`;
     return `[${label}](${fileLinkHref(target)}${title ?? ""})`;
   });
 }
 
 const CODE_PAD = "\u202f\u202f";
-const LABEL_CODE = /^`([^`\n]+)`$/;
+const LABEL_CODE = /^(`+)(?!`)([^\n]*?[^`\n])\1$/;
 
-function paddedCode(code: string) {
-  return `\`${CODE_PAD}${code}${CODE_PAD}\``;
+function paddedCode({ ticks, text }: { ticks: string; text: string }) {
+  return `${ticks}${CODE_PAD}${text}${CODE_PAD}${ticks}`;
 }
 
 export function padInlineCode(markdown: string) {
   return mapProse(markdown, (match) => {
-    const [whole, label, href, , code] = match;
-    if (code !== undefined) return paddedCode(code);
-    const labelCode = label?.match(LABEL_CODE)?.[1];
-    if (labelCode === undefined || href === undefined) return null;
-    return `[${paddedCode(labelCode)}]${whole.slice(label.length + 2)}`;
+    const [whole, label, href] = match;
+    const code = matchCode(match);
+    if (code) return paddedCode(code);
+    const labelCode = label?.match(LABEL_CODE);
+    if (!labelCode || href === undefined) return null;
+    const [, ticks = "`", raw = ""] = labelCode;
+    const padded = paddedCode({ ticks, text: codeSpanText(raw) });
+    return `[${padded}]${whole.slice(label.length + 2)}`;
   });
 }
