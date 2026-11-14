@@ -135,6 +135,8 @@ export interface MemoryDoctorCheck {
   name: string;
   status: "ok" | "warn" | "fail" | "skip";
   value: string;
+  // rsrs's suggested fix for a failing check, when it gives one.
+  action?: string | null;
 }
 
 export interface MemoryDoctorReport {
@@ -254,6 +256,9 @@ export interface MemoryStatus {
   userLibrary: MemoryUserLibraryStatus;
   doctor: MemoryDoctorReport | null;
   error: string | null;
+  // The pinned install stopped on a state only the user or a newer rsrs can
+  // clear, while the running store still serves recall and remember.
+  installBlocked?: boolean;
   checkedAt: string | null;
   lastRecall: MemoryRecallStatus | null;
 }

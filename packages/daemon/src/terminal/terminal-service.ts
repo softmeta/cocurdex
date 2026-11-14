@@ -17,8 +17,20 @@ import { buildTerminalEnv } from "./terminal-env";
 const ACTIVITY_POLL_MS = 1500;
 const DETACHED_GRACE_MS = 30_000;
 
+const TERMINATE_TIMEOUT_MS = 5_000;
+
+function waitForExit(exited: Promise<void>, timeoutMs: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, timeoutMs);
+    timer.unref?.();
+  });
+  return Promise.race([exited, timeout]).finally(() => clearTimeout(timer));
+}
+
 interface TerminalSession {
   pty: IPty;
+  exited: Promise<void>;
   shell: string;
   cwd: string;
   workspaceId: string;
@@ -41,6 +53,7 @@ function errorMessage(error: unknown) {
 
 export class TerminalService {
   private readonly sessions = new Map<string, TerminalSession>();
+  private readonly terminating = new Set<Promise<void>>();
   private activityTimer: ReturnType<typeof setInterval> | null = null;
   private detachedTimer: ReturnType<typeof setTimeout> | null = null;
   private polling = false;
@@ -186,7 +199,12 @@ export class TerminalService {
       this.dataBuffer.append(payload.terminalId, payload.workspaceId, data);
     });
 
+    let markExited = () => {};
+    const exited = new Promise<void>((resolve) => {
+      markExited = resolve;
+    });
     pty.onExit(({ exitCode, signal }) => {
+      markExited();
       this.dataBuffer.flush(payload.terminalId);
       if (this.sessions.get(payload.terminalId)?.pty !== pty) {
         return;
@@ -204,6 +222,7 @@ export class TerminalService {
 
     this.sessions.set(payload.terminalId, {
       pty,
+      exited,
       shell,
       cwd: payload.cwd,
       workspaceId: payload.workspaceId,
@@ -252,14 +271,20 @@ export class TerminalService {
     }
   }
 
-  kill(terminalId: string) {
+  async kill(terminalId: string) {
     const session = this.sessions.get(terminalId);
     if (!session) {
       return;
     }
     this.sessions.delete(terminalId);
-    void this.terminate(terminalId, session);
     this.stopActivityPollerIfIdle();
+    const stopped = this.terminate(terminalId, session);
+    this.terminating.add(stopped);
+    try {
+      await stopped;
+    } finally {
+      this.terminating.delete(stopped);
+    }
   }
 
   private async terminate(terminalId: string, session: TerminalSession) {
@@ -280,10 +305,11 @@ export class TerminalService {
     if (process.platform === "win32") {
       killPty();
       await killTree();
-      return;
+    } else {
+      await killTree();
+      killPty();
     }
-    await killTree();
-    killPty();
+    await waitForExit(session.exited, TERMINATE_TIMEOUT_MS);
   }
 
   async dispose() {
@@ -295,10 +321,11 @@ export class TerminalService {
       clearInterval(this.activityTimer);
       this.activityTimer = null;
     }
-    await Promise.allSettled(
-      sessions.map(([terminalId, session]) =>
+    await Promise.allSettled([
+      ...sessions.map(([terminalId, session]) =>
         this.terminate(terminalId, session),
       ),
-    );
+      ...this.terminating,
+    ]);
   }
 }

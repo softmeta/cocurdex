@@ -190,9 +190,15 @@
     "status": {
       "available": "rsrs {{version}}",
       "availableWithRuntime": "rsrs {{version}} · Runtime {{runtime}}",
+      "checkAction": "Fix: {{action}}",
+      "copyFailed": "Could not copy the report",
+      "copyReport": "Copy full report",
       "doctor": "doctor: {{status}} · {{pass}} pass · {{warn}} warn · {{fail}} fail",
+      "flaggedChecks": "Checks that need attention",
+      "installBlocked": "rsrs stopped partway through a key handoff that only a newer rsrs can finish. Memory still recalls and saves; Cocurdex picks up the fix automatically when it ships.",
       "installing": "Installing rsrs and its local model; the first install can take 10+ minutes…",
       "missing": "rsrs is not installed",
+      "reportCopied": "Report copied",
       "title": "Status",
       "unknown": "unknown version",
       "unsupported": "Long-term memory needs the rsrs CLI, which has no build for Intel Macs, so it stays off on this machine."

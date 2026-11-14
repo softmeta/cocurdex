@@ -443,6 +443,7 @@ export async function readRsrsDoctor(
         name,
         status: doctorStatus(record?.status),
         value: stringValue(record?.value) ?? "",
+        action: stringValue(record?.action),
       },
     ];
   });
