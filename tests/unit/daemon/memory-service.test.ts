@@ -38,6 +38,15 @@ function fakeSession(): SessionRecord {
   };
 }
 
+function fakeSessions() {
+  const chat = fakeSession();
+  return new Map<string, SessionRecord>([
+    [chat.id, chat],
+    ["work-1", { ...chat, id: "work-1", sessionKind: "main", title: "Fix" }],
+    ["persona-1", { ...chat, id: "persona-1", sessionKind: "personal" }],
+  ]);
+}
+
 function fakeMessages(): MessageRecord[] {
   return [
     {
@@ -171,10 +180,10 @@ function createState(settings: MemorySettings) {
       values.set(key, value);
     },
     getSession: async (sessionId: string) =>
-      sessionId === "chat-1" ? fakeSession() : null,
+      fakeSessions().get(sessionId) ?? null,
     listSessions: async () => [fakeSession()],
     listMessagesBySessionId: async (sessionId: string) =>
-      sessionId === "chat-1" ? fakeMessages() : [],
+      fakeSessions().has(sessionId) ? fakeMessages() : [],
     listWorkspaces: async () => [],
   };
 }
@@ -655,98 +664,23 @@ describe("MemoryService with a fake rsrs CLI", () => {
     expect(result.message).toContain("cocurdex memory cloud register");
   });
 
-  it("nudges the next turn when the store gate was missed", async () => {
-    const { service } = await createService();
+  it("captures a work session's turn in the background but leaves assistants to their own judgment", async () => {
+    const { service, logPath } = await createService();
     await service.getStatus();
-    expect(
-      await service.beginTurn({
-        sessionId: "agent-1",
-        mode: "agent",
-        enforce: true,
-      }),
-    ).toBeNull();
-    expect(
-      await service.finishTurn({ sessionId: "agent-1", enforce: true }),
-    ).toBe(true);
-    expect(
-      await service.beginTurn({
-        sessionId: "agent-1",
-        mode: "agent",
-        enforce: true,
-      }),
-    ).toContain("Gate 2 (store) was missed");
-    expect(
-      await service.beginTurn({
-        sessionId: "agent-1",
-        mode: "agent",
-        enforce: true,
-      }),
-    ).toBeNull();
-  });
-
-  it("clears the gate when the turn stored something", async () => {
-    const { service } = await createService();
-    await service.getStatus();
-    await service.beginTurn({
-      sessionId: "agent-2",
-      mode: "agent",
-      enforce: true,
+    expect(await service.captureTurn("work-1", "a1")).toMatchObject({
+      saved: true,
     });
-    service.noteGateToolUse("agent-2", "remember");
-    expect(
-      await service.finishTurn({ sessionId: "agent-2", enforce: true }),
-    ).toBe(false);
-    expect(
-      await service.beginTurn({
-        sessionId: "agent-2",
-        mode: "agent",
-        enforce: true,
-      }),
-    ).toBeNull();
-  });
-
-  it("does not enforce gates for chat or subagent turns", async () => {
-    const { service } = await createService();
-    await service.getStatus();
-    expect(
-      await service.beginTurn({
-        sessionId: "chat-1",
-        mode: "chat",
-        enforce: false,
-      }),
-    ).toBeNull();
-    expect(
-      await service.finishTurn({ sessionId: "chat-1", enforce: true }),
-    ).toBe(false);
-    expect(
-      await service.beginTurn({
-        sessionId: "sub-1",
-        mode: "agent",
-        enforce: false,
-      }),
-    ).toBeNull();
-    expect(
-      await service.finishTurn({ sessionId: "sub-1", enforce: false }),
-    ).toBe(false);
-  });
-
-  it("does not enforce gates when the switch is off", async () => {
-    const { service } = await createService();
-    await service.getStatus();
-    const settings = await service.getSettings();
-    await service.setSettings({ ...settings, enabled: false });
-    expect(
-      await service.beginTurn({
-        sessionId: "agent-3",
-        mode: "agent",
-        enforce: true,
-      }),
-    ).toBeNull();
-    expect(
-      await service.finishTurn({ sessionId: "agent-3", enforce: true }),
-    ).toBe(false);
-    service.noteGateToolUse("agent-3", "remember");
-    expect(service.agentInstructions(true)).toBe("");
+    expect(await service.captureTurn("persona-1", "a1")).toMatchObject({
+      saved: false,
+      reason: "not-captured",
+    });
+    const remembers = (await readFile(logPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as string[])
+      .filter((args) => args[0] === "remember");
+    expect(remembers).toHaveLength(1);
+    expect(remembers[0].join(" ")).toContain("Cocurdex session：Fix");
   });
 
   it("restarts the runtime after interrupted maintenance and finishes the install", async () => {
@@ -798,7 +732,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
     ).toBe(false);
   });
 
-  it("injects the gates into the agent catalog while memory is enabled", async () => {
+  it("injects the memory policy into the agent catalog while memory is enabled", async () => {
     const { service } = await createService();
     await service.getStatus();
     const session = { ...fakeSession(), sessionKind: "main" as const };
@@ -819,12 +753,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
     if (!binding) throw new Error("expected a session binding");
     const catalog = await bridge.catalog(binding.binding.token);
     expect(catalog.tools.map((tool) => tool.name)).toContain("remember");
-    expect(catalog.instructions ?? "").toContain(
-      "Gate 1 - recall before acting.",
-    );
-    expect(catalog.instructions ?? "").toContain(
-      "Gate 2 - store before replying.",
-    );
+    expect(catalog.instructions ?? "").toContain("memory_remember");
 
     const settings = await service.getSettings();
     await service.setSettings({ ...settings, enabled: false });
