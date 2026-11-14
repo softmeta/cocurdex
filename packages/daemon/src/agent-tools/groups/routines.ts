@@ -136,6 +136,7 @@ export function registerRoutineTools(
     descriptor: {
       group: "routine",
       name: "list",
+      deferred: true,
       readOnly: true,
       description:
         "List your scheduled routines: what each asks you to do, when it runs next, and whether it is paused.",
@@ -153,6 +154,7 @@ export function registerRoutineTools(
     descriptor: {
       group: "routine",
       name: "create",
+      deferred: true,
       description:
         "Schedule a routine for yourself when the user asks you to do something regularly (a morning brief, a weekly review, a reminder). Each run happens in its own thread with your memory; confirm the schedule with the user in plain words afterwards.",
       inputSchema: {
@@ -182,6 +184,7 @@ export function registerRoutineTools(
     descriptor: {
       group: "routine",
       name: "update",
+      deferred: true,
       description:
         "Change one of your routines, or pause and resume it. Only the fields you pass change.",
       inputSchema: {
@@ -218,6 +221,7 @@ export function registerRoutineTools(
     descriptor: {
       group: "routine",
       name: "delete",
+      deferred: true,
       description:
         "Delete one of your routines when the user no longer wants it.",
       inputSchema: idSchema,
@@ -234,6 +238,7 @@ export function registerRoutineTools(
     descriptor: {
       group: "routine",
       name: "run",
+      deferred: true,
       description:
         "Start one of your routines now, for example to try it after creating it. Returns at once; read the result later with routine_runs.",
       inputSchema: idSchema,
@@ -247,6 +252,7 @@ export function registerRoutineTools(
     descriptor: {
       group: "routine",
       name: "runs",
+      deferred: true,
       readOnly: true,
       description:
         "Read the recent runs of one of your routines with their status, summary, and error, newest first.",
@@ -272,6 +278,7 @@ export function registerRoutineTools(
     descriptor: {
       group: "routine",
       name: "report",
+      deferred: true,
       description:
         "Finish the routine run you are in: say whether the user should see the result and write what they read. Call it exactly once, at the end of the run.",
       inputSchema: {

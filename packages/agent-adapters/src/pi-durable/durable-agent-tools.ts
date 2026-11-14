@@ -5,13 +5,34 @@ import {
   defineExtension,
   defineTool,
   type Extension,
+  type PromptInput,
   type ToolRegistration,
 } from "@earendil-works/pi-durable";
+import { TOOL_SEARCH_TOOL_NAME } from "@earendil-works/pi-durable/tool-search";
 
 export const AGENT_TOOLS_EXTENSION = "cocurdex-agent-tools";
 
 /** How long a resumed call waits for its session to bind after a daemon restart. */
 const BINDING_TIMEOUT_MS = 60_000;
+
+/**
+ * Names the deferred Cocurdex tools this conversation can call, so instructions that mention one
+ * lead the model to load it. Listed whether or not a search loaded it yet, so the prompt stays stable.
+ */
+function renderDeferredTools(
+  input: PromptInput,
+  isAgentTool: (name: string) => boolean,
+) {
+  const names = [...input.agent.tools, ...input.agent.deferred]
+    .filter((tool) => tool.deferred === true && isAgentTool(tool.name))
+    .map((tool) => tool.name)
+    .sort();
+  if (names.length === 0) return undefined;
+  return [
+    `These Cocurdex tools are not offered upfront. Load one with ${TOOL_SEARCH_TOOL_NAME} (search by its name or purpose) before calling it:`,
+    names.join(", "),
+  ].join("\n");
+}
 
 function resultText(result: unknown) {
   if (typeof result === "string") return result;
@@ -60,6 +81,13 @@ export class DurableAgentTools {
       tools: [...this.descriptors.entries()].map(([name, descriptor]) =>
         this.tool(name, descriptor),
       ),
+      sections: [
+        {
+          key: "cocurdex_deferred_tools",
+          render: (input) =>
+            renderDeferredTools(input, (name) => this.descriptors.has(name)),
+        },
+      ],
     });
   }
 
@@ -69,6 +97,7 @@ export class DurableAgentTools {
       description: descriptor.description,
       parameters: descriptor.inputSchema,
       replay: descriptor.readOnly ? "safe" : "unsafe",
+      deferred: descriptor.deferred,
       execute: async (args, api) => {
         const invoker = await this.invokerFor(api.conversationId);
         const result = await invoker.call(name, args ?? {});

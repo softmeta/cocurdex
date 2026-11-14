@@ -23,6 +23,7 @@ export function registerAssistantTools(
     descriptor: {
       group: "assistant",
       name: "set_user_address",
+      deferred: true,
       description:
         "Save how you address the user, exactly as they asked to be called (a name, nickname, or form of address). It applies to every later turn, including routine runs and reports, and only to you; other assistants keep their own. Pass an empty string to forget it.",
       inputSchema: {

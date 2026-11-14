@@ -14,6 +14,8 @@ import {
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import {
+  type AgentChange,
+  AgentDoc,
   type Conversation,
   ConversationIdle,
   type ConversationWatch,
@@ -200,7 +202,7 @@ export function createDurablePiSession(
         thinkingLevel,
         extensions: extensionsFor(cwd),
         cwd,
-        modelTools: null,
+        modelTools: await modelToolsFor(target, messagePayload),
       },
       BACKGROUND_CONTEXT,
     );
@@ -212,6 +214,23 @@ export function createDurablePiSession(
       );
       await target.configure({ modelTools: offered }, BACKGROUND_CONTEXT);
     }
+  }
+
+  /**
+   * Keeps the tools `tool_search` loaded offered across turns; only clears the exact list a
+   * previous run policy left, which `configure` then replaces when this turn has a policy too.
+   * Steering keeps whatever the active run offers.
+   */
+  async function modelToolsFor(
+    target: Conversation,
+    messagePayload: SendAgentMessagePayload,
+  ): Promise<AgentChange["modelTools"]> {
+    if (messagePayload.delivery === "steer-active-run") return undefined;
+    const stored = await target.commit(
+      async (tx) => (await tx.doc(AgentDoc, target.id)).modelTools,
+      BACKGROUND_CONTEXT,
+    );
+    return Array.isArray(stored) ? null : undefined;
   }
 
   async function writePosted(

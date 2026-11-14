@@ -211,6 +211,7 @@ export function registerMemoryTools(
     descriptor: {
       group: "memory",
       name: "policy",
+      deferred: true,
       description:
         "Read the full Respire (rsrs) memory workflow: dedup, tree placement, importance tiers, diary rules, and maintenance. The session memory gates are already in your instructions; read this when that decision is still unclear.",
       inputSchema: {
