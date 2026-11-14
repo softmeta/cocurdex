@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@cocurdex/test-fixtures": "workspace:*",
-    "@expo/fingerprint": "~0.21.9",
+    "@expo/fingerprint": "~0.21.10",
     "@expo/repack-app": "^0.10.4",
     "@types/node": "^24.19.2",
     "agent-device": "^0.21.36",
