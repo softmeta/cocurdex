@@ -48,6 +48,8 @@
   "noResults": "没有与“{{query}}”匹配的事项",
   "search": "搜索事项",
   "sessions": "Agent 会话",
+  "showMoreSubIssues_one": "再显示 {{count}} 个",
+  "showMoreSubIssues_other": "再显示 {{count}} 个",
   "subIssues": "子事项 {{done}}/{{total}}",
   "unavailable": {
     "retry": "重试",
