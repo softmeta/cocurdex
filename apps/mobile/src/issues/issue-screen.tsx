@@ -163,6 +163,8 @@ function SubIssueRow({
 }
 
 const SUB_ISSUES_SHOWN = 3;
+/** Collapse only when it hides enough rows to be worth the extra tap. */
+const SUB_ISSUES_COLLAPSE_ABOVE = 5;
 
 function SubIssues({
   hostId,
@@ -177,7 +179,9 @@ function SubIssues({
   const done = issues.filter(
     (child) => child.statusCategory === "completed",
   ).length;
-  const shown = expanded ? issues : issues.slice(0, SUB_ISSUES_SHOWN);
+  const collapsible = issues.length > SUB_ISSUES_COLLAPSE_ABOVE;
+  const shown =
+    expanded || !collapsible ? issues : issues.slice(0, SUB_ISSUES_SHOWN);
   const hidden = issues.length - shown.length;
   return (
     <FormSection title={t("subIssues", { done, total: issues.length })}>
@@ -193,10 +197,15 @@ function SubIssues({
           }
         />
       ))}
-      {hidden > 0 ? (
-        <FormRow testID="issue-children-more" onPress={() => setExpanded(true)}>
+      {collapsible ? (
+        <FormRow
+          testID="issue-children-more"
+          onPress={() => setExpanded((value) => !value)}
+        >
           <FormText tone="tint">
-            {t("showMoreSubIssues", { count: hidden })}
+            {expanded
+              ? t("showFewerSubIssues")
+              : t("showMoreSubIssues", { count: hidden })}
           </FormText>
         </FormRow>
       ) : null}
