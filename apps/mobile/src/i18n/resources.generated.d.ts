@@ -371,6 +371,7 @@ export default interface Resources {
     noResults: "No issues match “{{query}}”";
     search: "Search issues";
     sessions: "Agent Sessions";
+    showFewerSubIssues: "Show less";
     showMoreSubIssues_one: "Show {{count}} more";
     showMoreSubIssues_other: "Show {{count}} more";
     subIssues: "Sub-issues {{done}}/{{total}}";
