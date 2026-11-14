@@ -19,7 +19,7 @@ export interface AgentToolBridgeOptions {
   memoryInstructions?(
     hasMemoryTools: boolean,
     caller: AgentToolCallerContext,
-  ): string | undefined;
+  ): string | undefined | Promise<string | undefined>;
 }
 
 export interface AgentToolSessionBinding {
@@ -72,7 +72,7 @@ export class AgentToolBridge {
     const sections = [
       orchestrationInstructions(catalog),
       roster ? renderTeamRosterInstructions(roster) : undefined,
-      this.options.memoryInstructions?.(hasMemoryTools, caller),
+      await this.options.memoryInstructions?.(hasMemoryTools, caller),
     ].filter((section): section is string => Boolean(section));
     return sections.length > 0 ? sections.join("\n\n") : undefined;
   }

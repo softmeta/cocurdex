@@ -1,4 +1,6 @@
+import { realpath } from "node:fs/promises";
 import os from "node:os";
+import path from "node:path";
 import { generatePiMemoryDigest } from "@cocurdex/agent-adapters";
 import {
   type AgentRuntimeProviderConfig,
@@ -9,6 +11,7 @@ import {
   gateMemorySettings,
   isChatSession,
   isMissingMemoryIdentity,
+  isUserLibraryMemoryId,
   MEMORY_DISABLED_MESSAGE,
   MEMORY_MISSING_EXECUTABLE_MESSAGE,
   type MemoryCloudConnectInput,
@@ -36,10 +39,13 @@ import {
   type MemorySettings,
   type MemoryStatus,
   type MemoryUpdateInput,
+  type MemoryUserLibraryStatus,
   type MessageRecord,
   memoryPartitionProject,
   memoryPlatformSupportsRsrs,
+  RSRS_CLI_VERSION,
   redactMemorySecrets,
+  rsrsCliAsset,
   type SessionRecord,
   withMemoryIdentityHint,
 } from "@cocurdex/shared";
@@ -66,19 +72,27 @@ import { mergeRecallResults } from "./partition-recall";
 import { personaMemoryBrief, personaMemoryPolicy } from "./persona-memory";
 import type { MemoryProvider } from "./provider";
 import {
+  createRsrsLocalKeys,
   exportRsrsKeys,
-  installRsrs,
+  installRsrsModel,
+  installRsrsRuntime,
   loginRsrsAccount,
   logoutRsrs,
-  materializeNativeBinary,
   parseRsrsCloudStatus,
   type RsrsCloudSummary,
   readRsrsDoctor,
   readRsrsStatus,
   readRsrsVersion,
   registerRsrsAccount,
+  startRsrsRuntime,
   writeRsrsAutosync,
 } from "./rsrs";
+import {
+  allocateLoopbackPort,
+  installManagedRsrsCli,
+  prepareRsrsDataDir,
+  type RsrsHome,
+} from "./rsrs-install";
 import { RsrsMemoryProvider } from "./rsrs-provider";
 import {
   type MemoryCaptureMap,
@@ -86,13 +100,24 @@ import {
   readMemoryCaptures,
   readMemoryInstallState,
   readMemorySettings,
+  readRsrsRpcPort,
   writeMemoryCapture,
   writeMemoryInstallState,
   writeMemorySettings,
+  writeRsrsRpcPort,
 } from "./settings";
 import { memoryStatusError } from "./status-health";
+import { UserRsrsLibrary } from "./user-library";
 
 const STATUS_CACHE_MS = 30_000;
+const NO_USER_LIBRARY: MemoryUserLibraryStatus = {
+  detected: false,
+  reachable: false,
+};
+const USER_LIBRARY_READ_ONLY =
+  "Entries from the user's own rsrs store are read-only in Cocurdex.";
+const HOST_RSRS_NOTE =
+  "Your global instructions may also tell you to run the `rsrs` command (rsrs recall, rsrs remember). Inside Cocurdex, the memory tools above are the long-term memory: use them for every recall and store, and do not run the `rsrs` command.";
 const TURN_RECALL_BUDGET_MS = 8_000;
 const CHAT_EXCERPT_BUDGET_MS = 4_000;
 const SESSION_DIGEST_TIMEOUT_MS = 60_000;
@@ -120,6 +145,7 @@ export interface MemoryServiceOptions {
   startRuntime?: boolean;
   turnRecallBudgetMs?: number;
   provider?: MemoryProvider;
+  userLibraryHome?: string;
   now?: () => Date;
 }
 
@@ -155,6 +181,14 @@ function rsrsDataDirFromEnv() {
   return process.env.RSRS_DATA_DIR?.trim() || undefined;
 }
 
+function hostLibc(): MemoryPlatform["libc"] {
+  if (process.platform !== "linux") return undefined;
+  const report = process.report?.getReport() as
+    | { header?: { glibcVersionRuntime?: string } }
+    | undefined;
+  return report?.header?.glibcVersionRuntime ? "glibc" : "musl";
+}
+
 function withIdentityHint(message: string) {
   return isMissingMemoryIdentity(message)
     ? withMemoryIdentityHint(message)
@@ -183,12 +217,14 @@ export class MemoryService {
   private doctorPromise: Promise<MemoryDoctorReport> | null = null;
   private policyCache: string | null = null;
   private startupPromise: Promise<void> | null = null;
+  private homePromise: Promise<RsrsHome> | null = null;
   private readonly gateTurns = new Map<
     string,
     { stored: boolean; nudge: boolean }
   >();
   private lastRecall: MemoryRecallStatus | null = null;
   private readonly rsrs: RsrsMemoryProvider;
+  private readonly userLibrary: UserRsrsLibrary;
   private readonly provider: MemoryProvider;
   private readonly device: string;
   private readonly platform: MemoryPlatform;
@@ -199,15 +235,67 @@ export class MemoryService {
     this.platform = options.platform ?? {
       os: process.platform,
       arch: process.arch,
+      libc: hostLibc(),
     };
     this.now = options.now ?? (() => new Date());
     this.rsrs = new RsrsMemoryProvider({
       settings: () => this.currentSettings(),
-      dataDir: options.rsrsDataDir ?? rsrsDataDirFromEnv(),
+      home: () => this.rsrsHome(),
+      os: this.platform.os,
       startRuntime: options.startRuntime,
       now: () => this.now(),
     });
     this.provider = options.provider ?? this.rsrs;
+    this.userLibrary = new UserRsrsLibrary({
+      dataDir: () => this.userLibraryDir(),
+      now: () => this.now().getTime(),
+    });
+  }
+
+  // The user's own rsrs home, unless it is the store Cocurdex manages.
+  private async userLibraryDir() {
+    const dataDir = path.join(
+      this.options.userLibraryHome ?? os.homedir(),
+      ".rsrs",
+    );
+    const own = await this.rsrsHome().catch(() => null);
+    if (!own) return null;
+    const user = await realpath(dataDir).catch(() => null);
+    if (!user) return null;
+    const caseInsensitive =
+      this.platform.os === "win32" || this.platform.os === "darwin";
+    const same = caseInsensitive
+      ? user.toLowerCase() === own.dataDir.toLowerCase()
+      : user === own.dataDir;
+    return same ? null : user;
+  }
+
+  private userLibraryEnabled() {
+    return this.provider === this.rsrs && this.currentSettings().userLibrary;
+  }
+
+  private rsrsHome(): Promise<RsrsHome> {
+    this.homePromise ??= (async () => {
+      const dataDir = await prepareRsrsDataDir(
+        this.options.rsrsDataDir ??
+          rsrsDataDirFromEnv() ??
+          path.join(this.options.userDataPath, "rsrs"),
+      );
+      let rpcPort = await readRsrsRpcPort(this.options.state);
+      if (!rpcPort) {
+        rpcPort = await allocateLoopbackPort();
+        await writeRsrsRpcPort(this.options.state, rpcPort);
+      }
+      return { dataDir, rpcPort };
+    })().catch((error: unknown) => {
+      this.homePromise = null;
+      throw error;
+    });
+    return this.homePromise;
+  }
+
+  private unsupportedMessage() {
+    return `rsrs has no build for ${this.platform.os}/${this.platform.arch} yet, so long-term memory stays off on this machine.`;
   }
 
   private get supported() {
@@ -293,6 +381,9 @@ export class MemoryService {
     ) {
       void this.rsrs.warmup(true);
     }
+    if (previousSettings.enabled && !settings.enabled) {
+      void this.rsrs.stopRuntime();
+    }
     return settings;
   }
 
@@ -307,9 +398,21 @@ export class MemoryService {
           status: "idle",
         });
       }
+      if (await this.needsPinnedUpgrade()) {
+        void this.install(true);
+        return;
+      }
       await this.rsrs.warmup();
     })();
     return this.startupPromise;
+  }
+
+  // A Cocurdex release pins its rsrs CLI; after an update, the managed CLI and
+  // the runtime it pins are replaced before memory is used again.
+  private async needsPinnedUpgrade() {
+    if (!this.supported || this.currentSettings().cliPath) return false;
+    if (this.currentInstallState().version === RSRS_CLI_VERSION) return false;
+    return (await this.resolveExecutable()) !== null;
   }
 
   private async resolveExecutable(force = false) {
@@ -335,8 +438,13 @@ export class MemoryService {
   }
 
   async getStatus(refresh = false): Promise<MemoryStatus> {
-    const status = await this.computeStatus(refresh);
-    return { ...status, lastRecall: this.lastRecall };
+    const [status, userLibrary] = await Promise.all([
+      this.computeStatus(refresh),
+      this.provider === this.rsrs
+        ? this.userLibrary.status().catch(() => NO_USER_LIBRARY)
+        : NO_USER_LIBRARY,
+    ]);
+    return { ...status, userLibrary, lastRecall: this.lastRecall };
   }
 
   private async computeStatus(refresh = false): Promise<MemoryStatus> {
@@ -374,6 +482,7 @@ export class MemoryService {
         error: installState.error,
         checkedAt: installState.attemptedAt,
         lastRecall: null,
+        userLibrary: NO_USER_LIBRARY,
       };
       this.statusCache = { status, at: now };
       return status;
@@ -417,6 +526,7 @@ export class MemoryService {
       error: error ?? (summary ? memoryStatusError(summary) : null),
       checkedAt: this.now().toISOString(),
       lastRecall: null,
+      userLibrary: NO_USER_LIBRARY,
     };
     this.statusCache = { status, at: now };
     return status;
@@ -428,7 +538,7 @@ export class MemoryService {
       return {
         status: await this.getStatus(),
         installed: false,
-        message: `The rsrs CLI has no build for ${this.platform.os}/${this.platform.arch}, so long-term memory stays off on this machine.`,
+        message: this.unsupportedMessage(),
       };
     }
     if (this.installPromise) return this.installPromise;
@@ -451,24 +561,7 @@ export class MemoryService {
         error: null,
       });
       try {
-        let executable = await this.resolveExecutable(true);
-        if (!executable) {
-          const installed = await installRsrs({});
-          logDaemonDiagnostic("info", "memory.installerSucceeded", {
-            command: installed.command,
-          });
-          executable = await this.resolveExecutable(true);
-        }
-        if (!executable) {
-          throw new Error(
-            "rsrs was installed but no executable could be resolved",
-          );
-        }
-        if (executable.source === "path") {
-          executable =
-            (await materializeNativeBinary(executable)) ?? executable;
-        }
-        this.rsrs.adoptExecutable(executable);
+        const executable = await this.setUpRsrs();
         this.policyCache = null;
         const version = await readRsrsVersion(executable).catch(() => null);
         const doctor = await readRsrsDoctor(executable);
@@ -509,6 +602,38 @@ export class MemoryService {
       }
     })();
     return this.installPromise;
+  }
+
+  // Order matters with rsrs 2.x: the runtime host runs from the managed CLI,
+  // keygen needs a running host, and `runtime start` completes the key
+  // handoff (respire-cli#277).
+  private async setUpRsrs() {
+    const asset = rsrsCliAsset(this.platform);
+    if (!asset) throw new Error(this.unsupportedMessage());
+    if (!this.currentSettings().cliPath) {
+      const { dataDir } = await this.rsrsHome();
+      const managed = await installManagedRsrsCli({
+        dataDir,
+        os: this.platform.os,
+        asset,
+        beforeReplace: () => this.rsrs.stopRuntime(),
+      });
+      logDaemonDiagnostic("info", "memory.cliInstalled", {
+        replaced: managed.replaced,
+      });
+    }
+    const executable = await this.resolveExecutable(true);
+    if (!executable) throw new Error(MEMORY_MISSING_EXECUTABLE_MESSAGE);
+    this.rsrs.adoptExecutable(executable);
+    await installRsrsRuntime(executable);
+    const summary = await readRsrsStatus(executable, 120_000);
+    if (!summary.hasKeys) {
+      await createRsrsLocalKeys(executable);
+      await startRsrsRuntime(executable);
+    }
+    await installRsrsModel(executable);
+    this.rsrs.invalidateRuntime();
+    return executable;
   }
 
   async doctor(options: { remote?: boolean; checkUpdate?: boolean } = {}) {
@@ -677,6 +802,7 @@ export class MemoryService {
       error: memoryStatusError(cloudSummary),
       checkedAt: this.now().toISOString(),
       lastRecall: null,
+      userLibrary: NO_USER_LIBRARY,
     };
   }
 
@@ -710,26 +836,67 @@ export class MemoryService {
     if (blocked) {
       return { query, items: [], truncated: false, error: blocked };
     }
-    const result = await this.provider.recall({
-      query,
-      limit,
-      project: input.project ?? null,
-      timeoutMs: input.timeoutMs,
-    });
+    const project = input.project ?? null;
+    const [result, reference] = await Promise.all([
+      this.provider.recall({
+        query,
+        limit,
+        project,
+        timeoutMs: input.timeoutMs,
+      }),
+      project ? [] : this.recallUserLibrary(query, limit, input.timeoutMs),
+    ]);
     const error = result.error ? withIdentityHint(result.error) : null;
     if (error) {
       logDaemonDiagnostic("info", "memory.recallReportedError", { error });
     }
+    const titles = new Set(result.items.map((item) => item.title));
+    const items = [
+      ...result.items,
+      ...reference.filter((item) => !titles.has(item.title)),
+    ].sort(
+      (a, b) =>
+        (b.score ?? Number.NEGATIVE_INFINITY) -
+        (a.score ?? Number.NEGATIVE_INFINITY),
+    );
     return {
       query,
-      items: result.items.slice(0, limit),
-      truncated: result.items.length > limit,
+      items: items.slice(0, limit),
+      truncated: items.length > limit,
       error,
     };
   }
 
+  // A partitioned recall (personal assistants) never reads the user's own
+  // store; it has no partitions and would leak across them.
+  private async recallUserLibrary(
+    query: string,
+    limit: number,
+    timeoutMs = TURN_RECALL_BUDGET_MS,
+  ) {
+    if (!this.userLibraryEnabled()) return [];
+    return this.userLibrary
+      .recall({ query, limit, timeoutMs })
+      .catch((error: unknown): MemoryRecallItem[] => {
+        logDaemonDiagnostic("info", "memory.userLibraryRecallFailed", {
+          error: errorMessage(error),
+        });
+        return [];
+      });
+  }
+
+  private assertWritable(ids: ReadonlyArray<string | null | undefined>) {
+    if (ids.some((id) => id && isUserLibraryMemoryId(id))) {
+      throw new Error(USER_LIBRARY_READ_ONLY);
+    }
+  }
+
   async show(id: string, timeoutMs?: number): Promise<MemoryEntry | null> {
     if (await this.readyProvider()) return null;
+    if (isUserLibraryMemoryId(id)) {
+      if (!this.userLibraryEnabled()) return null;
+      return this.userLibrary.show(id, timeoutMs ?? 25_000).catch(() => null);
+    }
     const result = await this.provider.show(id, timeoutMs);
     if (result.error) {
       logDaemonDiagnostic("info", "memory.showReportedError", {
@@ -824,14 +991,6 @@ export class MemoryService {
     return readPartitionEntry(this.provider, id, partitions, timeoutMs);
   }
 
-  async injectsInto(agentType: string) {
-    if (await this.readyProvider()) return false;
-    const injected = await this.provider
-      .injectedAgents()
-      .catch((): string[] => []);
-    return injected.includes(agentType);
-  }
-
   private async supportsPartitions() {
     return (await this.capabilities())?.partitions === true;
   }
@@ -853,6 +1012,12 @@ export class MemoryService {
     if (!content || !title) {
       return skipped("Memory content and title are required");
     }
+    this.assertWritable([
+      input.parentId,
+      ...(input.mergeIds ?? []),
+      ...(input.supersedes ?? []),
+      ...(input.seeAlso ?? []),
+    ]);
     const blocked = await this.readyProvider();
     if (blocked) return skipped(blocked);
     const result = await this.provider.remember({ ...input, content, title });
@@ -883,6 +1048,7 @@ export class MemoryService {
   }
 
   async update(input: MemoryUpdateInput): Promise<MemoryEntry | null> {
+    this.assertWritable([input.id]);
     const provider = await this.requireProvider();
     const title =
       input.title === undefined
@@ -901,12 +1067,14 @@ export class MemoryService {
   }
 
   async forget(id: string) {
+    this.assertWritable([id]);
     const provider = await this.requireProvider();
     await provider.forget(id);
     this.broadcast();
   }
 
   async restore(id: string) {
+    this.assertWritable([id]);
     const provider = await this.requireProvider();
     await provider.restore(id);
     this.broadcast();
@@ -1335,9 +1503,22 @@ export class MemoryService {
     }
   }
 
-  agentInstructions(hasTools: boolean, personal = false) {
+  agentInstructions(hasTools: boolean, personal = false, hostRsrs = false) {
     if (!hasTools || !this.isEnabledSync()) return "";
-    return personal ? personaMemoryPolicy() : buildAgentMemoryPolicy(true);
+    if (personal) return personaMemoryPolicy();
+    const policy = buildAgentMemoryPolicy(true);
+    return hostRsrs ? `${policy}\n\n${HOST_RSRS_NOTE}` : policy;
+  }
+
+  // The user's own rsrs setup can write an rsrs block into this agent's
+  // global instructions; that block drives the `rsrs` command against the
+  // user's own store, not the one Cocurdex keeps.
+  async hostInstructsRsrs(agentType: string) {
+    if (await this.readyProvider()) return false;
+    const injected = await this.provider
+      .injectedAgents()
+      .catch((): string[] => []);
+    return injected.includes(agentType);
   }
 
   async getCaptures(): Promise<MemoryCaptureMap> {

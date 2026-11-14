@@ -44,6 +44,7 @@ export * from "./logging";
 export * from "./mcp";
 export * from "./mcp-agents";
 export * from "./memory";
+export * from "./memory-rsrs-release";
 export * from "./network-proxy";
 export * from "./network-proxy-runtime";
 export * from "./note-excerpt";

@@ -132,7 +132,7 @@
       "title": "每轮对话保存"
     },
     "cliPath": {
-      "description": "可选的 rsrs 可执行文件路径；留空则使用已安装的二进制或 PATH。",
+      "description": "可选的 rsrs 可执行文件路径，用来替代 Cocurdex 安装的版本；记忆仍保存在 Cocurdex 的存储里。",
       "placeholder": "自动检测",
       "title": "rsrs 可执行文件"
     },
@@ -162,7 +162,7 @@
     "doctorFailed": "rsrs 体检发现问题",
     "doctorPassed": "rsrs 体检：{{status}}",
     "enabled": {
-      "description": "回答前召回，结束后把有价值的结果写入长期记忆。条目保存在本地 rsrs 存储（~/.rsrs），已连接 rsrs 账号时会同步到该账号。你可以随时关闭。",
+      "description": "回答前召回，结束后把有价值的结果写入长期记忆。条目保存在 Cocurdex 在本机管理的记忆存储里，已连接 rsrs 账号时会同步到该账号。你可以随时关闭。",
       "title": "启用记忆"
     },
     "groupTitle": "长期记忆",
@@ -198,6 +198,10 @@
       "title": "状态",
       "unknown": "未知版本",
       "unsupported": "长期记忆依赖 rsrs CLI，而它没有 Intel Mac 版本，因此这台机器上保持关闭。"
+    },
+    "userLibrary": {
+      "description": "Agent 会话同时从你自己安装的 rsrs 记忆（~/.rsrs）中召回，仅作参考。Cocurdex 不会写入它；两边不一致时以 Cocurdex 的记忆为准。",
+      "title": "同时召回我自己的 rsrs"
     }
   },
   "status": {

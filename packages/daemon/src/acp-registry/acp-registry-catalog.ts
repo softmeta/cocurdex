@@ -3,7 +3,7 @@ import {
   type AcpRegistryDistributionKind,
   findBuiltInAgentForAcpRegistryId,
 } from "@cocurdex/shared";
-import { EnvHttpProxyAgent, fetch } from "undici";
+import { proxiedFetch } from "../verified-download";
 
 export const ACP_REGISTRY_URL =
   "https://cdn.agentclientprotocol.com/registry/v1/latest/registry.json";
@@ -181,10 +181,6 @@ export function parseAcpRegistry(
       },
     ];
   });
-}
-
-export function proxiedFetch(url: string, init: { signal: AbortSignal }) {
-  return fetch(url, { ...init, dispatcher: new EnvHttpProxyAgent() });
 }
 
 export async function fetchAcpRegistry(

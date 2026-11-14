@@ -1314,7 +1314,7 @@ export default interface Resources {
         title: "Save chat turns";
       };
       cliPath: {
-        description: "Optional path to the rsrs executable. Leave empty to use the installed binary or PATH.";
+        description: "Optional path to an rsrs executable to run instead of the one Cocurdex installs. It still uses the Cocurdex memory store.";
         placeholder: "Auto-detect";
         title: "rsrs executable";
       };
@@ -1344,7 +1344,7 @@ export default interface Resources {
       doctorFailed: "rsrs doctor reported a problem";
       doctorPassed: "rsrs doctor: {{status}}";
       enabled: {
-        description: "Recall before answers and save useful results to your long-term memory. Entries go to the local rsrs store (~/.rsrs) and sync to your rsrs account when one is connected. You can turn this off at any time.";
+        description: "Recall before answers and save useful results to your long-term memory. Entries stay in the memory store Cocurdex keeps on this device and sync to your rsrs account when one is connected. You can turn this off at any time.";
         title: "Enable memory";
       };
       groupTitle: "Long-term memory";
@@ -1380,6 +1380,10 @@ export default interface Resources {
         title: "Status";
         unknown: "unknown version";
         unsupported: "Long-term memory needs the rsrs CLI, which has no build for Intel Macs, so it stays off on this machine.";
+      };
+      userLibrary: {
+        description: "Agent sessions also recall from the rsrs memory you set up yourself (~/.rsrs), as reference only. Cocurdex never writes to it, and its own memories win when the two disagree.";
+        title: "Also recall from my own rsrs";
       };
     };
     status: {

@@ -60,12 +60,26 @@ function run(command, commandArgs, options = {}) {
   execFileSync(command, commandArgs, { stdio: "inherit", ...options });
 }
 
-async function download(url) {
+const DOWNLOAD_ATTEMPTS = 4;
+
+async function downloadOnce(url) {
   const response = await fetch(url, {
     signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
   });
   if (!response.ok) throw new Error(`GET ${url} failed: ${response.status}`);
   return Buffer.from(await response.arrayBuffer());
+}
+
+async function download(url) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await downloadOnce(url);
+    } catch (error) {
+      if (attempt >= DOWNLOAD_ATTEMPTS) throw error;
+      console.warn(`GET ${url} attempt ${attempt} failed: ${error.message}`);
+      await new Promise((resolve) => setTimeout(resolve, attempt * 5_000));
+    }
+  }
 }
 
 async function verifiedNodeFile(file) {

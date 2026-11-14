@@ -228,6 +228,22 @@ export function MemorySettingsPanel() {
             }
           />
         </SettingRow>
+        {status?.userLibrary.detected ? (
+          <SettingRow
+            searchId="memory.userLibrary"
+            description={t("settings.userLibrary.description")}
+            title={t("settings.userLibrary.title")}
+          >
+            <Switch
+              aria-label={t("settings.userLibrary.title")}
+              checked={settings.userLibrary}
+              disabled={!settings.enabled}
+              onCheckedChange={(userLibrary) =>
+                void save({ ...settings, userLibrary })
+              }
+            />
+          </SettingRow>
+        ) : null}
         <SettingRow
           searchId="memory.chatRecall"
           description={t("settings.chatRecall.description")}

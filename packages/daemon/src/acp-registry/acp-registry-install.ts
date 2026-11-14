@@ -1,10 +1,7 @@
 import { execFile } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
-import { createWriteStream } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { chmod, mkdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { Readable, Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import { buildChildProcessEnv, spawnCommand } from "@cocurdex/agent-adapters";
 import {
@@ -13,10 +10,10 @@ import {
   type AcpRegistryLaunchCommand,
   toAcpRegistryAgentId,
 } from "@cocurdex/shared";
-import {
-  type AcpRegistryBinaryTarget,
-  type AcpRegistryEntry,
-  proxiedFetch,
+import { downloadVerified } from "../verified-download";
+import type {
+  AcpRegistryBinaryTarget,
+  AcpRegistryEntry,
 } from "./acp-registry-catalog";
 
 const execFileAsync = promisify(execFile);
@@ -83,34 +80,6 @@ export function resolveInstalledCommand(directory: string, cmd: string) {
   return resolved;
 }
 
-async function downloadVerified(
-  url: string,
-  destination: string,
-  sha256: string | null,
-) {
-  const response = await proxiedFetch(url, {
-    signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
-  });
-  if (!response.ok || !response.body) {
-    throw new Error(`Download failed with ${response.status}: ${url}`);
-  }
-  const hash = createHash("sha256");
-  await pipeline(
-    Readable.fromWeb(response.body),
-    new Transform({
-      transform(chunk, _encoding, callback) {
-        hash.update(chunk);
-        callback(null, chunk);
-      },
-    }),
-    createWriteStream(destination),
-  );
-  const digest = hash.digest("hex");
-  if (sha256 && digest !== sha256) {
-    throw new Error(`Checksum mismatch for ${url}`);
-  }
-}
-
 type ExtractCommand = { command: string; args: string[] };
 
 export function listExtractCommands(
@@ -172,10 +141,14 @@ async function installBinary(
     const command = resolveInstalledCommand(staging, target.cmd);
     if (format === "raw") {
       await mkdir(path.dirname(command), { recursive: true });
-      await downloadVerified(target.archive, command, target.sha256);
+      await downloadVerified(target.archive, command, {
+        sha256: target.sha256,
+      });
     } else {
       const archive = path.join(staging, `.download-${randomUUID()}`);
-      await downloadVerified(target.archive, archive, target.sha256);
+      await downloadVerified(target.archive, archive, {
+        sha256: target.sha256,
+      });
       await extract(format, archive, staging);
       await rm(archive, { force: true });
     }

@@ -1,19 +1,19 @@
+import { type MemoryPlatform, rsrsCliAsset } from "./memory-rsrs-release";
+
 export const MEMORY_SETTINGS_KEY = "memory";
 export const MEMORY_POLICY_TOOL_NAME = "memory_policy";
 export const MEMORY_TOOL_GROUP = "memory" as const;
 
-export const RSRS_CLI_PACKAGE = "rsrs-cli";
-export const RSRS_CLI_VERSION = "1.0.20";
 export const RSRS_SITE_URL = "https://rsrs.rs";
 export const RSRS_REPO_URL = "https://github.com/risense-ai/respire-cli";
 export const RSRS_DASHBOARD_URL = "https://dash.rsrs.rs";
 
 export const MEMORY_INSTALL_HINT =
-  "Install rsrs from Settings > Memory, or run: cocurdex memory install.";
+  "Set up memory from Settings > Memory, or run: cocurdex memory install.";
 export const MEMORY_ENABLE_HINT =
   "Turn memory on in Settings > Memory, or run: cocurdex memory on.";
 export const MEMORY_IDENTITY_HINT =
-  "For local-only memory, initialize rsrs with rsrs keygen. For multi-device sync, register or sign in from Settings > Memory > Multi-device sync, or run: cocurdex memory cloud register --user <name> (use cloud signin for an existing account).";
+  "For local-only memory, run: cocurdex memory install. For multi-device sync, register or sign in from Settings > Memory > Multi-device sync, or run: cocurdex memory cloud register --user <name> (use cloud signin for an existing account).";
 
 export const MEMORY_MISSING_EXECUTABLE_MESSAGE = `rsrs is not installed. ${MEMORY_INSTALL_HINT}`;
 export const MEMORY_DISABLED_MESSAGE = `Memory is off. ${MEMORY_ENABLE_HINT}`;
@@ -47,6 +47,7 @@ export interface MemorySettings {
   enabled: boolean;
   agent: MemoryAgentSettings;
   chat: MemoryChatSettings;
+  userLibrary: boolean;
   cliPath: string | null;
 }
 
@@ -61,6 +62,7 @@ export const DEFAULT_MEMORY_SETTINGS: MemorySettings = {
     saveTurns: true,
     saveOnEnd: true,
   },
+  userLibrary: true,
   cliPath: null,
 };
 
@@ -102,6 +104,10 @@ export function normalizeMemorySettings(input: unknown): MemorySettings {
         DEFAULT_MEMORY_SETTINGS.chat.saveOnEnd,
       ),
     },
+    userLibrary: optionalBoolean(
+      input.userLibrary,
+      DEFAULT_MEMORY_SETTINGS.userLibrary,
+    ),
     cliPath,
   };
 }
@@ -161,13 +167,8 @@ export interface MemoryRecallStatus {
   at: string;
 }
 
-export interface MemoryPlatform {
-  os: string;
-  arch: string;
-}
-
 export function memoryPlatformSupportsRsrs(platform: MemoryPlatform) {
-  return !(platform.os === "darwin" && platform.arch === "x64");
+  return rsrsCliAsset(platform) !== null;
 }
 
 export function gateMemorySettings(
@@ -225,6 +226,18 @@ export interface MemoryCloudKeys {
   content: string;
 }
 
+export const MEMORY_USER_LIBRARY_PREFIX = "user:";
+
+export function isUserLibraryMemoryId(id: string) {
+  return id.startsWith(MEMORY_USER_LIBRARY_PREFIX);
+}
+
+// The user's own rsrs store (~/.rsrs), read-only for Cocurdex.
+export interface MemoryUserLibraryStatus {
+  detected: boolean;
+  reachable: boolean;
+}
+
 export interface MemoryStatus {
   settings: MemorySettings;
   enabled: boolean;
@@ -237,6 +250,7 @@ export interface MemoryStatus {
   account: string | null;
   space: string | null;
   cloud: MemoryCloudStatus;
+  userLibrary: MemoryUserLibraryStatus;
   doctor: MemoryDoctorReport | null;
   error: string | null;
   checkedAt: string | null;
