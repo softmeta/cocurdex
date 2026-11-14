@@ -24,6 +24,7 @@ export function registerMessagingTools(
     descriptor: {
       group: "messaging",
       name: "list_agents",
+      readOnly: true,
       description:
         "List the other Cocurdex agent sessions you can message, with their ids, titles, and status.",
       inputSchema: {

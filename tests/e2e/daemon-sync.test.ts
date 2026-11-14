@@ -1,7 +1,10 @@
 import { requestDaemon, subscribeDaemonEvents } from "@cocurdex/daemon/client";
 import type { CocurdexDaemonEvent, MessageRecord } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
-import { startChatSession } from "@cocurdex/test-harness/helpers/chat-session";
+import {
+  saveStubProvider,
+  startChatSession,
+} from "@cocurdex/test-harness/helpers/chat-session";
 import {
   type DaemonProcess,
   spawnDaemon,
@@ -15,6 +18,38 @@ import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());
+
+async function startWorkSession(daemon: DaemonProcess, stub: StubLlmServer) {
+  const now = new Date().toISOString();
+  await requestDaemon(
+    "workspace.save",
+    {
+      workspace: {
+        id: "sync-workspace",
+        name: "sync-workspace",
+        rootPaths: [tempDirs.createSync("cocu-sync-root-")],
+        createdAt: now,
+        updatedAt: now,
+        lastOpenedAt: now,
+        sortOrder: 0,
+      },
+    },
+    daemon.options,
+  );
+  return requestDaemon(
+    "session.configure",
+    {
+      id: crypto.randomUUID(),
+      workspaceId: "sync-workspace",
+      title: "Work",
+      agentType: "pi",
+      writeMode: "read-only",
+      sessionModeId: null,
+      providerSnapshot: await saveStubProvider(daemon, stub),
+    },
+    daemon.options,
+  );
+}
 
 async function sendAndWait(
   daemon: DaemonProcess,
@@ -150,11 +185,11 @@ describe("sync.pull across daemon restarts", () => {
     });
   });
 
-  it("keeps a reply that was streaming when the daemon stopped", async () => {
+  it("keeps a work reply that was streaming when the daemon stopped", async () => {
     await withStub(async (stub) => {
       const userDataPath = tempDirs.createSync("cocu-sync-");
       const first = await spawnDaemon({ userDataPath });
-      const session = await startChatSession(first, stub);
+      const session = await startWorkSession(first, stub);
       const events: CocurdexDaemonEvent[] = [];
       const subscription = await subscribeDaemonEvents(
         (event) => events.push(event),

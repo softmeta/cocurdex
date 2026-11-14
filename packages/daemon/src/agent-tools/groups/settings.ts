@@ -419,6 +419,8 @@ export function registerSettingsTools(
     descriptor: {
       group: "settings",
       name: "list",
+      deferred: true,
+      readOnly: true,
       description:
         "List the Cocurdex settings that can be inspected or changed from chat, with their scope, tier, storage, and value schema.",
       inputSchema: {
@@ -444,6 +446,8 @@ export function registerSettingsTools(
     descriptor: {
       group: "settings",
       name: "get",
+      deferred: true,
+      readOnly: true,
       description:
         "Read the current value of a Cocurdex setting for this session's workspace, plus any pending proposal awaiting user confirmation.",
       inputSchema: {
@@ -476,6 +480,7 @@ export function registerSettingsTools(
     descriptor: {
       group: "settings",
       name: "set",
+      deferred: true,
       description:
         "Change a write-tier Cocurdex setting immediately. Daemon-owned values apply now; app-UI values are queued and applied by the desktop client. Only keys with tier 'write' accept this tool — use settings_propose for propose-tier keys.",
       inputSchema: {
@@ -515,6 +520,7 @@ export function registerSettingsTools(
     descriptor: {
       group: "settings",
       name: "propose",
+      deferred: true,
       description:
         "Propose a new value for a propose-tier Cocurdex setting. The proposal is recorded as pending and only takes effect after the user confirms it in the app; it never applies silently. Do not poll for the outcome — tell the user to review it in Settings.",
       inputSchema: {

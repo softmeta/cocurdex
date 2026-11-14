@@ -42,6 +42,7 @@ import {
   mergeUsageRecords,
   NETWORK_PROXY_SETTING_KEY,
   parseProviderModelOverride,
+  runsOnDurablePi,
 } from "@cocurdex/shared";
 import { applyNodeGlobalProxy } from "@cocurdex/shared/node";
 import { SessionAttentionProjection } from "./attention";
@@ -65,6 +66,11 @@ export interface AgentEventPersistenceContext {
   runId: string | null;
 }
 
+export interface InterruptedDurableTurn {
+  sessionId: string;
+  triggerMessageId: string;
+}
+
 const INTERRUPTED_BY_RESTART_MESSAGE =
   "The agent was interrupted because Cocurdex restarted before this turn finished. Send a message to continue.";
 
@@ -85,6 +91,7 @@ export class DaemonState {
   private networkProxyReady: Promise<void>;
   private staleToolCallsSwept: Promise<void>;
   private staleSessionsSwept: Promise<void>;
+  private durableTurns: InterruptedDurableTurn[] = [];
   private readonly toolOutputs: ToolOutputStore;
   private readonly storageMaintenance: StorageMaintenance;
 
@@ -967,11 +974,30 @@ export class DaemonState {
 
   private async failInterruptedSessions() {
     const createdAt = new Date().toISOString();
-    const { sessionIds } = this.database.transaction(() =>
+    const { runs, sessionIds } = this.database.transaction(() =>
       this.database.runs.interruptRunning(createdAt),
     );
     await this.database.teams.failActiveMembers();
+    for (const run of runs) {
+      const session = await this.database.sessions.getById(run.sessionId);
+      if (!session || !runsOnDurablePi(session)) continue;
+      this.durableTurns.push({
+        sessionId: run.sessionId,
+        triggerMessageId: run.triggerMessageId,
+      });
+    }
     await this.noteRestartInterruptions(sessionIds, createdAt);
+  }
+
+  /**
+   * Turns of durable sessions the last daemon stopped in. Their runs live on in the durable
+   * harness, so the daemon dispatches them again instead of reporting an interruption.
+   */
+  async takeInterruptedDurableTurns() {
+    await this.waitForStartupRecovery();
+    const turns = this.durableTurns;
+    this.durableTurns = [];
+    return turns;
   }
 
   async noteRestartInterruptions(
@@ -979,6 +1005,8 @@ export class DaemonState {
     createdAt = new Date().toISOString(),
   ) {
     for (const sessionId of sessionIds) {
+      const session = await this.database.sessions.getById(sessionId);
+      if (session && runsOnDurablePi(session)) continue;
       await this.flushBufferedMessages(sessionId);
       await this.database.messages.append(
         this.createSystemMessage(

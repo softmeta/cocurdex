@@ -1,6 +1,10 @@
 import { EventEmitter } from "node:events";
 import os, { homedir } from "node:os";
-import { deleteAgentProviderSession } from "@cocurdex/agent-adapters";
+import {
+  closeDurableHosts,
+  deleteAgentProviderSession,
+  listDurableInFlightInputs,
+} from "@cocurdex/agent-adapters";
 import { loginPiProvider } from "@cocurdex/agent-adapters/provider-auth";
 import { AgentSteeringUnavailableError } from "@cocurdex/agent-core";
 import { DAEMON_PROTOCOL_VERSION } from "@cocurdex/rpc";
@@ -63,6 +67,7 @@ import {
   principalHasScope,
   resolveSessionWorkingPath,
   resolveStartContext,
+  runsOnDurablePi,
   toolMayMutateWorkspace,
   validateSendSessionCommand,
   validateSessionConfiguration,
@@ -187,7 +192,7 @@ import { SessionRuntimeStates } from "./session-control/runtime-states";
 import { resolveRuntimeUpdate } from "./session-control/update-runtime";
 import { DaemonSkillLibraryService } from "./skills";
 import { DaemonSkillsService } from "./skills-service";
-import { DaemonState } from "./state";
+import { DaemonState, type InterruptedDurableTurn } from "./state";
 import { pullSync } from "./sync/sync-pull";
 import { createKeepAwake } from "./system";
 import { TeamModule, type TeammateReportCommand } from "./team";
@@ -959,6 +964,7 @@ export class CocurdexDaemonService {
   private async recoverInterruptedWork() {
     try {
       await this.state.waitForStartupRecovery();
+      await this.resumeDurableTurns();
       await this.scriptRuns.recoverInterrupted();
       await this.team.recoverReports();
       await this.delegations.recoverReports();
@@ -2102,6 +2108,15 @@ export class CocurdexDaemonService {
     }
     const savedMessage = await this.state.saveUserMessage(createdMessage);
     this.announceSessionsChanged();
+    return this.startSessionRun(payload, savedMessage, providerConfig);
+  }
+
+  private async startSessionRun(
+    payload: SessionRuntimeMessage,
+    savedMessage: MessageRecord,
+    providerConfig: RuntimePersistence["providerConfig"],
+  ) {
+    const sessionId = payload.session.id;
     const persistence: RuntimePersistence = {
       ...(await this.createRuntimePersistence(payload.session)),
       providerConfig,
@@ -2152,6 +2167,78 @@ export class CocurdexDaemonService {
     );
 
     return userMessage;
+  }
+
+  /**
+   * Dispatches the turns of durable sessions the last daemon stopped in. The durable harness kept
+   * their runs; dispatching the same user message attaches to the resumed run, so the transcript
+   * and the run record continue where they stopped.
+   */
+  private async resumeDurableTurns() {
+    for (const turn of await this.interruptedDurableTurns()) {
+      if (this.stopping) return;
+      await this.sessionCommands
+        .run(turn.sessionId, () => this.resumeDurableTurn(turn))
+        .catch((error: unknown) =>
+          logDaemonDiagnostic("warn", "session.durableResumeFailed", {
+            sessionId: turn.sessionId,
+            error: errorMessage(error, "Unknown agent runtime error"),
+          }),
+        );
+    }
+  }
+
+  private async interruptedDurableTurns() {
+    const turns = new Map<string, InterruptedDurableTurn>();
+    for (const turn of await this.state.takeInterruptedDurableTurns()) {
+      turns.set(turn.sessionId, turn);
+    }
+    const userDataPath = this.state.userDataPath;
+    const inFlight = userDataPath
+      ? await listDurableInFlightInputs(userDataPath).catch(
+          (error: unknown) => {
+            logDaemonDiagnostic("warn", "session.durableInspectFailed", {
+              error: errorMessage(error, "Unknown durable harness error"),
+            });
+            return [];
+          },
+        )
+      : [];
+    for (const messageId of inFlight) {
+      const message = await this.state.getMessageById(messageId);
+      if (!message) continue;
+      turns.set(message.sessionId, {
+        sessionId: message.sessionId,
+        triggerMessageId: message.id,
+      });
+    }
+    return [...turns.values()];
+  }
+
+  private async resumeDurableTurn(turn: InterruptedDurableTurn) {
+    if (this.runs.hasActiveRun(turn.sessionId)) return;
+    const message = await this.state.getMessageById(turn.triggerMessageId);
+    if (!message || message.sessionId !== turn.sessionId) return;
+    const session = await this.state.getSession(turn.sessionId);
+    if (!session || session.archivedAt || !runsOnDurablePi(session)) return;
+    const payload: SessionRuntimeMessage = {
+      messageId: message.id,
+      createdAt: message.createdAt,
+      content: message.content,
+      attachments: message.attachments,
+      delivery: "start-new-run",
+      ...(message.origin ? { origin: message.origin } : {}),
+      ...(await this.getSessionExecutionContext(turn.sessionId)),
+    };
+    const providerConfig = await this.providerCredentials.forSession(
+      payload.session,
+    );
+    await this.agents.ensureAvailable(payload.session.agentType);
+    const refreshed = await this.refreshSessionWorkingPath(payload);
+    logDaemonDiagnostic("info", "session.durableResumed", {
+      sessionId: turn.sessionId,
+    });
+    await this.startSessionRun(refreshed, message, providerConfig);
   }
 
   async waitForSessionTurn(
@@ -2437,6 +2524,7 @@ export class CocurdexDaemonService {
         this.memory.shutdown(),
         Promise.resolve().then(() => this.workspaces.close()),
       ]);
+      await closeDurableHosts();
       await this.runs.drainBackground();
       await this.runtime.flushEvents();
       const failures = results.flatMap((result) =>

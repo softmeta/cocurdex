@@ -9,6 +9,11 @@ import {
 import { describe, expect, it } from "vitest";
 import { runCli } from "./helpers/cli";
 
+function offeredTools(request: StubLlmRequest | undefined) {
+  const tools = (request?.body.tools ?? []) as { function: { name: string } }[];
+  return tools.map((tool) => tool.function.name);
+}
+
 function systemText(request: StubLlmRequest | undefined) {
   const messages = (request?.body.messages ?? []) as {
     role: string;
@@ -84,6 +89,14 @@ describe("persona user address", () => {
           {
             toolCalls: [
               {
+                name: "tool_search",
+                arguments: { query: "assistant_set_user_address" },
+              },
+            ],
+          },
+          {
+            toolCalls: [
+              {
                 name: "assistant_set_user_address",
                 arguments: { address: "Xiao Li" },
               },
@@ -97,7 +110,16 @@ describe("persona user address", () => {
       expect(systemText(stub.requests[0])).toContain(
         "You do not know yet what to call the user",
       );
+      expect(systemText(stub.requests[0])).toMatch(
+        /Load one with tool_search[^\n]*\n[^\n]*assistant_set_user_address/,
+      );
+      expect(offeredTools(stub.requests[0])).not.toContain(
+        "assistant_set_user_address",
+      );
       await cli(["persona", "send", coach.id, "Plan my day", "--wait"]);
+      expect(offeredTools(stub.requests.at(-1))).toContain(
+        "assistant_set_user_address",
+      );
 
       expect(systemText(stub.requests.at(-1))).toContain(
         'Address the user as "Xiao Li"',

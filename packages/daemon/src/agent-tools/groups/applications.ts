@@ -16,6 +16,7 @@ export function registerApplicationTools(
     descriptor: {
       group: "applications",
       name: "list",
+      readOnly: true,
       description:
         "List application connections (Notion, Linear, GitHub, ...) this session may use. Connections belong to the host and are granted per assistant and to work sessions. If authorization is missing, ask the user to open Settings > Connections > Apps; never request their credentials in chat.",
       inputSchema: {
@@ -31,6 +32,7 @@ export function registerApplicationTools(
     descriptor: {
       group: "applications",
       name: "tools",
+      readOnly: true,
       description:
         "List the available tools and input schemas of an allowed application connection. Read this before calling a tool.",
       inputSchema: {
@@ -48,6 +50,7 @@ export function registerApplicationTools(
     descriptor: {
       group: "applications",
       name: "read",
+      readOnly: true,
       description:
         "Call a provider-declared read-only application tool. Available in read-and-draft routines. The daemon refuses tools without an explicit read-only declaration; use applications_call only when the user has authorized the action and this session permits it.",
       inputSchema: {

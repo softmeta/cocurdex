@@ -30,6 +30,7 @@ export function registerScriptRunTools(
     descriptor: {
       group: "script_run",
       name: "propose",
+      deferred: true,
       description: PROPOSE_DESCRIPTION,
       inputSchema: {
         type: "object",

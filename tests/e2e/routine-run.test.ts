@@ -337,6 +337,14 @@ describe("routines", () => {
           {
             toolCalls: [
               {
+                name: "tool_search",
+                arguments: { query: "routine_create routine_update" },
+              },
+            ],
+          },
+          {
+            toolCalls: [
+              {
                 name: "routine_create",
                 arguments: {
                   name: "Weekly review",
@@ -382,7 +390,7 @@ describe("routines", () => {
           }),
         ]),
       );
-      expect(toolResults(stub.requests[1]).join("\n")).toContain(
+      expect(toolResults(stub.requests[2]).join("\n")).toContain(
         "Only the user can change or run a routine with full access",
       );
     } finally {
@@ -452,8 +460,9 @@ describe("routines", () => {
       expect(tools).toContain("routine_report");
       expect(tools).not.toContain("write");
       expect(tools).not.toContain("bash");
+      expect(tools).toEqual(expect.arrayContaining(["read", "ls", "grep"]));
       expect(toolResults(stub.requests[1]).join("\n")).toMatch(
-        /Tool write not found|read-and-draft access/,
+        /Tool write is not available|read-and-draft access/,
       );
 
       const inbox = await cli<InboxItem[]>(["inbox"]);

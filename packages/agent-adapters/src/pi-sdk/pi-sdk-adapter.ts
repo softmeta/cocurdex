@@ -23,8 +23,8 @@ import {
   createUnifiedDiff,
   errorKindForLog,
   hashLogValue,
-  isChatSession,
   piThinkingLevels,
+  runsOnDurablePi,
 } from "@cocurdex/shared";
 import type { ImageContent } from "@earendil-works/pi-ai";
 import {
@@ -41,6 +41,11 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { loadMcpConfig } from "@earendil-works/pi-coding-agent/mcp-config";
 import { logAdapterDiagnostic } from "../diagnostics";
+import {
+  forkDurableProviderSession,
+  readDurableConversation,
+} from "../pi-durable/durable-conversations";
+import { createDurablePiSession } from "../pi-durable/durable-session";
 import {
   assertNoDocumentAttachments,
   buildTextWithContextAttachments,
@@ -59,7 +64,6 @@ import {
   extractPiEditSnapshot,
 } from "../workspace-changes/native-evidence";
 import { createPiAgentToolDefinitions } from "./pi-agent-tools";
-import { createPiChatResourceLoaderOptions } from "./pi-chat-session";
 import { handlePiCompactionEvent } from "./pi-compaction";
 import { onlyPiMcpServers } from "./pi-mcp-agents";
 import {
@@ -68,18 +72,12 @@ import {
 } from "./pi-model-runtime";
 import { getNumber } from "./pi-model-utils";
 import { getPiAgentDir } from "./pi-paths";
-import {
-  appendPostedMessages,
-  type PiCustomMessageSink,
-} from "./pi-posted-messages";
-import { createPiRunPolicy } from "./pi-run-policy";
 import { forkPiProviderSession, readPiSessionFile } from "./pi-session-fork";
 import {
   getPiSkillRootSnapshots,
   logPiSkillDiagnostic,
   resolveAdditionalSkillPaths,
 } from "./pi-skill-diagnostics";
-import { createPiSystemSections } from "./pi-system-sections";
 import { renderPiWorkspaceRootsPrompt } from "./pi-workspace-roots";
 
 const PI_PROVIDER_VERSION = "pi-sdk";
@@ -128,7 +126,6 @@ type PiSessionLike = {
   steer(text: string, images?: ImageContent[]): Promise<unknown>;
   setModel?(model: PiModel): Promise<void>;
   setThinkingLevel?(level: PiThinkingLevel): void;
-  sendCustomMessage?: PiCustomMessageSink["sendCustomMessage"];
   abort(): Promise<void>;
   dispose(): void;
   subscribe(listener: (event: Record<string, unknown>) => void): () => void;
@@ -305,6 +302,8 @@ export function createPiSdkAdapter(
       return listPiSlashCommands(payload);
     },
     async forkProviderSession(payload) {
+      const durable = readDurableConversation(payload.source.providerStateJson);
+      if (durable) return forkDurableProviderSession(payload, durable);
       return forkPiProviderSession(
         payload,
         sdk.SessionManager,
@@ -315,6 +314,9 @@ export function createPiSdkAdapter(
       payload: CreateAgentSessionPayload,
       onEvent: (event: AgentEvent) => void,
     ): AgentSession {
+      if (runsOnDurablePi(payload.session)) {
+        return createDurablePiSession(payload, onEvent);
+      }
       const sessionId = payload.session.id;
       const persistedSessionFile = payload.providerSession?.providerStateJson
         ? readPiSessionFile(payload.providerSession.providerStateJson)
@@ -326,8 +328,6 @@ export function createPiSdkAdapter(
       let activePiModelKey: string | null = null;
       let unsubscribe: (() => void) | null = null;
       let pendingThinkingLevel: PiThinkingLevel | undefined;
-      const systemSections = createPiSystemSections();
-      const runPolicy = createPiRunPolicy();
       const activeMessages = new Map<string, ActiveMessageRecord>();
       const activeToolCalls = new Map<string, AgentToolCallRecord>();
       const nativeFiles = new Map<
@@ -728,42 +728,26 @@ export function createPiSdkAdapter(
                 path.join(agentDir, "sessions"),
               );
           const sessionAction = persistedSessionFile ? "resume" : "new";
-          const chat = isChatSession(payload.session);
-          const resourceLoader = new sdk.DefaultResourceLoader(
-            chat
-              ? createPiChatResourceLoaderOptions(
-                  payload.workspaceRootPath,
-                  agentDir,
-                )
-              : {
-                  cwd: payload.workspaceRootPath,
-                  agentDir,
-                  additionalSkillPaths: resolveAdditionalSkillPaths(
-                    payload.workspaceRootPath,
-                  ),
-                  extensionFactories: [
-                    ...createPiBuiltinExtensions(),
-                    systemSections.extension,
-                    runPolicy.extension,
-                  ],
-                  appendSystemPromptOverride: (base) => {
-                    const rootsPrompt = renderPiWorkspaceRootsPrompt(
-                      payload.workspaceRootPath,
-                      payload.workspaceRootPaths,
-                    );
-                    return rootsPrompt ? [...base, rootsPrompt] : base;
-                  },
-                },
-          );
+          const resourceLoader = new sdk.DefaultResourceLoader({
+            cwd: payload.workspaceRootPath,
+            agentDir,
+            additionalSkillPaths: resolveAdditionalSkillPaths(
+              payload.workspaceRootPath,
+            ),
+            extensionFactories: createPiBuiltinExtensions(),
+            appendSystemPromptOverride: (base) => {
+              const rootsPrompt = renderPiWorkspaceRootsPrompt(
+                payload.workspaceRootPath,
+                payload.workspaceRootPaths,
+              );
+              return rootsPrompt ? [...base, rootsPrompt] : base;
+            },
+          });
           await resourceLoader.reload();
           const result = await sdk.createAgentSession({
-            ...(chat
-              ? { noTools: "all" }
-              : {
-                  customTools: await createPiAgentToolDefinitions(
-                    payload.agentToolInvoker,
-                  ),
-                }),
+            customTools: await createPiAgentToolDefinitions(
+              payload.agentToolInvoker,
+            ),
             cwd: payload.workspaceRootPath,
             agentDir,
             modelRuntime,
@@ -885,12 +869,6 @@ export function createPiSdkAdapter(
               ? messagePayload.thinkingLevel
               : undefined;
             pendingThinkingLevel = thinkingLevel;
-            if (messagePayload.systemSections) {
-              systemSections.set(messagePayload.systemSections);
-            }
-            if (messagePayload.delivery !== "steer-active-run") {
-              runPolicy.set(messagePayload.runPolicy ?? null);
-            }
             const session = await getPiSession();
             await applyPiModelSelection(session, messagePayload.providerConfig);
             if (thinkingLevel) {
@@ -911,11 +889,6 @@ export function createPiSdkAdapter(
               prompt,
               sessionId,
             });
-            await appendPostedMessages(
-              session,
-              messagePayload.postedMessages ?? [],
-              messagePayload.delivery === "steer-active-run",
-            );
             if (messagePayload.delivery === "steer-active-run") {
               if (images.length > 0) {
                 await session.steer(prompt, piImagesFromAttachments(images));

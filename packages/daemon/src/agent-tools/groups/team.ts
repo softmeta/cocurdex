@@ -63,6 +63,7 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "spawn_teammate",
+      deferred: true,
       description:
         "Spawn a teammate agent session that works alongside you. It shares your task list, can message you, and its final reply for each turn is delivered back to you: injected into your current turn when your agent supports steering, otherwise as a new turn after yours ends. To wait for teammates, end your turn; their reports wake you. Do not poll or stop teammates to finish early. The name addresses the teammate: a roster name exactly as listed, otherwise a lowercase slug (a-z, 0-9, dashes); title is the human-readable label shown to the user, written in the user's language. When your team has a roster (see team_roster), only roster names can be spawned and their role and standing instructions are applied automatically; omit agentRoleId and agentType.",
       inputSchema: {
@@ -106,6 +107,8 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "list_roles",
+      deferred: true,
+      readOnly: true,
       description:
         "List saved agent roles (id, name, description of what the role is good at, agent type, model, permission mode) you can pass as agentRoleId when spawning a teammate.",
       inputSchema: {
@@ -121,6 +124,8 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "list_templates",
+      deferred: true,
+      readOnly: true,
       description:
         "List user-defined team templates. Each template has a description of what the team is for and lists its members, their roles, and their standing instructions. The first member is the lead that runs the session; the rest are its teammates.",
       inputSchema: {
@@ -136,6 +141,8 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "roster",
+      deferred: true,
+      readOnly: true,
       description:
         "Show the roster of the team the user assigned to your session: the team's purpose and each teammate's name, role, and standing instructions. Returns null when no roster is assigned. With a roster you coordinate: plan tasks first, then spawn only the roster members the plan needs.",
       inputSchema: {
@@ -151,6 +158,7 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "task_create",
+      deferred: true,
       description:
         "Create a task on the team's shared task list. A lead may create tasks before spawning teammates. List prerequisite task ids in blockedBy to enforce ordering: nobody can start this task until every prerequisite is done.",
       inputSchema: {
@@ -184,6 +192,8 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "task_list",
+      deferred: true,
+      readOnly: true,
       description:
         "List the team's shared tasks with status, assignee session id, prerequisites (blockedBy, blocked), and review evidence.",
       inputSchema: {
@@ -199,6 +209,7 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "task_update",
+      deferred: true,
       description:
         'Update a shared task. Claim it with assignee "me" and status "doing"; only one session can hold a task, and blocked tasks cannot be started. When finished, move it to "review" with evidence: the commands you ran and their results, or the files to inspect. Only a different session, usually the lead or a reviewer, may move a reviewed task to "done".',
       inputSchema: {
@@ -235,6 +246,7 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "stop_member",
+      deferred: true,
       description:
         "Stop one teammate session after it has reported and is idle. Fails with members_busy while it is running or has unread messages; then end your turn and wait for its report. Pass force: true only when it is off track and must be interrupted.",
       inputSchema: {
@@ -257,6 +269,7 @@ export function registerTeamTools(
     descriptor: {
       group: "team",
       name: "stop",
+      deferred: true,
       description:
         "Stop every teammate and end the team once every report is merged. Fails with members_busy while any teammate is running or has unread messages; then end your turn and wait for their reports. Pass force: true only to abandon unfinished work.",
       inputSchema: {
