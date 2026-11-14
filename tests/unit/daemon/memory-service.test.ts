@@ -511,6 +511,36 @@ describe("MemoryService with a fake rsrs CLI", () => {
     expect(log).toContain("trivial");
   });
 
+  it("keeps one diary per session and leaves it out of that session's recall", async () => {
+    const { service, state, logPath } = await createService();
+    await service.getStatus();
+    await state.setAppSetting(
+      "memory.captures",
+      JSON.stringify({
+        "chat-1": {
+          provider: "rsrs",
+          memoryId: "memory-1",
+          savedAt: "2026-10-28T09:00:00.000Z",
+          lastAssistantMessageId: "earlier",
+          kind: "turn",
+        },
+      }),
+    );
+    expect(await service.captureTurn("chat-1", "a1")).toMatchObject({
+      saved: true,
+      memoryId: "memory-1",
+    });
+    const calls = (await readFile(logPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as string[]);
+    expect(calls.some((args) => args[0] === "remember")).toBe(false);
+    expect(calls.find((args) => args[0] === "update")).toContain("memory-1");
+    expect(
+      await service.buildTurnContext(fakeSession(), "hi", "chat"),
+    ).toBeNull();
+  });
+
   it("stores a manual session save as important and lets rsrs judge it", async () => {
     const { service, logPath } = await createService();
     await service.getStatus();

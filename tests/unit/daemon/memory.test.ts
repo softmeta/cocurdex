@@ -1,6 +1,7 @@
 import { AgentToolBridge } from "@cocurdex/daemon/internal/agent-tools/agent-tool-bridge";
 import { registerMemoryTools } from "@cocurdex/daemon/internal/agent-tools/groups/memory";
 import { AgentToolRegistry } from "@cocurdex/daemon/internal/agent-tools/tool-registry";
+import { appendTurnDiaryLine } from "@cocurdex/daemon/internal/memory/digest";
 import {
   parseInjectedHosts,
   parseRecallPayload,
@@ -131,6 +132,16 @@ describe("memory secret redaction", () => {
     expect(redacted).not.toContain("AKIA");
     expect(redacted).not.toContain("secret");
     expect(redacted.match(/\[redacted\]/g)?.length).toBe(4);
+  });
+});
+
+describe("session turn diary", () => {
+  it("appends each turn to the session's diary and keeps only the latest lines", () => {
+    const diary = Array.from({ length: 20 }, (_, index) => `turn ${index}`);
+    const next = appendTurnDiaryLine(diary.join("\r\n"), "turn 20").split("\n");
+    expect(next).toHaveLength(20);
+    expect(next[0]).toBe("turn 1");
+    expect(next.at(-1)).toBe("turn 20");
   });
 });
 

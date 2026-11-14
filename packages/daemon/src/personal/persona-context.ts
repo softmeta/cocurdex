@@ -39,12 +39,15 @@ const PERSONA_VOICE = [
   "Leave out technical details about tools, sessions, and how you work unless the user asks.",
 ].join(" ");
 
+const NO_REPEAT_GREETING =
+  "Greet the user only when a conversation starts; later replies go straight to the answer without a greeting or their name up front.";
+
 const SAVE_ADDRESS =
   "When the user tells you what to call them, or asks to be called something else, save it with the assistant_set_user_address tool in the same turn.";
 
 function userAddressGuidance(userAddress: string | null) {
   if (userAddress) {
-    return `Address the user as "${userAddress}" whenever you speak to them, including progress updates, reports, and routine results. ${SAVE_ADDRESS}`;
+    return `Address the user as "${userAddress}" whenever you use their name. ${NO_REPEAT_GREETING} ${SAVE_ADDRESS}`;
   }
   return `You do not know yet what to call the user. Do not guess a name; if you have not asked yet, ask once, naturally, how they would like to be addressed. ${SAVE_ADDRESS}`;
 }
