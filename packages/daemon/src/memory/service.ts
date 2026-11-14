@@ -85,6 +85,7 @@ import {
   readRsrsStatus,
   readRsrsVersion,
   registerRsrsAccount,
+  restartRsrsRuntime,
   startRsrsRuntime,
   writeRsrsAutosync,
 } from "./rsrs";
@@ -144,6 +145,7 @@ export interface MemoryServiceOptions {
   platform?: MemoryPlatform;
   rsrsDataDir?: string;
   startRuntime?: boolean;
+  installRetryDelaysMs?: readonly number[];
   turnRecallBudgetMs?: number;
   provider?: MemoryProvider;
   userLibraryHome?: string;
@@ -153,6 +155,39 @@ export interface MemoryServiceOptions {
 export interface MemoryTurnContext {
   brief: string | null;
   items: MemoryRecallItem[];
+}
+
+// A fresh store's first runtime start and model download fail transiently
+// (the host is not answering yet, a download stalls), so setup retries in the
+// same run instead of waiting for the next daemon start.
+const INSTALL_RETRY_DELAYS_MS = [15_000, 60_000];
+const SHUTDOWN_RUNTIME_STOP_TIMEOUT_MS = 8_000;
+
+function abortableDelay(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", stop);
+      resolve();
+    }, ms);
+    const stop = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", stop, { once: true });
+  });
+}
+
+function isIncompleteRuntimeMaintenance(message: string) {
+  return message.includes("runtime maintenance is incomplete");
+}
+
+function installedStoreState(status: MemoryInstallState["status"]) {
+  if (status === "installing") return "installing";
+  return status === "failed" ? "failed" : "ready";
 }
 
 function errorMessage(error: unknown) {
@@ -219,6 +254,7 @@ export class MemoryService {
   private policyCache: string | null = null;
   private startupPromise: Promise<void> | null = null;
   private homePromise: Promise<RsrsHome> | null = null;
+  private readonly lifetime = new AbortController();
   private readonly gateTurns = new Map<
     string,
     { stored: boolean; nudge: boolean }
@@ -478,6 +514,29 @@ export class MemoryService {
     const settings = this.currentSettings();
     const installState = this.currentInstallState();
     const executable = await this.resolveExecutable(refresh);
+    if (this.installPromise && installState.status === "installing") {
+      // Setup keeps the runtime busy, so probing it now only times out.
+      const status: MemoryStatus = {
+        settings,
+        enabled: settings.enabled,
+        supported: this.supported,
+        available: false,
+        installation: "installing",
+        version: null,
+        executable: executable?.command ?? null,
+        dataDir: null,
+        account: null,
+        space: null,
+        cloud: { ...DEFAULT_MEMORY_CLOUD_STATUS, autosync: false },
+        doctor: null,
+        error: null,
+        checkedAt: installState.attemptedAt,
+        lastRecall: null,
+        userLibrary: NO_USER_LIBRARY,
+      };
+      this.statusCache = { status, at: now };
+      return status;
+    }
     if (!executable) {
       // A report from an older managed CLI describes a store this release no
       // longer uses.
@@ -534,8 +593,7 @@ export class MemoryService {
       enabled: settings.enabled,
       supported: this.supported,
       available: true,
-      installation:
-        installState.status === "installing" ? "installing" : "ready",
+      installation: installedStoreState(installState.status),
       version,
       executable: executable.command,
       dataDir: summary?.dataDir ?? null,
@@ -544,7 +602,10 @@ export class MemoryService {
       cloud: toCloudStatus(summary),
       doctor:
         installState.doctor?.version === version ? installState.doctor : null,
-      error: error ?? (summary ? memoryStatusError(summary) : null),
+      error:
+        error ??
+        (summary ? memoryStatusError(summary) : null) ??
+        (installState.status === "failed" ? installState.error : null),
       checkedAt: this.now().toISOString(),
       lastRecall: null,
       userLibrary: NO_USER_LIBRARY,
@@ -582,7 +643,7 @@ export class MemoryService {
         error: null,
       });
       try {
-        const executable = await this.setUpRsrs();
+        const executable = await this.setUpRsrsWithRetries();
         this.policyCache = null;
         const version = await readRsrsVersion(executable).catch(() => null);
         const doctor = await readRsrsDoctor(executable);
@@ -604,6 +665,13 @@ export class MemoryService {
         };
       } catch (error) {
         const message = errorMessage(error);
+        if (this.lifetime.signal.aborted) {
+          await this.persistInstallState({
+            ...this.currentInstallState(),
+            status: "idle",
+          });
+          return { status: await this.getStatus(), installed: false, message };
+        }
         await this.persistInstallState({
           ...this.currentInstallState(),
           attemptedAt: this.now().toISOString(),
@@ -625,10 +693,54 @@ export class MemoryService {
     return this.installPromise;
   }
 
+  private async setUpRsrsWithRetries() {
+    const signal = this.lifetime.signal;
+    const delays = this.options.installRetryDelaysMs ?? INSTALL_RETRY_DELAYS_MS;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await this.setUpRsrs(signal);
+      } catch (error) {
+        const delay = delays[attempt];
+        if (signal.aborted || delay === undefined) throw error;
+        logDaemonDiagnostic("info", "memory.installRetry", {
+          attempt: attempt + 1,
+          error: errorMessage(error),
+        });
+        await abortableDelay(delay, signal);
+        if (isIncompleteRuntimeMaintenance(errorMessage(error))) {
+          await this.restartRuntimeForRecovery();
+        }
+      }
+    }
+  }
+
+  // rsrs refuses library access after an interrupted runtime maintenance
+  // (respire-cli autostart/lifecycle.rs) until the host restarts the runtime.
+  private async restartRuntimeForRecovery() {
+    const executable = await this.resolveExecutable(true);
+    if (!executable) return;
+    await restartRsrsRuntime(executable).catch((error: unknown) => {
+      logDaemonDiagnostic("info", "memory.runtimeRestartFailed", {
+        error: errorMessage(error),
+      });
+    });
+    this.rsrs.invalidateRuntime();
+  }
+
+  // Stops the private store's runtime so no rsrs process outlives the daemon,
+  // within the window clients give a stopping daemon. A setup step in flight
+  // is left to finish: model install restarts the runtime for maintenance, and
+  // interrupting it leaves the store refusing access until a runtime restart.
+  async shutdown() {
+    this.lifetime.abort(new Error("The daemon is shutting down"));
+    if (this.installPromise || this.options.startRuntime === false) return;
+    await this.rsrs.stopRuntime(SHUTDOWN_RUNTIME_STOP_TIMEOUT_MS);
+  }
+
   // Order matters with rsrs 2.x: the runtime host runs from the managed CLI,
   // keygen needs a running host, and `runtime start` completes the key
   // handoff (respire-cli#277).
-  private async setUpRsrs() {
+  private async setUpRsrs(signal: AbortSignal) {
     const asset = rsrsCliAsset(this.platform);
     if (!asset) throw new Error(this.unsupportedMessage());
     if (!this.currentSettings().cliPath) {
@@ -646,12 +758,16 @@ export class MemoryService {
     const executable = await this.resolveExecutable(true);
     if (!executable) throw new Error(MEMORY_MISSING_EXECUTABLE_MESSAGE);
     this.rsrs.adoptExecutable(executable);
+    signal.throwIfAborted();
     await installRsrsRuntime(executable);
+    signal.throwIfAborted();
     const summary = await readRsrsStatus(executable, 120_000);
     if (!summary.hasKeys) {
+      signal.throwIfAborted();
       await createRsrsLocalKeys(executable);
       await startRsrsRuntime(executable);
     }
+    signal.throwIfAborted();
     await installRsrsModel(executable);
     this.rsrs.invalidateRuntime();
     return executable;

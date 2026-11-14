@@ -730,10 +730,17 @@ export function startRsrsRuntime(executable: RsrsExecutable) {
   );
 }
 
-export function stopRsrsRuntime(executable: RsrsExecutable) {
+export function stopRsrsRuntime(
+  executable: RsrsExecutable,
+  timeoutMs = RUNTIME_CONTROL_TIMEOUT_MS,
+) {
+  return runRsrsStep(executable, ["runtime", "stop", "--json"], timeoutMs);
+}
+
+export function restartRsrsRuntime(executable: RsrsExecutable) {
   return runRsrsStep(
     executable,
-    ["runtime", "stop", "--json"],
+    ["runtime", "restart", "--json"],
     RUNTIME_CONTROL_TIMEOUT_MS,
   );
 }

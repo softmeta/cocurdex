@@ -34,14 +34,13 @@ function statusText(
   installing: boolean,
 ) {
   if (status?.supported === false) return t("settings.status.unsupported");
+  if (installing) return t("settings.status.installing");
   if (status?.available) {
     return t("settings.status.available", {
       version: status.version ?? t("settings.status.unknown"),
     });
   }
-  return installing
-    ? t("settings.status.installing")
-    : t("settings.status.missing");
+  return t("settings.status.missing");
 }
 
 function cloudDetail(t: TFunction<"memory">, cloud: MemoryCloudStatus) {

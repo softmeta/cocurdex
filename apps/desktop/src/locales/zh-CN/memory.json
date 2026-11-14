@@ -190,7 +190,7 @@
     "status": {
       "available": "rsrs {{version}}",
       "doctor": "体检：{{status}} · 通过 {{pass}} · 警告 {{warn}} · 失败 {{fail}}",
-      "installing": "正在安装 rsrs…",
+      "installing": "正在安装 rsrs 和本地模型，首次可能需要十几分钟…",
       "missing": "rsrs 尚未安装",
       "title": "状态",
       "unknown": "未知版本",

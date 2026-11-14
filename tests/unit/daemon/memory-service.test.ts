@@ -66,10 +66,12 @@ async function createFakeRsrs(
     failRecall?: boolean;
     candidateOnRemember?: boolean;
     identityMissing?: boolean;
+    modelInstall?: "ok" | "needsRestart" | "fails";
   } = {},
 ) {
+  const restartMarker = path.join(directory, "runtime-restarted");
   const scriptPath = path.join(directory, "fake-rsrs.mjs");
-  const script = `import { appendFileSync } from "node:fs";
+  const script = `import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 const log = ${JSON.stringify(logPath)};
 const args = process.argv.slice(2);
 appendFileSync(log, JSON.stringify(args) + "\\n");
@@ -115,6 +117,12 @@ if (command === "--version") {
   } else {
     send({ command: "remember", status: "ok", summary: { action: "created", id: "saved-memory" } });
   }
+} else if (command === "runtime" && args[1] === "restart") {
+  writeFileSync(${JSON.stringify(restartMarker)}, "");
+  send({ command: "runtime.restart", status: "ok" });
+} else if (command === "model" && (${JSON.stringify(options.modelInstall)} === "fails" || (${JSON.stringify(options.modelInstall)} === "needsRestart" && !existsSync(${JSON.stringify(restartMarker)})))) {
+  send({ command: "cli", status: "fail", errors: ["runtime maintenance is incomplete; use the host runtime restart or the indicated snapshot/login recovery before accessing the library"] });
+  process.exit(1);
 } else if (command === "doctor") {
   send({ command: "doctor", status: "ok", summary: { total: 1, pass: 1, warn: 0, fail: 0, skip: 0, version: "1.0.0" }, items: [{ name: "store", status: "ok", value: "ok" }] });
 } else if (command === "prompt") {
@@ -180,6 +188,7 @@ async function createService(
     turnRecallBudgetMs?: number;
     startRuntime?: boolean;
     userLibraryHome?: string;
+    modelInstall?: "ok" | "needsRestart" | "fails";
   } = {},
 ) {
   const directory = await temp.create("cocurdex-memory-");
@@ -203,6 +212,7 @@ async function createService(
     rsrsDataDir: directory,
     userLibraryHome: options.userLibraryHome,
     startRuntime: options.startRuntime ?? false,
+    installRetryDelaysMs: [0],
     turnRecallBudgetMs: options.turnRecallBudgetMs,
     now: () => new Date("2026-10-28T10:00:02.000Z"),
   });
@@ -737,6 +747,36 @@ describe("MemoryService with a fake rsrs CLI", () => {
     ).toBe(false);
     service.noteGateToolUse("agent-3", "remember");
     expect(service.agentInstructions(true)).toBe("");
+  });
+
+  it("restarts the runtime after interrupted maintenance and finishes the install", async () => {
+    const { service, logPath } = await createService({
+      modelInstall: "needsRestart",
+    });
+    const install = await service.install(true);
+    expect(install).toMatchObject({ installed: true, message: null });
+    expect(install.status.installation).toBe("ready");
+    const calls = (await readFile(logPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as string[]);
+    const steps = calls
+      .filter((args) => args[0] === "model" || args[1] === "restart")
+      .map((args) => args.slice(0, 2).join(" "));
+    expect(steps).toEqual([
+      "model install",
+      "runtime restart",
+      "model install",
+    ]);
+  });
+
+  it("reports an install that keeps failing as failed although the CLI is present", async () => {
+    const { service } = await createService({ modelInstall: "fails" });
+    const install = await service.install(true);
+    expect(install.installed).toBe(false);
+    const status = await service.getStatus(true);
+    expect(status.installation).toBe("failed");
+    expect(status.error).toContain("runtime maintenance is incomplete");
   });
 
   it("keeps memory off where the rsrs CLI has no build", async () => {
