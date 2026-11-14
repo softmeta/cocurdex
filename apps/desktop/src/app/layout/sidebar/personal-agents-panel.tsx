@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AppConfirmDialog } from "@/components/app";
 import { SidebarMenu, TooltipProvider } from "@/components/ui";
-import { MemoryOnboarding } from "@/features/memory";
 import { personalApi, usePersonalAgents } from "@/features/personal";
 import { sessionsAtom } from "@/features/sessions";
 import { personalAgentEditIdAtom } from "./personal-agent-edit-store";
@@ -82,7 +81,6 @@ export function PersonalAgentsPanel({
           </SidebarMenu>
         </section>
       </SidebarScrollArea>
-      <MemoryOnboarding />
       <AppConfirmDialog
         cancelLabel={t("delete.cancel")}
         confirmLabel={t("delete.confirm")}

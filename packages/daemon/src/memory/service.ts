@@ -62,6 +62,7 @@ import {
   compactText as compactDigestText,
   conversationTurns,
 } from "./digest";
+import { needsManagedInstall } from "./install-policy";
 import {
   PARTITION_UNAVAILABLE,
   readPartitionEntry,
@@ -379,7 +380,7 @@ export class MemoryService {
       settings.enabled &&
       (!previousSettings.enabled || settings.cliPath !== previousCliPath)
     ) {
-      void this.rsrs.warmup(true);
+      void this.prepareEnabledStore();
     }
     if (previousSettings.enabled && !settings.enabled) {
       void this.rsrs.stopRuntime();
@@ -398,7 +399,7 @@ export class MemoryService {
           status: "idle",
         });
       }
-      if (await this.needsPinnedUpgrade()) {
+      if (await this.needsInstall()) {
         void this.install(true);
         return;
       }
@@ -407,12 +408,29 @@ export class MemoryService {
     return this.startupPromise;
   }
 
-  // A Cocurdex release pins its rsrs CLI; after an update, the managed CLI and
-  // the runtime it pins are replaced before memory is used again.
-  private async needsPinnedUpgrade() {
-    if (!this.supported || this.currentSettings().cliPath) return false;
-    if (this.currentInstallState().version === RSRS_CLI_VERSION) return false;
-    return (await this.resolveExecutable()) !== null;
+  // Runs in the background so turning memory on answers at once.
+  private async prepareEnabledStore() {
+    if (this.options.startRuntime === false) return;
+    try {
+      if (await this.needsInstall()) await this.install(true);
+      else await this.rsrs.warmup(true);
+    } catch (error) {
+      logDaemonDiagnostic("info", "memory.prepareFailed", {
+        error: errorMessage(error),
+      });
+    }
+  }
+
+  private async needsInstall() {
+    const settings = this.currentSettings();
+    return needsManagedInstall({
+      supported: this.supported,
+      enabled: settings.enabled,
+      customCli: Boolean(settings.cliPath),
+      installedVersion: this.currentInstallState().version,
+      pinnedVersion: RSRS_CLI_VERSION,
+      hasExecutable: (await this.resolveExecutable()) !== null,
+    });
   }
 
   private async resolveExecutable(force = false) {
@@ -461,6 +479,9 @@ export class MemoryService {
     const installState = this.currentInstallState();
     const executable = await this.resolveExecutable(refresh);
     if (!executable) {
+      // A report from an older managed CLI describes a store this release no
+      // longer uses.
+      const pinned = installState.version === RSRS_CLI_VERSION;
       const status: MemoryStatus = {
         settings,
         enabled: settings.enabled,
@@ -472,13 +493,13 @@ export class MemoryService {
             : installState.status === "failed"
               ? "failed"
               : "missing",
-        version: installState.version,
+        version: pinned ? installState.version : null,
         executable: null,
         dataDir: null,
         account: null,
         space: null,
         cloud: { ...DEFAULT_MEMORY_CLOUD_STATUS, autosync: false },
-        doctor: installState.doctor,
+        doctor: pinned ? installState.doctor : null,
         error: installState.error,
         checkedAt: installState.attemptedAt,
         lastRecall: null,

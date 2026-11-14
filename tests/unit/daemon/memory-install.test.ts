@@ -3,6 +3,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
+import { needsManagedInstall } from "@cocurdex/daemon/internal/memory/install-policy";
 import {
   installManagedRsrsCli,
   managedRsrsPath,
@@ -101,5 +102,34 @@ describe("installManagedRsrsCli", () => {
       path.basename(target),
     ]);
     expect(stopped).toBe(false);
+  });
+});
+
+describe("needsManagedInstall", () => {
+  const enabled = {
+    supported: true,
+    enabled: true,
+    customCli: false,
+    pinnedVersion: "2.0.0-dev.3",
+  };
+
+  it("installs an enabled store left by an older release without a private CLI", () => {
+    expect(
+      needsManagedInstall({
+        ...enabled,
+        installedVersion: "1.0.18",
+        hasExecutable: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("leaves a store that already runs the pinned CLI alone", () => {
+    expect(
+      needsManagedInstall({
+        ...enabled,
+        installedVersion: "2.0.0-dev.3",
+        hasExecutable: true,
+      }),
+    ).toBe(false);
   });
 });
