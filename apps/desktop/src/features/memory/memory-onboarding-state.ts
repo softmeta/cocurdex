@@ -1,12 +1,10 @@
 import { DEFAULT_MEMORY_SETTINGS, type MemoryStatus } from "@cocurdex/shared";
 import { atom, useAtom } from "jotai";
 import { desktopApi } from "@/lib";
-import { memoryOnboardingSkippedAtom } from "./memory-onboarding-store";
 import { revalidateMemory, useMemoryStatus } from "./memory-queries";
 
 export type MemoryOnboardingStage =
   | "hidden"
-  | "offer"
   | "off"
   | "installing"
   | "failed"
@@ -17,7 +15,6 @@ const memoryEnableFailureAtom = atom<string | null>(null);
 
 function onboardingStage(
   status: MemoryStatus | undefined,
-  skipped: boolean,
   working: boolean,
 ): MemoryOnboardingStage {
   if (!status?.supported) return "hidden";
@@ -28,7 +25,8 @@ function onboardingStage(
   if (status.settings.enabled && status.installation === "failed") {
     return "failed";
   }
-  return skipped ? "off" : "offer";
+  // The daemon installs an enabled store on its own.
+  return status.settings.enabled ? "installing" : "off";
 }
 
 function errorMessage(error: unknown) {
@@ -37,10 +35,9 @@ function errorMessage(error: unknown) {
 
 export function useMemoryOnboarding() {
   const { data: status } = useMemoryStatus();
-  const [skipped, setSkipped] = useAtom(memoryOnboardingSkippedAtom);
   const [working, setWorking] = useAtom(memoryEnablingAtom);
   const [failure, setFailure] = useAtom(memoryEnableFailureAtom);
-  const stage = onboardingStage(status, skipped, working);
+  const stage = onboardingStage(status, working);
 
   const enable = async () => {
     setWorking(true);
@@ -67,6 +64,5 @@ export function useMemoryOnboarding() {
     status,
     failure: failure ?? status?.error ?? null,
     enable,
-    skip: () => setSkipped(true),
   };
 }

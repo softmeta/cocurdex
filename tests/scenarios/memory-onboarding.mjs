@@ -11,7 +11,6 @@ import {
 import { openAssistantsTab, translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
-const SKIPPED_KEY = "cocurdex.memory-onboarding-skipped";
 const args = readScenarioArgs();
 const state = {};
 
@@ -51,37 +50,13 @@ runScenario("memory-onboarding", {
     await daemonRequest(session, "memory.settings.set", {
       settings: { ...state.original, enabled: false, cliPath },
     });
-    await session.run((key) => {
-      localStorage.removeItem(key);
-      return true;
-    }, SKIPPED_KEY);
     return {};
   },
   steps: [
     [
-      "the assistants form offers to turn memory on",
+      "memory that is off shows a turn-on entry without a prompt",
       async ({ session }) => {
         await openAssistantsTab(session);
-        const offer = await memoryRegion(session, "memory:onboarding.title");
-        await waitForRole(session, offer, UI_TIMEOUT_MS);
-        await waitForRole(session, {
-          role: "button",
-          name: await translate(session, "memory:onboarding.enable"),
-          within: offer,
-        });
-        return {};
-      },
-    ],
-    [
-      "skipping keeps a turn-on entry",
-      async ({ session }) => {
-        const offer = await memoryRegion(session, "memory:onboarding.title");
-        await clickByRole(session, {
-          role: "button",
-          name: await translate(session, "memory:onboarding.skip"),
-          within: offer,
-        });
-        await waitForNoRole(session, offer, UI_TIMEOUT_MS);
         await openMemoryStatus(session);
         const offText = await translate(session, "memory:onboarding.state.off");
         await session.waitUntil(
@@ -89,11 +64,6 @@ runScenario("memory-onboarding", {
           offText,
           UI_TIMEOUT_MS,
         );
-        const skipped = await session.run(
-          (key) => localStorage.getItem(key),
-          SKIPPED_KEY,
-        );
-        check(skipped === "true", "the skip survives a restart", skipped);
         return {};
       },
     ],
@@ -200,10 +170,6 @@ runScenario("memory-onboarding", {
         settings: state.original,
       });
     }
-    await session.run((key) => {
-      localStorage.removeItem(key);
-      return true;
-    }, SKIPPED_KEY);
     return {};
   },
 });

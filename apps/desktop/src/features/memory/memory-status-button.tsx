@@ -25,7 +25,7 @@ export function MemoryStatusButton() {
   const [open, setOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
 
-  if (stage === "hidden" || stage === "offer") return null;
+  if (stage === "hidden") return null;
 
   const stateLabel = {
     off: t("onboarding.state.off"),
