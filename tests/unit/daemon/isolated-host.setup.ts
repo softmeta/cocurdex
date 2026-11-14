@@ -22,5 +22,6 @@ process.env[pathKey] = `${bin}${path.delimiter}${process.env[pathKey] ?? ""}`;
 process.env.HOME = home;
 process.env.USERPROFILE = home;
 process.env.RSRS_DATA_DIR = path.join(home, ".rsrs");
+process.env.COCURDEX_DISABLE_MEMORY_AUTO_START = "1";
 
 afterAll(() => tempDirs.cleanup());
