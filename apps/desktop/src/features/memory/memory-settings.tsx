@@ -21,6 +21,7 @@ import {
 import { Button, Input, Spinner, Switch, Text } from "@/components/ui";
 import { desktopApi } from "@/lib";
 import { CloudSyncDialog } from "./cloud-sync-dialog";
+import { MemoryDoctorDetails } from "./memory-doctor-details";
 import {
   revalidateMemory,
   useMemorySettings,
@@ -385,25 +386,7 @@ export function MemorySettingsPanel() {
                   {status.dataDir}
                 </Text>
               ) : null}
-              {status?.doctor ? (
-                <Text className="mt-1 block" size="meta" tone="muted">
-                  {t("settings.status.doctor", {
-                    status: status.doctor.status,
-                    pass: status.doctor.summary.pass,
-                    warn: status.doctor.summary.warn,
-                    fail: status.doctor.summary.fail,
-                  })}
-                </Text>
-              ) : null}
-              {status?.error ? (
-                <Text
-                  className="mt-1 block whitespace-pre-wrap"
-                  size="meta"
-                  tone="muted"
-                >
-                  {status.error}
-                </Text>
-              ) : null}
+              {status ? <MemoryDoctorDetails status={status} /> : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {busy || installing ? <Spinner size="md" /> : null}

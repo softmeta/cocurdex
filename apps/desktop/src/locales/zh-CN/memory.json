@@ -190,9 +190,14 @@
     "status": {
       "available": "rsrs {{version}}",
       "availableWithRuntime": "rsrs {{version}} · Runtime {{runtime}}",
+      "checkAction": "修复：{{action}}",
+      "copyFailed": "复制报告失败",
+      "copyReport": "复制完整报告",
       "doctor": "体检：{{status}} · 通过 {{pass}} · 警告 {{warn}} · 失败 {{fail}}",
+      "flaggedChecks": "需要处理的检查项",
       "installing": "正在安装 rsrs 和本地模型，首次可能需要十几分钟…",
       "missing": "rsrs 尚未安装",
+      "reportCopied": "报告已复制",
       "title": "状态",
       "unknown": "未知版本",
       "unsupported": "长期记忆依赖 rsrs CLI，而它没有 Intel Mac 版本，因此这台机器上保持关闭。"

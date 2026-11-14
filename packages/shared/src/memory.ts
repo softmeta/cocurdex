@@ -135,6 +135,8 @@ export interface MemoryDoctorCheck {
   name: string;
   status: "ok" | "warn" | "fail" | "skip";
   value: string;
+  // rsrs's suggested fix for a failing check, when it gives one.
+  action?: string | null;
 }
 
 export interface MemoryDoctorReport {

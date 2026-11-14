@@ -62,7 +62,7 @@ import {
   compactText as compactDigestText,
   conversationTurns,
 } from "./digest";
-import { needsManagedInstall } from "./install-policy";
+import { installErrorNeedsUser, needsManagedInstall } from "./install-policy";
 import {
   PARTITION_UNAVAILABLE,
   readPartitionEntry,
@@ -81,6 +81,7 @@ import {
   logoutRsrs,
   parseRsrsCloudStatus,
   type RsrsCloudSummary,
+  type RsrsExecutable,
   readRsrsDoctor,
   readRsrsStatus,
   readRsrsVersion,
@@ -379,6 +380,7 @@ export class MemoryService {
         executable: null,
         error: null,
         doctor: null,
+        blockedPin: null,
       }
     );
   }
@@ -472,6 +474,7 @@ export class MemoryService {
       installedVersion: this.currentInstallState().version,
       pinnedVersion: RSRS_CLI_VERSION,
       hasExecutable: (await this.resolveExecutable()) !== null,
+      blockedPin: this.currentInstallState().blockedPin,
     });
   }
 
@@ -575,7 +578,7 @@ export class MemoryService {
       this.statusCache = { status, at: now };
       return status;
     }
-    const runtimeStatus = await this.runtimeStatus(executable.command);
+    const runtimeStatus = await this.runtimeStatus(executable);
     if (runtimeStatus) {
       this.statusCache = { status: runtimeStatus, at: now };
       return runtimeStatus;
@@ -585,9 +588,7 @@ export class MemoryService {
       readRsrsStatus(executable, 20_000),
     ]);
     const version =
-      versionResult.status === "fulfilled"
-        ? (versionResult.value ?? installState.version)
-        : installState.version;
+      versionResult.status === "fulfilled" ? versionResult.value : null;
     const summary =
       statusResult.status === "fulfilled" ? statusResult.value : null;
     const error =
@@ -662,7 +663,11 @@ export class MemoryService {
           version: version ?? doctor.report.version,
           executable: executable.command,
           error: null,
-          doctor: doctor.report,
+          doctor: {
+            ...doctor.report,
+            version: version ?? doctor.report.version,
+          },
+          blockedPin: null,
         });
         if (this.currentSettings().enabled) void this.rsrs.warmup();
         return {
@@ -686,6 +691,7 @@ export class MemoryService {
           attemptedAt: this.now().toISOString(),
           status: "failed",
           error: message,
+          blockedPin: installErrorNeedsUser(message) ? RSRS_CLI_VERSION : null,
         });
         logDaemonDiagnostic("warn", "memory.installFailed", {
           error: message,
@@ -711,6 +717,7 @@ export class MemoryService {
       } catch (error) {
         const delay = delays[attempt];
         if (signal.aborted || delay === undefined) throw error;
+        if (installErrorNeedsUser(errorMessage(error))) throw error;
         logDaemonDiagnostic("info", "memory.installRetry", {
           attempt: attempt + 1,
           error: errorMessage(error),
@@ -802,7 +809,8 @@ export class MemoryService {
         error: result.installed
           ? null
           : "rsrs doctor reported a failing critical check",
-        doctor: result.report,
+        doctor: { ...result.report, version },
+        blockedPin: this.currentInstallState().blockedPin,
       });
       return result.report;
     })().finally(() => {
@@ -921,32 +929,39 @@ export class MemoryService {
   }
 
   private async runtimeStatus(
-    executableCommand: string,
+    executable: RsrsExecutable,
   ): Promise<MemoryStatus | null> {
     const runtime = await this.rsrs.runtimeStatus();
     if (!runtime) return null;
     const cloudSummary = parseRsrsCloudStatus(runtime.payload);
     const settings = this.currentSettings();
     const installState = this.currentInstallState();
+    const version = await readRsrsVersion(executable, 4_000).catch(() => null);
+    const failed = installState.status === "failed";
     return {
       settings,
       enabled: settings.enabled,
       supported: this.supported,
       available: true,
       installation:
-        installState.status === "installing" ? "installing" : "ready",
-      version: installState.version,
+        installState.status === "installing"
+          ? "installing"
+          : failed
+            ? "failed"
+            : "ready",
+      version,
       runtimeVersion: runtime.runtimeVersion,
-      executable: executableCommand,
+      executable: executable.command,
       dataDir: cloudSummary.dataDir,
       account: cloudSummary.account,
       space: cloudSummary.space,
       cloud: toCloudStatus(cloudSummary),
       doctor:
-        installState.doctor?.version === installState.version
+        version && installState.doctor?.version === version
           ? installState.doctor
           : null,
-      error: memoryStatusError(cloudSummary),
+      error:
+        (failed ? installState.error : null) ?? memoryStatusError(cloudSummary),
       checkedAt: this.now().toISOString(),
       lastRecall: null,
       userLibrary: NO_USER_LIBRARY,

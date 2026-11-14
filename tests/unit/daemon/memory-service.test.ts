@@ -75,7 +75,7 @@ async function createFakeRsrs(
     failRecall?: boolean;
     candidateOnRemember?: boolean;
     identityMissing?: boolean;
-    modelInstall?: "ok" | "needsRestart" | "fails";
+    modelInstall?: "ok" | "needsRestart" | "fails" | "needsUser";
   } = {},
 ) {
   const restartMarker = path.join(directory, "runtime-restarted");
@@ -131,6 +131,9 @@ if (command === "--version") {
   send({ command: "runtime.restart", status: "ok" });
 } else if (command === "model" && (${JSON.stringify(options.modelInstall)} === "fails" || (${JSON.stringify(options.modelInstall)} === "needsRestart" && !existsSync(${JSON.stringify(restartMarker)})))) {
   send({ command: "cli", status: "fail", errors: ["runtime maintenance is incomplete; use the host runtime restart or the indicated snapshot/login recovery before accessing the library"] });
+  process.exit(1);
+} else if (command === "model" && ${JSON.stringify(options.modelInstall)} === "needsUser") {
+  send({ command: "cli", status: "fail", errors: ["offline_keygen_handoff_pending: use the original operation's explicit handoff"] });
   process.exit(1);
 } else if (command === "doctor") {
   send({ command: "doctor", status: "ok", summary: { total: 1, pass: 1, warn: 0, fail: 0, skip: 0, version: "1.0.0" }, items: [{ name: "store", status: "ok", value: "ok" }] });
@@ -197,7 +200,7 @@ async function createService(
     turnRecallBudgetMs?: number;
     startRuntime?: boolean;
     userLibraryHome?: string;
-    modelInstall?: "ok" | "needsRestart" | "fails";
+    modelInstall?: "ok" | "needsRestart" | "fails" | "needsUser";
   } = {},
 ) {
   const directory = await temp.create("cocurdex-memory-");
@@ -741,6 +744,24 @@ describe("MemoryService with a fake rsrs CLI", () => {
     const status = await service.getStatus(true);
     expect(status.installation).toBe("failed");
     expect(status.error).toContain("runtime maintenance is incomplete");
+  });
+
+  it("stops retrying an install that waits on the user, also at the next startup", async () => {
+    const { service, logPath } = await createService({
+      modelInstall: "needsUser",
+    });
+    const modelCalls = async () =>
+      (await readFile(logPath, "utf8"))
+        .trim()
+        .split("\n")
+        .filter((line) => line.startsWith('["model"')).length;
+    expect((await service.install(true)).installed).toBe(false);
+    expect(await modelCalls()).toBe(1);
+    const status = await service.getStatus(true);
+    expect(status.installation).toBe("failed");
+    expect(status.error).toContain("offline_keygen_handoff_pending");
+    await service.initializeOnStartup();
+    expect(await modelCalls()).toBe(1);
   });
 
   it("keeps memory off where the rsrs CLI has no build", async () => {
