@@ -195,6 +195,7 @@
       "copyReport": "复制完整报告",
       "doctor": "体检：{{status}} · 通过 {{pass}} · 警告 {{warn}} · 失败 {{fail}}",
       "flaggedChecks": "需要处理的检查项",
+      "installBlocked": "rsrs 停在了一次未完成的密钥交接上，需要更新的 rsrs 才能完成。记忆的召回和保存不受影响；修复版本发布后 Cocurdex 会自动更新。",
       "installing": "正在安装 rsrs 和本地模型，首次可能需要十几分钟…",
       "missing": "rsrs 尚未安装",
       "reportCopied": "报告已复制",

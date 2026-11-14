@@ -764,6 +764,50 @@ describe("MemoryService with a fake rsrs CLI", () => {
     expect(await modelCalls()).toBe(1);
   });
 
+  it("reports a store that still serves as usable while its install waits on the user", async () => {
+    const server = createServer((request, response) => {
+      if (request.url === "/api/health") {
+        response.end(JSON.stringify({ server: "respire", v: 1 }));
+        return;
+      }
+      request.resume();
+      request.on("end", () => {
+        response.end(
+          JSON.stringify({
+            ok: true,
+            exit: 0,
+            envelope: { command: "status", status: "ok", details: {} },
+          }),
+        );
+      });
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    try {
+      const { service, directory } = await createService({
+        modelInstall: "needsUser",
+      });
+      expect((await service.install(true)).installed).toBe(false);
+      const { port } = server.address() as AddressInfo;
+      await mkdir(path.join(directory, "runtime"), { recursive: true });
+      await writeFile(
+        path.join(directory, "runtime", "endpoint.json"),
+        JSON.stringify({ url: `http://127.0.0.1:${port}` }),
+      );
+      const status = await service.getStatus(true);
+      expect(status).toMatchObject({
+        available: true,
+        installation: "ready",
+        installBlocked: true,
+      });
+      expect(status.error).toContain("offline_keygen_handoff_pending");
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it("keeps memory off where the rsrs CLI has no build", async () => {
     const { service } = await createService({
       platform: { os: "darwin", arch: "x64" },

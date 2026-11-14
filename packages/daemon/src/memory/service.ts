@@ -938,6 +938,7 @@ export class MemoryService {
     const installState = this.currentInstallState();
     const version = await readRsrsVersion(executable, 4_000).catch(() => null);
     const failed = installState.status === "failed";
+    const blocked = failed && installState.blockedPin === RSRS_CLI_VERSION;
     return {
       settings,
       enabled: settings.enabled,
@@ -946,7 +947,7 @@ export class MemoryService {
       installation:
         installState.status === "installing"
           ? "installing"
-          : failed
+          : failed && !blocked
             ? "failed"
             : "ready",
       version,
@@ -962,6 +963,7 @@ export class MemoryService {
           : null,
       error:
         (failed ? installState.error : null) ?? memoryStatusError(cloudSummary),
+      installBlocked: blocked,
       checkedAt: this.now().toISOString(),
       lastRecall: null,
       userLibrary: NO_USER_LIBRARY,

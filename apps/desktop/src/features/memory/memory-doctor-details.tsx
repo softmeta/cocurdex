@@ -118,6 +118,11 @@ export function MemoryDoctorDetails({ status }: { status: MemoryStatus }) {
   return (
     <>
       <DoctorSummary status={status} t={t} />
+      {status.installBlocked ? (
+        <Text className="mt-1 block" size="meta">
+          {t("settings.status.installBlocked")}
+        </Text>
+      ) : null}
       {status.error ? (
         <Text
           className="mt-1 block whitespace-pre-wrap"

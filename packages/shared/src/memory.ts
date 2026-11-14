@@ -256,6 +256,9 @@ export interface MemoryStatus {
   userLibrary: MemoryUserLibraryStatus;
   doctor: MemoryDoctorReport | null;
   error: string | null;
+  // The pinned install stopped on a state only the user or a newer rsrs can
+  // clear, while the running store still serves recall and remember.
+  installBlocked?: boolean;
   checkedAt: string | null;
   lastRecall: MemoryRecallStatus | null;
 }

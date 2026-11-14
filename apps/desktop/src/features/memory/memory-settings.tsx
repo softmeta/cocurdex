@@ -53,6 +53,7 @@ function statusText(
 // reruns only to install a missing store or repair a failed one.
 function memorySetupAction(status: MemoryStatus | undefined) {
   if (!status?.available) return "install" as const;
+  if (status.installBlocked) return null;
   if (status.installation === "failed" || status.error)
     return "repair" as const;
   return null;
