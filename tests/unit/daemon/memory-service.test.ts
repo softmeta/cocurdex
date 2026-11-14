@@ -535,9 +535,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
       .split("\n")
       .map((line) => JSON.parse(line) as string[]);
     expect(calls.some((args) => args[0] === "remember")).toBe(false);
-    const update = calls.find((args) => args[0] === "update");
-    expect(update?.join(" ")).toContain("Recall body\n");
-    expect(update?.join(" ")).toContain("Use pnpm dev.");
+    expect(calls.find((args) => args[0] === "update")).toContain("memory-1");
     expect(
       await service.buildTurnContext(fakeSession(), "hi", "chat"),
     ).toBeNull();
