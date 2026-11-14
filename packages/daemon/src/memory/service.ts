@@ -380,8 +380,7 @@ export class MemoryService {
       settings.enabled &&
       (!previousSettings.enabled || settings.cliPath !== previousCliPath)
     ) {
-      if (await this.needsInstall()) void this.install(true);
-      else void this.rsrs.warmup(true);
+      void this.prepareEnabledStore();
     }
     if (previousSettings.enabled && !settings.enabled) {
       void this.rsrs.stopRuntime();
@@ -407,6 +406,19 @@ export class MemoryService {
       await this.rsrs.warmup();
     })();
     return this.startupPromise;
+  }
+
+  // Runs in the background so turning memory on answers at once.
+  private async prepareEnabledStore() {
+    if (this.options.startRuntime === false) return;
+    try {
+      if (await this.needsInstall()) await this.install(true);
+      else await this.rsrs.warmup(true);
+    } catch (error) {
+      logDaemonDiagnostic("info", "memory.prepareFailed", {
+        error: errorMessage(error),
+      });
+    }
   }
 
   private async needsInstall() {
