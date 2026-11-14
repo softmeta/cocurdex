@@ -2,11 +2,6 @@ import { AgentToolBridge } from "@cocurdex/daemon/internal/agent-tools/agent-too
 import { registerMemoryTools } from "@cocurdex/daemon/internal/agent-tools/groups/memory";
 import { AgentToolRegistry } from "@cocurdex/daemon/internal/agent-tools/tool-registry";
 import {
-  buildAgentMemoryPolicy,
-  buildGateNudge,
-  buildMemoryBrief,
-} from "@cocurdex/daemon/internal/memory/digest";
-import {
   parseInjectedHosts,
   parseRecallPayload,
   parseRememberPayload,
@@ -61,7 +56,6 @@ function registryWith(enabled: boolean) {
       }),
     ),
     policy: vi.fn(async () => "policy text"),
-    noteToolUse: vi.fn(),
   };
   registerMemoryTools(registry, deps);
   return { registry, deps };
@@ -283,24 +277,38 @@ describe("rsrs JSON parsing", () => {
 });
 
 describe("memory agent tools", () => {
-  it("does not count pending or skipped writes as saved", async () => {
+  it("answers memory_remember at once and saves in the background", async () => {
     const { registry, deps } = registryWith(true);
-    deps.remember.mockResolvedValue({
-      action: "candidates",
-      id: null,
-      title: null,
-      candidates: [],
-      message: "Pending",
-    });
-    await registry.call(caller, "memory_remember", {
+    let finish: (result: MemoryRememberResult) => void = () => {};
+    deps.remember.mockReturnValue(
+      new Promise<MemoryRememberResult>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const result = await registry.call(caller, "memory_remember", {
       title: "Tea",
       content: "Likes tea",
+      importance: "important",
     });
-    expect(deps.noteToolUse).not.toHaveBeenCalledWith(
-      caller.sessionId,
-      "remember",
+    expect(result).toMatchObject({ action: "accepted" });
+    expect(deps.remember).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Tea",
+        content: "Likes tea",
+        importance: "important",
+      }),
+      expect.objectContaining({ sessionId: "session-1" }),
+      "assistant",
     );
+    finish({
+      action: "created",
+      id: "memory-3",
+      title: "Tea",
+      candidates: [],
+      message: null,
+    });
   });
+
   it("exposes reads and writes to a main session when enabled", () => {
     const { registry } = registryWith(true);
     const names = registry.catalog(caller).tools.map((tool) => tool.name);
@@ -331,17 +339,6 @@ describe("memory agent tools", () => {
       expect.objectContaining({ sessionId: "session-1" }),
     );
     expect(result).toMatchObject({ items: [{ id: "memory-1" }] });
-  });
-
-  it("reports tool use with the caller session so gates can be checked", async () => {
-    const { registry, deps } = registryWith(true);
-    await registry.call(caller, "memory_recall", { query: "cocurdex" });
-    await registry.call(caller, "memory_remember", {
-      content: "content",
-      title: "title",
-    });
-    expect(deps.noteToolUse).toHaveBeenCalledWith("session-1", "recall");
-    expect(deps.noteToolUse).toHaveBeenCalledWith("session-1", "remember");
   });
 
   it("injects memory tools and policy through the agent tool bridge", async () => {
@@ -380,47 +377,6 @@ describe("memory agent tools", () => {
     const catalog = await bridge.catalog(binding.binding.token);
     expect(catalog.tools.map((tool) => tool.name)).toContain("recall");
     expect(catalog.instructions ?? "").toContain("memory policy");
-  });
-});
-
-describe("memory gates", () => {
-  it("injects both gates into the agent policy", () => {
-    const policy = buildAgentMemoryPolicy(true);
-    expect(policy).toContain("Gate 1 - recall before acting.");
-    expect(policy).toContain("Gate 2 - store before replying.");
-    expect(policy).toContain("memory_recall");
-    expect(policy).toContain("memory_remember");
-    expect(policy).not.toContain("do not mention the memory machinery");
-  });
-
-  it("skips the gates when no memory tools are available", () => {
-    const policy = buildAgentMemoryPolicy(false);
-    expect(policy).not.toContain("Gate 1");
-    expect(policy).toContain("the runtime handles recall and capture");
-  });
-
-  it("marks recall as satisfied and restates the store gate in the brief", () => {
-    const brief = buildMemoryBrief(
-      [
-        {
-          id: "memory-1",
-          title: "A memory",
-          score: 0.9,
-          importance: "important" as const,
-          updatedAt: null,
-        },
-      ],
-      { hasTools: true },
-    );
-    expect(brief).toContain('gate="recall-satisfied"');
-    expect(brief).toContain("Gate 2 (store) still applies");
-    expect(brief).toContain("memory-1");
-  });
-
-  it("builds a nudge after a missed store gate", () => {
-    const nudge = buildGateNudge();
-    expect(nudge).toContain("Gate 2 (store) was missed");
-    expect(nudge).toContain("memory_remember");
   });
 });
 

@@ -54,7 +54,6 @@ import { buildSnapshotProviderRecords } from "../provider/session-title";
 import type { DaemonState } from "../state";
 import {
   buildAgentMemoryPolicy,
-  buildGateNudge,
   buildMemoryBrief,
   buildSessionDigestFallback,
   buildTranscriptForSummary,
@@ -120,8 +119,8 @@ const USER_LIBRARY_READ_ONLY =
   "Entries from the user's own rsrs store are read-only in Cocurdex.";
 const HOST_RSRS_NOTE =
   "Your global instructions may also tell you to run the `rsrs` command (rsrs recall, rsrs remember). Inside Cocurdex, the memory tools above are the long-term memory: use them for every recall and store, and do not run the `rsrs` command.";
-const TURN_RECALL_BUDGET_MS = 8_000;
-const CHAT_EXCERPT_BUDGET_MS = 4_000;
+/** The whole pre-turn recall, bodies included, so memory never holds up a turn for long. */
+const TURN_RECALL_BUDGET_MS = 3_000;
 const SESSION_DIGEST_TIMEOUT_MS = 60_000;
 
 type MemoryState = Pick<
@@ -244,6 +243,16 @@ function clampRecallLimit(limit: number | undefined) {
   return Math.min(20, Math.max(1, Math.floor(limit ?? 8)));
 }
 
+/**
+ * Which turns the daemon writes a diary line for in the background: chat turns, and work sessions'
+ * own turns. Assistants remember on their own judgment, and subagents report to a parent.
+ */
+function turnCaptureSurface(session: SessionRecord): "chat" | "session" | null {
+  if (isChatSession(session)) return "chat";
+  const kind = session.sessionKind ?? "main";
+  return kind === "main" || kind === "teammate" ? "session" : null;
+}
+
 export class MemoryService {
   private settings: MemorySettings | null = null;
   private installState: MemoryInstallState | null = null;
@@ -255,10 +264,6 @@ export class MemoryService {
   private startupPromise: Promise<void> | null = null;
   private homePromise: Promise<RsrsHome> | null = null;
   private readonly lifetime = new AbortController();
-  private readonly gateTurns = new Map<
-    string,
-    { stored: boolean; nudge: boolean }
-  >();
   private lastRecall: MemoryRecallStatus | null = null;
   private readonly rsrs: RsrsMemoryProvider;
   private readonly userLibrary: UserRsrsLibrary;
@@ -1264,55 +1269,6 @@ export class MemoryService {
     }
   }
 
-  async beginTurn(input: {
-    sessionId: string;
-    mode: "agent" | "chat";
-    enforce: boolean;
-  }): Promise<string | null> {
-    await this.ensureInitialized();
-    if (
-      !this.currentSettings().enabled ||
-      !this.isReadyForTurns() ||
-      input.mode === "chat" ||
-      !input.enforce
-    ) {
-      this.gateTurns.delete(input.sessionId);
-      return null;
-    }
-    const previous = this.gateTurns.get(input.sessionId);
-    this.gateTurns.set(input.sessionId, { stored: false, nudge: false });
-    return previous?.nudge === true ? buildGateNudge() : null;
-  }
-
-  noteGateToolUse(sessionId: string, tool: "recall" | "show" | "remember") {
-    if (tool !== "remember") return;
-    const turn = this.gateTurns.get(sessionId);
-    if (turn) turn.stored = true;
-  }
-
-  async finishTurn(input: {
-    sessionId: string;
-    enforce: boolean;
-  }): Promise<boolean> {
-    const turn = this.gateTurns.get(input.sessionId);
-    if (!turn) return false;
-    await this.ensureInitialized();
-    if (
-      !input.enforce ||
-      !this.currentSettings().enabled ||
-      !this.isReadyForTurns() ||
-      turn.stored
-    ) {
-      this.gateTurns.delete(input.sessionId);
-      return false;
-    }
-    turn.nudge = true;
-    logDaemonDiagnostic("info", "memory.gateStoreMissed", {
-      sessionId: input.sessionId,
-    });
-    return true;
-  }
-
   async buildTurnContext(
     session: SessionRecord,
     message: string,
@@ -1342,14 +1298,13 @@ export class MemoryService {
       message: messageWithContext,
     });
     if (!query) return null;
+    const budgetMs = this.options.turnRecallBudgetMs ?? TURN_RECALL_BUDGET_MS;
+    const deadline = performance.now() + budgetMs;
+    const remainingMs = () => Math.floor(deadline - performance.now());
     let result: MemoryRecallResult;
     try {
       result = await this.recallIn(
-        {
-          query,
-          limit: 6,
-          timeoutMs: this.options.turnRecallBudgetMs ?? TURN_RECALL_BUDGET_MS,
-        },
+        { query, limit: 6, timeoutMs: budgetMs },
         partitions,
       );
     } catch (error) {
@@ -1375,9 +1330,8 @@ export class MemoryService {
     if (!result.error) this.noteRecall(session.id, mode, "recalled", null);
     if (session.sessionKind === "personal") {
       const entries = new Map<string, MemoryEntry>();
-      const deadline = performance.now() + CHAT_EXCERPT_BUDGET_MS;
       for (const item of result.items.slice(0, 3)) {
-        const remaining = Math.floor(deadline - performance.now());
+        const remaining = remainingMs();
         if (remaining <= 0) break;
         try {
           const entry = await this.showIn(item.id, partitions, remaining);
@@ -1394,12 +1348,12 @@ export class MemoryService {
       };
     }
     const excerpts = new Map<string, string>();
-    if (mode === "chat") {
+    if (mode === "chat" && remainingMs() > 0) {
       const selected = result.items.slice(0, 2);
       const shown = await Promise.all(
         selected.map(async (item) => {
           try {
-            const entry = await this.show(item.id, CHAT_EXCERPT_BUDGET_MS);
+            const entry = await this.show(item.id, remainingMs());
             return entry ? ([item.id, entry.content] as const) : null;
           } catch {
             return null;
@@ -1448,16 +1402,19 @@ export class MemoryService {
     assistantMessageId: string | null,
   ): Promise<MemorySessionSaveResult> {
     await this.ensureInitialized();
+    const session = await this.options.state.getSession(sessionId);
+    const surface = session ? turnCaptureSurface(session) : null;
+    if (!session || !surface) {
+      return { saved: false, memoryId: null, reason: "not-captured" };
+    }
     const settings = this.currentSettings();
-    if (!settings.enabled || !settings.chat.saveTurns) {
+    const allowed =
+      surface === "chat" ? settings.chat.saveTurns : settings.agent.tools;
+    if (!settings.enabled || !allowed) {
       return { saved: false, memoryId: null, reason: "disabled" };
     }
     if (!this.isReadyForTurns()) {
       return { saved: false, memoryId: null, reason: "unavailable" };
-    }
-    const session = await this.options.state.getSession(sessionId);
-    if (!session || !isChatSession(session)) {
-      return { saved: false, memoryId: null, reason: "not-chat" };
     }
     const messages =
       await this.options.state.listMessagesBySessionId(sessionId);
@@ -1480,6 +1437,7 @@ export class MemoryService {
     }
     const line = buildTurnDiaryLine({
       session,
+      surface,
       userMessage: user.content,
       assistantMessage: assistant.content,
       device: this.device,
@@ -1487,7 +1445,7 @@ export class MemoryService {
     });
     const result = await this.remember({
       content: redactMemorySecrets(line),
-      title: `Cocurdex chat：${compactDigestText(session.title, 48)}`,
+      title: `Cocurdex ${surface}：${compactDigestText(session.title, 48)}`,
       importance: "trivial",
       force: true,
     });
