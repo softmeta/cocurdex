@@ -55,3 +55,114 @@ index 509d6cd1410a1b49a6a7b46346f447ad5810bc7f..89d579f7846b485c955cf9090533886c
      props.disableLeftInsetApplication ?? false,
      props.disableRightInsetApplication ?? false,
      props.disableBottomInsetApplication ?? false,
+diff --git a/ios/RNSScreenStackHeaderConfig.mm b/ios/RNSScreenStackHeaderConfig.mm
+index e217b24..d1b381c 100644
+--- a/ios/RNSScreenStackHeaderConfig.mm
++++ b/ios/RNSScreenStackHeaderConfig.mm
+@@ -48,6 +48,69 @@ static const NSNumber *const DEFAULT_TITLE_LARGE_FONT_SIZE = @34;
+ @interface RNSScreenStackHeaderConfig () <RCTMountingTransactionObserving>
+ @end
+ 
++@interface RNSInteractivePopBarFader : NSObject
++- (instancetype)initWithBar:(UINavigationBar *)bar
++                coordinator:(id<UIViewControllerTransitionCoordinator>)coordinator;
++- (void)start;
++- (void)finishCancelled:(BOOL)cancelled;
++@end
++
++@implementation RNSInteractivePopBarFader {
++  UINavigationBar *_bar;
++  id<UIViewControllerTransitionCoordinator> _coordinator;
++  CADisplayLink *_displayLink;
++  CGFloat _lowestAlpha;
++}
++
++- (instancetype)initWithBar:(UINavigationBar *)bar
++                coordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
++{
++  if (self = [super init]) {
++    _bar = bar;
++    _coordinator = coordinator;
++    _lowestAlpha = 1;
++  }
++  return self;
++}
++
++- (void)start
++{
++  _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(step)];
++  [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
++  [self step];
++}
++
++- (void)step
++{
++  // Hidden by a tenth of the swipe; never comes back while the pop is undecided.
++  CGFloat progress = _coordinator.percentComplete;
++  _lowestAlpha = MIN(_lowestAlpha, MAX(0, 1 - progress * 10));
++  [CATransaction begin];
++  [CATransaction setDisableActions:YES];
++  _bar.alpha = _lowestAlpha;
++  [CATransaction commit];
++}
++
++- (void)finishCancelled:(BOOL)cancelled
++{
++  [_displayLink invalidate];
++  _displayLink = nil;
++  if (!cancelled) {
++    _bar.alpha = 1;
++    return;
++  }
++  UINavigationBar *bar = _bar;
++  [UIView animateWithDuration:0.2
++                        delay:0
++                      options:UIViewAnimationOptionBeginFromCurrentState
++                   animations:^{
++                     bar.alpha = 1;
++                   }
++                   completion:nil];
++}
++
++@end
++
+ @implementation RNSScreenStackHeaderConfig {
+   NSMutableArray<RNSScreenStackHeaderSubview *> *_reactSubviews;
+   BOOL _initialPropsSet;
+@@ -506,6 +569,24 @@ RNS_IGNORE_SUPER_CALL_END
+   return appearance;
+ }
+ 
++// On iOS 26, a cancelled interactive pop towards a screen without a navigation bar
++// leaves the outgoing bar's items offset for the last frame before UIKit snaps them
++// back. UIKit does not drive animations added alongside the interactive pop on the
++// bar's layer, so the bar follows the gesture's progress frame by frame instead: it
++// fades out early in the swipe, stays hidden through the cancel animation and its
++// final frame, and fades back in once the pop is cancelled.
+++ (void)fadeNavigationBarDuringInteractivePop:(UINavigationController *)navctr
++                                  coordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
++{
++  UINavigationBar *bar = navctr.navigationBar;
++  RNSInteractivePopBarFader *fader = [[RNSInteractivePopBarFader alloc] initWithBar:bar coordinator:coordinator];
++  [fader start];
++  [coordinator animateAlongsideTransition:nil
++                               completion:^(id<UIViewControllerTransitionCoordinatorContext> _Nonnull context) {
++                                 [fader finishCancelled:[context isCancelled]];
++                               }];
++}
++
+ + (void)updateViewController:(UIViewController *)vc
+                   withConfig:(RNSScreenStackHeaderConfig *)config
+                     animated:(BOOL)animated
+@@ -547,7 +628,11 @@ RNS_IGNORE_SUPER_CALL_END
+     navitem.title = config.title;
+ 
+     // Setting navigation bar visibility is split to mitigate iOS 26 bug with bar button items.
++    BOOL wasVisible = !wasHidden;
+     [navctr setNavigationBarHidden:YES animated:animated];
++    if (animated && wasVisible && vc.transitionCoordinator.isInteractive) {
++      [self fadeNavigationBarDuringInteractivePop:navctr coordinator:vc.transitionCoordinator];
++    }
+     return;
+   }
+ 
