@@ -143,12 +143,12 @@ export class RsrsMemoryProvider implements MemoryProvider {
     return (await isFile(command)) ? { command, env } : null;
   }
 
-  async stopRuntime() {
+  async stopRuntime(timeoutMs?: number) {
     const executable = await this.executable();
     this.warming = null;
     this.invalidateRuntime();
     if (!executable || !(await this.runtime(false))) return;
-    await stopRsrsRuntime(executable).catch((error: unknown) => {
+    await stopRsrsRuntime(executable, timeoutMs).catch((error: unknown) => {
       logDaemonDiagnostic("info", "memory.runtimeStopFailed", {
         error: errorMessage(error),
       });

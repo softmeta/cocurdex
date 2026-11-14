@@ -1372,7 +1372,7 @@ export default interface Resources {
       status: {
         available: "rsrs {{version}}";
         doctor: "doctor: {{status}} · {{pass}} pass · {{warn}} warn · {{fail}} fail";
-        installing: "Installing rsrs…";
+        installing: "Installing rsrs and its local model; the first install can take 10+ minutes…";
         missing: "rsrs is not installed";
         title: "Status";
         unknown: "unknown version";

@@ -2434,6 +2434,7 @@ export class CocurdexDaemonService {
         this.applications.dispose(),
         Promise.resolve().then(() => this.mcp.dispose()),
         this.terminals.dispose(),
+        this.memory.shutdown(),
         Promise.resolve().then(() => this.workspaces.close()),
       ]);
       await this.runs.drainBackground();
