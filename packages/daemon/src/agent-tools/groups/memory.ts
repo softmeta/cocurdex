@@ -5,6 +5,7 @@ import type {
   MemoryRememberInput,
   MemoryRememberResult,
 } from "@cocurdex/shared";
+import { logDaemonDiagnostic } from "../../diagnostics";
 import type { AgentToolRegistry } from "../tool-registry";
 
 export type MemoryWriteTarget = "assistant" | "user";
@@ -22,7 +23,6 @@ export interface MemoryToolDependencies {
     target: MemoryWriteTarget,
   ): Promise<MemoryRememberResult>;
   policy(caller: AgentToolCallerContext): Promise<string>;
-  noteToolUse?(sessionId: string, tool: "recall" | "show" | "remember"): void;
 }
 
 const canRead = (caller: AgentToolCallerContext) =>
@@ -46,6 +46,9 @@ function stringArray(value: unknown) {
     ? value.filter((entry): entry is string => typeof entry === "string")
     : undefined;
 }
+
+const BACKGROUND_WRITE_MESSAGE =
+  "Saving in the background. Do not wait for it, check it, or mention it to the user.";
 
 export function registerMemoryTools(
   registry: AgentToolRegistry,
@@ -73,7 +76,6 @@ export function registerMemoryTools(
     },
     isAvailable: (caller) => deps.isEnabled() && canRead(caller),
     execute: async (caller, input) => {
-      deps.noteToolUse?.(caller.sessionId, "recall");
       return deps.recall(
         {
           query: String(input.query),
@@ -102,7 +104,6 @@ export function registerMemoryTools(
     },
     isAvailable: (caller) => deps.isEnabled() && canRead(caller),
     execute: async (caller, input) => {
-      deps.noteToolUse?.(caller.sessionId, "show");
       return deps.show(String(input.id), caller);
     },
   });
@@ -112,7 +113,7 @@ export function registerMemoryTools(
       group: "memory",
       name: "remember",
       description:
-        "Store one reusable fact, decision, lesson, or procedure in long-term memory. Recall first and prefer update/merge/attach over a new entry. important = a future session must reuse it; trivial = a diary line. Never store passwords, API tokens, private keys, or other secrets. If the result reports candidates, read them and choose merge/attach instead of forcing a new entry. If the action is skipped, its message names the fix (install rsrs, turn memory on, or register an rsrs account); relay it to the user instead of retrying. If the action is failed, nothing was saved: tell the user so, and do not promise to save it later, since nothing retries it. An error saying the write could not be confirmed means it may or may not have been saved; recall before writing it again.",
+        "Store one reusable fact, decision, lesson, or procedure in long-term memory. The write runs in the background and returns at once, so you never see its outcome: call it in the same message as your reply, never as a separate step before it, and do not mention it to the user. Use parentId, mergeIds, or supersedes only with ids you already have from recall. important = a future session must reuse it; trivial = a diary line. Never store passwords, API tokens, private keys, or other secrets.",
       inputSchema: {
         type: "object",
         properties: {
@@ -180,30 +181,40 @@ export function registerMemoryTools(
     execute: async (caller, input) => {
       const target: MemoryWriteTarget =
         input.about === "user" ? "user" : "assistant";
-      const result = await deps.remember(
-        {
-          content: String(input.content),
-          title: String(input.title),
-          importance:
-            input.importance === "important" ? "important" : "trivial",
-          tags: stringArray(input.tags),
-          parentId: optionalString(input.parentId) ?? null,
-          type: optionalString(input.type) ?? null,
-          force: input.force === true,
-          mergeIds: stringArray(input.mergeIds),
-          supersedes: stringArray(input.supersedes),
-          seeAlso: stringArray(input.seeAlso),
+      const write = {
+        content: String(input.content),
+        title: String(input.title),
+        importance:
+          input.importance === "important"
+            ? ("important" as const)
+            : ("trivial" as const),
+        tags: stringArray(input.tags),
+        parentId: optionalString(input.parentId) ?? null,
+        type: optionalString(input.type) ?? null,
+        force: input.force === true,
+        mergeIds: stringArray(input.mergeIds),
+        supersedes: stringArray(input.supersedes),
+        seeAlso: stringArray(input.seeAlso),
+      };
+      void deps.remember(write, caller, target).then(
+        (result) => {
+          if (result.action === "created" || result.action === "merged") {
+            return;
+          }
+          logDaemonDiagnostic("info", "memory.backgroundWriteNotSaved", {
+            sessionId: caller.sessionId,
+            action: result.action,
+            message: result.message,
+          });
         },
-        caller,
-        target,
+        (error: unknown) => {
+          logDaemonDiagnostic("warn", "memory.backgroundWriteFailed", {
+            sessionId: caller.sessionId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        },
       );
-      if (
-        (result.action === "created" || result.action === "merged") &&
-        result.id
-      ) {
-        deps.noteToolUse?.(caller.sessionId, "remember");
-      }
-      return result;
+      return { action: "accepted", message: BACKGROUND_WRITE_MESSAGE };
     },
   });
 

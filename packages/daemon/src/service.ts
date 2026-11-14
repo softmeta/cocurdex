@@ -727,8 +727,6 @@ export class CocurdexDaemonService {
         caller.sessionKind === "personal"
           ? Promise.resolve(this.memory.agentInstructions(true, true))
           : this.memory.policy(),
-      noteToolUse: (sessionId, tool) =>
-        this.memory.noteGateToolUse(sessionId, tool),
     });
     this.scriptRuns = new ScriptRunModule({
       repository: this.state.scriptRuns,
@@ -916,15 +914,7 @@ export class CocurdexDaemonService {
           sessionId: event.sessionId,
           messageId: event.messageId,
         });
-        const completedSession = await this.state.getSession(event.sessionId);
-        if (completedSession && isChatSession(completedSession)) {
-          void this.memory.captureTurn(event.sessionId, event.messageId);
-        } else if (completedSession) {
-          void this.memory.finishTurn({
-            sessionId: event.sessionId,
-            enforce: (completedSession.sessionKind ?? "main") !== "subagent",
-          });
-        }
+        void this.memory.captureTurn(event.sessionId, event.messageId);
       }
       await this.team.onAgentEvent(event);
       await this.delegations.onAgentEvent(event);
@@ -2599,14 +2589,6 @@ export class CocurdexDaemonService {
     const persona = this.personalAgents.personaForSession(session);
     if (sessionKind === "personal" && !persona)
       throw new Error("Personal assistant memory scope is unavailable.");
-    const memoryGate = await this.memory.beginTurn({
-      sessionId: session.id,
-      mode: chatSession ? "chat" : "agent",
-      enforce:
-        !chatSession &&
-        sessionKind !== "personal" &&
-        sessionKind !== "subagent",
-    });
     const memoryContext =
       !chatSession && sessionKind === "subagent"
         ? null
@@ -2641,10 +2623,7 @@ export class CocurdexDaemonService {
         }
       : undefined;
     const runPolicy = routine ? routineRunPolicy(routine.access) : null;
-    const memoryPrefix = [memoryGate, memoryContext?.brief]
-      .filter((section): section is string => Boolean(section))
-      .join("\n\n");
-    const memoryText = memoryPrefix ? `${memoryPrefix}\n\n` : "";
+    const memoryText = memoryContext?.brief ? `${memoryContext.brief}\n\n` : "";
     if (resolution.kind === "native") {
       if (pending?.kind === "fork") {
         this.consumeNativeFork(pending, session, userMessage, priorMessages);
