@@ -106,7 +106,7 @@
     "actions": {
       "doctor": "运行体检",
       "install": "安装",
-      "verify": "验证"
+      "repair": "修复"
     },
     "agentContext": {
       "description": "每轮 agent 回答前召回相关记忆，并加入提示词。",
@@ -189,6 +189,7 @@
     "saveFailed": "无法保存记忆设置",
     "status": {
       "available": "rsrs {{version}}",
+      "availableWithRuntime": "rsrs {{version}} · Runtime {{runtime}}",
       "doctor": "体检：{{status}} · 通过 {{pass}} · 警告 {{warn}} · 失败 {{fail}}",
       "installing": "正在安装 rsrs 和本地模型，首次可能需要十几分钟…",
       "missing": "rsrs 尚未安装",

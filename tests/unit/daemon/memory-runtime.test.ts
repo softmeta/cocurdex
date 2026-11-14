@@ -173,7 +173,7 @@ describe("rsrs runtime RPC client", () => {
     }));
     try {
       const reply = await execRuntimeCli(
-        { url: runtime.url, bin: null, pid: null },
+        { url: runtime.url, runtimeVersion: null, pid: null },
         ["remember", "--json", "body"],
         5_000,
       );
@@ -191,7 +191,7 @@ describe("rsrs runtime RPC client", () => {
     try {
       await expect(
         execRuntimeCli(
-          { url: runtime.url, bin: null, pid: null },
+          { url: runtime.url, runtimeVersion: null, pid: null },
           ["recall", "--json", "tea"],
           100,
         ),

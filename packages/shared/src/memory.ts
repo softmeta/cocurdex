@@ -245,6 +245,7 @@ export interface MemoryStatus {
   available: boolean;
   installation: MemoryInstallationState;
   version: string | null;
+  runtimeVersion: string | null;
   executable: string | null;
   dataDir: string | null;
   account: string | null;

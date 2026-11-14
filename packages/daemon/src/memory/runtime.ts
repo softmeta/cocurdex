@@ -14,7 +14,7 @@ export interface RuntimeRequestScope {
 
 export interface RuntimeEndpoint {
   url: string;
-  bin: string | null;
+  runtimeVersion: string | null;
   pid: number | null;
   scope?: RuntimeRequestScope | null;
 }
@@ -110,7 +110,7 @@ async function probeRuntime(
     const version = health.runtime_version ?? health.bin;
     return {
       url,
-      bin: typeof version === "string" ? version : null,
+      runtimeVersion: typeof version === "string" ? version : null,
       pid: typeof health.pid === "number" ? health.pid : null,
       scope: healthScope(health),
     };
