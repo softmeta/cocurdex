@@ -235,7 +235,7 @@ export class RsrsMemoryProvider implements MemoryProvider {
         5_000,
       );
       if (payload.status === "fail") throw new Error("status failed");
-      return { bin: endpoint.bin ?? null, payload };
+      return { runtimeVersion: endpoint.runtimeVersion, payload };
     } catch (error) {
       logDaemonDiagnostic("info", "memory.runtimeStatusFailed", {
         error: errorMessage(error),

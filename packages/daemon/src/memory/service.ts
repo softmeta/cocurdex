@@ -523,6 +523,7 @@ export class MemoryService {
         available: false,
         installation: "installing",
         version: null,
+        runtimeVersion: null,
         executable: executable?.command ?? null,
         dataDir: null,
         account: null,
@@ -554,6 +555,7 @@ export class MemoryService {
               : "missing",
         version: pinned ? installState.version : null,
         executable: null,
+        runtimeVersion: null,
         dataDir: null,
         account: null,
         space: null,
@@ -595,6 +597,7 @@ export class MemoryService {
       available: true,
       installation: installedStoreState(installState.status),
       version,
+      runtimeVersion: null,
       executable: executable.command,
       dataDir: summary?.dataDir ?? null,
       account: summary?.account ?? null,
@@ -926,14 +929,15 @@ export class MemoryService {
       available: true,
       installation:
         installState.status === "installing" ? "installing" : "ready",
-      version: runtime.bin ?? installState.version,
+      version: installState.version,
+      runtimeVersion: runtime.runtimeVersion,
       executable: executableCommand,
       dataDir: cloudSummary.dataDir,
       account: cloudSummary.account,
       space: cloudSummary.space,
       cloud: toCloudStatus(cloudSummary),
       doctor:
-        installState.doctor?.version === (runtime.bin ?? installState.version)
+        installState.doctor?.version === installState.version
           ? installState.doctor
           : null,
       error: memoryStatusError(cloudSummary),

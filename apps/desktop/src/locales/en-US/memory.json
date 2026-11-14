@@ -106,7 +106,7 @@
     "actions": {
       "doctor": "Run doctor",
       "install": "Install",
-      "verify": "Verify"
+      "repair": "Repair"
     },
     "agentContext": {
       "description": "Recall relevant memories before each agent turn and add them to the prompt.",
@@ -189,6 +189,7 @@
     "saveFailed": "Could not save memory settings",
     "status": {
       "available": "rsrs {{version}}",
+      "availableWithRuntime": "rsrs {{version}} · Runtime {{runtime}}",
       "doctor": "doctor: {{status}} · {{pass}} pass · {{warn}} warn · {{fail}} fail",
       "installing": "Installing rsrs and its local model; the first install can take 10+ minutes…",
       "missing": "rsrs is not installed",

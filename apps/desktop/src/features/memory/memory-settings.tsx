@@ -36,11 +36,25 @@ function statusText(
   if (status?.supported === false) return t("settings.status.unsupported");
   if (installing) return t("settings.status.installing");
   if (status?.available) {
-    return t("settings.status.available", {
-      version: status.version ?? t("settings.status.unknown"),
+    const version = status.version ?? t("settings.status.unknown");
+    if (!status.runtimeVersion) {
+      return t("settings.status.available", { version });
+    }
+    return t("settings.status.availableWithRuntime", {
+      version,
+      runtime: status.runtimeVersion,
     });
   }
   return t("settings.status.missing");
+}
+
+// A healthy install needs no setup run: the doctor action checks it. Setup
+// reruns only to install a missing store or repair a failed one.
+function memorySetupAction(status: MemoryStatus | undefined) {
+  if (!status?.available) return "install" as const;
+  if (status.installation === "failed" || status.error)
+    return "repair" as const;
+  return null;
 }
 
 function cloudDetail(t: TFunction<"memory">, cloud: MemoryCloudStatus) {
@@ -69,6 +83,7 @@ export function MemorySettingsPanel() {
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const installing = status?.installation === "installing";
   const unsupported = status?.supported === false;
+  const setupAction = memorySetupAction(status);
   const cloud = status?.cloud ?? DEFAULT_MEMORY_CLOUD_STATUS;
   const syncReady =
     Boolean(status?.available) && settings.enabled && !unsupported;
@@ -392,16 +407,18 @@ export function MemorySettingsPanel() {
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {busy || installing ? <Spinner size="md" /> : null}
-              <Button
-                disabled={busy || installing || unsupported}
-                size="sm"
-                variant="outline"
-                onClick={() => void runInstall()}
-              >
-                {status?.available
-                  ? t("settings.actions.verify")
-                  : t("settings.actions.install")}
-              </Button>
+              {setupAction ? (
+                <Button
+                  disabled={busy || installing || unsupported}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void runInstall()}
+                >
+                  {setupAction === "repair"
+                    ? t("settings.actions.repair")
+                    : t("settings.actions.install")}
+                </Button>
+              ) : null}
               <Button
                 disabled={busy || installing || !status?.available}
                 size="sm"
