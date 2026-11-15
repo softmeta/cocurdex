@@ -72,6 +72,7 @@ import {
   conversationTurns,
 } from "./digest";
 import {
+  installBlocked,
   installErrorNeedsUser,
   needsGlobalInstall,
   needsManagedInstall,
@@ -526,17 +527,18 @@ export class MemoryService {
         hasExecutable: (await this.resolveExecutable()) !== null,
         freshHome: await isFreshRsrsHome(home.dataDir),
         ownedHome: state.ownedHome === home.dataDir,
-        blocked: state.blockedPin === RSRS_CLI_VERSION,
+        blocked: installBlocked(state, RSRS_CLI_VERSION),
       });
     }
+    const state = this.currentInstallState();
     return needsManagedInstall({
       supported: this.supported,
       enabled: settings.enabled,
       customCli: Boolean(settings.cliPath),
-      installedVersion: this.currentInstallState().version,
+      installedVersion: state.version,
       pinnedVersion: RSRS_CLI_VERSION,
       hasExecutable: (await this.resolveExecutable()) !== null,
-      blockedPin: this.currentInstallState().blockedPin,
+      blocked: installBlocked(state, RSRS_CLI_VERSION),
     });
   }
 
@@ -715,6 +717,7 @@ export class MemoryService {
         attemptedAt: startedAt,
         status: "installing",
         error: null,
+        blockedPin: null,
       });
       try {
         const executable = await this.setUpRsrsWithRetries();
@@ -1045,7 +1048,7 @@ export class MemoryService {
     const version = await readRsrsVersion(executable, 4_000).catch(() => null);
     this.noteVersion(version);
     const failed = installState.status === "failed";
-    const blocked = failed && installState.blockedPin === RSRS_CLI_VERSION;
+    const blocked = installBlocked(installState, RSRS_CLI_VERSION);
     return {
       settings,
       enabled: settings.enabled,
