@@ -100,11 +100,12 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
     tier: "write",
     storage: "daemon",
     description:
-      "Long-term memory through Respire (rsrs). enabled is the master switch; agent controls automatic recall and memory tools for agent sessions; chat controls recall and automatic capture for chat sessions; userLibrary makes a development profile, which keeps a store of its own, also recall read-only from the machine's rsrs store (~/.rsrs), which the installed app already uses; cliPath optionally points at the rsrs executable.",
+      "Long-term memory, kept in the daemon's own store. enabled is the master switch; rsrs also uses Respire (rsrs) for recall by meaning and multi-device sync, which installs rsrs and a local model; agent controls automatic recall and memory tools for agent sessions; chat controls recall and saving a summary when a chat ends; userLibrary makes a development profile, which keeps a store of its own, also recall read-only from the machine's rsrs store (~/.rsrs), which the installed app already uses; cliPath optionally points at the rsrs executable.",
     valueSchema: {
       type: "object",
       properties: {
         enabled: { type: "boolean" },
+        rsrs: { type: "boolean" },
         agent: {
           type: "object",
           properties: {

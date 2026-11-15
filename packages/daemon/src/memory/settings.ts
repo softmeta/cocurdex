@@ -98,10 +98,25 @@ export interface MemorySettingsStore {
   setAppSetting(key: string, valueJson: string): Promise<unknown>;
 }
 
+function storesRsrsChoice(raw: string | null) {
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return typeof parsed === "object" && parsed !== null && "rsrs" in parsed;
+  } catch {
+    return false;
+  }
+}
+
+// Settings written before rsrs became optional carry no choice for it; an
+// install that already ran on rsrs keeps it on.
 export async function readMemorySettings(
   store: MemorySettingsStore,
+  rsrsInUse = false,
 ): Promise<MemorySettings> {
-  return parseMemorySettings(await store.getAppSetting(MEMORY_SETTINGS_KEY));
+  const raw = await store.getAppSetting(MEMORY_SETTINGS_KEY);
+  const settings = parseMemorySettings(raw);
+  return storesRsrsChoice(raw) ? settings : { ...settings, rsrs: rsrsInUse };
 }
 
 export async function writeMemorySettings(

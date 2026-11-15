@@ -127,14 +127,11 @@ export function normalizeAgentRoleAvatar(
   if (kind !== "emoji" || typeof emoji !== "string") {
     return null;
   }
-  const firstGrapheme = new Intl.Segmenter()
-    .segment(emoji.trim())
-    [Symbol.iterator]()
-    .next().value?.segment;
-  if (!firstGrapheme || /^[\p{L}\p{N}\p{P}\s]/u.test(firstGrapheme)) {
+  const first = firstGrapheme(emoji.trim());
+  if (!first || /^[\p{L}\p{N}\p{P}\s]/u.test(first)) {
     return null;
   }
-  return { kind, emoji: firstGrapheme, color };
+  return { kind, emoji: first, color };
 }
 
 export function agentRoleMatchesDraft(

@@ -126,10 +126,10 @@ describe("personal assistant memory", () => {
         );
         await requestDaemon(
           "memory.settings.set",
-          { settings: { ...settings, enabled: true, cliPath } },
+          { settings: { ...settings, enabled: true, rsrs: true, cliPath } },
           daemon.options,
         );
-        await requestDaemon("memory.status", { refresh: true }, daemon.options);
+        await requestDaemon("memory.rsrs.sync", daemon.options);
       };
       await useFakeRsrs(directory);
       const cli = async (args: string[]) => {
@@ -205,6 +205,7 @@ describe("personal assistant memory", () => {
       expect(first).not.toContain("Peanut sauce recipe");
       expect(first).not.toContain("Peanut farm visit");
 
+      await requestDaemon("memory.rsrs.sync", daemon.options);
       const afterFirst = await readState();
       expect(
         afterFirst.recalls

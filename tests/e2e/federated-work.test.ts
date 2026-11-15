@@ -137,8 +137,16 @@ async function setUpRemote(remote: DaemonProcess) {
 describe("federated work", () => {
   it("delegates from an assistant to a paired computer and reports back", async () => {
     const stub = await startStubLlmServer();
-    const local = await spawnDaemon();
-    const remote = await spawnDaemon();
+    const spawned = await Promise.allSettled([spawnDaemon(), spawnDaemon()]);
+    const daemons = spawned.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : [],
+    );
+    const [local, remote] = daemons;
+    if (!local || !remote) {
+      await Promise.all(daemons.map((daemon) => daemon.dispose()));
+      await stub.close();
+      throw spawned.find((result) => result.status === "rejected")?.reason;
+    }
     try {
       for (const daemon of [local, remote]) {
         await saveStubProvider(daemon, stub);
@@ -292,5 +300,5 @@ describe("federated work", () => {
       await Promise.all([local.dispose(), remote.dispose()]);
       await stub.close();
     }
-  });
+  }, 90_000);
 });

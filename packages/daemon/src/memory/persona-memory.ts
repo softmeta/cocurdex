@@ -4,7 +4,7 @@ const CONTEXT_BUDGET = 1500;
 
 export function personaMemoryPolicy() {
   return [
-    "Personal assistant memory is available through Respire (rsrs).",
+    "Personal assistant memory is available.",
     "Recall relevant memories when needed. A memory-context block already contains this turn's automatic recall; search again only if it misses the request.",
     "Remember explicit requests to remember and useful durable facts, preferences, decisions or agreements. Do not save greetings, routine conversation, guesses or every turn's transcript.",
     "Use about=user for facts about the user that all assistants should share; otherwise write to your own assistant partition.",

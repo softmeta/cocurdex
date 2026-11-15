@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 
 const ENABLED: MemorySettings = {
   enabled: true,
+  rsrs: true,
   agent: { injectContext: true, tools: true },
   chat: { recall: true, saveTurns: true, saveOnEnd: true },
   userLibrary: false,
@@ -146,6 +147,9 @@ class InMemoryProvider implements MemoryProvider {
   }
   async revision() {
     return String(this.log.length);
+  }
+  async snapshot() {
+    return [];
   }
   async exportTo() {}
   async importFrom() {

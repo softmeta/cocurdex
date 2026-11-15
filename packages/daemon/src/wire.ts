@@ -509,7 +509,7 @@ export async function startDaemonServer(options: StartDaemonServerOptions) {
       try {
         try {
           for (const connection of connections.keys()) connection.close();
-          relayConnector?.close();
+          await relayConnector?.close();
           await remoteListener?.close();
           if (webSocketServer) await closeWebSocketServer(webSocketServer);
           if (httpServer.listening) {

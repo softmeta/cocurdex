@@ -26,11 +26,12 @@ export function conversationSeparatorTime(
   return isNewDay || start - previousEnd >= SEPARATOR_GAP_MS ? start : null;
 }
 
-function capitalize(text: string, locale: string) {
-  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
-}
-
-export function formatSeparatorTime(time: number, now: number, locale: string) {
+export function formatSeparatorTime(
+  time: number,
+  now: number,
+  locale: string,
+  yesterdayLabel: string,
+) {
   const clock = new Intl.DateTimeFormat(locale, {
     hour: "numeric",
     minute: "2-digit",
@@ -39,12 +40,7 @@ export function formatSeparatorTime(time: number, now: number, locale: string) {
     (startOfLocalDay(now) - startOfLocalDay(time)) / DAY_MS,
   );
   if (days === 0) return clock;
-  if (days === 1) {
-    const yesterday = new Intl.RelativeTimeFormat(locale, {
-      numeric: "auto",
-    }).format(-1, "day");
-    return `${capitalize(yesterday, locale)} ${clock}`;
-  }
+  if (days === 1) return `${yesterdayLabel} ${clock}`;
   const sameYear = new Date(time).getFullYear() === new Date(now).getFullYear();
   const dateOptions: Intl.DateTimeFormatOptions =
     days > 1 && days < 7

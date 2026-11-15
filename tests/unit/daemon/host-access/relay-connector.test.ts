@@ -121,7 +121,7 @@ const relays: FakeRelay[] = [];
 const connectors: ReturnType<typeof createRelayConnector>[] = [];
 
 afterEach(async () => {
-  for (const connector of connectors.splice(0)) connector.close();
+  for (const connector of connectors.splice(0)) await connector.close();
   for (const relay of relays.splice(0)) await relay.close();
 });
 

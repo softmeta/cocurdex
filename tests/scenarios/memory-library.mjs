@@ -1,6 +1,3 @@
-import { readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { writeFakeRsrs } from "@cocurdex/test-harness/fixtures/fake-rsrs/index.mjs";
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
@@ -9,53 +6,34 @@ import { closeEditorPanel, showPanelView, translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
 const args = readScenarioArgs();
-const state = {};
+const state = { ids: {} };
 
-const SEED = {
-  revision: 1,
-  deleted: [],
-  log: [],
-  live: [
-    {
-      id: "m-tea",
-      title: "Prefers tea",
-      content: "Drinks green tea in the morning",
-      project: "cocurdex/me",
-      tags: ["taste"],
-      updated_at: "2026-11-04T08:00:00Z",
-    },
-    {
-      id: "m-sencha",
-      title: "Favorite tea is sencha",
-      content: "Sencha over matcha",
-      project: "cocurdex/me",
-      parent_id: "m-tea",
-      tags: [],
-      updated_at: "2026-11-03T08:00:00Z",
-    },
-    {
-      id: "m-coach",
-      title: "Runs on Tuesdays",
-      content: "Training plan from the coach",
-      project: "cocurdex/agent/coach",
-      tags: [],
-      updated_at: "2026-11-02T08:00:00Z",
-    },
-  ],
-};
+const SEED = [
+  {
+    key: "tea",
+    title: "Prefers tea",
+    content: "Drinks green tea in the morning",
+    project: "cocurdex/me",
+    tags: ["taste"],
+  },
+  {
+    key: "sencha",
+    title: "Favorite tea is sencha",
+    content: "Sencha over matcha",
+    project: "cocurdex/me",
+    parent: "tea",
+  },
+  {
+    key: "coach",
+    title: "Runs on Tuesdays",
+    content: "Training plan from the coach",
+    project: "cocurdex/agent/coach",
+  },
+];
 
-async function readFakeState() {
-  return JSON.parse(await readFile(state.statePath, "utf8"));
-}
-
-async function waitForFakeState(predicate) {
-  const deadline = Date.now() + UI_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const current = await readFakeState();
-    if (predicate(current)) return current;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error("fake rsrs state did not reach the expected value");
+async function liveTitles(session) {
+  const { items } = await daemonRequest(session, "memory.list", {});
+  return items.map((entry) => entry.title);
 }
 
 async function library(session) {
@@ -71,16 +49,19 @@ async function entryButton(session, title) {
 
 runScenario("memory-library", {
   open: () => openScenarioApp(args),
-  setup: async ({ session, workspaceRoot }) => {
-    state.statePath = path.join(workspaceRoot, "fake-rsrs-state.json");
-    await writeFile(state.statePath, JSON.stringify(SEED), "utf8");
-    const cliPath = await writeFakeRsrs(workspaceRoot, {
-      statePath: state.statePath,
-    });
+  setup: async ({ session }) => {
     state.original = await daemonRequest(session, "memory.settings.get");
     await daemonRequest(session, "memory.settings.set", {
-      settings: { ...state.original, enabled: true, cliPath },
+      settings: { ...state.original, enabled: true, rsrs: false },
     });
+    for (const { key, parent, ...entry } of SEED) {
+      const saved = await daemonRequest(session, "memory.remember", {
+        ...entry,
+        ...(parent ? { parentId: state.ids[parent] } : {}),
+        force: true,
+      });
+      state.ids[key] = saved.id;
+    }
     return {};
   },
   steps: [
@@ -88,7 +69,7 @@ runScenario("memory-library", {
       "the memory view lists every partition by day",
       async ({ session }) => {
         state.panel = await showPanelView(session, "memory");
-        for (const entry of SEED.live) {
+        for (const entry of SEED) {
           await waitForRole(
             session,
             await entryButton(session, entry.title),
@@ -106,25 +87,25 @@ runScenario("memory-library", {
           name: await translate(session, "memory:library.mode.tree"),
           within: await library(session),
         });
-        const readIndents = () => {
-          const indent = (id) =>
-            document.querySelector(`[data-memory-id="${id}"]`)?.style
-              .paddingInlineStart ?? "";
-          return { parent: indent("m-tea"), child: indent("m-sencha") };
-        };
+        const ids = { parent: state.ids.tea, child: state.ids.sencha };
         await session.waitUntil(
-          () => {
+          (ids) => {
             const indent = (id) =>
               document.querySelector(`[data-memory-id="${id}"]`)?.style
                 .paddingInlineStart ?? "";
-            const parent = indent("m-tea");
-            const child = indent("m-sencha");
+            const parent = indent(ids.parent);
+            const child = indent(ids.child);
             return parent !== "" && child !== "" && parent !== child;
           },
-          undefined,
+          ids,
           UI_TIMEOUT_MS,
         );
-        const indents = await session.run(readIndents);
+        const indents = await session.run((ids) => {
+          const indent = (id) =>
+            document.querySelector(`[data-memory-id="${id}"]`)?.style
+              .paddingInlineStart ?? "";
+          return { parent: indent(ids.parent), child: indent(ids.child) };
+        }, ids);
         check(
           Number.parseFloat(indents.child) > Number.parseFloat(indents.parent),
           "child is indented under its parent",
@@ -134,7 +115,7 @@ runScenario("memory-library", {
       },
     ],
     [
-      "an edit reaches the provider and the list",
+      "an edit reaches the store and the list",
       async ({ session }) => {
         await clickByRole(session, await entryButton(session, "Prefers tea"));
         const form = {
@@ -159,8 +140,11 @@ runScenario("memory-library", {
           await entryButton(session, "Prefers oolong tea"),
           UI_TIMEOUT_MS,
         );
-        await waitForFakeState((current) =>
-          current.live.some((entry) => entry.title === "Prefers oolong tea"),
+        const titles = await liveTitles(session);
+        check(
+          titles.includes("Prefers oolong tea"),
+          "the store holds the edited title",
+          titles,
         );
         return {};
       },
@@ -193,8 +177,11 @@ runScenario("memory-library", {
           await entryButton(session, "Prefers oolong tea"),
           UI_TIMEOUT_MS,
         );
-        await waitForFakeState((current) =>
-          current.deleted.some((entry) => entry.id === "m-tea"),
+        const afterDelete = await liveTitles(session);
+        check(
+          !afterDelete.includes("Prefers oolong tea"),
+          "the store no longer lists the deleted memory",
+          afterDelete,
         );
         await clickByRole(
           session,
@@ -209,8 +196,11 @@ runScenario("memory-library", {
           await entryButton(session, "Prefers oolong tea"),
           UI_TIMEOUT_MS,
         );
-        await waitForFakeState((current) =>
-          current.live.some((entry) => entry.id === "m-tea"),
+        const afterUndo = await liveTitles(session);
+        check(
+          afterUndo.includes("Prefers oolong tea"),
+          "the store lists the restored memory",
+          afterUndo,
         );
         return {};
       },
@@ -228,12 +218,14 @@ runScenario("memory-library", {
           name: await translate(session, "memory:library.history"),
         };
         await waitForRole(session, history, UI_TIMEOUT_MS);
-        const fake = await readFakeState();
+        const log = await daemonRequest(session, "memory.history", {
+          id: state.ids.tea,
+        });
+        const actions = log.map((row) => row.action).join(",");
         check(
-          fake.log.map((row) => row.action).join(",") ===
-            "restore,delete,update",
-          "provider logged update, delete, restore",
-          fake.log,
+          actions === "restore,delete,update,create",
+          "the store logged create, update, delete, restore",
+          actions,
         );
         return {};
       },
@@ -248,6 +240,9 @@ runScenario("memory-library", {
     ],
   ],
   teardown: async ({ session }) => {
+    for (const id of Object.values(state.ids)) {
+      await daemonRequest(session, "memory.forget", { id }).catch(() => null);
+    }
     if (state.original) {
       await daemonRequest(session, "memory.settings.set", {
         settings: state.original,

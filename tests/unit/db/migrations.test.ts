@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { DatabaseSync } from "node:sqlite";
+import { createSqliteMemoryEntriesRepository } from "@cocurdex/db/internal/memory/sqlite-memory-entries-repository";
 import {
   COCURDEX_APPLICATION_ID,
   CURRENT_SCHEMA_VERSION,
@@ -1276,6 +1277,77 @@ describe("initializeDatabase", () => {
     expect(
       database.prepare("SELECT id, title, revision FROM decks").all(),
     ).toEqual([{ id: "d1", title: "Pitch", revision: 1 }]);
+    expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
+      { title: "Explain" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+    expect(database.prepare("SELECT title FROM notes").all()).toEqual([
+      { title: "Spec" },
+    ]);
+    expect(database.prepare("SELECT title FROM issues").all()).toEqual([
+      { title: "Decks" },
+    ]);
+  });
+
+  it("adds the memory store from version 48 and keeps sessions, notes, and issues", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec(`
+      DROP TABLE memory_fts;
+      DROP TABLE memory_entry_history;
+      DROP TABLE memory_entries;
+    `);
+    const now = "2026-11-15T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Shop', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Explain', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO notes (id, kind, title, body_markdown, sort_order, created_at, updated_at)
+      VALUES ('n1', 'note', 'Spec', 'Body', 0, '${now}', '${now}');
+      INSERT INTO issues (id, title, status, priority, created_at, updated_at)
+      VALUES ('i1', 'Decks', 'backlog', 'none', '${now}', '${now}');
+      PRAGMA user_version = 48;
+    `);
+
+    initializeDatabase(database);
+
+    const entries = createSqliteMemoryEntriesRepository(database);
+    entries.insert(
+      {
+        id: "e1",
+        project: null,
+        title: "发版流程",
+        content: "先打 beta 标签，验证后再转正",
+        kind: null,
+        importance: "important",
+        tags: [],
+        parentId: null,
+        supersedes: [],
+        supersededBy: null,
+        seeAlso: [],
+        device: null,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        remoteId: null,
+      },
+      { actor: null, at: now },
+    );
+    expect(
+      entries
+        .search({
+          indexedTerms: ["发版流"],
+          shortTerms: [],
+          project: null,
+          limit: 5,
+        })
+        .map((entry) => entry.id),
+    ).toEqual(["e1"]);
     expect(database.prepare("SELECT title FROM sessions").all()).toEqual([
       { title: "Explain" },
     ]);

@@ -29,6 +29,7 @@ import type {
   MemoryHistoryEntry,
   MemoryImportResult,
   MemoryInstallResult,
+  MemoryLibrarySyncSummary,
   MemoryListInput,
   MemoryListResult,
   MemoryProviderCapabilities,
@@ -114,6 +115,8 @@ export type AutomationRequests = {
   "memory.capabilities": undefined;
   "memory.export": { file: string };
   "memory.import": { file: string };
+  "memory.rsrs.preview": undefined;
+  "memory.rsrs.sync": undefined;
   "application.list": undefined;
   "application.add": AddApplicationPayload;
   "application.update": UpdateApplicationPayload;
@@ -217,6 +220,8 @@ export type AutomationResults = {
   "memory.capabilities": MemoryProviderCapabilities | null;
   "memory.export": null;
   "memory.import": MemoryImportResult;
+  "memory.rsrs.preview": MemoryLibrarySyncSummary;
+  "memory.rsrs.sync": MemoryLibrarySyncSummary;
   "application.list": ApplicationConnection[];
   "application.add": ApplicationConnection;
   "application.update": ApplicationConnection;

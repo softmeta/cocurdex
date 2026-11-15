@@ -3,7 +3,6 @@ export {
   buildMemoryBrief,
   buildSessionDigestFallback,
   buildTranscriptForSummary,
-  buildTurnDiaryLine,
   conversationTurns,
 } from "./digest";
 export {

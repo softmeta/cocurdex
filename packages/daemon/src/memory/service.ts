@@ -26,6 +26,7 @@ import {
   type MemoryImportance,
   type MemoryImportResult,
   type MemoryInstallResult,
+  type MemoryLibrarySyncSummary,
   type MemoryListInput,
   type MemoryListResult,
   type MemoryPartition,
@@ -61,13 +62,12 @@ import { logDaemonDiagnostic } from "../diagnostics";
 import { getDefaultUserDataPath } from "../paths";
 import { buildSnapshotProviderRecords } from "../provider/session-title";
 import type { DaemonState } from "../state";
+import { BuiltinMemoryProvider } from "./builtin-provider";
 import {
-  appendTurnDiaryLine,
   buildAgentMemoryPolicy,
   buildMemoryBrief,
   buildSessionDigestFallback,
   buildTranscriptForSummary,
-  buildTurnDiaryLine,
   compactText as compactDigestText,
   conversationTurns,
 } from "./digest";
@@ -78,6 +78,12 @@ import {
   needsManagedInstall,
 } from "./install-policy";
 import {
+  applyMemorySync,
+  isEmptyMemorySync,
+  planMemorySync,
+  summarizeMemorySync,
+} from "./library-sync";
+import {
   PARTITION_UNAVAILABLE,
   readPartitionEntry,
   scopeRememberCandidates,
@@ -85,7 +91,7 @@ import {
 } from "./partition-access";
 import { mergeRecallResults } from "./partition-recall";
 import { personaMemoryBrief, personaMemoryPolicy } from "./persona-memory";
-import type { MemoryProvider } from "./provider";
+import type { MemoryProvider, MemoryTransferEntry } from "./provider";
 import {
   createRsrsLocalKeys,
   exportRsrsKeys,
@@ -142,6 +148,8 @@ const HOST_RSRS_NOTE =
 /** The whole pre-turn recall, bodies included, so memory never holds up a turn for long. */
 const TURN_RECALL_BUDGET_MS = 3_000;
 const SESSION_DIGEST_TIMEOUT_MS = 60_000;
+const RSRS_SYNC_DELAY_MS = 5_000;
+const RSRS_SYNC_POLL_MS = 10 * 60_000;
 
 type MemoryState = Pick<
   DaemonState,
@@ -151,6 +159,7 @@ type MemoryState = Pick<
   | "listSessions"
   | "listMessagesBySessionId"
   | "listWorkspaces"
+  | "memoryStore"
 >;
 
 export interface MemoryServiceOptions {
@@ -241,12 +250,6 @@ function globalHomeWithoutCliMessage(dataDir: string) {
   return `${dataDir} already holds rsrs data, but its CLI is missing from ${path.join(dataDir, "bin")}. Cocurdex does not change an rsrs it did not install: run \`rsrs runtime start\` with your rsrs to restore it, or move the folder aside to let Cocurdex set up a new one.`;
 }
 
-function upgradeRequiredMessage(
-  required: NonNullable<MemoryStatus["upgradeRequired"]>,
-) {
-  return `rsrs ${required.installed} is older than ${required.minimum}, the oldest version Cocurdex supports. Upgrade rsrs to use memory in Cocurdex.`;
-}
-
 function hostLibc(): MemoryPlatform["libc"] {
   if (process.platform !== "linux") return undefined;
   const report = process.report?.getReport() as
@@ -274,16 +277,6 @@ function clampRecallLimit(limit: number | undefined) {
   return Math.min(20, Math.max(1, Math.floor(limit ?? 8)));
 }
 
-/**
- * Which turns the daemon writes a diary line for in the background: chat turns, and work sessions'
- * own turns. Assistants remember on their own judgment, and subagents report to a parent.
- */
-function turnCaptureSurface(session: SessionRecord): "chat" | "session" | null {
-  if (isChatSession(session)) return "chat";
-  const kind = session.sessionKind ?? "main";
-  return kind === "main" || kind === "teammate" ? "session" : null;
-}
-
 export class MemoryService {
   private settings: MemorySettings | null = null;
   private installState: MemoryInstallState | null = null;
@@ -299,7 +292,11 @@ export class MemoryService {
   private upgradeRequired: MemoryStatus["upgradeRequired"] = null;
   private readonly rsrs: RsrsMemoryProvider;
   private readonly userLibrary: UserRsrsLibrary;
-  private readonly provider: MemoryProvider;
+  private builtinProvider: BuiltinMemoryProvider | null = null;
+  private rsrsSync: Promise<MemoryLibrarySyncSummary> | null = null;
+  private rsrsSyncTimer: NodeJS.Timeout | null = null;
+  private rsrsSyncPoll: NodeJS.Timeout | null = null;
+  private syncedRevisions: { local: string; rsrs: string | null } | null = null;
   private readonly device: string;
   private readonly platform: MemoryPlatform;
   private readonly now: () => Date;
@@ -319,11 +316,29 @@ export class MemoryService {
       startRuntime: options.startRuntime,
       now: () => this.now(),
     });
-    this.provider = options.provider ?? this.rsrs;
     this.userLibrary = new UserRsrsLibrary({
       dataDir: () => this.userLibraryDir(),
       now: () => this.now().getTime(),
     });
+  }
+
+  private get builtin() {
+    this.builtinProvider ??= new BuiltinMemoryProvider({
+      ...this.options.state.memoryStore,
+      device: this.device,
+      now: () => this.now(),
+    });
+    return this.builtinProvider;
+  }
+
+  // Memories live in the daemon's own store; rsrs, when the user turns it on,
+  // is kept in step with it and widens recall.
+  private get provider(): MemoryProvider {
+    return this.options.provider ?? this.builtin;
+  }
+
+  private get usesRsrs() {
+    return !this.options.provider && this.currentSettings().rsrs;
   }
 
   // The user's own rsrs home, unless it is the store Cocurdex manages.
@@ -342,7 +357,7 @@ export class MemoryService {
   }
 
   private userLibraryEnabled() {
-    return this.provider === this.rsrs && this.currentSettings().userLibrary;
+    return this.usesRsrs && this.currentSettings().userLibrary;
   }
 
   private homeDir() {
@@ -383,7 +398,7 @@ export class MemoryService {
   }
 
   private unsupportedMessage() {
-    return `rsrs has no build for ${this.platform.os}/${this.platform.arch} yet, so long-term memory stays off on this machine.`;
+    return `rsrs has no build for ${this.platform.os}/${this.platform.arch} yet, so memory runs without it on this machine.`;
   }
 
   private get supported() {
@@ -394,8 +409,11 @@ export class MemoryService {
     if (!this.initialization) {
       this.initialization = (async () => {
         try {
-          this.settings = await readMemorySettings(this.options.state);
           this.installState = await readMemoryInstallState(this.options.state);
+          this.settings = await readMemorySettings(
+            this.options.state,
+            this.installState.status === "ready",
+          );
         } catch (error) {
           logDaemonDiagnostic("warn", "memory.initializeFailed", {
             error: errorMessage(error),
@@ -444,13 +462,7 @@ export class MemoryService {
   }
 
   isReadyForTurns() {
-    if (!this.currentSettings().enabled) return false;
-    if (this.provider !== this.rsrs) return true;
-    if (this.upgradeRequired) return false;
-    return (
-      this.statusCache?.status.available === true ||
-      this.installState?.status === "ready"
-    );
+    return this.currentSettings().enabled;
   }
 
   async getSettings(): Promise<MemorySettings> {
@@ -467,16 +479,17 @@ export class MemoryService {
       gateMemorySettings(input, this.platform),
     );
     this.settings = settings;
+    const usedRsrs = previousSettings.enabled && previousSettings.rsrs;
+    const usesRsrs = settings.enabled && settings.rsrs;
     if (settings.cliPath !== previousCliPath) this.rsrs.forgetExecutable();
     this.statusCache = null;
     this.broadcast();
-    if (
-      settings.enabled &&
-      (!previousSettings.enabled || settings.cliPath !== previousCliPath)
-    ) {
+    if (usesRsrs && (!usedRsrs || settings.cliPath !== previousCliPath)) {
+      this.syncedRevisions = null;
       void this.prepareEnabledStore();
     }
-    if (previousSettings.enabled && !settings.enabled) {
+    if (usedRsrs && !usesRsrs) {
+      this.stopRsrsSync();
       void this.rsrs.stopRuntime();
     }
     return settings;
@@ -486,7 +499,7 @@ export class MemoryService {
     if (this.startupPromise) return this.startupPromise;
     this.startupPromise = (async () => {
       await this.ensureInitialized();
-      if (!this.currentSettings().enabled) return;
+      if (!this.currentSettings().enabled || !this.usesRsrs) return;
       if (this.currentInstallState().status === "installing") {
         await this.persistInstallState({
           ...this.currentInstallState(),
@@ -498,16 +511,18 @@ export class MemoryService {
         return;
       }
       await this.rsrs.warmup();
+      this.startRsrsSync();
     })();
     return this.startupPromise;
   }
 
   // Runs in the background so turning memory on answers at once.
   private async prepareEnabledStore() {
-    if (this.options.startRuntime === false) return;
+    if (this.options.startRuntime === false || !this.usesRsrs) return;
     try {
       if (await this.needsInstall()) await this.install(true);
       else await this.rsrs.warmup(true);
+      this.startRsrsSync();
     } catch (error) {
       logDaemonDiagnostic("info", "memory.prepareFailed", {
         error: errorMessage(error),
@@ -560,18 +575,30 @@ export class MemoryService {
     this.broadcast();
   }
 
+  private changed() {
+    this.broadcast();
+    this.scheduleRsrsSync();
+  }
+
   private broadcast() {
     this.options.broadcast({ type: "data.changed", areas: ["memory"] });
   }
 
   async getStatus(refresh = false): Promise<MemoryStatus> {
+    await this.ensureInitialized();
     const [status, userLibrary] = await Promise.all([
       this.computeStatus(refresh),
-      this.provider === this.rsrs
+      this.usesRsrs
         ? this.userLibrary.status().catch(() => NO_USER_LIBRARY)
         : NO_USER_LIBRARY,
     ]);
-    return { ...status, userLibrary, lastRecall: this.lastRecall };
+    return {
+      ...status,
+      available: true,
+      rsrsAvailable: this.usesRsrs && status.available,
+      userLibrary,
+      lastRecall: this.lastRecall,
+    };
   }
 
   private async computeStatus(refresh = false): Promise<MemoryStatus> {
@@ -585,12 +612,18 @@ export class MemoryService {
       return this.statusCache.status;
     }
     const settings = this.currentSettings();
+    if (!this.usesRsrs) {
+      const status = this.selfContainedStatus(settings);
+      this.statusCache = { status, at: now };
+      return status;
+    }
     const installState = this.currentInstallState();
     const executable = await this.resolveExecutable(refresh);
     if (this.installPromise && installState.status === "installing") {
       // Setup keeps the runtime busy, so probing it now only times out.
       const status: MemoryStatus = {
         settings,
+        rsrsAvailable: false,
         enabled: settings.enabled,
         supported: this.supported,
         available: false,
@@ -617,6 +650,7 @@ export class MemoryService {
       const pinned = installState.version === RSRS_CLI_VERSION;
       const status: MemoryStatus = {
         settings,
+        rsrsAvailable: false,
         enabled: settings.enabled,
         supported: this.supported,
         available: false,
@@ -664,6 +698,7 @@ export class MemoryService {
           : null;
     const status: MemoryStatus = {
       settings,
+      rsrsAvailable: false,
       enabled: settings.enabled,
       supported: this.supported,
       available: true,
@@ -690,6 +725,37 @@ export class MemoryService {
     return status;
   }
 
+  private selfContainedStatus(settings: MemorySettings): MemoryStatus {
+    return {
+      settings,
+      rsrsAvailable: false,
+      enabled: settings.enabled,
+      supported: this.supported,
+      available: false,
+      installation: "missing",
+      version: null,
+      runtimeVersion: null,
+      executable: null,
+      dataDir: null,
+      account: null,
+      space: null,
+      cloud: { ...DEFAULT_MEMORY_CLOUD_STATUS, autosync: false },
+      doctor: null,
+      error: null,
+      checkedAt: this.now().toISOString(),
+      lastRecall: null,
+      userLibrary: NO_USER_LIBRARY,
+    };
+  }
+
+  private assertUsesRsrs() {
+    if (this.usesRsrs) return;
+    throw new ReasonError(
+      "memory.rsrsOff",
+      "Memory works without rsrs. Installation, health checks, and accounts belong to rsrs: turn it on in Settings > Memory, or run: cocurdex memory rsrs on.",
+    );
+  }
+
   async install(force = false): Promise<MemoryInstallResult> {
     await this.ensureInitialized();
     if (!this.supported) {
@@ -699,6 +765,7 @@ export class MemoryService {
         message: this.unsupportedMessage(),
       };
     }
+    this.assertUsesRsrs();
     if (this.installPromise) return this.installPromise;
     if (!force) {
       const state = this.currentInstallState();
@@ -818,6 +885,7 @@ export class MemoryService {
   // interrupting it leaves the store refusing access until a runtime restart.
   async shutdown() {
     this.lifetime.abort(new Error("The daemon is shutting down"));
+    this.stopRsrsSync();
     if (this.installPromise || this.options.startRuntime === false) return;
     await this.rsrs.stopRuntime(SHUTDOWN_RUNTIME_STOP_TIMEOUT_MS);
   }
@@ -891,6 +959,7 @@ export class MemoryService {
 
   async doctor(options: { remote?: boolean; checkUpdate?: boolean } = {}) {
     await this.ensureInitialized();
+    this.assertUsesRsrs();
     if (this.doctorPromise) return this.doctorPromise;
     this.doctorPromise = (async () => {
       const executable = await this.resolveExecutable(true);
@@ -921,6 +990,7 @@ export class MemoryService {
   }
 
   private async cloudExecutable() {
+    this.assertUsesRsrs();
     const executable = await this.resolveExecutable(true);
     if (!executable) throw new Error(MEMORY_MISSING_EXECUTABLE_MESSAGE);
     return executable;
@@ -1051,6 +1121,7 @@ export class MemoryService {
     const blocked = installBlocked(installState, RSRS_CLI_VERSION);
     return {
       settings,
+      rsrsAvailable: false,
       enabled: settings.enabled,
       supported: this.supported,
       available: true,
@@ -1094,9 +1165,6 @@ export class MemoryService {
     if (!(await this.provider.available())) {
       return MEMORY_MISSING_EXECUTABLE_MESSAGE;
     }
-    if (this.provider === this.rsrs && this.upgradeRequired) {
-      return upgradeRequiredMessage(this.upgradeRequired);
-    }
     return null;
   }
 
@@ -1122,15 +1190,23 @@ export class MemoryService {
       return { query, items: [], truncated: false, error: blocked };
     }
     const project = input.project ?? null;
-    const [result, reference] = await Promise.all([
+    const [own, widened, reference] = await Promise.all([
       this.provider.recall({
         query,
         limit,
         project,
         timeoutMs: input.timeoutMs,
       }),
+      this.recallRsrs({ query, limit, project, timeoutMs: input.timeoutMs }),
       project ? [] : this.recallUserLibrary(query, limit, input.timeoutMs),
     ]);
+    const result = mergeRecallResults(
+      [
+        { query, truncated: false, ...own },
+        { query, truncated: false, items: widened, error: null },
+      ],
+      limit * 2,
+    );
     const error = result.error ? withIdentityHint(result.error) : null;
     if (error) {
       logDaemonDiagnostic("info", "memory.recallReportedError", { error });
@@ -1150,6 +1226,38 @@ export class MemoryService {
       truncated: items.length > limit,
       error,
     };
+  }
+
+  // rsrs ranks by meaning where the built-in store matches words. Its hits
+  // are reported under the store's own ids; one the store lacks is still
+  // readable through rsrs until the next sync brings it in.
+  private async recallRsrs(input: {
+    query: string;
+    limit: number;
+    project: string | null;
+    timeoutMs?: number;
+  }): Promise<MemoryRecallItem[]> {
+    if (!this.usesRsrs || this.upgradeRequired) return [];
+    try {
+      if (!(await this.rsrs.available())) return [];
+      const result = await this.rsrs.recall(input);
+      if (result.error) throw new Error(result.error);
+      const entries = this.options.state.memoryStore.entries;
+      let unknown = false;
+      const items = result.items.flatMap((item) => {
+        const local = entries.findByRemoteId(item.id);
+        if (local?.deletedAt) return [];
+        if (!local) unknown = true;
+        return [{ ...item, id: local?.id ?? item.id }];
+      });
+      if (unknown) this.scheduleRsrsSync();
+      return items;
+    } catch (error) {
+      logDaemonDiagnostic("info", "memory.rsrsRecallFailed", {
+        error: errorMessage(error),
+      });
+      return [];
+    }
   }
 
   // A partitioned recall (personal assistants) never reads the user's own
@@ -1191,7 +1299,21 @@ export class MemoryService {
         error: result.error,
       });
     }
-    return result.entry;
+    return result.entry ?? this.showFromRsrs(id, timeoutMs);
+  }
+
+  private async showFromRsrs(id: string, timeoutMs?: number) {
+    if (!this.usesRsrs || this.upgradeRequired) return null;
+    if (this.options.state.memoryStore.entries.find(id)) return null;
+    try {
+      if (!(await this.rsrs.available())) return null;
+      return (await this.rsrs.show(id, timeoutMs)).entry;
+    } catch (error) {
+      logDaemonDiagnostic("info", "memory.rsrsShowFailed", {
+        error: errorMessage(error),
+      });
+      return null;
+    }
   }
 
   async recallIn(
@@ -1310,7 +1432,7 @@ export class MemoryService {
     if (blocked) return skipped(blocked);
     const result = await this.provider.remember({ ...input, content, title });
     if (result.action === "created" || result.action === "merged")
-      this.broadcast();
+      this.changed();
     if (result.action !== "created" && result.message) {
       return { ...result, message: withIdentityHint(result.message) };
     }
@@ -1350,7 +1472,7 @@ export class MemoryService {
       throw new Error("Memory content and title cannot be empty");
     }
     await provider.update({ ...input, title, content });
-    this.broadcast();
+    this.changed();
     return (await provider.show(input.id)).entry;
   }
 
@@ -1358,14 +1480,14 @@ export class MemoryService {
     this.assertWritable([id]);
     const provider = await this.requireProvider();
     await provider.forget(id);
-    this.broadcast();
+    this.changed();
   }
 
   async restore(id: string) {
     this.assertWritable([id]);
     const provider = await this.requireProvider();
     await provider.restore(id);
-    this.broadcast();
+    this.changed();
   }
 
   async history(input: { id?: string | null; limit?: number } = {}) {
@@ -1392,8 +1514,109 @@ export class MemoryService {
   async importFrom(file: string): Promise<MemoryImportResult> {
     const provider = await this.requireProvider();
     const result = await provider.importFrom(file);
-    this.broadcast();
+    this.changed();
     return result;
+  }
+
+  private async runRsrsSync(apply: boolean) {
+    await this.ensureInitialized();
+    if (!this.usesRsrs) {
+      throw new ReasonError(
+        "memory.rsrsOff",
+        "rsrs is off, so there is nothing to sync with. Turn it on in Settings > Memory, or run: cocurdex memory rsrs on.",
+      );
+    }
+    if (!(await this.rsrs.available())) {
+      throw new ReasonError(
+        "memory.rsrsUnavailable",
+        MEMORY_MISSING_EXECUTABLE_MESSAGE,
+      );
+    }
+    const store = this.options.state.memoryStore;
+    const revisions = async () => ({
+      local: String(store.entries.revision()),
+      rsrs: await this.rsrs.revision().catch(() => null),
+    });
+    const before = await revisions();
+    const settled =
+      before.rsrs !== null &&
+      before.local === this.syncedRevisions?.local &&
+      before.rsrs === this.syncedRevisions?.rsrs;
+    if (settled) return summarizeMemorySync(planMemorySync([], []));
+    let library: MemoryTransferEntry[];
+    try {
+      library = await this.rsrs.snapshot();
+    } catch (error) {
+      throw new ReasonError(
+        "memory.rsrsUnavailable",
+        `rsrs could not list its memories: ${errorMessage(error)}`,
+        { cause: error },
+      );
+    }
+    const plan = planMemorySync(store.entries.all(), library);
+    if (!apply) return summarizeMemorySync(plan);
+    const failed = await applyMemorySync(plan, {
+      builtin: this.builtin,
+      entries: store.entries,
+      transaction: store.transaction,
+      external: this.rsrs,
+      now: () => this.now(),
+    });
+    this.syncedRevisions = failed === 0 ? await revisions() : null;
+    if (!isEmptyMemorySync(plan)) this.broadcast();
+    return summarizeMemorySync(plan, failed);
+  }
+
+  /** What a sync with rsrs would change, without changing it. */
+  previewRsrsSync(): Promise<MemoryLibrarySyncSummary> {
+    return this.runRsrsSync(false);
+  }
+
+  syncRsrs(): Promise<MemoryLibrarySyncSummary> {
+    this.rsrsSync ??= this.runRsrsSync(true).finally(() => {
+      this.rsrsSync = null;
+    });
+    return this.rsrsSync;
+  }
+
+  private backgroundRsrsSync() {
+    if (this.lifetime.signal.aborted || !this.usesRsrs) return;
+    this.syncRsrs().catch((error: unknown) => {
+      logDaemonDiagnostic("info", "memory.rsrsSyncFailed", {
+        error: errorMessage(error),
+      });
+    });
+  }
+
+  private scheduleRsrsSync() {
+    if (!this.usesRsrs || this.options.startRuntime === false) return;
+    if (this.rsrsSyncTimer || this.lifetime.signal.aborted) return;
+    this.rsrsSyncTimer = setTimeout(() => {
+      this.rsrsSyncTimer = null;
+      this.backgroundRsrsSync();
+    }, RSRS_SYNC_DELAY_MS);
+    this.rsrsSyncTimer.unref?.();
+  }
+
+  // Memories other devices add reach this one through rsrs's own sync, so the
+  // library is read again from time to time, not only after a local write.
+  private startRsrsSync() {
+    if (!this.usesRsrs || this.options.startRuntime === false) return;
+    this.scheduleRsrsSync();
+    if (this.rsrsSyncPoll) return;
+    this.rsrsSyncPoll = setInterval(
+      () => this.backgroundRsrsSync(),
+      RSRS_SYNC_POLL_MS,
+    );
+    this.rsrsSyncPoll.unref?.();
+  }
+
+  private stopRsrsSync() {
+    if (this.rsrsSyncTimer) clearTimeout(this.rsrsSyncTimer);
+    if (this.rsrsSyncPoll) clearInterval(this.rsrsSyncPoll);
+    this.rsrsSyncTimer = null;
+    this.rsrsSyncPoll = null;
+    this.syncedRevisions = null;
   }
 
   async policy() {
@@ -1544,100 +1767,6 @@ export class MemoryService {
     this.broadcast();
   }
 
-  async captureTurn(
-    sessionId: string,
-    assistantMessageId: string | null,
-  ): Promise<MemorySessionSaveResult> {
-    await this.ensureInitialized();
-    const session = await this.options.state.getSession(sessionId);
-    const surface = session ? turnCaptureSurface(session) : null;
-    if (!session || !surface) {
-      return { saved: false, memoryId: null, reason: "not-captured" };
-    }
-    const settings = this.currentSettings();
-    const allowed =
-      surface === "chat" ? settings.chat.saveTurns : settings.agent.tools;
-    if (!settings.enabled || !allowed) {
-      return { saved: false, memoryId: null, reason: "disabled" };
-    }
-    if (!this.isReadyForTurns()) {
-      return { saved: false, memoryId: null, reason: "unavailable" };
-    }
-    const messages =
-      await this.options.state.listMessagesBySessionId(sessionId);
-    const user = [...messages]
-      .reverse()
-      .find((message) => message.role === "user");
-    const assistant = assistantMessageId
-      ? messages.find((message) => message.id === assistantMessageId)
-      : [...messages].reverse().find((message) => message.role === "assistant");
-    if (!user || !assistant || assistant.role !== "assistant") {
-      return { saved: false, memoryId: null, reason: "no-turn" };
-    }
-    const captures = await readMemoryCaptures(this.options.state);
-    const previous = captures[sessionId];
-    if (
-      previous?.kind === "turn" &&
-      previous.lastAssistantMessageId === assistant.id
-    ) {
-      return { saved: false, memoryId: previous.memoryId, reason: "duplicate" };
-    }
-    const line = buildTurnDiaryLine({
-      session,
-      surface,
-      userMessage: user.content,
-      assistantMessage: assistant.content,
-      device: this.device,
-      at: assistant.createdAt,
-    });
-    const title = `Cocurdex ${surface}：${compactDigestText(session.title, 48)}`;
-    const diary =
-      previous?.kind === "turn" &&
-      previous.memoryId &&
-      previous.provider === this.provider.id
-        ? await this.show(previous.memoryId).catch((error) => {
-            logDaemonDiagnostic("info", "memory.turnDiaryUnavailable", {
-              error: errorMessage(error),
-              sessionId,
-            });
-            return null;
-          })
-        : null;
-    let memoryId: string;
-    if (diary && previous?.memoryId) {
-      await this.update({
-        id: previous.memoryId,
-        title,
-        content: appendTurnDiaryLine(diary.content, redactMemorySecrets(line)),
-      });
-      memoryId = previous.memoryId;
-    } else {
-      const result = await this.remember({
-        content: redactMemorySecrets(line),
-        title,
-        importance: "trivial",
-        force: true,
-      });
-      if (!result.id) {
-        return {
-          saved: false,
-          memoryId: null,
-          reason: result.message ?? "not-written",
-        };
-      }
-      memoryId = result.id;
-    }
-    await writeMemoryCapture(this.options.state, sessionId, {
-      provider: this.provider.id,
-      memoryId,
-      savedAt: this.now().toISOString(),
-      lastAssistantMessageId: assistant.id,
-      kind: "turn",
-    });
-    this.broadcast();
-    return { saved: true, memoryId, reason: null };
-  }
-
   async saveSession(
     input: MemorySessionSaveInput,
   ): Promise<MemorySessionSaveResult> {
@@ -1649,7 +1778,7 @@ export class MemoryService {
     if (!settings.chat.saveOnEnd && !input.force) {
       return { saved: false, memoryId: null, reason: "disabled" };
     }
-    if (!(await this.resolveExecutable())) {
+    if (!(await this.provider.available())) {
       return { saved: false, memoryId: null, reason: "unavailable" };
     }
     const session = await this.options.state.getSession(input.sessionId);
@@ -1816,10 +1945,9 @@ export class MemoryService {
   // global instructions; that block drives the `rsrs` command against the
   // user's own store, not the one Cocurdex keeps.
   async hostInstructsRsrs(agentType: string) {
-    if (await this.readyProvider()) return false;
-    const injected = await this.provider
-      .injectedAgents()
-      .catch((): string[] => []);
+    if ((await this.readyProvider()) || !this.usesRsrs) return false;
+    if (!(await this.rsrs.available().catch(() => false))) return false;
+    const injected = await this.rsrs.injectedAgents().catch((): string[] => []);
     return injected.includes(agentType);
   }
 

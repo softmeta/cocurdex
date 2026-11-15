@@ -108,6 +108,48 @@ async function handleCloudCommand(sub: string | undefined, parsed: ParsedArgs) {
   }
 }
 
+async function handleRsrsCommand(args: string[], parsed: ParsedArgs) {
+  const [sub = "status"] = args;
+  if (sub === "status") {
+    const status = await withDaemon(() => requestDaemon("memory.status", {}));
+    printResult(
+      {
+        enabled: status.settings.rsrs,
+        ready: status.rsrsAvailable,
+        installation: status.installation,
+        version: status.version,
+        error: status.error,
+      },
+      parsed,
+    );
+    return;
+  }
+  if (sub === "on" || sub === "off") {
+    const settings = await withDaemon(() =>
+      requestDaemon("memory.settings.get"),
+    );
+    printResult(
+      await withDaemon(() =>
+        requestDaemon("memory.settings.set", {
+          settings: { ...settings, rsrs: sub === "on" },
+        }),
+      ),
+      parsed,
+    );
+    return;
+  }
+  if (sub === "sync") {
+    const method = parsed.flags.has("dry-run")
+      ? "memory.rsrs.preview"
+      : "memory.rsrs.sync";
+    printResult(await withDaemon(() => requestDaemon(method)), parsed);
+    return;
+  }
+  throw new Error(
+    "Usage: cocurdex memory rsrs [status] | on | off | sync [--dry-run]",
+  );
+}
+
 export function memoryUsageLines() {
   return [
     "  cocurdex memory status [--refresh] [--json]",
@@ -117,6 +159,8 @@ export function memoryUsageLines() {
     "  cocurdex memory remember --title <title> [--content <text> | --file <path> | <text>] [--importance important|trivial] [--parent <id>] [--tags a,b] [--force] [--json]",
     ...memoryLibraryUsageLines(),
     "  cocurdex memory save-session <session-id> [--force] [--importance important|trivial] [--json]",
+    "  cocurdex memory rsrs [status] | on | off [--json]",
+    "  cocurdex memory rsrs sync [--dry-run] [--json]",
     "  cocurdex memory install [--force] [--json]",
     "  cocurdex memory doctor [--remote] [--check-update] [--json]",
     "  cocurdex memory sync on|off [--json]",
@@ -217,6 +261,11 @@ export async function handleMemoryCommand(
       }),
     );
     printResult(result, parsed);
+    return true;
+  }
+
+  if (action === "rsrs") {
+    await handleRsrsCommand(args, parsed);
     return true;
   }
 
