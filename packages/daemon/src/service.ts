@@ -121,7 +121,7 @@ import {
 } from "./host-access/host-key-store";
 import { InboxService } from "./inbox/inbox-service";
 import { DaemonMcpService } from "./mcp-service";
-import { MemoryService } from "./memory";
+import { MemoryService, ToldLedgerStore } from "./memory";
 import { OutboxService, routineRunAlert } from "./outbox";
 import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
@@ -252,6 +252,7 @@ export class CocurdexDaemonService {
   readonly personalAgents: PersonalAgentService;
   readonly routines: RoutineService;
   readonly followUps: FollowUpService;
+  readonly toldLedger: ToldLedgerStore;
   readonly inbox: InboxService;
   readonly assistant: AssistantSessions;
   private readonly outbox: OutboxService;
@@ -420,6 +421,7 @@ export class CocurdexDaemonService {
         this.delegations.forgetPersona(agentId);
         await this.removeRoutinesOf(agentId);
         this.followUps.deleteForAgent(agentId);
+        await this.toldLedger.clear(agentId);
       },
       applyRole: (agentId, homeSessionId, role) =>
         this.applyPersonaRole(agentId, homeSessionId, role),
@@ -522,6 +524,21 @@ export class CocurdexDaemonService {
       resolveSessionProvider: (session) =>
         this.providerCredentials.forSession(session),
       startRuntime: options.autoStartMemory !== false,
+    });
+    this.toldLedger = new ToldLedgerStore({
+      memory: this.memory,
+      getAppSetting: (key) => this.state.getAppSetting(key),
+      setAppSetting: (key, value) => this.state.setAppSetting(key, value),
+      getSession: (sessionId) => this.state.getSession(sessionId),
+      listMessages: (sessionId) =>
+        this.state.listMessagesBySessionId(sessionId),
+      personaName: async (id) =>
+        (await this.personalAgents.get(id))?.role.name ?? null,
+      announceChanged: () =>
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["personal"],
+        }),
     });
     this.attachments = new DaemonAttachmentStore(options.userDataPath);
     this.workspaces = new WorkspaceHost({
@@ -856,7 +873,10 @@ export class CocurdexDaemonService {
       store: this.state,
       emit: (event) => this.runtime.emitAgentEvent(event),
       afterPersistedEvents: (work) => this.runtime.withEventPersistence(work),
-      onRunSettled: (run) => void this.startNextQueuedFollowUp(run.sessionId),
+      onRunSettled: (run) => {
+        void this.startNextQueuedFollowUp(run.sessionId);
+        void this.scheduleToldLedger(run.sessionId);
+      },
       onRunEnded: (run) => this.runCapacity.onRunEnded(run),
       now: () => new Date().toISOString(),
       createId: () => crypto.randomUUID(),
@@ -2568,6 +2588,7 @@ export class CocurdexDaemonService {
     await this.startupRecovery;
     this.routines.stop();
     await this.followUps.stop();
+    this.toldLedger.stop();
     this.outbox.stop();
     clearInterval(this.checkpointReconcileTimer);
     this.keepAwake.dispose();
@@ -2650,6 +2671,15 @@ export class CocurdexDaemonService {
     };
   }
 
+  private async scheduleToldLedger(sessionId: string) {
+    const session = await this.state.getSession(sessionId);
+    const persona = session
+      ? this.personalAgents.personaForSession(session)
+      : null;
+    if (!persona || this.routines.findBySession(sessionId)) return;
+    this.toldLedger.scheduleCuration(persona.id, sessionId);
+  }
+
   private async prepareStartContext(
     session: SessionRecord,
     userMessage: MessageRecord,
@@ -2666,16 +2696,18 @@ export class CocurdexDaemonService {
     const persona = this.personalAgents.personaForSession(session);
     if (sessionKind === "personal" && !persona)
       throw new Error("Personal assistant memory scope is unavailable.");
-    const memoryContext =
+    const [memoryContext, toldBrief] = await Promise.all([
       !chatSession && sessionKind === "subagent"
         ? null
-        : await this.memory.buildTurnContext(
+        : this.memory.buildTurnContext(
             session,
             userMessage.content,
             chatSession ? "chat" : "agent",
             persona ? personaMemoryScope(persona.id).read : null,
             priorMessages,
-          );
+          ),
+      persona ? this.toldLedger.brief(persona.id) : null,
+    ]);
     const resolution = resolveStartContext({
       targetAgentType: session.agentType,
       priorMessages,
@@ -2700,7 +2732,10 @@ export class CocurdexDaemonService {
         }
       : undefined;
     const runPolicy = routine ? routineRunPolicy(routine.access) : null;
-    const memoryText = memoryContext?.brief ? `${memoryContext.brief}\n\n` : "";
+    const memoryText = [toldBrief, memoryContext?.brief]
+      .filter(Boolean)
+      .map((brief) => `${brief}\n\n`)
+      .join("");
     if (resolution.kind === "native") {
       if (pending?.kind === "fork") {
         this.consumeNativeFork(pending, session, userMessage, priorMessages);

@@ -103,7 +103,13 @@ export async function runRsrs(
     const value = process.env[name];
     if (value) extraEnv[name] = value;
   }
-  const env = buildChildProcessEnv(process.env, { extraEnv });
+  // rsrs keeps its keys in the Linux Secret Service, which it reaches through
+  // the session bus; without the bus address it falls back to the volatile
+  // kernel keyring and offline keygen fails.
+  const env = buildChildProcessEnv(process.env, {
+    extraEnv,
+    extraAllowedNames: ["DBUS_SESSION_BUS_ADDRESS"],
+  });
 
   return new Promise<RsrsRunResult>((resolve, reject) => {
     let settled = false;

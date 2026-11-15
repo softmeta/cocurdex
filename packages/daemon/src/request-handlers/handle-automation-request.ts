@@ -171,6 +171,13 @@ export async function handleAutomationRequest(
       return service.personalAgents.draft(request.params);
     case "personalAgent.create":
       return service.personalAgents.create(request.params);
+    case "personalAgent.told.list":
+      return service.toldLedger.items(request.params.id);
+    case "personalAgent.told.forget":
+      return service.toldLedger.forgetItem(
+        request.params.id,
+        request.params.item,
+      );
     case "personalAgent.greet":
       return service.personalAgents.greet(request.params);
     case "personalAgent.update":
