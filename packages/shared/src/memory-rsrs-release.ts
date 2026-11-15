@@ -4,8 +4,6 @@ export interface MemoryPlatform {
   libc?: "glibc" | "musl";
 }
 
-// The build Cocurdex installs when a machine has no rsrs yet. A machine that
-// already has rsrs keeps its own version as long as it meets the minimum.
 export const RSRS_CLI_VERSION = "2.0.0-dev.3";
 export const RSRS_MIN_CLI_VERSION = "2.0.0-dev.3";
 export const RSRS_CLI_RELEASE_BASE_URL = `https://github.com/risense-ai/respire-cli/releases/download/v${RSRS_CLI_VERSION}`;

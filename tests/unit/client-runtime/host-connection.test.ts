@@ -241,7 +241,11 @@ describe("host connection", () => {
     const { platform, requests } = fakeDaemon((request, respond) => {
       respond({
         id: request.id,
-        error: { code: "REQUEST_FAILED", message: "Session not found" },
+        error: {
+          code: "REQUEST_FAILED",
+          message: "Session not found",
+          reason: "session.notFound",
+        },
       });
     });
     const connection = host(platform);
@@ -249,7 +253,7 @@ describe("host connection", () => {
       connection.command("session.send", {} as never, {
         idempotencyKey: "message-1",
       }),
-    ).rejects.toThrow("Session not found");
+    ).rejects.toMatchObject({ reason: "session.notFound" });
     expect(requests).toHaveLength(1);
   });
 

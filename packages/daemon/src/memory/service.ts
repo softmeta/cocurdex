@@ -46,6 +46,7 @@ import {
   type MessageRecord,
   memoryPartitionProject,
   memoryPlatformSupportsRsrs,
+  ReasonError,
   RSRS_CLI_VERSION,
   RSRS_MIN_CLI_VERSION,
   type RsrsCliAsset,
@@ -165,9 +166,7 @@ export interface MemoryServiceOptions {
   installRetryDelaysMs?: readonly number[];
   turnRecallBudgetMs?: number;
   provider?: MemoryProvider;
-  // Home directory holding the shared ~/.rsrs; defaults to os.homedir().
   homeDir?: string;
-  // The installed app's user data path; only that profile uses ~/.rsrs.
   defaultUserDataPath?: string;
   now?: () => Date;
 }
@@ -373,8 +372,6 @@ export class MemoryService {
         rpcPort = await allocateLoopbackPort();
         await writeRsrsRpcPort(this.options.state, rpcPort);
       }
-      // A development profile reads the model the shared home already has
-      // instead of downloading its own copy.
       const modelDir = explicit ? null : await readyRsrsModelDir(globalDir);
       return { kind: "isolated", dataDir, rpcPort, modelDir };
     })().catch((error: unknown) => {
@@ -847,8 +844,6 @@ export class MemoryService {
     return executable;
   }
 
-  // The shared home exists but has no CLI where rsrs keeps it, for example
-  // after an older install; only the user can decide what happens to it.
   private async globalHomeProblem() {
     if (this.currentSettings().cliPath) return null;
     const home = await this.rsrsHome().catch(() => null);
@@ -951,13 +946,20 @@ export class MemoryService {
     const password = input.password;
     const recoveryKey = input.recoveryKey?.trim() ?? "";
     if (user.length < 3) {
-      throw new Error("Username must be at least 3 characters");
+      throw new ReasonError(
+        "memory.invalidUsername",
+        "Username must be at least 3 characters",
+      );
     }
     if (password.length < 8) {
-      throw new Error("Login password must be at least 8 characters");
+      throw new ReasonError(
+        "memory.invalidPassword",
+        "Login password must be at least 8 characters",
+      );
     }
     if (input.mode === "signin" && !recoveryKey) {
-      throw new Error(
+      throw new ReasonError(
+        "memory.recoveryKeyRequired",
         "The recovery key is required to sign in on a new device",
       );
     }
@@ -1016,7 +1018,8 @@ export class MemoryService {
     if (enabled) {
       const summary = await readRsrsStatus(executable).catch(() => null);
       if (!toCloudStatus(summary).connected) {
-        throw new Error(
+        throw new ReasonError(
+          "memory.cloudAccountRequired",
           "Connect an rsrs account before turning on multi-device sync",
         );
       }
@@ -1075,8 +1078,6 @@ export class MemoryService {
     };
   }
 
-  // An rsrs below the minimum keeps running for its other clients; Cocurdex
-  // only pauses its own memory until the user upgrades it.
   private noteVersion(version: string | null) {
     const tooOld = version !== null && !rsrsVersionMeetsMinimum(version);
     this.upgradeRequired = tooOld
@@ -1168,7 +1169,10 @@ export class MemoryService {
 
   private assertWritable(ids: ReadonlyArray<string | null | undefined>) {
     if (ids.some((id) => id && isUserLibraryMemoryId(id))) {
-      throw new Error(USER_LIBRARY_READ_ONLY);
+      throw new ReasonError(
+        "memory.userLibraryReadOnly",
+        USER_LIBRARY_READ_ONLY,
+      );
     }
   }
 

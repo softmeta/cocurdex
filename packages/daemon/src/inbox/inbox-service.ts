@@ -2,6 +2,7 @@ import {
   isSupportedLocale,
   type MessageOrigin,
   matchSupportedLocale,
+  ReasonError,
   type SupportedLocale,
 } from "@cocurdex/shared";
 import {
@@ -75,7 +76,11 @@ export class InboxService {
 
   async getBrief(timeZone?: string | null) {
     const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (!isValidTimeZone(zone)) throw new Error(`Unknown time zone: ${zone}`);
+    if (!isValidTimeZone(zone))
+      throw new ReasonError(
+        "inbox.invalidTimeZone",
+        `Unknown time zone: ${zone}`,
+      );
     const { day, start } = zonedDayStart(new Date(), zone);
     const routines = this.options.routines();
     return buildBrief({

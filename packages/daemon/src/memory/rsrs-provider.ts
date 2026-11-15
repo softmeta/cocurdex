@@ -8,7 +8,7 @@ import type {
   MemorySettings,
   MemoryUpdateInput,
 } from "@cocurdex/shared";
-import { findBuiltInAgentByRsrsHost } from "@cocurdex/shared";
+import { findBuiltInAgentByRsrsHost, ReasonError } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import type {
   MemoryProvider,
@@ -143,8 +143,6 @@ export class RsrsMemoryProvider implements MemoryProvider {
     return (await isFile(command)) ? { command, env } : null;
   }
 
-  // Other rsrs clients share the global home's runtime, so only a private
-  // home's runtime is Cocurdex's to stop or restart.
   async ownsRuntime() {
     return (await this.options.home()).kind === "isolated";
   }
@@ -375,7 +373,8 @@ export class RsrsMemoryProvider implements MemoryProvider {
       try {
         return await rememberMemory(this.invoker(executable, "write"), input);
       } catch (error) {
-        throw new Error(
+        throw new ReasonError(
+          "memory.writeUnconfirmed",
           `Memory write could not be confirmed; inspect the library before retrying. ${errorMessage(error)}`,
           { cause: error },
         );

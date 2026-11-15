@@ -53,6 +53,7 @@ describe("staged local builder config", () => {
   });
 
   it("refuses a config that no longer packages the shared output it replaces", () => {
+    // biome-ignore lint/plugin: the message names the missing build glob
     expect(() =>
       stagedLocalBuilderConfig({ ...build, files: ["dist/**"] }, staged),
     ).toThrow("out/**");

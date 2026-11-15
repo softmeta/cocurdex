@@ -51,7 +51,7 @@ describe("session configuration ownership", () => {
   ])("rejects client-owned %s", (field) => {
     expect(() =>
       applySessionConfiguration({ ...input, [field]: "forged" }, original, now),
-    ).toThrow("Unexpected field");
+    ).toThrow(expect.objectContaining({ reason: "payload.invalid" }));
   });
 
   it("rejects reassignment to another workspace", () => {
@@ -61,13 +61,13 @@ describe("session configuration ownership", () => {
         original,
         now,
       ),
-    ).toThrow("cannot change its workspace");
+    ).toThrow(expect.objectContaining({ reason: "session.workspaceFixed" }));
   });
 
   it("requires explicit restore before configuring an archived session", () => {
     expect(() =>
       applySessionConfiguration(input, { ...original, archivedAt: now }, now),
-    ).toThrow("Restore");
+    ).toThrow(expect.objectContaining({ reason: "session.archived" }));
   });
 
   describe("chat sessions", () => {
@@ -113,7 +113,7 @@ describe("session configuration ownership", () => {
           created,
           now,
         ),
-      ).toThrow("cannot change its kind");
+      ).toThrow(expect.objectContaining({ reason: "session.kindFixed" }));
     });
   });
 

@@ -80,6 +80,7 @@ describe("shared daemon transport", () => {
     );
     const pending = client.request("daemon.status", undefined);
     socket.opened[0]?.handlers.onError(new Error("boom"));
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(pending).rejects.toThrow("boom");
     expect(socket.opened[0]?.close).toHaveBeenCalledOnce();
   });

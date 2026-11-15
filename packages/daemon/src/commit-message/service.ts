@@ -5,6 +5,7 @@ import type {
   CommitMessageModelSelection,
   GenerateGitCommitMessagePayload,
 } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import type { DaemonState } from "../state";
 import { collectCommitChangeSummary } from "./git-summary";
@@ -100,7 +101,10 @@ export class DaemonCommitMessageService {
         },
       });
       if (!message)
-        throw new Error("Model returned an incomplete commit message");
+        throw new ReasonError(
+          "commitMessage.incomplete",
+          "Model returned an incomplete commit message",
+        );
       return message;
     } finally {
       clearTimeout(timeout);

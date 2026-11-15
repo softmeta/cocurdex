@@ -111,7 +111,7 @@ describe("resolveCommitMessageModel", () => {
         state([{ ...model, enabled: false }]),
         selection,
       ),
-    ).rejects.toThrow("No commit message model configured");
+    ).rejects.toMatchObject({ reason: "commitMessage.noModel" });
   });
 
   it("resolves an agent-owned model without reading configured providers", async () => {
@@ -134,7 +134,7 @@ describe("resolveCommitMessageModel", () => {
 
     await expect(
       resolveCommitMessageModel(database, { ...selection, agentId: "codex" }),
-    ).rejects.toThrow("No commit message model configured");
+    ).rejects.toMatchObject({ reason: "commitMessage.noModel" });
     expect(catalogs.listAgentModels).not.toHaveBeenCalled();
   });
 });

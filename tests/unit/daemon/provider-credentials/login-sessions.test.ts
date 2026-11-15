@@ -79,7 +79,7 @@ describe("ProviderLoginSessions", () => {
       promptId: prompt.prompt.id,
     });
     expect(() => sessions.respond(loginId, prompt.prompt.id, "x")).toThrow(
-      "Login prompt is no longer active",
+      expect.objectContaining({ reason: "login.promptInactive" }),
     );
   });
 });

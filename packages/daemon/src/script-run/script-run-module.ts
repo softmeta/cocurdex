@@ -6,6 +6,7 @@ import {
   decideRequesterReport,
   isScriptRunTerminal,
   parseScriptRunSettings,
+  ReasonError,
   renderScriptRunReport,
   SCRIPT_RUN_MAX_CONCURRENCY,
   SCRIPT_RUN_MAX_LIST_ITEMS,
@@ -51,14 +52,14 @@ export type ScriptRunErrorCode =
   | "invalid_script"
   | "not_draft";
 
-export class ScriptRunError extends Error {
+export class ScriptRunError extends ReasonError {
   override readonly name = "ScriptRunError";
 
   constructor(
     readonly code: ScriptRunErrorCode,
     message: string = code,
   ) {
-    super(message);
+    super(`scriptRun.${code}`, message);
   }
 }
 

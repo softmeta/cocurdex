@@ -1,5 +1,6 @@
 import vm from "node:vm";
 import { Worker } from "node:worker_threads";
+import { ReasonError } from "@cocurdex/shared";
 import { Effect } from "effect";
 import { SCRIPT_WORKER_SOURCE } from "./script-worker-source";
 
@@ -13,7 +14,9 @@ export interface RunScriptOptions {
   maxMemoryMb?: number;
 }
 
-export class ScriptRejectedError extends Error {
+export class ScriptRejectedError extends ReasonError<
+  "script.importForbidden" | "script.syntaxError"
+> {
   override readonly name = "ScriptRejectedError";
 }
 
@@ -32,13 +35,19 @@ const DYNAMIC_IMPORT_PATTERN = /\bimport\s*\(/;
 
 export function validateScript(script: string) {
   if (DYNAMIC_IMPORT_PATTERN.test(script)) {
-    throw new ScriptRejectedError("Scripts cannot load modules with import().");
+    throw new ScriptRejectedError(
+      "script.importForbidden",
+      "Scripts cannot load modules with import().",
+    );
   }
   try {
     new vm.Script(`(async () => {\n${script}\n})()`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new ScriptRejectedError(`Script has a syntax error: ${message}`);
+    throw new ScriptRejectedError(
+      "script.syntaxError",
+      `Script has a syntax error: ${message}`,
+    );
   }
 }
 

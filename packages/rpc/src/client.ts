@@ -80,11 +80,13 @@ export interface DaemonEventSubscription {
 
 export class DaemonClientError extends Error {
   readonly code: string;
+  readonly reason: string | null;
 
-  constructor(message: string, code: string) {
+  constructor(message: string, code: string, reason: string | null = null) {
     super(message);
     this.name = "DaemonClientError";
     this.code = code;
+    this.reason = reason;
   }
 }
 
@@ -105,7 +107,11 @@ function responseError(response: Record<string, unknown>): Error | null {
   if (!("error" in response)) {
     return null;
   }
-  const error = response.error as { message?: unknown; code?: unknown } | null;
+  const error = response.error as {
+    message?: unknown;
+    code?: unknown;
+    reason?: unknown;
+  } | null;
   if (
     !error ||
     typeof error.message !== "string" ||
@@ -116,7 +122,8 @@ function responseError(response: Record<string, unknown>): Error | null {
       "INVALID_RESPONSE",
     );
   }
-  return new DaemonClientError(error.message, error.code);
+  const reason = typeof error.reason === "string" ? error.reason : null;
+  return new DaemonClientError(error.message, error.code, reason);
 }
 
 export function buildDaemonRequest<M extends DaemonMethod>(

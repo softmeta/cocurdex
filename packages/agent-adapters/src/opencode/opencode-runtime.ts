@@ -2,6 +2,7 @@ import {
   getAgentMinimumVersion,
   getAgentVersionStatus,
   parseAgentVersion,
+  ReasonError,
 } from "@cocurdex/shared";
 import { writeLog } from "@cocurdex/shared/node";
 import { OpenCode, type OpenCodeClient } from "@opencode/client";
@@ -64,14 +65,16 @@ function assertSupportedOpenCodeCli() {
     windowsHide: true,
   });
   if (result.error) {
-    throw new Error(
+    throw new ReasonError(
+      "agent.notInstalled",
       `OpenCode CLI was not found on PATH: ${result.error.message}`,
     );
   }
 
   const version = parseAgentVersion(String(result.stdout ?? ""));
   if (getAgentVersionStatus("opencode", version) === "outdated") {
-    throw new Error(
+    throw new ReasonError(
+      "agent.tooOld",
       `OpenCode ${version} is too old for Cocurdex. Upgrade OpenCode to ${getAgentMinimumVersion("opencode")} or newer and retry.`,
     );
   }

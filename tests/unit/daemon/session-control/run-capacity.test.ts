@@ -136,6 +136,7 @@ describe("RunCapacity", () => {
 
     capacity.release("a", new Error("stopped"));
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(waiting).rejects.toThrow("stopped");
     expect(capacity.isHeld("a")).toBe(false);
   });

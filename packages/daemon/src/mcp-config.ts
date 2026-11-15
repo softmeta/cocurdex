@@ -9,6 +9,7 @@ import {
   type McpConfigFile,
   type McpProjectConfigFile,
   type McpServerConfig,
+  ReasonError,
   withMcpServerAgents,
 } from "@cocurdex/shared";
 
@@ -33,17 +34,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseMcpConfigObject(content: string): McpConfigObject {
   const parsed = JSON.parse(content) as unknown;
   if (!isRecord(parsed)) {
-    throw new Error("MCP configuration must be a JSON object");
+    throw new ReasonError(
+      "mcp.invalidConfig",
+      "MCP configuration must be a JSON object",
+    );
   }
   const servers = parsed.mcpServers;
   if (!isRecord(servers)) {
-    throw new Error('MCP configuration must contain an "mcpServers" object');
+    throw new ReasonError(
+      "mcp.invalidConfig",
+      'MCP configuration must contain an "mcpServers" object',
+    );
   }
   const invalidName = Object.keys(servers).find(
     (name) => !isValidMcpServerName(name),
   );
   if (invalidName !== undefined) {
-    throw new Error(
+    throw new ReasonError(
+      "mcp.invalidServerName",
       `MCP server name "${invalidName}" may only contain letters, digits, "_", and "-"`,
     );
   }
@@ -61,7 +69,10 @@ export function validateMcpConfig(content: string) {
 function requireServer(config: McpConfigObject, name: string) {
   const server = config.mcpServers[name];
   if (!isRecord(server)) {
-    throw new Error(`No MCP server named "${name}"`);
+    throw new ReasonError(
+      "mcp.serverNotFound",
+      `No MCP server named "${name}"`,
+    );
   }
   return server;
 }
@@ -140,7 +151,10 @@ export class DaemonMcpConfigService {
       if (renamed) {
         requireServer(current, previousName);
         if (current.mcpServers[name] !== undefined) {
-          throw new Error(`An MCP server named "${name}" already exists`);
+          throw new ReasonError(
+            "mcp.serverExists",
+            `An MCP server named "${name}" already exists`,
+          );
         }
       }
       return {
@@ -198,7 +212,8 @@ export class DaemonMcpConfigService {
   setServerAgents(name: string, agents: AgentId[]): Promise<McpConfigFile> {
     return this.updateServer(name, (server) => {
       if (isManagedApplicationServer(server))
-        throw new Error(
+        throw new ReasonError(
+          "application.managed",
           "Manage assistant access in Applications, or use cocurdex apps update.",
         );
       return withMcpServerAgents(server, agents);

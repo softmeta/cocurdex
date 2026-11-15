@@ -123,13 +123,13 @@ describe("resolveRuntimeUpdate", () => {
         },
         context,
       ),
-    ).toThrow(/not available/);
+    ).toThrow(expect.objectContaining({ reason: "session.modelUnavailable" }));
     expect(() =>
       resolveRuntimeUpdate(
         session({ archivedAt: now }),
         { sessionId: "session-1" },
         context,
       ),
-    ).toThrow(/Restore/);
+    ).toThrow(expect.objectContaining({ reason: "session.archived" }));
   });
 });

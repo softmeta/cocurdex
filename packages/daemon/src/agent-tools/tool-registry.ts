@@ -3,6 +3,7 @@ import {
   type AgentToolCatalog,
   type AgentToolDescriptor,
   agentToolFullName,
+  ReasonError,
 } from "@cocurdex/shared";
 import { validateAgentToolInput } from "./tool-input";
 
@@ -37,7 +38,10 @@ export class AgentToolRegistry {
   register(handler: AgentToolHandler) {
     const name = agentToolFullName(handler.descriptor);
     if (this.handlers.has(name)) {
-      throw new Error(`Agent tool '${name}' is already registered`);
+      throw new ReasonError(
+        "agentTool.duplicate",
+        `Agent tool '${name}' is already registered`,
+      );
     }
     this.handlers.set(name, handler);
   }

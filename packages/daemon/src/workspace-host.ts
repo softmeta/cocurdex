@@ -15,6 +15,7 @@ import {
   normalizeWorkspaceActions,
   normalizeWorkspaceRootPaths,
   principalHasScope,
+  ReasonError,
   workspacePathsEqual,
 } from "@cocurdex/shared";
 import { resolveAuthorizedPdfReadPath } from "@cocurdex/shared/node";
@@ -130,12 +131,14 @@ export class WorkspaceHost {
     }
     const home = homedir();
     if (rootPaths.some((rootPath) => workspacePathsEqual(rootPath, home))) {
-      throw new Error(
+      throw new ReasonError(
+        "workspace.unsafeRoot",
         "The home directory cannot be a workspace folder; choose a subfolder",
       );
     }
     if (rootPaths.some((rootPath) => path.parse(rootPath).root === rootPath)) {
-      throw new Error(
+      throw new ReasonError(
+        "workspace.unsafeRoot",
         "A filesystem root cannot be a workspace folder; choose a subfolder",
       );
     }
@@ -147,7 +150,8 @@ export class WorkspaceHost {
       workspacePathsEqual(candidate.rootPaths[0], primaryRootPath),
     );
     if (conflict) {
-      throw new Error(
+      throw new ReasonError(
+        "workspace.primaryFolderTaken",
         `Folder ${primaryRootPath} is already the primary folder of workspace "${conflict.name}"`,
       );
     }
@@ -196,7 +200,8 @@ export class WorkspaceHost {
 
   async readWorkspaceTextFile(filePath: string) {
     if (!(await this.scanPolicy.canAccessFile(filePath))) {
-      throw new Error(
+      throw new ReasonError(
+        "path.outsideWorkspace",
         `File is outside every registered workspace (path=${filePath})`,
       );
     }
@@ -213,7 +218,8 @@ export class WorkspaceHost {
   async resolveWorkspaceFilePath(filePath: string) {
     const resolvedPath = path.resolve(filePath);
     if (!(await this.scanPolicy.canAccessFile(resolvedPath))) {
-      throw new Error(
+      throw new ReasonError(
+        "path.outsideWorkspace",
         `File is outside every registered workspace (path=${resolvedPath})`,
       );
     }
@@ -228,7 +234,10 @@ export class WorkspaceHost {
     if (principal.kind === "local") return;
     const scope = target === "file" ? "files.read" : "files.write";
     if (!principalHasScope(principal, scope)) {
-      throw new Error(`This device is missing the ${scope} scope`);
+      throw new ReasonError(
+        "path.missingScope",
+        `This device is missing the ${scope} scope`,
+      );
     }
     const checked =
       target === "outputFile" ? path.dirname(path.resolve(filePath)) : filePath;
@@ -239,7 +248,8 @@ export class WorkspaceHost {
         () => false,
       ));
     if (exists && (await this.scanPolicy.canAccessFile(checked))) return;
-    throw new Error(
+    throw new ReasonError(
+      "path.outsideWorkspace",
       `Path is outside every registered workspace (path=${filePath})`,
     );
   }
@@ -253,7 +263,8 @@ export class WorkspaceHost {
       if (attachment.kind === "context-item") continue;
       if (attachment.kind === "image" || attachment.kind === "document") {
         if (this.deps.attachments.isStoredFile(attachment)) continue;
-        throw new Error(
+        throw new ReasonError(
+          "attachment.notStoredUpload",
           `Attachment is not a stored upload (path=${attachment.filePath})`,
         );
       }

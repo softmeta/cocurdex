@@ -87,9 +87,9 @@ describe("AcpAgentAdapter over a real agent process", () => {
     await expect(send("hello")).resolves.toMatchObject({
       content: "new: hello",
     });
-    await expect(send("crash")).rejects.toThrow(
-      "Fake Agent stopped unexpectedly",
-    );
+    await expect(send("crash")).rejects.toMatchObject({
+      reason: "agent.connectionLost",
+    });
     await expect(send("again")).resolves.toMatchObject({
       content: "resume fake-session: again",
     });
@@ -101,6 +101,7 @@ describe("AcpAgentAdapter over a real agent process", () => {
     await send("hello");
     const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     try {
+      // biome-ignore lint/plugin: the redacted agent output is the data under test
       await expect(send("crash-loud")).rejects.toThrow(
         "Agent output:\nfatal: token [redacted] rejected",
       );
@@ -131,9 +132,9 @@ describe("AcpAgentAdapter over a real agent process", () => {
   it("fails the turn instead of hanging when the agent exits cleanly", async () => {
     const { send } = startSession();
 
-    await expect(send("exit-clean")).rejects.toThrow(
-      "Fake Agent stopped unexpectedly",
-    );
+    await expect(send("exit-clean")).rejects.toMatchObject({
+      reason: "agent.connectionLost",
+    });
     await expect(send("back")).resolves.toMatchObject({
       content: "resume fake-session: back",
     });
@@ -142,9 +143,9 @@ describe("AcpAgentAdapter over a real agent process", () => {
   it("reports a sign-in instruction for an auth-required error", async () => {
     const { events, send } = startSession();
 
-    await expect(send("auth")).rejects.toThrow(
-      "Fake Agent needs you to sign in",
-    );
+    await expect(send("auth")).rejects.toMatchObject({
+      reason: "agent.signInRequired",
+    });
     expect(events).toContainEqual(
       expect.objectContaining({ type: "state.changed", status: "error" }),
     );

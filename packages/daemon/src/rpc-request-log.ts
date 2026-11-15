@@ -15,7 +15,7 @@ export interface DaemonRequestLogEntry {
   remote: boolean;
   durationMs: number;
   replayed: boolean;
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; reason?: string };
 }
 
 export function classifyDaemonRequest(entry: {
@@ -58,6 +58,7 @@ export function logDaemonRequest(entry: DaemonRequestLogEntry) {
     ...(entry.error
       ? {
           errorCode: entry.error.code,
+          ...(entry.error.reason ? { errorReason: entry.error.reason } : {}),
           errorKind: errorKindForLog(entry.error.message),
           errorMessage: entry.error.message,
         }

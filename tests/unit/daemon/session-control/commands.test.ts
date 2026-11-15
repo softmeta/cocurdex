@@ -31,6 +31,7 @@ describe("session command serialization", () => {
       throw new Error("failed");
     });
     const next = queue.run("a", async () => "accepted");
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(failure).rejects.toThrow("failed");
     await expect(next).resolves.toBe("accepted");
   });

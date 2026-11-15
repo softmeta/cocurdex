@@ -111,6 +111,7 @@ describe("OpenCode model catalog", () => {
       new Error("OpenCode service unavailable"),
     );
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       listOpenCodeProviderModels({ forceRefresh: true }),
     ).rejects.toThrow("OpenCode service unavailable");
@@ -134,13 +135,13 @@ describe("OpenCode model catalog", () => {
         providerId: "anthropic",
         modelId: "shared-id",
       }),
-    ).toThrow("is no longer available");
+    ).toThrow(expect.objectContaining({ reason: "model.unavailable" }));
     expect(() =>
       assertOpenCodeModelAvailable(models, {
         providerId: "anthropic",
         modelId: "off",
       }),
-    ).toThrow("is no longer available");
+    ).toThrow(expect.objectContaining({ reason: "model.unavailable" }));
   });
 });
 

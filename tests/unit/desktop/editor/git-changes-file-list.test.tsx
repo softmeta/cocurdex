@@ -5,6 +5,7 @@ import {
   buildEntries,
   type GitChangeEntry,
 } from "@/features/editor/git-changes-model";
+import { i18n } from "@/i18n";
 
 function changedFiles(): GitChangeEntry[] {
   return buildEntries([
@@ -69,8 +70,12 @@ describe("GitChangesFileList", () => {
   it("states each file's change as git's letter instead of line counts", () => {
     renderList(null);
 
-    expect(screen.getByText("M").getAttribute("title")).toBe("Modified");
-    expect(screen.getByText("A").getAttribute("title")).toBe("Added");
+    expect(screen.getByText("M").getAttribute("title")).toBe(
+      i18n.t("editor:git.changeType.modified"),
+    );
+    expect(screen.getByText("A").getAttribute("title")).toBe(
+      i18n.t("editor:git.changeType.added"),
+    );
     expect(screen.queryByText("+3")).toBeNull();
   });
 });

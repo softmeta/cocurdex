@@ -306,6 +306,7 @@ describe("AgentRuntimeManager", () => {
       createPersistence(),
     );
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(manager.shutdown()).rejects.toThrow("stop failed");
 
     expect(firstRuntime.dispose).toHaveBeenCalledOnce();
@@ -452,7 +453,7 @@ describe("AgentRuntimeManager", () => {
         ...createPersistence(),
         history: [],
       }),
-    ).rejects.toThrow("already has an active turn");
+    ).rejects.toMatchObject({ reason: "session.busy" });
 
     manager.emitAgentEvent({
       attribution: "session-only",

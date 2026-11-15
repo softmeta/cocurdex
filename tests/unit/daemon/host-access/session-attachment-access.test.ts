@@ -92,11 +92,13 @@ describe("session.send attachment access", () => {
 
     await expect(
       send([contextFile(path.join(outside, "secret.txt"))]),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     await expect(
       send([{ kind: "context-folder", folderPath: outside }]),
-    ).rejects.toThrow(/outside every registered workspace/);
-    await expect(send([forged])).rejects.toThrow(/not a stored upload/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
+    await expect(send([forged])).rejects.toMatchObject({
+      reason: "attachment.notStoredUpload",
+    });
     await expect(
       service.state.listSessionMessages("session-1"),
     ).resolves.toMatchObject({ messages: [] });
@@ -128,12 +130,12 @@ describe("session.send attachment access", () => {
       bookmarks: [],
       highlights: [],
     });
-    await expect(service.workspaces.resolvePdfPath(outsidePdf)).rejects.toThrow(
-      /outside every registered workspace/,
-    );
-    await expect(readAnnotations(outsidePdf)).rejects.toThrow(
-      /outside every registered workspace/,
-    );
+    await expect(
+      service.workspaces.resolvePdfPath(outsidePdf),
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
+    await expect(readAnnotations(outsidePdf)).rejects.toMatchObject({
+      reason: "path.outsideWorkspace",
+    });
   });
 
   it("refuses a managed PDF replaced by a symlink to a private file", async () => {
@@ -148,10 +150,10 @@ describe("session.send attachment access", () => {
     symlinkSync(outsidePdf, stored.filePath, "file");
     await expect(
       service.workspaces.resolvePdfPath(stored.filePath),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     await expect(
       service.pdfAnnotationsService.loadAnnotations(stored.filePath),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
   });
 
   it("lets a device attach stored uploads and workspace files", async () => {

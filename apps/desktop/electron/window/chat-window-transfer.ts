@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { ReasonError } from "@cocurdex/shared";
 import type { ChatWindowTransfer } from "../../src/lib/chat-window-types";
 
 export class ChatWindowHandoff {
@@ -24,7 +25,12 @@ export class ChatWindowHandoff {
     const transfer = { id: randomUUID(), snapshot };
     const completion = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
-        this.cancel(new Error("The chat window did not become ready in time"));
+        this.cancel(
+          new ReasonError(
+            "chatWindow.timedOut",
+            "The chat window did not become ready in time",
+          ),
+        );
       }, 30_000);
       this.pending = { transfer, target, resolve, reject, timer };
     });

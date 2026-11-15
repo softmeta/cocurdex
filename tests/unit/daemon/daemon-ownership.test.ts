@@ -53,9 +53,9 @@ describe("daemon ownership", () => {
     const userDataPath = await directory();
     const owner = await acquireDaemonOwnership(userDataPath);
     try {
-      await expect(acquireDaemonOwnership(userDataPath)).rejects.toThrow(
-        "Cannot acquire daemon ownership",
-      );
+      await expect(acquireDaemonOwnership(userDataPath)).rejects.toMatchObject({
+        reason: "daemon.ownershipUnavailable",
+      });
       const result = await execFileAsync(
         process.execPath,
         [
@@ -127,7 +127,7 @@ describe("daemon ownership", () => {
         acquireDaemonOwnership(userDataPath, {
           isIncumbentServing: async () => true,
         }),
-      ).rejects.toThrow("Cannot acquire daemon ownership");
+      ).rejects.toMatchObject({ reason: "daemon.ownershipUnavailable" });
       expect(performance.now() - startedAt).toBeLessThan(1000);
     } finally {
       owner.release();

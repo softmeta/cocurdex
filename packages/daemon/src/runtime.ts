@@ -31,6 +31,7 @@ import {
   type MessageAttachment,
   type MessageRecord,
   mergeUsageRecords,
+  ReasonError,
   type SessionRecord,
   workspacePathsEqual,
 } from "@cocurdex/shared";
@@ -644,7 +645,8 @@ export class AgentRuntimeManager {
   ) {
     const isSteering = payload.delivery === "steer-active-run";
     if (this.activeTurnTrackers.has(payload.session.id) && !isSteering) {
-      throw new Error(
+      throw new ReasonError(
+        "session.busy",
         `Session ${payload.session.id} already has an active turn`,
       );
     }

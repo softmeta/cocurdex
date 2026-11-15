@@ -27,9 +27,6 @@ export interface GlobalInstallFacts {
   blocked: boolean;
 }
 
-// The shared home is the user's: Cocurdex sets it up only while it holds no
-// rsrs at all, or finishes a setup it started, and never replaces or upgrades
-// an rsrs that is already there.
 export function needsGlobalInstall(facts: GlobalInstallFacts) {
   if (!facts.supported || !facts.enabled || facts.customCli) return false;
   if (facts.blocked || facts.hasExecutable) return false;

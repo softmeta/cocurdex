@@ -1,3 +1,4 @@
+import { ReasonError } from "@cocurdex/shared";
 import type { getDefaultStore } from "jotai";
 import { bootstrapQueuedInputsAtom } from "@/features/agent";
 import {
@@ -61,7 +62,10 @@ export function applyChatSnapshot(store: Store, payload: string) {
     !snapshot.drafts ||
     !Array.isArray(snapshot.agents)
   ) {
-    throw new Error("Invalid chat window snapshot");
+    throw new ReasonError(
+      "chatWindow.invalidSnapshot",
+      "Invalid chat window snapshot",
+    );
   }
   store.set(agentsAtom, snapshot.agents);
   store.set(activeWorkspaceIdAtom, snapshot.workspaceId);

@@ -218,6 +218,7 @@ describe("listClaudeCliProviderModels", () => {
         },
       ]);
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       listClaudeCliProviderModels(lookupExecutable, modelProbe),
     ).rejects.toThrow("probe failed");

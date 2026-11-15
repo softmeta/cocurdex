@@ -11,6 +11,7 @@ import {
   isAgentPermissionModeSupportedForModel,
   isPersonalWorkspaceId,
   type NewSessionDefaults,
+  ReasonError,
   type SessionConfiguration,
   type SessionRecord,
   type SessionRuntimeSelection,
@@ -47,9 +48,12 @@ function resolveAgent(
     if (!agent) {
       const target = agents.find((candidate) => candidate.id === requested);
       if (target?.enabled === false) {
-        throw new Error(`${target.label} is disabled`);
+        throw new ReasonError("agent.disabled", `${target.label} is disabled`);
       }
-      throw new Error(`${requested} is not available on this machine`);
+      throw new ReasonError(
+        "agent.unavailable",
+        `${requested} is not available on this machine`,
+      );
     }
     return agent;
   }
@@ -76,7 +80,8 @@ async function resolveModel(
   if (requested) {
     const model = find(requested);
     if (!model) {
-      throw new Error(
+      throw new ReasonError(
+        "session.modelUnavailable",
         `${requested.providerId}/${requested.modelId} is not available for ${agentId}`,
       );
     }
@@ -123,7 +128,10 @@ function resolvePermissionMode(
 ) {
   if (requested) {
     if (!allowed.includes(requested)) {
-      throw new Error(`${requested} is not a permission mode of ${agent.id}`);
+      throw new ReasonError(
+        "session.invalidPermissionMode",
+        `${requested} is not a permission mode of ${agent.id}`,
+      );
     }
     return requested;
   }

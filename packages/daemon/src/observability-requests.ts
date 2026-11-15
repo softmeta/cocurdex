@@ -1,5 +1,6 @@
 import type { DaemonRequest, DaemonStatus } from "@cocurdex/rpc";
 import type { HostPrincipal } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import type { DaemonHealthMonitor } from "./daemon-health";
 import type { DaemonLogging } from "./daemon-logging";
 import { logDaemonDiagnostic } from "./diagnostics";
@@ -35,7 +36,10 @@ export async function handleObservabilityRequest(
       return observability.health.snapshot({ includePaths });
     case "diagnostics.export": {
       if (!includePaths && request.params.hostLogDirectories?.length) {
-        throw new Error("Only the local host can attach host log directories");
+        throw new ReasonError(
+          "principal.localOnly",
+          "Only the local host can attach host log directories",
+        );
       }
       if (!observability.logging) {
         throw new Error("Daemon logging is not configured");

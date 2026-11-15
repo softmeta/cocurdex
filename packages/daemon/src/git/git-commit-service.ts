@@ -1,4 +1,5 @@
 import type { GitCommitResult, GitPushResult } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import { createGitClient } from "./git-client";
 
 export interface CommitGitChangesOptions {
@@ -13,7 +14,10 @@ export async function commitGitChanges(
   const git = createGitClient(rootPath);
   const message = options.message.trim();
   if (message.length === 0) {
-    throw new Error("Commit message is required");
+    throw new ReasonError(
+      "git.emptyCommitMessage",
+      "Commit message is required",
+    );
   }
 
   const originalIndexTree = options.includeUnstaged
@@ -28,7 +32,7 @@ export async function commitGitChanges(
     const result = await git.commit(message);
     const commitHash = result.commit.trim();
     if (commitHash.length === 0) {
-      throw new Error("Nothing to commit");
+      throw new ReasonError("git.nothingToCommit", "Nothing to commit");
     }
 
     return { commitHash, message };
@@ -68,7 +72,7 @@ export async function pushGitBranch(rootPath: string): Promise<GitPushResult> {
   const origin =
     remotes.find((remote) => remote.name === "origin") ?? remotes[0];
   if (!origin) {
-    throw new Error("No remote configured");
+    throw new ReasonError("git.noRemote", "No remote configured");
   }
 
   await git.push(origin.name, branch, ["--set-upstream"]);

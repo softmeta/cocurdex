@@ -74,6 +74,7 @@ describe("waitForWorktreeSetup", () => {
     runs.start("/wt", "exit 1", () => Promise.reject(new Error("boom")));
     const { events, input } = waitInput(runs);
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(waitForWorktreeSetup(input)).rejects.toThrow(/boom/);
     expect(toolStatuses(events)).toEqual([
       "tool.started:in_progress",

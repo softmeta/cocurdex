@@ -4,6 +4,7 @@ import {
   killProcessTree,
   spawnCommand,
 } from "@cocurdex/agent-adapters";
+import { ReasonError } from "@cocurdex/shared";
 
 export const GITHUB_CLIENT_ID = "Ov23liI4ixzGGvD0emDA";
 export const GITHUB_SCOPES = "repo read:org notifications";
@@ -139,13 +140,14 @@ export async function pollGitHubDeviceToken(
         numberField(body, "interval") ?? intervalSeconds + SLOW_DOWN_SECONDS;
       continue;
     }
-    throw new Error(
+    throw new ReasonError(
+      `github.${error ?? "failed"}`,
       (error && DEVICE_ERRORS[error]) ??
         stringField(body, "error_description") ??
         "GitHub authorization failed",
     );
   }
-  throw new Error(DEVICE_ERRORS.expired_token);
+  throw new ReasonError("github.expired_token", DEVICE_ERRORS.expired_token);
 }
 
 export function abortableSleep(ms: number, signal: AbortSignal) {

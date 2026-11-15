@@ -5,6 +5,7 @@ import type {
   RunStatus,
   SessionStatus,
 } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import type { SessionTurnOutcome } from "./execution-types";
 import { decideRunOutcome, type RunSettlement } from "./run-decisions";
 
@@ -94,7 +95,10 @@ export class SessionRunCoordinator {
     agentType: AgentId,
   ): Promise<RunHandle> {
     if (this.active.has(sessionId)) {
-      throw new Error(`Session ${sessionId} already has an active turn`);
+      throw new ReasonError(
+        "session.busy",
+        `Session ${sessionId} already has an active turn`,
+      );
     }
     let resolveEnded!: (outcome: SessionTurnOutcome) => void;
     const ended = new Promise<SessionTurnOutcome>((resolve) => {

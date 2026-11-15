@@ -16,6 +16,7 @@ import {
   isContextItemAttachment,
   isDocumentAttachment,
   isImageAttachment,
+  ReasonError,
 } from "@cocurdex/shared";
 import { logAdapterDiagnostic } from "../diagnostics";
 
@@ -34,7 +35,10 @@ export function assertNoDocumentAttachments(
   attachments: MessageAttachment[],
 ) {
   if (attachments.some(isDocumentAttachment)) {
-    throw new Error(`${adapterLabel} does not support document attachments`);
+    throw new ReasonError(
+      "attachment.documentUnsupported",
+      `${adapterLabel} does not support document attachments`,
+    );
   }
 }
 

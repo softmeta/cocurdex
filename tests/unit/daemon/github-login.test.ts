@@ -47,7 +47,7 @@ describe("GitHub device authorization", () => {
         async () => {},
         signal,
       ),
-    ).rejects.toThrow("declined");
+    ).rejects.toMatchObject({ reason: "github.access_denied" });
     let now = 0;
     await expect(
       pollGitHubDeviceToken(
@@ -59,6 +59,6 @@ describe("GitHub device authorization", () => {
         signal,
         () => now,
       ),
-    ).rejects.toThrow("expired");
+    ).rejects.toMatchObject({ reason: "github.expired_token" });
   });
 });

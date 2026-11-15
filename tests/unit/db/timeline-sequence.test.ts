@@ -283,6 +283,6 @@ describe("imported provider sessions", () => {
 
     await expect(
       sessions.upsert({ ...baseSession("second"), ...imported }),
-    ).rejects.toThrow(/UNIQUE/);
+    ).rejects.toMatchObject({ errcode: 2067 });
   });
 });

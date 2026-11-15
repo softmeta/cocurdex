@@ -12,6 +12,7 @@ import type {
   SkillTarget,
   SkillWorkspaceInfo,
 } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import { readSkillLock, type SkillLockFile } from "./skill-locks";
 
 export type WorkspaceResolver = (
@@ -50,7 +51,10 @@ export async function resolveScopeContext(
   }
   const workspace = await resolveWorkspace(target.workspaceId);
   if (!workspace) {
-    throw new Error(`Workspace not found: ${target.workspaceId}`);
+    throw new ReasonError(
+      "workspace.notFound",
+      `Workspace not found: ${target.workspaceId}`,
+    );
   }
   return {
     scope: "workspace",

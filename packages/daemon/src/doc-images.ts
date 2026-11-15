@@ -8,6 +8,7 @@ import {
   type ImportDocImagePayload,
   type LocateDocImagePayload,
   parseDocImageUri,
+  ReasonError,
 } from "@cocurdex/shared";
 import type { DaemonAttachmentStore } from "./attachment-store";
 
@@ -41,7 +42,8 @@ export async function locateDocImage(
 ): Promise<DocImageFile | null> {
   const fileName = parseDocImageUri(payload.uri);
   if (!fileName) {
-    throw new Error(
+    throw new ReasonError(
+      "docImage.invalidReference",
       `Not a Cocurdex image reference: ${payload.uri} (expected cocurdex://image/<file>)`,
     );
   }

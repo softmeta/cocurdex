@@ -30,12 +30,12 @@ describe("daemon data RPC", () => {
         token: "test",
       });
 
-    await expect(request({ title: 7 })).rejects.toThrow(
-      /Invalid note\.create payload/,
-    );
-    await expect(request({ parentId: "../escape" })).rejects.toThrow(
-      /Invalid note\.create payload/,
-    );
+    await expect(request({ title: 7 })).rejects.toMatchObject({
+      reason: "payload.invalid",
+    });
+    await expect(request({ parentId: "../escape" })).rejects.toMatchObject({
+      reason: "payload.invalid",
+    });
     await expect(
       handleDaemonRequest<"note.list">(service, {
         id: "2",

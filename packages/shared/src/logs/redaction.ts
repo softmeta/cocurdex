@@ -1,4 +1,5 @@
 import os from "node:os";
+import { errorReason } from "../errors";
 import type { LogDetails, LogLevel } from "../logging";
 
 const SENSITIVE_KEY_PATTERNS = [
@@ -217,6 +218,7 @@ export function formatErrorForLog(error: unknown) {
   return {
     message: truncateLogString(error.message),
     name: error.name,
+    reason: errorReason(error) ?? undefined,
     stack: error.stack ? truncateLogString(error.stack) : undefined,
   };
 }

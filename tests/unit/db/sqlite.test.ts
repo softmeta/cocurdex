@@ -217,6 +217,7 @@ describe("createCocurdexDatabase", { timeout: 30_000 }, () => {
       sortOrder: 1000,
     });
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     expect(() =>
       database.transaction(() => {
         void database.sessions.upsert({

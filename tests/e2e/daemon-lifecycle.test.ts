@@ -53,7 +53,7 @@ describe("daemon process lifecycle", () => {
     try {
       await expect(
         spawnDaemon({ userDataPath: first.userDataPath }),
-      ).rejects.toThrow(/ownership/i);
+      ).rejects.toMatchObject({ reason: "daemon.ownershipUnavailable" });
 
       const status = await requestDaemon("daemon.status", first.options);
       expect(status.pid).toBe(first.child.pid);

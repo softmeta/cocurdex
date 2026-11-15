@@ -12,6 +12,7 @@ import {
   type ProviderConfigRecord,
   type ProviderModelRecord,
   parseDisabledAgentIds,
+  ReasonError,
   type ResolvedCommitMessageModel,
 } from "@cocurdex/shared";
 import type { DaemonState } from "../state";
@@ -82,11 +83,13 @@ export async function resolveCommitMessageModel(
   state: DaemonState,
   selection: CommitMessageModelSelection | null,
 ): Promise<ResolvedCommitMessageModel> {
-  if (!selection) throw new Error(NO_MODEL_ERROR);
+  if (!selection)
+    throw new ReasonError("commitMessage.noModel", NO_MODEL_ERROR);
   const disabledIds = parseDisabledAgentIds(
     await state.getAppSetting?.(DISABLED_AGENTS_SETTING_KEY),
   );
-  if (disabledIds.has(selection.agentId)) throw new Error(NO_MODEL_ERROR);
+  if (disabledIds.has(selection.agentId))
+    throw new ReasonError("commitMessage.noModel", NO_MODEL_ERROR);
   const nativeModels = listAgentModels(selection.agentId);
   const item = nativeModels
     ? (await nativeModels).find(
@@ -95,7 +98,7 @@ export async function resolveCommitMessageModel(
           model.modelId === selection.modelId,
       )
     : await resolveConfiguredModel(state, selection);
-  if (!item) throw new Error(NO_MODEL_ERROR);
+  if (!item) throw new ReasonError("commitMessage.noModel", NO_MODEL_ERROR);
   return {
     agentId: selection.agentId,
     providerSnapshot: createCommitMessageProviderSnapshot(

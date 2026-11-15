@@ -1,3 +1,4 @@
+import { ReasonError } from "@cocurdex/shared";
 import type { DaemonRequestContext } from "../host-access/request-context";
 
 export function assertLocalPrincipal(
@@ -5,7 +6,10 @@ export function assertLocalPrincipal(
   method: string,
 ) {
   if (context.principal.kind !== "local") {
-    throw new Error(`${method} is only available on this computer`);
+    throw new ReasonError(
+      "principal.localOnly",
+      `${method} is only available on this computer`,
+    );
   }
 }
 
@@ -15,7 +19,8 @@ export function assertWorkspaceForRemote(
   workspaceId: string | undefined,
 ) {
   if (context.principal.kind !== "local" && !workspaceId) {
-    throw new Error(
+    throw new ReasonError(
+      "path.outsideWorkspace",
       `${method} from another device must run in a registered workspace`,
     );
   }

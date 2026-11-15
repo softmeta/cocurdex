@@ -114,7 +114,7 @@ describe("application connections", () => {
     expect(added.status).toBeNull();
     await expect(
       mcp.config.setServerAgents(added.id, ["codex", "pi"]),
-    ).rejects.toThrow("Applications");
+    ).rejects.toMatchObject({ reason: "application.managed" });
     await mcp.config.updateServer(added.id, (config) => ({
       ...config,
       cocurdex: {
@@ -138,7 +138,7 @@ describe("application connections", () => {
         delegated: false,
         workSession: false,
       }),
-    ).rejects.toThrow("not allowed");
+    ).rejects.toMatchObject({ reason: "application.notAllowed" });
     await expect(
       apps.call(
         added.id,
@@ -146,7 +146,7 @@ describe("application connections", () => {
         {},
         { personaId: "a", delegated: true, workSession: false },
       ),
-    ).rejects.toThrow("not allowed");
+    ).rejects.toMatchObject({ reason: "application.notAllowed" });
     expect(factory).not.toHaveBeenCalled();
     expect(
       await apps.call(
@@ -175,7 +175,7 @@ describe("application connections", () => {
         {},
         { personaId: "a", delegated: false, workSession: false },
       ),
-    ).rejects.toThrow("not allowed");
+    ).rejects.toMatchObject({ reason: "application.notAllowed" });
     expect(client.call).toHaveBeenCalledTimes(1);
     expect(client.close).toHaveBeenCalledTimes(2);
   });
@@ -232,10 +232,10 @@ describe("application connections", () => {
       added.id,
       expect.anything(),
     );
-    await expect(apps.tools("notion", b)).rejects.toThrow(
-      "Application connection not found",
-    );
-    const second = await apps.add({
+    await expect(apps.tools("notion", b)).rejects.toMatchObject({
+      reason: "application.notFound",
+    });
+    await apps.add({
       applicationId: "notion",
       displayName: "Team notes",
       allPersonas: false,
@@ -243,8 +243,12 @@ describe("application connections", () => {
       allowDelegatedWork: false,
     });
     const ambiguous = apps.tools("notion", a);
-    await expect(ambiguous).rejects.toThrow(added.id);
-    await expect(apps.tools("notion", a)).rejects.toThrow(second.id);
+    await expect(ambiguous).rejects.toMatchObject({
+      reason: "application.ambiguous",
+    });
+    await expect(apps.tools("notion", a)).rejects.toMatchObject({
+      reason: "application.ambiguous",
+    });
     expect(factory).toHaveBeenCalledTimes(1);
   });
 
@@ -261,8 +265,8 @@ describe("application connections", () => {
       allowWorkSessions: false,
     });
     expect(await apps.list(work)).toEqual([]);
-    await expect(apps.read(added.id, "search", {}, work)).rejects.toThrow(
-      "not allowed",
+    await expect(apps.read(added.id, "search", {}, work)).rejects.toMatchObject(
+      { reason: "application.notAllowed" },
     );
     const reopened = await apps.update({ ...edit(closed), enabled: true });
     expect(reopened.allowWorkSessions).toBe(false);
@@ -296,7 +300,7 @@ describe("application connections", () => {
         {},
         { personaId: "a", delegated: false, workSession: false },
       ),
-    ).rejects.toThrow("read-only");
+    ).rejects.toMatchObject({ reason: "application.notReadOnly" });
     expect(client.call).toHaveBeenCalledTimes(1);
   });
 
@@ -313,18 +317,27 @@ describe("application connections", () => {
         },
       ];
     });
-    await expect(apps.call(added.id, "search", {})).rejects.toThrow("closed");
+    await expect(apps.call(added.id, "search", {})).rejects.toMatchObject({
+      reason: "application.closed",
+    });
     expect(client.call).not.toHaveBeenCalled();
     expect(client.close).toHaveBeenCalledTimes(1);
     await apps.update({ ...edit(added), enabled: false });
-    await expect(apps.call(added.id, "search", {})).rejects.toThrow("disabled");
-    await expect(apps.tools(added.id)).rejects.toThrow("disabled");
-    await expect(apps.startLogin(added.id)).rejects.toThrow("disabled");
+    await expect(apps.call(added.id, "search", {})).rejects.toMatchObject({
+      reason: "application.disabled",
+    });
+    await expect(apps.tools(added.id)).rejects.toMatchObject({
+      reason: "application.disabled",
+    });
+    await expect(apps.startLogin(added.id)).rejects.toMatchObject({
+      reason: "application.disabled",
+    });
   });
 
   it("never retries a tool failure and always closes the client", async () => {
     const { apps, added, client } = await setup();
     client.call.mockRejectedValueOnce(new Error("Connection lost after write"));
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(apps.call(added.id, "search", {})).rejects.toThrow(
       "after write",
     );
@@ -341,10 +354,10 @@ describe("application connections", () => {
     });
     await expect(
       apps.update({ ...edit(added), enabled: true, personaIds: [] }),
-    ).rejects.toThrow("Reload");
+    ).rejects.toMatchObject({ reason: "application.stale" });
     await expect(
       apps.update({ ...edit(updated), enabled: true, personaIds: ["missing"] }),
-    ).rejects.toThrow("Assistant not found");
+    ).rejects.toMatchObject({ reason: "assistant.notFound" });
     expect((await apps.list())[0]).toMatchObject({
       personaIds: ["a"],
       allowDelegatedWork: true,
@@ -382,7 +395,7 @@ describe("application connections", () => {
     });
     await expect(
       apps.update({ ...edit(updated), enabled: true, personaIds: ["a", "c"] }),
-    ).rejects.toThrow("Assistant not found: c");
+    ).rejects.toMatchObject({ reason: "assistant.notFound" });
   });
 
   it("keeps a checked status across grant edits and drops it when the connection itself changes", async () => {
@@ -484,7 +497,9 @@ describe("application connections", () => {
       ...config,
       url: "https://example.invalid/mcp",
     }));
-    await expect(apps.tools(added.id)).rejects.toThrow("endpoint was changed");
+    await expect(apps.tools(added.id)).rejects.toMatchObject({
+      reason: "application.endpointChanged",
+    });
     expect(factory).not.toHaveBeenCalled();
     await mcp.config.updateServer(added.id, (config) => ({
       ...config,

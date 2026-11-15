@@ -86,7 +86,7 @@ describe("daemon background mode", () => {
         deviceId: "phone-1",
         scopes: ["host.admin"],
       }),
-    ).rejects.toThrow("Only this computer");
+    ).rejects.toMatchObject({ reason: "principal.localOnly" });
 
     expect(await autostartEntries()).toEqual([]);
     expect(await service.enabled()).toBe(false);
@@ -101,9 +101,9 @@ describe("daemon background mode", () => {
       registered: false,
       startsAt: "login",
     });
-    await expect(service.set(true, { kind: "local" })).rejects.toThrow(
-      "not available",
-    );
+    await expect(service.set(true, { kind: "local" })).rejects.toMatchObject({
+      reason: "background.unavailable",
+    });
   });
 
   it("rewrites the login item at startup so a moved app keeps launching", async () => {

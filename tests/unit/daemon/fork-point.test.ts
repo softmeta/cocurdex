@@ -64,10 +64,10 @@ describe("resolveForkPoint", () => {
         throughMessageId: "a2",
         activeTriggerMessageId: "u2",
       }),
-    ).toThrow("Wait for this turn to finish");
+    ).toThrow(expect.objectContaining({ reason: "fork.turnRunning" }));
     expect(() =>
       resolveForkPoint({ settled, activeTriggerMessageId: "u1" }),
-    ).toThrow("Wait for the first turn to finish");
+    ).toThrow(expect.objectContaining({ reason: "fork.turnRunning" }));
   });
 
   it("rejects an unknown message", () => {
@@ -77,6 +77,6 @@ describe("resolveForkPoint", () => {
         throughMessageId: "missing",
         activeTriggerMessageId: null,
       }),
-    ).toThrow("Message missing was not found");
+    ).toThrow(expect.objectContaining({ reason: "message.notFound" }));
   });
 });

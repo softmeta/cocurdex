@@ -27,6 +27,7 @@ describe("createTempDirs", () => {
       throw new Error("close failed");
     });
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(tempDirs.cleanup()).rejects.toThrow("close failed");
     expect(existsSync(directory)).toBe(false);
   });

@@ -112,7 +112,7 @@ describe("handleObservabilityRequest", () => {
           }),
           device,
         ),
-      ).rejects.toThrow(/local host/);
+      ).rejects.toMatchObject({ reason: "principal.localOnly" });
       expect(existsSync(path.join(userDataPath, "diagnostics"))).toBe(false);
     } finally {
       value.health.stop();
@@ -136,7 +136,7 @@ describe("handleObservabilityRequest", () => {
           request("diagnostics.logLevel.set", { level: "trace" }),
           { kind: "local" },
         ),
-      ).rejects.toThrow(/Invalid diagnostics.logLevel.set payload/);
+      ).rejects.toMatchObject({ reason: "payload.invalid" });
     } finally {
       value.health.stop();
     }

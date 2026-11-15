@@ -32,12 +32,13 @@ describe("safe daemon shutdown admission", () => {
     settle();
     await pending;
     expect(gate.prepare(idle).status).toBe("accepted");
-    await expect(gate.run(async () => "new work")).rejects.toThrow(
-      "not accepted",
-    );
+    await expect(gate.run(async () => "new work")).rejects.toMatchObject({
+      reason: "daemon.shuttingDown",
+    });
   });
   it("releases request accounting on failure", async () => {
     const gate = new DaemonShutdownGate();
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       gate.run(async () => {
         throw new Error("failed");

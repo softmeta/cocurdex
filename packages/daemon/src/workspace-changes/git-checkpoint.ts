@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   inferReviewKind,
+  ReasonError,
   type TurnFileChange,
   type TurnFileOperation,
 } from "@cocurdex/shared";
@@ -214,7 +215,8 @@ async function assertGitCheckpointBudget(
     }
     changedBytes += fileStat.size;
     if (changedBytes > maxChangedBytes) {
-      throw new Error(
+      throw new ReasonError(
+        "checkpoint.tooLarge",
         `Git checkpoint changed-content limit exceeded (${maxChangedBytes} bytes)`,
       );
     }

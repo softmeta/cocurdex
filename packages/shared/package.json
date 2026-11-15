@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./build-policy": "./src/build-policy.ts",
+    "./errors": "./src/errors.ts",
     "./node": "./src/node.ts",
     "./internal/*": "./src/*.ts"
   },

@@ -354,6 +354,6 @@ describe("context transfers", () => {
       service.agentTools.registry.call(caller, "history_read", {
         sessionId: "elsewhere",
       }),
-    ).rejects.toThrow("not this session");
+    ).rejects.toMatchObject({ reason: "session.outOfScope" });
   });
 });

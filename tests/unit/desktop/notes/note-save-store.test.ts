@@ -79,7 +79,7 @@ describe("note title queue", () => {
 
     await expect(
       store.set(saveNoteTitleAtom, { noteId: "a", title: "Kept" }),
-    ).rejects.toThrow("not saved");
+    ).rejects.toMatchObject({ reason: "note.notSaved" });
     expect(store.get(noteSaveStatusAtom)).toBe("error");
 
     await vi.advanceTimersByTimeAsync(3000);

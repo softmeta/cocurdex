@@ -533,6 +533,7 @@ describe("AcpAgentAdapter", () => {
       () => undefined,
     );
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       session.sendMessage({ content: "First attempt", history: [] }),
     ).rejects.toThrow("temporary startup failure");
@@ -633,7 +634,7 @@ describe("AcpAgentAdapter", () => {
 
     await expect(
       session.sendMessage({ content: "Hi", history: [] }),
-    ).rejects.toThrow("Grok Build needs you to sign in");
+    ).rejects.toMatchObject({ reason: "agent.signInRequired" });
     expect(events).toContainEqual(
       expect.objectContaining({
         type: "error",
@@ -1068,7 +1069,7 @@ describe("AcpAgentAdapter", () => {
         attachments: [],
         history,
       }),
-    ).rejects.toThrow("could not restore its native session");
+    ).rejects.toMatchObject({ reason: "session.nativeRestoreFailed" });
 
     expect(connection.newSession).not.toHaveBeenCalled();
     expect(prompt).not.toHaveBeenCalled();

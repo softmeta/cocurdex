@@ -73,9 +73,9 @@ describe("readSessionActivity", () => {
   });
 
   it("refuses sessions outside the fork lineage", async () => {
-    await expect(readSessionActivity(reader, "origin", "fork")).rejects.toThrow(
-      "not this session",
-    );
+    await expect(
+      readSessionActivity(reader, "origin", "fork"),
+    ).rejects.toMatchObject({ reason: "session.outOfScope" });
   });
 
   it("orders a session's messages and commands by timeline position", async () => {

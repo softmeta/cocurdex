@@ -3,6 +3,7 @@ import {
   type PiModelsJson,
   type ProviderImportResult,
   parseProviderJson,
+  ReasonError,
 } from "@cocurdex/shared";
 import type { DaemonState } from "../state";
 
@@ -24,7 +25,7 @@ export async function importProviderJson(
 ): Promise<ProviderImportResult> {
   const now = new Date().toISOString();
   const parsed = parseProviderJson(json, now);
-  if (!parsed.ok) throw new Error(parsed.error);
+  if (!parsed.ok) throw new ReasonError("provider.invalidJson", parsed.error);
 
   for (const entry of parsed.providers) {
     const existing = await state.getProviderConfig(entry.provider.id);

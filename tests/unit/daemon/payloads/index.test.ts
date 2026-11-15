@@ -30,7 +30,7 @@ describe("parseDaemonRequest", () => {
         "personalAgent.update",
         role({ kind: "shape", shape: "hexagon", face: "dots", color: "pink" }),
       ),
-    ).toThrow(/Invalid personalAgent\.update payload/);
+    ).toThrow(expect.objectContaining({ reason: "payload.invalid" }));
   });
 
   it("keeps git file operations inside the workspace", () => {
@@ -45,15 +45,15 @@ describe("parseDaemonRequest", () => {
         rootPath: workspaceRoot,
         filePaths: ["../outside.txt"],
       }),
-    ).toThrow(/Invalid git\.stageFiles payload/);
+    ).toThrow(expect.objectContaining({ reason: "payload.invalid" }));
     expect(
       parse("git.discardFiles", {
         rootPath: workspaceRoot,
         filePaths: [path.resolve("/etc/passwd")],
       }),
-    ).toThrow(/Invalid git\.discardFiles payload/);
+    ).toThrow(expect.objectContaining({ reason: "payload.invalid" }));
     expect(parse("git.status", { rootPath: "relative/repo" })).toThrow(
-      /Invalid git\.status payload/,
+      expect.objectContaining({ reason: "payload.invalid" }),
     );
   });
 
@@ -63,16 +63,16 @@ describe("parseDaemonRequest", () => {
         rootPath: workspaceRoot,
         branch: "--orphan",
       }),
-    ).toThrow(/option-like branch/);
+    ).toThrow(expect.objectContaining({ reason: "payload.invalid" }));
   });
 
   it("rejects unknown agents", () => {
     expect(parse("agent.login", { agentId: "rm -rf" })).toThrow(
-      /unknown agent/,
+      expect.objectContaining({ reason: "payload.invalid" }),
     );
     expect(parse("agent.login", { agentId: "codex" })).not.toThrow();
     expect(parse("acpRegistry.uninstall", { agentId: "codex" })).toThrow(
-      /not a registry agent/,
+      expect.objectContaining({ reason: "payload.invalid" }),
     );
   });
 
@@ -81,7 +81,9 @@ describe("parseDaemonRequest", () => {
       parse("issue.get", { id: "COC-12", viewId: "project" }),
     ).not.toThrow();
     expect(parse("issue.deleteLabel", { id: "bug" })).not.toThrow();
-    expect(parse("issue.get", { id: "" })).toThrow(/Invalid issue\.get/);
+    expect(parse("issue.get", { id: "" })).toThrow(
+      expect.objectContaining({ reason: "payload.invalid" }),
+    );
   });
 
   describe("provider-minted request ids", () => {
@@ -111,13 +113,13 @@ describe("parseDaemonRequest", () => {
     it.each(["", "call\u0000x", "bad\rid"])("rejects %j", (id) => {
       expect(
         parse("permission.resolve", { requestId: id, optionId: "allow" }),
-      ).toThrow(/Invalid permission\.resolve payload/);
+      ).toThrow(expect.objectContaining({ reason: "payload.invalid" }));
     });
 
     it("keeps session ids restricted", () => {
       expect(
         parse("session.stop", { sessionId: "call_example|fc_example" }),
-      ).toThrow(/Invalid session\.stop payload/);
+      ).toThrow(expect.objectContaining({ reason: "payload.invalid" }));
     });
   });
 
@@ -141,7 +143,7 @@ describe("parseDaemonRequest", () => {
     };
     expect(parse("terminal.spawn", spawn)).not.toThrow();
     expect(parse("terminal.spawn", { ...spawn, cwd: "relative" })).toThrow(
-      /Invalid terminal\.spawn payload/,
+      expect.objectContaining({ reason: "payload.invalid" }),
     );
     expect(parse("terminal.spawn", { ...spawn, cols: 0 })).toThrow();
     expect(parse("terminal.spawn", { ...spawn, rows: 5000 })).toThrow();
@@ -160,6 +162,6 @@ describe("parseDaemonRequest", () => {
     ).not.toThrow();
     expect(
       parse("terminal.write", { terminalId: "t", data: "x".repeat(1_000_001) }),
-    ).toThrow(/Invalid terminal\.write payload/);
+    ).toThrow(expect.objectContaining({ reason: "payload.invalid" }));
   });
 });

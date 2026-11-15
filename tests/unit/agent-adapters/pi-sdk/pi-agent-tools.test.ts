@@ -57,6 +57,7 @@ describe("createPiAgentToolDefinitions", () => {
         throw new Error("Agent tool 'x' is not available to this session");
       }),
     );
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       tool?.execute("call-1", { to: "s-2" }, undefined, undefined, {} as never),
     ).rejects.toThrow(/not available/);

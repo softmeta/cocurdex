@@ -291,7 +291,7 @@ describe("daemon-owned queue recovery", () => {
         } as never,
         { userDataPath: root },
       ),
-    ).rejects.toThrow("Unexpected field");
+    ).rejects.toMatchObject({ reason: "payload.invalid" });
     expect(await daemon.service.state.getSession("session")).toMatchObject({
       archivedAt: timestamp,
       title: "Task",

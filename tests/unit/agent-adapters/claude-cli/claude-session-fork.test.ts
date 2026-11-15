@@ -62,7 +62,7 @@ describe("forkClaudeProviderSession", () => {
         forkSession,
         "claude-agent-sdk",
       ),
-    ).rejects.toThrow("different workspace");
+    ).rejects.toMatchObject({ reason: "session.forkWorkspaceMismatch" });
     expect(forkSession).not.toHaveBeenCalled();
   });
 });

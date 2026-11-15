@@ -40,6 +40,7 @@ it("resolves the packaged native module inside the application archive", async (
 it("rejects an incomplete package instead of using development dependencies", async () => {
   const { resources } = await createResources();
 
+  // biome-ignore lint/plugin: Node's module loader owns this text
   await expect(loadNativeKeyring(resources)).rejects.toThrow(
     "Cannot find module",
   );

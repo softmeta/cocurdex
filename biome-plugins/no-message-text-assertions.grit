@@ -1,0 +1,9 @@
+language js
+
+or {
+  `$subject.toThrow($expected)`,
+  `$subject.toThrowError($expected)`
+} as $assertion where {
+  $expected <: or { r"^\".*", r"^'.*", r"^`.*", r"^/.*" },
+  register_diagnostic(span=$assertion, message="Assert an error's reason, code, or identity instead of its message text: rejects.toMatchObject({ reason }), toThrow(expect.objectContaining({ reason })), or rejects.toBe(error). Messages are copy and change freely. See AGENTS.md, Verification and tests.")
+}

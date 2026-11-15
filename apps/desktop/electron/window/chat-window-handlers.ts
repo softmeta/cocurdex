@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { ReasonError } from "@cocurdex/shared";
 import { app, BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { z } from "zod";
 import type {
@@ -47,7 +48,10 @@ export function registerChatWindowHandlers(
       window.isDestroyed() ||
       (window !== primary && window !== chat)
     ) {
-      throw new Error("Chat window request requires an application window");
+      throw new ReasonError(
+        "chatWindow.noSourceWindow",
+        "Chat window request requires an application window",
+      );
     }
     if (event.senderFrame !== event.sender.mainFrame) {
       throw new Error("Chat window request requires the main frame");
@@ -75,7 +79,12 @@ export function registerChatWindowHandlers(
     primary = window;
     window.on("closed", () => {
       if (handoff.forTarget(window.id)) {
-        handoff.cancel(new Error("The main window was closed during transfer"));
+        handoff.cancel(
+          new ReasonError(
+            "chatWindow.mainClosed",
+            "The main window was closed during transfer",
+          ),
+        );
       }
       if (primary === window) primary = null;
     });
@@ -154,7 +163,12 @@ export function registerChatWindowHandlers(
       publish();
     });
     target.webContents.on("render-process-gone", () => {
-      handoff.cancel(new Error("The chat renderer exited during transfer"));
+      handoff.cancel(
+        new ReasonError(
+          "chatWindow.rendererExited",
+          "The chat renderer exited during transfer",
+        ),
+      );
       if (detached && !quitting) target.webContents.reload();
     });
     publish();

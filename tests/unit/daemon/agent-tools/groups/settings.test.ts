@@ -80,7 +80,7 @@ describe("settings agent tools", () => {
     const tools = registryWith();
     await expect(
       tools.call(caller(), "settings_get", { key: "nope" }),
-    ).rejects.toThrow("Unknown settings key");
+    ).rejects.toMatchObject({ reason: "settings.unknownKey" });
   });
 
   it("stores a proposal for the caller's workspace", async () => {
@@ -114,7 +114,7 @@ describe("settings agent tools", () => {
         key: "workspace.worktreeEnvironment",
         value: { setupScript: "pnpm install", cleanupScript: "   " },
       }),
-    ).rejects.toThrow("cleanupScript must not be empty");
+    ).rejects.toMatchObject({ reason: "settings.emptyCleanupScript" });
   });
 
   it("rejects malformed proposal values", async () => {
@@ -124,7 +124,7 @@ describe("settings agent tools", () => {
         key: "workspace.worktreeEnvironment",
         value: { setupScript: 1 },
       }),
-    ).rejects.toThrow("setupScript");
+    ).rejects.toMatchObject({ reason: "settings.invalidValue" });
   });
 
   it("passes write-tier sets to the service", async () => {
@@ -149,6 +149,6 @@ describe("settings agent tools", () => {
     const tools = registryWith();
     await expect(
       tools.call(caller(), "settings_set", { key: "nope", value: 1 }),
-    ).rejects.toThrow("Unknown settings key");
+    ).rejects.toMatchObject({ reason: "settings.unknownKey" });
   });
 });

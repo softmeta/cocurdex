@@ -74,7 +74,7 @@ describe("commitGitChanges", () => {
         message: "  ",
         includeUnstaged: false,
       }),
-    ).rejects.toThrow(/commit message is required/i);
+    ).rejects.toMatchObject({ reason: "git.emptyCommitMessage" });
   });
 
   it("rejects when there is nothing to commit", async () => {
@@ -93,7 +93,9 @@ describe("pushGitBranch", () => {
   it("rejects when no remote is configured", async () => {
     const repositoryPath = await createRepositoryFixture();
 
-    await expect(pushGitBranch(repositoryPath)).rejects.toThrow(/remote/i);
+    await expect(pushGitBranch(repositoryPath)).rejects.toMatchObject({
+      reason: "git.noRemote",
+    });
   });
 
   it("pushes the current branch to origin and sets upstream", async () => {

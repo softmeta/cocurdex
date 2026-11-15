@@ -67,9 +67,9 @@ describe("daemon provider credentials", () => {
     await expect(service.setApiKey("deepseek", null)).resolves.toBeUndefined();
     expect(vault.remove).not.toHaveBeenCalled();
     expect(state.setProviderApiKeySecretId).not.toHaveBeenCalled();
-    await expect(service.setApiKey("deepseek", "sk-test")).rejects.toThrow(
-      "Provider not found",
-    );
+    await expect(
+      service.setApiKey("deepseek", "sk-test"),
+    ).rejects.toMatchObject({ reason: "provider.notFound" });
   });
 
   it("stores only a credential reference in product state and resolves the current key", async () => {
@@ -98,19 +98,21 @@ describe("daemon provider credentials", () => {
   it("rejects a missing configured key instead of falling back to stored ciphertext", async () => {
     const { service, config, snapshot } = fixture();
     config.apiKeySecretId = "missing";
-    await expect(service.resolveSnapshot(snapshot)).rejects.toThrow(
-      "API key is missing",
-    );
+    await expect(service.resolveSnapshot(snapshot)).rejects.toMatchObject({
+      reason: "provider.apiKeyMissing",
+    });
     await expect(service.readApiKey(config.id)).resolves.toBeNull();
   });
 
   it("does not publish a reference after a failed vault write or clear it after a failed deletion", async () => {
     const { service, config, vault, state } = fixture();
     vault.write.mockRejectedValueOnce(new Error("Locked"));
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(service.setApiKey(config.id, "key")).rejects.toThrow("Locked");
     expect(state.setProviderApiKeySecretId).not.toHaveBeenCalled();
     config.apiKeySecretId = "existing";
     vault.remove.mockRejectedValueOnce(new Error("Locked"));
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(service.setApiKey(config.id, null)).rejects.toThrow("Locked");
     expect(config.apiKeySecretId).toBe("existing");
   });
@@ -120,6 +122,7 @@ describe("daemon provider credentials", () => {
     state.setProviderApiKeySecretId.mockRejectedValueOnce(
       new Error("Database failure"),
     );
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(service.setApiKey(config.id, "key")).rejects.toThrow(
       "Database failure",
     );

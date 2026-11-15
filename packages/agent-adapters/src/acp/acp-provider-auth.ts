@@ -1,4 +1,5 @@
 import type { AgentAuthMethod } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
 import {
   type AcpModelCatalogSpec,
@@ -32,9 +33,9 @@ interface InFlightLogin {
 
 const inFlightLogins = new Map<string, InFlightLogin>();
 
-export class AcpLoginCancelledError extends Error {
+export class AcpLoginCancelledError extends ReasonError<"login.cancelled"> {
   constructor(providerName: string) {
-    super(`${providerName} login was cancelled`);
+    super("login.cancelled", `${providerName} login was cancelled`);
     this.name = "AcpLoginCancelledError";
   }
 }
@@ -50,7 +51,7 @@ async function withDeadline<T>(
       run(),
       new Promise<never>((_resolve, reject) => {
         timer = setTimeout(
-          () => reject(new Error(timeout.message)),
+          () => reject(new ReasonError("login.timedOut", timeout.message)),
           timeout.ms,
         );
         onAbort = () => reject(timeout.signal?.reason);
@@ -147,7 +148,10 @@ export function loginAcpProvider(
   if (pending) {
     if (pending.methodId !== options.methodId) {
       return Promise.reject(
-        new Error(`${spec.providerName} is already signing in`),
+        new ReasonError(
+          "login.inProgress",
+          `${spec.providerName} is already signing in`,
+        ),
       );
     }
     return pending.promise;
@@ -168,7 +172,8 @@ export function loginAcpProvider(
         return;
       }
       if (!auth.methods.some((method) => method.id === methodId)) {
-        throw new Error(
+        throw new ReasonError(
+          "login.methodUnavailable",
           `${spec.providerName} does not offer the login method ${methodId}`,
         );
       }
@@ -214,7 +219,10 @@ export async function logoutAcpProvider(
     },
     async (connection, auth) => {
       if (!auth.logoutSupported) {
-        throw new Error(`${spec.providerName} does not support logging out`);
+        throw new ReasonError(
+          "login.logoutUnsupported",
+          `${spec.providerName} does not support logging out`,
+        );
       }
       await connection.logout({});
     },

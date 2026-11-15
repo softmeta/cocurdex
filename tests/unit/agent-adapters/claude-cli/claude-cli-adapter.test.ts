@@ -743,7 +743,7 @@ describe("createClaudeCliAdapter", () => {
           },
         ],
       }),
-    ).rejects.toThrow("could not restore its native session");
+    ).rejects.toMatchObject({ reason: "session.nativeRestoreFailed" });
 
     expect(createQuery).not.toHaveBeenCalled();
     expect(events).toContainEqual(expect.objectContaining({ type: "error" }));
@@ -779,7 +779,7 @@ describe("createClaudeCliAdapter", () => {
 
     await expect(
       session.sendMessage({ content: "Continue", history: [] }),
-    ).rejects.toThrow("different runtime");
+    ).rejects.toMatchObject({ reason: "session.runtimeMismatch" });
     expect(createQuery).not.toHaveBeenCalled();
   });
 });

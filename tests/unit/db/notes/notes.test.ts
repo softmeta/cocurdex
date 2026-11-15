@@ -131,7 +131,7 @@ describe("CocurdexDatabase.notes", () => {
         title: "Stale overwrite",
         expectedRevision: note.revision,
       }),
-    ).rejects.toThrow("Note was modified");
+    ).rejects.toMatchObject({ code: "NOTE_REVISION_CONFLICT" });
 
     const moved = await database.notes.move({
       id: note.id,
@@ -199,7 +199,7 @@ describe("CocurdexDatabase.notes", () => {
 
     await expect(
       database.notes.move({ id: child.id, parentId: grandchild.id }),
-    ).rejects.toThrow("own descendant");
+    ).rejects.toMatchObject({ reason: "note.cycle" });
     database.close();
   });
 

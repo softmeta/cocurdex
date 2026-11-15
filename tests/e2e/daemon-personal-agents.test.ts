@@ -91,14 +91,14 @@ describe("personal agents over the daemon socket", () => {
           { sessionId: assistant.homeSessionId },
           daemon.options,
         ),
-      ).rejects.toThrow("home thread");
+      ).rejects.toMatchObject({ reason: "personalAgent.homeThread" });
       await expect(
         requestDaemon(
           "agentRole.delete",
           { id: assistant.role.id },
           daemon.options,
         ),
-      ).rejects.toThrow("personal agent");
+      ).rejects.toMatchObject({ reason: "personalAgent.roleDelete" });
 
       const coach = await requestDaemon(
         "personalAgent.create",

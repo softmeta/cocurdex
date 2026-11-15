@@ -1,4 +1,5 @@
 import type { MessageRecord } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 
 export interface ForkPointInput {
   settled: readonly MessageRecord[];
@@ -35,15 +36,24 @@ export function resolveForkPoint(input: ForkPointInput): ForkPoint {
       (message) => message.id === input.throughMessageId,
     );
     if (index < 0) {
-      throw new Error(`Message ${input.throughMessageId} was not found`);
+      throw new ReasonError(
+        "message.notFound",
+        `Message ${input.throughMessageId} was not found`,
+      );
     }
     if (index >= completed.length) {
-      throw new Error("Wait for this turn to finish before forking from it");
+      throw new ReasonError(
+        "fork.turnRunning",
+        "Wait for this turn to finish before forking from it",
+      );
     }
     included = completed.slice(0, endOfTurn(completed, index));
   }
   if (included.length === 0) {
-    throw new Error("Wait for the first turn to finish before forking");
+    throw new ReasonError(
+      "fork.turnRunning",
+      "Wait for the first turn to finish before forking",
+    );
   }
   const latest = included.length === input.settled.length;
   return {

@@ -3,6 +3,7 @@ import {
   type DeckContent,
   type DeckOp,
   type FreeElement,
+  ReasonError,
   SLIDE_SLOT_IDS,
   type Slide,
   type SlideFrame,
@@ -44,7 +45,8 @@ function insertAt<T>(items: readonly T[], index: number, added: T[]): T[] {
 
 function slideIndexOf(slides: readonly Slide[], slideId: string): number {
   const index = slides.findIndex((slide) => slide.id === slideId);
-  if (index < 0) throw new Error(`Slide not found: ${slideId}`);
+  if (index < 0)
+    throw new ReasonError("deck.slideNotFound", `Slide not found: ${slideId}`);
   return index;
 }
 
@@ -77,7 +79,8 @@ function setText(slide: Slide, op: Extract<DeckOp, { op: "setText" }>): Slide {
   if (kind === "slot") {
     const slot = name as SlideSlotId;
     if (!layoutHasSlot(slide.layout, slot)) {
-      throw new Error(
+      throw new ReasonError(
+        "deck.slotUnavailable",
         `Slide ${slide.id} uses layout "${slide.layout}", which has no "${slot}" slot`,
       );
     }
@@ -88,7 +91,10 @@ function setText(slide: Slide, op: Extract<DeckOp, { op: "setText" }>): Slide {
   }
   const element = elementOf(slide, name);
   if (element.kind !== "text") {
-    throw new Error(`Element ${name} is not a text element`);
+    throw new ReasonError(
+      "deck.notTextElement",
+      `Element ${name} is not a text element`,
+    );
   }
   return {
     ...slide,
@@ -118,7 +124,10 @@ function addImage(
 function elementOf(slide: Slide, elementId: string): FreeElement {
   const element = slide.elements.find((item) => item.id === elementId);
   if (!element) {
-    throw new Error(`Element not found on ${slide.id}: ${elementId}`);
+    throw new ReasonError(
+      "deck.elementNotFound",
+      `Element not found on ${slide.id}: ${elementId}`,
+    );
   }
   return element;
 }
@@ -129,7 +138,10 @@ function setImage(
 ): Slide {
   const element = elementOf(slide, op.elementId);
   if (element.kind !== "image") {
-    throw new Error(`Element ${op.elementId} is not an image`);
+    throw new ReasonError(
+      "deck.notImage",
+      `Element ${op.elementId} is not an image`,
+    );
   }
   return {
     ...slide,
@@ -151,7 +163,10 @@ function splitTarget(target: string): ["slot" | "element", string] {
   const separator = target.indexOf(":");
   const kind = target.slice(0, separator);
   if (kind !== "slot" && kind !== "element") {
-    throw new Error(`Unknown text target: ${target}`);
+    throw new ReasonError(
+      "deck.unknownTextTarget",
+      `Unknown text target: ${target}`,
+    );
   }
   return [kind, target.slice(separator + 1)];
 }
@@ -170,7 +185,8 @@ function withFreshIds(slide: Slide, newId: IdFactory): Slide {
 function oldSlotFrame(slide: Slide, slot: SlideSlotId): SlideFrame {
   const frame =
     slide.slotFrames?.[slot] ?? SLIDE_LAYOUTS[slide.layout].slots[slot]?.frame;
-  if (!frame) throw new Error(`Slot ${slot} has no frame`);
+  if (!frame)
+    throw new ReasonError("deck.slotWithoutFrame", `Slot ${slot} has no frame`);
   return frame;
 }
 

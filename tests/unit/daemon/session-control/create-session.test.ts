@@ -227,10 +227,10 @@ describe("resolveNewSession", () => {
         agentType: "codex",
         model: { providerId: "anthropic", modelId: "claude-sonnet" },
       }),
-    ).rejects.toThrow(/not available for codex/);
+    ).rejects.toMatchObject({ reason: "session.modelUnavailable" });
     await expect(
       resolve({ workspaceId: "workspace-1", agentType: "pi" }),
-    ).rejects.toThrow(/not available on this machine/);
+    ).rejects.toMatchObject({ reason: "agent.unavailable" });
     await expect(
       resolve({
         workspaceId: "workspace-1",
@@ -238,7 +238,7 @@ describe("resolveNewSession", () => {
         model: { providerId: "anthropic", modelId: "claude-haiku-4" },
         permissionMode: "claude-auto",
       }),
-    ).rejects.toThrow(/not a permission mode/);
+    ).rejects.toMatchObject({ reason: "session.invalidPermissionMode" });
   });
 
   it("starts without a provider snapshot when the agent has no compatible model", async () => {
@@ -404,7 +404,7 @@ describe("resolveNewSession with a role", () => {
           agents: [disabledClaude, enabledCodex],
         }),
       ),
-    ).rejects.toThrow("claude-agent label is disabled");
+    ).rejects.toMatchObject({ reason: "agent.disabled" });
   });
 });
 

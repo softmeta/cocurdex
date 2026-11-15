@@ -97,7 +97,7 @@ describe("installManagedRsrsCli", () => {
           stopped = true;
         },
       }),
-    ).rejects.toThrow("Checksum mismatch");
+    ).rejects.toMatchObject({ reason: "download.checksumMismatch" });
 
     const target = managedRsrsPath(dataDir, process.platform);
     expect(await readFile(target, "utf8")).toBe("previous build");

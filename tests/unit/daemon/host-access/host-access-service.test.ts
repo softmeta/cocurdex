@@ -307,7 +307,9 @@ describe("HostAccessService", () => {
 
     expect(() =>
       service.createPairing({ label: "x", scopes: ["host.admin"] }, local),
-    ).toThrow(/host\.admin/);
+    ).toThrow(
+      expect.objectContaining({ reason: "remoteAccess.scopeNotPairable" }),
+    );
     expect(() =>
       service.createPairing({ label: "x", scopes: [] }, local),
     ).toThrow();
@@ -457,10 +459,10 @@ describe("HostAccessService", () => {
     await service.startRemoteListener();
     await expect(
       service.setRemoteAccess({ enabled: true, port: 50_000 }, local),
-    ).rejects.toThrow("Remote access is disabled in this build");
+    ).rejects.toMatchObject({ reason: "remoteAccess.unavailable" });
     expect(() =>
       service.createPairing({ label: "Phone", scopes: ["read"] }, local),
-    ).toThrow("Remote access is disabled in this build");
+    ).toThrow(expect.objectContaining({ reason: "remoteAccess.unavailable" }));
 
     expect(applied).toEqual([]);
     expect(service.listPairings()).toEqual([]);
@@ -574,13 +576,13 @@ describe("HostAccessService", () => {
     ]);
     await expect(
       service.setRelay({ url: "ftp://relay.example.invalid" }, local),
-    ).rejects.toThrow("Relay URL must be an http or https URL");
+    ).rejects.toMatchObject({ reason: "remoteAccess.invalidRelayUrl" });
     await expect(
       service.setRelay(
         { url: "https://other.example.invalid", credential },
         local,
       ),
-    ).rejects.toThrow("This credential is for https://relay.example.invalid");
+    ).rejects.toMatchObject({ reason: "remoteAccess.credentialMismatch" });
     await service.setRelay({ url: "https://other.example.invalid" }, local);
     expect((await service.readRelaySettings()).credential).toBeNull();
   });

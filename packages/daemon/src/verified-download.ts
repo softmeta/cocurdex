@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { ReasonError } from "@cocurdex/shared";
 import { EnvHttpProxyAgent, fetch } from "undici";
 
 const DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000;
@@ -42,6 +43,9 @@ export async function downloadVerified(
     throw new Error(`Download size mismatch for ${url}`);
   }
   if (expected.sha256 && hash.digest("hex") !== expected.sha256) {
-    throw new Error(`Checksum mismatch for ${url}`);
+    throw new ReasonError(
+      "download.checksumMismatch",
+      `Checksum mismatch for ${url}`,
+    );
   }
 }

@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { ReasonError } from "@cocurdex/shared";
 import { mapSession } from "../mappers";
 import type { SqliteRow } from "../sqlite-types";
 import { allocateTimelineSeq } from "../timeline-sequence";
@@ -46,7 +47,10 @@ export function createSqliteSessionRepository(
       if (session.parentSessionId) {
         const parent = await this.getById(session.parentSessionId);
         if (parent?.archivedAt) {
-          throw new Error("Restore the parent session first");
+          throw new ReasonError(
+            "session.parentArchived",
+            "Restore the parent session first",
+          );
         }
       }
       const rows = database

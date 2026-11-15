@@ -105,7 +105,7 @@ describe("authoritative task commands", () => {
         content: "Run",
         workspaceRootPath: "/untrusted",
       } as SendSessionCommand),
-    ).rejects.toThrow("Unexpected field");
+    ).rejects.toMatchObject({ reason: "payload.invalid" });
     expect(await service.state.listMessagesBySessionId("session-1")).toEqual(
       [],
     );
@@ -133,7 +133,7 @@ describe("authoritative task commands", () => {
         messageId: crypto.randomUUID(),
         content: "Run",
       }),
-    ).rejects.toThrow("not found");
+    ).rejects.toMatchObject({ reason: "session.notFound" });
     const session = await service.getSession("session-1");
     if (!session) throw new Error("Missing session");
     await service.state.saveSession({
@@ -146,7 +146,7 @@ describe("authoritative task commands", () => {
         messageId: crypto.randomUUID(),
         content: "Run",
       }),
-    ).rejects.toThrow("Restore the session");
+    ).rejects.toMatchObject({ reason: "session.archived" });
     expect(await service.state.listMessagesBySessionId(session.id)).toEqual([]);
   });
 
@@ -217,7 +217,7 @@ describe("authoritative task commands", () => {
         messageId: existing.id,
         content: "Replace",
       }),
-    ).rejects.toThrow("was already used for a different message");
+    ).rejects.toMatchObject({ reason: "message.idConflict" });
     expect(stop).not.toHaveBeenCalled();
     expect(await service.state.getMessageById(existing.id)).toEqual({
       ...existing,

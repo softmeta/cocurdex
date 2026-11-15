@@ -25,11 +25,13 @@ describe("parseOssLicensesFile", () => {
 
   it("rejects a missing or unknown version", () => {
     expect(() => parseOssLicensesFile({ ...validFile, version: 2 })).toThrow(
-      /Unsupported/,
+      expect.objectContaining({ reason: "ossLicenses.unsupportedVersion" }),
     );
     expect(() =>
       parseOssLicensesFile({ ...validFile, version: undefined }),
-    ).toThrow(/Unsupported|Invalid/);
+    ).toThrow(
+      expect.objectContaining({ reason: "ossLicenses.unsupportedVersion" }),
+    );
   });
 
   it("rejects malformed entries", () => {
@@ -38,6 +40,6 @@ describe("parseOssLicensesFile", () => {
         ...validFile,
         entries: [{ name: "broken" }],
       }),
-    ).toThrow(/Invalid OSS license entry/);
+    ).toThrow(expect.objectContaining({ reason: "ossLicenses.invalid" }));
   });
 });

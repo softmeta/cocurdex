@@ -240,7 +240,7 @@ function libraryCommand(state) {
 }
 
 if (command === "--version" || command === "v") {
-  process.stdout.write("rsrs 1.0.0\n");
+  process.stdout.write("rsrs 2.0.0\n");
 } else if (command === "--help") {
   process.stdout.write(HELP);
 } else if (
@@ -272,7 +272,7 @@ if (command === "--version" || command === "v") {
   send({
     command: "doctor",
     status: "ok",
-    summary: { total: 1, pass: 1, warn: 0, fail: 0, skip: 0, version: "1.0.0" },
+    summary: { total: 1, pass: 1, warn: 0, fail: 0, skip: 0, version: "2.0.0" },
     items: [{ name: "store", status: "ok", value: "ok" }],
   });
 } else if (!libraryCommand(readState())) {

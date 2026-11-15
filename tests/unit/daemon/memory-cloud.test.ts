@@ -182,9 +182,9 @@ describe("MemoryService cloud sync", () => {
     expect(status.cloud.connected).toBe(false);
     expect(status.cloud.user).toBeNull();
     expect(status.cloud.autosync).toBe(false);
-    await expect(service.setCloudSync(true)).rejects.toThrow(
-      "Connect an rsrs account",
-    );
+    await expect(service.setCloudSync(true)).rejects.toMatchObject({
+      reason: "memory.cloudAccountRequired",
+    });
   });
 
   it("registers an account, keeps the recovery key out of stored settings, and turns sync on", async () => {
@@ -282,7 +282,7 @@ describe("MemoryService cloud sync", () => {
         user: "bob",
         password: "password123",
       }),
-    ).rejects.toThrow("recovery key");
+    ).rejects.toMatchObject({ reason: "memory.recoveryKeyRequired" });
     const recorded = await calls(logPath).catch(() => [] as string[][]);
     expect(recorded.some((args) => args[0] === "login")).toBe(false);
   });
@@ -295,14 +295,14 @@ describe("MemoryService cloud sync", () => {
         user: "ab",
         password: "password123",
       }),
-    ).rejects.toThrow("at least 3 characters");
+    ).rejects.toMatchObject({ reason: "memory.invalidUsername" });
     await expect(
       service.connectCloud({
         mode: "register",
         user: "alice",
         password: "short",
       }),
-    ).rejects.toThrow("at least 8 characters");
+    ).rejects.toMatchObject({ reason: "memory.invalidPassword" });
   });
 
   it("toggles automatic sync only while an account is connected", async () => {

@@ -90,8 +90,6 @@ export interface MemoryInstallState {
   // The pinned rsrs version whose install failed on a state only the user can
   // resolve; startup does not retry it automatically.
   blockedPin: string | null;
-  // The rsrs home Cocurdex created itself. Only that home may be set up or
-  // repaired automatically; any other home belongs to the user.
   ownedHome: string | null;
 }
 

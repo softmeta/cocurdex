@@ -5,6 +5,7 @@ import {
   isChatWorkspaceId,
   isPersonalSession,
   isPersonalWorkspaceId,
+  ReasonError,
   validateSessionConfiguration,
 } from "@cocurdex/shared";
 
@@ -39,17 +40,26 @@ export function applySessionConfiguration(
 ): SessionRecord {
   validateSessionConfiguration(input);
   if (existing && existing.workspaceId !== input.workspaceId) {
-    throw new Error("A session cannot change its workspace");
+    throw new ReasonError(
+      "session.workspaceFixed",
+      "A session cannot change its workspace",
+    );
   }
   if (
     existing &&
     input.sessionKind !== undefined &&
     input.sessionKind !== (existing.sessionKind ?? "main")
   ) {
-    throw new Error("A session cannot change its kind");
+    throw new ReasonError(
+      "session.kindFixed",
+      "A session cannot change its kind",
+    );
   }
   if (existing?.archivedAt)
-    throw new Error("Restore the session before changing its configuration");
+    throw new ReasonError(
+      "session.archived",
+      "Restore the session before changing its configuration",
+    );
   const session: SessionRecord = {
     status: "idle",
     createdAt: now,

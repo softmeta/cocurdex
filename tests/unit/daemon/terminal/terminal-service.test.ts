@@ -40,7 +40,7 @@ describe("TerminalService", () => {
   it("rejects a working directory outside the home directory and workspace roots", async () => {
     await expect(
       spawnTerminal("terminal-1", path.join(workspaceRoot, "nested")),
-    ).rejects.toThrow("not a registered workspace root");
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
   });
 
   it("reattaches to the running shell when the same terminal spawns again", async () => {

@@ -10,6 +10,7 @@ import {
 } from "@cocurdex/daemon/client";
 import { getDaemonLogDirectory } from "@cocurdex/daemon/paths";
 import type { DaemonMetadata } from "@cocurdex/rpc";
+import { ReasonError } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 
 const tempDirs = createTempDirs();
@@ -202,7 +203,8 @@ export async function spawnDaemon(
     }
     const cause =
       lastError instanceof Error ? lastError.message : String(lastError);
-    throw new Error(
+    throw new ReasonError(
+      startFailureReason(stderr()) ?? "daemon.notReady",
       `Cocurdex daemon did not become ready in ${STARTUP_TIMEOUT_MS} ms.\nstderr:\n${stderr()}\nlast error: ${cause}\ndaemon log:\n${logTail}`,
     );
   }
@@ -256,4 +258,18 @@ export async function spawnDaemon(
       });
     },
   };
+}
+
+function startFailureReason(stderr: string): string | null {
+  for (const line of stderr.split(/\r?\n/)) {
+    if (!line.includes('"daemon.startFailed"')) continue;
+    try {
+      const entry = JSON.parse(line) as {
+        details?: { error?: { reason?: unknown } };
+      };
+      const reason = entry.details?.error?.reason;
+      if (typeof reason === "string") return reason;
+    } catch {}
+  }
+  return null;
 }

@@ -471,7 +471,7 @@ it("does not open the product database while an existing endpoint is live", asyn
         runtimeFingerprint: "test",
         token: "test",
       }),
-    ).rejects.toThrow("already running");
+    ).rejects.toMatchObject({ reason: "daemon.alreadyRunning" });
     await expect(access(getDatabasePath(userDataPath))).rejects.toThrow();
   } finally {
     await closeListener(listener);

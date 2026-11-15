@@ -319,12 +319,12 @@ describe("RoutineService", () => {
     };
     await expect(
       service.create({ ...valid, agentId: "ghost" }),
-    ).rejects.toThrow("ghost");
+    ).rejects.toMatchObject({ reason: "personalAgent.notFound" });
     await expect(
       service.create({ ...valid, schedule: { kind: "interval", minutes: 1 } }),
-    ).rejects.toThrow("interval");
+    ).rejects.toMatchObject({ reason: "routine.invalidSchedule" });
     await expect(
       service.create({ ...valid, timeZone: "Mars/Olympus" }),
-    ).rejects.toThrow("time zone");
+    ).rejects.toMatchObject({ reason: "routine.invalidTimeZone" });
   });
 });

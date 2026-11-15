@@ -1,4 +1,5 @@
 import type { DaemonActiveWork, DaemonShutdownResult } from "@cocurdex/rpc";
+import { ReasonError } from "@cocurdex/shared";
 
 export class DaemonShutdownGate {
   private activeRequests = 0;
@@ -10,7 +11,10 @@ export class DaemonShutdownGate {
 
   async run<T>(operation: () => Promise<T>): Promise<T> {
     if (this.draining)
-      throw new Error("Daemon is shutting down; request was not accepted");
+      throw new ReasonError(
+        "daemon.shuttingDown",
+        "Daemon is shutting down; request was not accepted",
+      );
     this.activeRequests += 1;
     try {
       return await operation();

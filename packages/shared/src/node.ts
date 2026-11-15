@@ -1,6 +1,7 @@
 import { realpath } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
+import { ReasonError } from "./errors";
 import { type EnvMap, resolveNodeGlobalProxyEnv } from "./network-proxy";
 import { isPathWithinRoots as isLexicallyWithinRoots } from "./workspace-roots";
 
@@ -26,13 +27,17 @@ export function resolvePdfReadPath(
   const isInsideWorkspace = isPathWithinRoots(resolvedPath, workspaceRootPaths);
 
   if (!isInsideWorkspace) {
-    throw new Error(
+    throw new ReasonError(
+      "path.outsideWorkspace",
       `PDF is outside every registered workspace (path=${resolvedPath})`,
     );
   }
 
   if (path.extname(resolvedPath).toLowerCase() !== ".pdf") {
-    throw new Error(`File is not a PDF (path=${resolvedPath})`);
+    throw new ReasonError(
+      "pdf.notPdf",
+      `File is not a PDF (path=${resolvedPath})`,
+    );
   }
 
   return resolvedPath;
@@ -53,7 +58,8 @@ export async function resolveAuthorizedPdfReadPath(
     ),
   );
   if (!isPathWithinRoots(realPath, realRoots)) {
-    throw new Error(
+    throw new ReasonError(
+      "path.outsideWorkspace",
       `PDF is outside every registered workspace (path=${resolvedPath})`,
     );
   }

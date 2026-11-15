@@ -27,13 +27,15 @@ describe("MCP configuration", () => {
   });
 
   it("rejects config without an mcpServers object", () => {
-    expect(() => validateMcpConfig("{}")).toThrow('"mcpServers" object');
+    expect(() => validateMcpConfig("{}")).toThrow(
+      expect.objectContaining({ reason: "mcp.invalidConfig" }),
+    );
   });
 
   it("rejects server names Pi cannot turn into tool names", () => {
     expect(() =>
       validateMcpConfig('{"mcpServers":{"my server":{"command":"npx"}}}'),
-    ).toThrow('"my server"');
+    ).toThrow(expect.objectContaining({ reason: "mcp.invalidServerName" }));
     expect(
       validateMcpConfig('{"mcpServers":{"git_hub-2":{"command":"npx"}}}'),
     ).toContain("git_hub-2");

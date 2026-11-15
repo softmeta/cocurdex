@@ -25,6 +25,7 @@ describe("parsePnpmLicensesJson", () => {
   });
 
   it("throws when stdout has no JSON object", () => {
+    // biome-ignore lint/plugin: build script error with no caller that branches on it
     expect(() => parsePnpmLicensesJson("no licenses here")).toThrow(
       /did not return JSON/,
     );

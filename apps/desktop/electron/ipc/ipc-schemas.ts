@@ -1,4 +1,5 @@
 import path from "node:path";
+import { ReasonError } from "@cocurdex/shared";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 
@@ -112,7 +113,8 @@ export function registerHandler<T, R>(
   ipc.handle(channel, async (event, payload: unknown) => {
     const parsed = schema.safeParse(payload);
     if (!parsed.success) {
-      throw new Error(
+      throw new ReasonError(
+        "payload.invalid",
         `Invalid payload for ${channel}: ${parsed.error.issues
           .map((issue) => `${issue.path.join(".")} ${issue.message}`)
           .join("; ")}`,

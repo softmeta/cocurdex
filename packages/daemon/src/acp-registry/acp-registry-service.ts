@@ -12,6 +12,7 @@ import {
   type AcpRegistryInstallPlan,
   compareAgentVersions,
   isAcpRegistryAgentId,
+  ReasonError,
   toAcpRegistryAgentId,
 } from "@cocurdex/shared";
 import type { DaemonState } from "../state";
@@ -276,7 +277,10 @@ export class AcpRegistryService {
         ? await this.lookup(command.trim())
         : null;
       if (!resolved) {
-        throw new Error(`Command not found: ${command}`);
+        throw new ReasonError(
+          "acpRegistry.commandNotFound",
+          `Command not found: ${command}`,
+        );
       }
       return {
         agentId: toAcpRegistryAgentId(registryId),
@@ -343,7 +347,8 @@ export class AcpRegistryService {
       throw new Error(`ACP Registry has no agent named ${registryId}`);
     }
     if (entry.agent.builtInAgentId) {
-      throw new Error(
+      throw new ReasonError(
+        "acpRegistry.builtIn",
         `${entry.agent.name} is already built in as ${entry.agent.builtInAgentId}`,
       );
     }
@@ -409,7 +414,8 @@ export class AcpRegistryService {
       throw new Error(`ACP Registry agent ${agentId} is not installed`);
     }
     if (agent.distribution === "local") {
-      throw new Error(
+      throw new ReasonError(
+        "acpRegistry.externalCommand",
         `${agent.name} uses a command installed outside Cocurdex; update it with its own installer`,
       );
     }

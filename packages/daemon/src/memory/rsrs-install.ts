@@ -6,8 +6,6 @@ import path from "node:path";
 import { RSRS_CLI_RELEASE_BASE_URL, type RsrsCliAsset } from "@cocurdex/shared";
 import { downloadVerified } from "../verified-download";
 
-// The machine's own rsrs home (~/.rsrs), which the installed app shares with
-// every other rsrs client, or a private one for development and test profiles.
 export type RsrsHome =
   | { kind: "global"; dataDir: string }
   | {
@@ -43,9 +41,6 @@ function samePath(left: string, right: string, os: string) {
     : a === b;
 }
 
-// Only the installed app's own profile uses the shared home; a development
-// build, a scenario or a test runs under another user data path and keeps
-// its memory to itself.
 export function usesGlobalRsrsHome(input: {
   userDataPath: string;
   defaultUserDataPath: string;
@@ -72,7 +67,6 @@ export async function readyRsrsModelDir(dataDir: string) {
   return present.every(Boolean) ? dir : null;
 }
 
-// A home that holds no rsrs state yet, which Cocurdex may set up itself.
 export async function isFreshRsrsHome(dataDir: string) {
   const evidence = await Promise.all(
     ["session.json", "rsrs.db", "client.json", "runtime.json"].map((name) =>

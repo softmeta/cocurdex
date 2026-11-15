@@ -68,7 +68,7 @@ describe("skill source path access", () => {
 
     await expect(
       call("skills.source.inspect", { source: outside }, device),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     await expect(
       call(
         "skills.add",
@@ -82,7 +82,7 @@ describe("skill source path access", () => {
         },
         device,
       ),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     expect(existsSync(path.join(workspace, ".agents"))).toBe(false);
     expect(existsSync(path.join(workspace, "skills-lock.json"))).toBe(false);
     expect(existsSync(path.join(userDataPath, "skill-backups"))).toBe(false);

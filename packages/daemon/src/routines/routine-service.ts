@@ -3,6 +3,7 @@ import type { RoutineRepository } from "@cocurdex/db";
 import {
   type CreateRoutinePayload,
   type MessageRecord,
+  ReasonError,
   ROUTINE_ACCESS_VALUES,
   ROUTINE_DELIVER_VALUES,
   type RoutineRecord,
@@ -256,7 +257,10 @@ export class RoutineService {
 
   async create(payload: CreateRoutinePayload) {
     if (!(await this.deps.personaExists(payload.agentId))) {
-      throw new Error(`Personal agent ${payload.agentId} was not found`);
+      throw new ReasonError(
+        "personalAgent.notFound",
+        `Personal agent ${payload.agentId} was not found`,
+      );
     }
     const timeZone = this.checkTimeZone(payload.timeZone);
     this.checkSchedule(payload.schedule);
@@ -518,7 +522,7 @@ export class RoutineService {
 
   private checkSchedule(schedule: RoutineRecord["schedule"]) {
     const error = routineScheduleError(schedule);
-    if (error) throw new Error(error);
+    if (error) throw new ReasonError("routine.invalidSchedule", error);
   }
 
   private checkTimeZone(timeZone: string | undefined) {
@@ -527,7 +531,10 @@ export class RoutineService {
       this.deps.defaultTimeZone?.() ??
       Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (!isValidTimeZone(zone)) {
-      throw new Error(`Unknown time zone: ${zone}`);
+      throw new ReasonError(
+        "routine.invalidTimeZone",
+        `Unknown time zone: ${zone}`,
+      );
     }
     return zone;
   }

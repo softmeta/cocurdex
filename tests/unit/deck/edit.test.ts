@@ -110,7 +110,7 @@ describe("applyDeckOps slide management", () => {
     const deck = deckOf(slide("a"));
     expect(() =>
       applyDeckOps(deck, [{ op: "deleteSlide", slideId: "zz" }]),
-    ).toThrow(/Slide not found: zz/);
+    ).toThrow(expect.objectContaining({ reason: "deck.slideNotFound" }));
     expect(ids(deck)).toEqual(["a"]);
   });
 
@@ -217,7 +217,7 @@ describe("applyDeckOps text, notes, and theme", () => {
           paragraphs: text("x"),
         },
       ]),
-    ).toThrow(/not a text element/);
+    ).toThrow(expect.objectContaining({ reason: "deck.notTextElement" }));
     expect(() =>
       applyDeckOps(deck, [
         {
@@ -227,7 +227,7 @@ describe("applyDeckOps text, notes, and theme", () => {
           paragraphs: text("x"),
         },
       ]),
-    ).toThrow(/has no "left" slot/);
+    ).toThrow(expect.objectContaining({ reason: "deck.slotUnavailable" }));
   });
 
   it("sets notes and theme", () => {
@@ -393,6 +393,6 @@ describe("applyDeckOps images", () => {
       applyDeckOps(start, [
         { op: "setImage", slideId: "a", elementId: "t", image },
       ]),
-    ).toThrow("is not an image");
+    ).toThrow(expect.objectContaining({ reason: "deck.notImage" }));
   });
 });

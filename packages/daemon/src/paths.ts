@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { ReasonError } from "@cocurdex/shared/errors";
 
 export const DATABASE_FILENAME = "cocurdex.sqlite";
 export const DAEMON_METADATA_FILENAME = "daemon.json";
@@ -51,7 +52,8 @@ export function getDaemonSocketPath(
   const socketPath = path.posix.join(userDataPath, "daemon.sock");
   const maxBytes = platform === "linux" ? 107 : 103;
   if (Buffer.byteLength(socketPath) > maxBytes) {
-    throw new Error(
+    throw new ReasonError(
+      "daemon.socketPathTooLong",
       `Daemon socket path is longer than ${maxBytes} bytes, the limit on ${platform}: ${socketPath}. Use a shorter ${COCURDEX_USER_DATA_PATH_ENV}.`,
     );
   }

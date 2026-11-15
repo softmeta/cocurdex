@@ -20,10 +20,10 @@ describe("DaemonSkillsService authorization", () => {
         scope: "project",
         workspaceRootPath: "/tmp/anywhere",
       }),
-    ).rejects.toThrow("not a registered workspace");
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     await expect(
       service.install({ scope: "project", workspaceRootPath: null }),
-    ).rejects.toThrow("not a registered workspace");
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
   });
 
   it("does not require a workspace root for global scope", async () => {
@@ -75,11 +75,11 @@ describe("DaemonSkillsService pack skill detail", () => {
 
   it("refuses names outside the pack", async () => {
     const service = new DaemonSkillsService(getDefaultSkillsSourceRoot());
-    await expect(service.show({ name: "../product-skills" })).rejects.toThrow(
-      "not a Cocurdex pack skill",
-    );
-    await expect(service.show({ name: "web-perf" })).rejects.toThrow(
-      "not a Cocurdex pack skill",
-    );
+    await expect(
+      service.show({ name: "../product-skills" }),
+    ).rejects.toMatchObject({ reason: "skills.notPackSkill" });
+    await expect(service.show({ name: "web-perf" })).rejects.toMatchObject({
+      reason: "skills.notPackSkill",
+    });
   });
 });

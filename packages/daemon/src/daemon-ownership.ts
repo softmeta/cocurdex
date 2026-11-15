@@ -1,6 +1,7 @@
 import { mkdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { ReasonError } from "@cocurdex/shared";
 
 const SQLITE_BUSY = 5;
 const INCUMBENT_TEARDOWN_GRACE_MS = 3000;
@@ -38,9 +39,13 @@ export async function acquireDaemonOwnership(
     }
   } catch (cause) {
     database.close();
-    throw new Error(`Cannot acquire daemon ownership for ${directory}`, {
-      cause,
-    });
+    throw new ReasonError(
+      "daemon.ownershipUnavailable",
+      `Cannot acquire daemon ownership for ${directory}`,
+      {
+        cause,
+      },
+    );
   }
   let released = false;
   return {

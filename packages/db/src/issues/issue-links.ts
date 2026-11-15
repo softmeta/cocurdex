@@ -8,6 +8,7 @@ import type {
   IssueStatusCategory,
   IssueSummary,
 } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import { getIssue, type IssueRow, toIssueSummary } from "./issue-storage";
 
 export class IssueLabelNotFoundError extends Error {
@@ -51,7 +52,10 @@ export function insertLabel(
     )
     .get(trimmed) as { id: string } | undefined;
   if (existing) {
-    throw new Error(`Issue label already exists: ${trimmed}`);
+    throw new ReasonError(
+      "issue.labelExists",
+      `Issue label already exists: ${trimmed}`,
+    );
   }
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -89,7 +93,10 @@ export function assertValidParent(
   const seen = new Set<string>();
   while (cursor) {
     if (cursor.id === issueId) {
-      throw new Error("An issue cannot be its own ancestor");
+      throw new ReasonError(
+        "issue.cycle",
+        "An issue cannot be its own ancestor",
+      );
     }
     if (seen.has(cursor.id)) {
       return;
@@ -141,7 +148,10 @@ export function insertRelation(
   relatedId: string,
 ): boolean {
   if (issueId === relatedId) {
-    throw new Error("An issue cannot relate to itself");
+    throw new ReasonError(
+      "issue.selfRelation",
+      "An issue cannot relate to itself",
+    );
   }
   const exists = database
     .prepare(`SELECT 1 FROM issue_relations WHERE ${relationMatchSql(kind)}`)
@@ -216,7 +226,10 @@ export function insertSessionLink(
     .prepare("SELECT 1 FROM sessions WHERE id = ?")
     .get(sessionId);
   if (!session) {
-    throw new Error(`Session not found: ${sessionId}`);
+    throw new ReasonError(
+      "session.notFound",
+      `Session not found: ${sessionId}`,
+    );
   }
   const result = database
     .prepare(
