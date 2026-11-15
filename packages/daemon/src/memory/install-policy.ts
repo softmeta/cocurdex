@@ -5,7 +5,19 @@ export interface MemoryInstallFacts {
   installedVersion: string | null;
   pinnedVersion: string;
   hasExecutable: boolean;
+  blocked: boolean;
+}
+
+export interface MemoryInstallBlockFacts {
+  status: "idle" | "installing" | "ready" | "failed";
   blockedPin: string | null;
+}
+
+export function installBlocked(
+  state: MemoryInstallBlockFacts,
+  pinnedVersion: string,
+) {
+  return state.status === "failed" && state.blockedPin === pinnedVersion;
 }
 
 // Memory is on by default, so an enabled managed store installs itself: on a
@@ -13,7 +25,7 @@ export interface MemoryInstallFacts {
 // CLI is missing from its private store.
 export function needsManagedInstall(facts: MemoryInstallFacts) {
   if (!facts.supported || !facts.enabled || facts.customCli) return false;
-  if (facts.blockedPin === facts.pinnedVersion) return false;
+  if (facts.blocked) return false;
   return !facts.hasExecutable || facts.installedVersion !== facts.pinnedVersion;
 }
 

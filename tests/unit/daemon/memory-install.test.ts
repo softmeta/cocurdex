@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import {
+  installBlocked,
   installErrorNeedsUser,
   needsManagedInstall,
 } from "@cocurdex/daemon/internal/memory/install-policy";
@@ -114,7 +115,7 @@ describe("needsManagedInstall", () => {
     enabled: true,
     customCli: false,
     pinnedVersion: "2.0.0-dev.3",
-    blockedPin: null,
+    blocked: false,
   };
 
   it("installs an enabled store left by an older release without a private CLI", () => {
@@ -138,21 +139,30 @@ describe("needsManagedInstall", () => {
   });
 
   it("does not retry at startup an install that waits on the user, until a new pin ships", () => {
-    const blocked = {
-      ...enabled,
-      installedVersion: "1.0.20",
-      hasExecutable: true,
-      blockedPin: "2.0.0-dev.3",
-    };
-    expect(needsManagedInstall(blocked)).toBe(false);
+    const failed = { status: "failed", blockedPin: "2.0.0-dev.3" } as const;
+    expect(installBlocked(failed, "2.0.0-dev.3")).toBe(true);
+    expect(installBlocked(failed, "2.0.0-dev.12")).toBe(false);
     expect(
-      needsManagedInstall({ ...blocked, pinnedVersion: "2.0.0-dev.12" }),
-    ).toBe(true);
+      needsManagedInstall({
+        ...enabled,
+        installedVersion: "1.0.20",
+        hasExecutable: true,
+        blocked: true,
+      }),
+    ).toBe(false);
     expect(
       installErrorNeedsUser(
         "rsrs model install failed: offline_keygen_handoff_pending: use the original operation's explicit handoff",
       ),
     ).toBe(true);
     expect(installErrorNeedsUser("rsrs model install timed out")).toBe(false);
+  });
+
+  it("lifts the block once a retry starts, even when the daemon stops before it ends", () => {
+    for (const status of ["installing", "idle"] as const) {
+      expect(
+        installBlocked({ status, blockedPin: "2.0.0-dev.3" }, "2.0.0-dev.3"),
+      ).toBe(false);
+    }
   });
 });
