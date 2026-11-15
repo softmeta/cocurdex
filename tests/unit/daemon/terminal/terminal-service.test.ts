@@ -61,6 +61,14 @@ describe("TerminalService", () => {
     await vi.waitFor(() => expect(service.activeCount).toBe(0));
   });
 
+  it("resolves kill only after the shell has exited", async () => {
+    const { pid } = await spawnTerminal("terminal-1");
+
+    await service.kill("terminal-1");
+
+    expect(() => process.kill(pid, 0)).toThrow();
+  });
+
   it("keeps terminals while a client reattaches within the grace period", async () => {
     const release = service.retainClient();
     await spawnTerminal("terminal-1");

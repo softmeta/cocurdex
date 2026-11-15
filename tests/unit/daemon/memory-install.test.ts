@@ -3,7 +3,10 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
-import { needsManagedInstall } from "@cocurdex/daemon/internal/memory/install-policy";
+import {
+  installErrorNeedsUser,
+  needsManagedInstall,
+} from "@cocurdex/daemon/internal/memory/install-policy";
 import {
   installManagedRsrsCli,
   managedRsrsPath,
@@ -111,6 +114,7 @@ describe("needsManagedInstall", () => {
     enabled: true,
     customCli: false,
     pinnedVersion: "2.0.0-dev.3",
+    blockedPin: null,
   };
 
   it("installs an enabled store left by an older release without a private CLI", () => {
@@ -131,5 +135,24 @@ describe("needsManagedInstall", () => {
         hasExecutable: true,
       }),
     ).toBe(false);
+  });
+
+  it("does not retry at startup an install that waits on the user, until a new pin ships", () => {
+    const blocked = {
+      ...enabled,
+      installedVersion: "1.0.20",
+      hasExecutable: true,
+      blockedPin: "2.0.0-dev.3",
+    };
+    expect(needsManagedInstall(blocked)).toBe(false);
+    expect(
+      needsManagedInstall({ ...blocked, pinnedVersion: "2.0.0-dev.12" }),
+    ).toBe(true);
+    expect(
+      installErrorNeedsUser(
+        "rsrs model install failed: offline_keygen_handoff_pending: use the original operation's explicit handoff",
+      ),
+    ).toBe(true);
+    expect(installErrorNeedsUser("rsrs model install timed out")).toBe(false);
   });
 });

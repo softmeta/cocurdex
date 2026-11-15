@@ -151,7 +151,7 @@ export async function handleWorkspaceRequest(
       );
       return null;
     case "terminal.kill":
-      service.terminals.kill(request.params.terminalId);
+      await service.terminals.kill(request.params.terminalId);
       return null;
     case "git.commitMessageModel.get":
       return service.commitMessageService.getModelSetting();

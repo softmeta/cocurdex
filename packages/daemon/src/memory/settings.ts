@@ -87,6 +87,9 @@ export interface MemoryInstallState {
   executable: string | null;
   error: string | null;
   doctor: MemoryDoctorReport | null;
+  // The pinned rsrs version whose install failed on a state only the user can
+  // resolve; startup does not retry it automatically.
+  blockedPin: string | null;
 }
 
 export interface MemorySettingsStore {
@@ -121,6 +124,7 @@ function parseInstallState(raw: string | null): MemoryInstallState {
       executable: null,
       error: null,
       doctor: null,
+      blockedPin: null,
     };
   }
   try {
@@ -139,6 +143,8 @@ function parseInstallState(raw: string | null): MemoryInstallState {
         typeof parsed.executable === "string" ? parsed.executable : null,
       error: typeof parsed.error === "string" ? parsed.error : null,
       doctor: parsed.doctor ?? null,
+      blockedPin:
+        typeof parsed.blockedPin === "string" ? parsed.blockedPin : null,
     };
   } catch {
     return {
@@ -148,6 +154,7 @@ function parseInstallState(raw: string | null): MemoryInstallState {
       executable: null,
       error: null,
       doctor: null,
+      blockedPin: null,
     };
   }
 }
