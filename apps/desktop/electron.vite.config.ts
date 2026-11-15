@@ -31,6 +31,10 @@ function sourceDirectoryPattern(root: string) {
 
 const alias = {
   "@": path.resolve(__dirname, "src"),
+  "@cocurdex/shared/errors": path.resolve(
+    __dirname,
+    "../../packages/shared/src/errors.ts",
+  ),
   "@cocurdex/shared/node": path.resolve(
     __dirname,
     "../../packages/shared/src/node.ts",

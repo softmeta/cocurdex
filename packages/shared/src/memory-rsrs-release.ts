@@ -92,7 +92,16 @@ export function rsrsCliAsset(platform: MemoryPlatform): RsrsCliAsset | null {
   return RSRS_CLI_ASSETS.find((asset) => asset.target === target) ?? null;
 }
 
-const VERSION_PATTERN = /(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/;
+const VERSION_PATTERN =
+  /^v?(\d{1,9})\.(\d{1,9})\.(\d{1,9})(?:-([0-9A-Za-z.-]{1,64}))?$/;
+
+function parseVersion(text: string) {
+  for (const token of text.trim().split(/\s+/)) {
+    const match = VERSION_PATTERN.exec(token);
+    if (match) return match;
+  }
+  return null;
+}
 
 function comparePrerelease(
   left: string | undefined,
@@ -122,11 +131,10 @@ function comparePrerelease(
   return 0;
 }
 
-// Semantic version order (semver.org section 11). Returns null when either
-// side has no version in it, such as an unrecognized `rsrs --version` line.
+// Semantic version order: semver.org section 11.
 export function compareRsrsVersions(left: string, right: string) {
-  const a = VERSION_PATTERN.exec(left);
-  const b = VERSION_PATTERN.exec(right);
+  const a = parseVersion(left);
+  const b = parseVersion(right);
   if (!a || !b) return null;
   for (const index of [1, 2, 3]) {
     const difference = Number(a[index]) - Number(b[index]);
