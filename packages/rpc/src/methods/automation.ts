@@ -4,6 +4,7 @@ import type {
   ApplicationConnection,
   ApplicationTool,
   Brief,
+  CreateFollowUpPayload,
   CreatePersonalAgentPayload,
   CreateRoutinePayload,
   CreateScriptRunPayload,
@@ -14,6 +15,8 @@ import type {
   DelegationCatalogQuery,
   DraftPersonalAgentPayload,
   DuplicatePersonalAgentPayload,
+  FollowUpRecord,
+  FollowUpStatus,
   GreetPersonalAgentPayload,
   InboxItem,
   McpLoginOutcome,
@@ -167,6 +170,9 @@ export type AutomationRequests = {
   "routine.delete": { id: string };
   "routine.run": { id: string };
   "routine.runs": { routineId?: string | null; limit?: number };
+  "followUp.list": { agentId: string; status?: FollowUpStatus | null };
+  "followUp.create": CreateFollowUpPayload;
+  "followUp.cancel": { id: string };
 };
 
 export type AutomationResults = {
@@ -254,4 +260,7 @@ export type AutomationResults = {
   "routine.delete": null;
   "routine.run": RoutineRunRecord;
   "routine.runs": RoutineRunRecord[];
+  "followUp.list": FollowUpRecord[];
+  "followUp.create": FollowUpRecord;
+  "followUp.cancel": FollowUpRecord;
 };

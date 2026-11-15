@@ -17,6 +17,7 @@ export { FieldSection } from "./field-section";
 export { useFloatingSurface } from "./floating-surface";
 export { Form } from "./form";
 export { FormCell } from "./form-cell";
+export { formMetrics } from "./form-metrics";
 export { FormRow } from "./form-row";
 export { FormSection } from "./form-section";
 export {

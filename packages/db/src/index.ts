@@ -2,6 +2,7 @@ export * from "./agents";
 export * from "./decks";
 export * from "./delegation";
 export * from "./entity-links";
+export * from "./follow-ups";
 export * from "./host-access";
 export * from "./issues";
 export { CURRENT_SCHEMA_VERSION } from "./migrations";

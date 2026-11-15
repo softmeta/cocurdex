@@ -63,6 +63,10 @@ export class SessionFollowUpQueue {
     this.inputs.set(sessionId, inputs);
   }
 
+  peek(sessionId: string) {
+    return this.inputs.get(sessionId)?.[0];
+  }
+
   take(sessionId: string) {
     const inputs = this.inputs.get(sessionId);
     const next = inputs?.shift();

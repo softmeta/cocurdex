@@ -118,6 +118,7 @@ export default interface Resources {
     peerMessage: {
       from: "From session {{title}}";
       fromBrief: "Today's brief";
+      fromFollowUp: "Your follow-up";
       fromRemote: "From {{sender}} on {{host}}";
       fromRoutine: "From routine {{name}}";
       fromScriptRun: "From script {{name}}";
@@ -1653,12 +1654,15 @@ export default interface Resources {
     };
     overview: {
       archived: "Archived";
+      cancelFollowUp: "Cancel follow-up";
+      cancelFollowUpFailed: "The follow-up could not be canceled";
       cancelled: "Cancelled";
       completed: "Turn completed";
       connections: "Applications";
       connectionsDescription: "Connect accounts, choose assistant access, and inspect available tools.";
       description: "Coordinate work, keep context, and follow through.";
       failed: "Failed";
+      followUps: "Follow-ups";
       host: "Runs on the connected host while its background service is online.";
       hostOffline: "{{host}} is offline";
       idle: "Idle";

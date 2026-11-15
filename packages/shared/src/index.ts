@@ -34,6 +34,7 @@ export * from "./doc-images";
 export * from "./entity-links";
 export * from "./execution-tree";
 export * from "./files";
+export * from "./follow-up";
 export * from "./git";
 export * from "./git-worktree";
 export * from "./host-access";

@@ -16,6 +16,7 @@ export const agentToolGroupIds = [
   "work",
   "applications",
   "assistant",
+  "follow_up",
 ] as const;
 
 export type AgentToolGroupId = (typeof agentToolGroupIds)[number];

@@ -342,6 +342,13 @@ export interface GreetingMessageOrigin {
   kind: "greeting";
 }
 
+export interface FollowUpMessageOrigin {
+  kind: "followUp";
+  followUpId: string;
+  note: string;
+  dueAt: string;
+}
+
 export type MessageOrigin =
   | PeerMessageOrigin
   | DelegationMessageOrigin
@@ -349,7 +356,8 @@ export type MessageOrigin =
   | ScriptRunMessageOrigin
   | RoutineMessageOrigin
   | BriefMessageOrigin
-  | GreetingMessageOrigin;
+  | GreetingMessageOrigin
+  | FollowUpMessageOrigin;
 
 export interface MessageRecord {
   id: string;

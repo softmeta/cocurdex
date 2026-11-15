@@ -1290,6 +1290,42 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds follow-ups from version 47 and keeps personas and messages", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("DROP TABLE follow_ups");
+    const now = "2026-11-15T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Personal', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO agent_roles (id, name, agent_id, created_at, updated_at)
+      VALUES ('r1', 'Coach', 'pi', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Coach', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO personal_agents (id, role_id, home_session_id, soul, is_default, created_at, updated_at)
+      VALUES ('p1', 'r1', 's1', 'Calm', 1, '${now}', '${now}');
+      PRAGMA user_version = 47;
+    `);
+
+    initializeDatabase(database);
+
+    database.exec(`
+      INSERT INTO follow_ups (id, agent_id, due_at, note, created_at)
+      VALUES ('f1', 'p1', '${now}', 'Check the reply', '${now}');
+    `);
+    expect(database.prepare("SELECT id, status FROM follow_ups").all()).toEqual(
+      [{ id: "f1", status: "pending" }],
+    );
+    expect(
+      database.prepare("SELECT id, soul FROM personal_agents").all(),
+    ).toEqual([{ id: "p1", soul: "Calm" }]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
   it("adds the persona user address from version 46 and keeps personas", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

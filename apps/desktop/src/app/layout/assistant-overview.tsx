@@ -35,6 +35,7 @@ import {
 } from "@/features/sessions";
 import { openSettings } from "@/features/settings";
 import { requestDaemon } from "@/lib";
+import { AssistantFollowUps } from "./assistant-follow-ups";
 import { OverviewRow, OverviewSection } from "./assistant-overview-sections";
 import { AssistantWorkRow } from "./assistant-work-row";
 import {
@@ -229,6 +230,7 @@ function AssistantOverviewContent({
               ))}
             </OverviewSection>
           ) : null}
+          <AssistantFollowUps personaId={persona.id} />
           <OverviewSection title={t("routines.label")}>
             <Text className="px-2 pt-2" size="meta" tone="muted">
               {t("overview.host", {

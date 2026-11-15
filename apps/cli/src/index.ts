@@ -61,6 +61,10 @@ import {
 } from "./parse-args";
 import { handlePersonaCommand, personaUsageLines } from "./persona-commands";
 import {
+  handlePersonaFollowUpCommand,
+  personaFollowUpUsageLines,
+} from "./persona-follow-up-commands";
+import {
   handlePersonaWorkCommand,
   personaWorkUsageLines,
 } from "./persona-work-commands";
@@ -170,6 +174,11 @@ async function main(rawArgs: string[]) {
     if (handled) {
       return;
     }
+  }
+
+  if (resource === "persona" && action === "follow-up") {
+    await handlePersonaFollowUpCommand(args, parsed);
+    return;
   }
 
   if (resource === "persona" && action === "work") {
@@ -552,6 +561,7 @@ function usageLines(): string[] {
     "  cocurdex session stop <session-id>",
     ...personaUsageLines(),
     ...personaWorkUsageLines(),
+    ...personaFollowUpUsageLines(),
     ...routineUsageLines(),
     ...inboxUsageLines(),
     ...teamUsageLines(),

@@ -23,10 +23,11 @@ export function PostedSourceLine({
       />
     );
   }
-  const label =
-    source.kind === "brief"
-      ? t("detail.postedBrief")
-      : t("detail.postedRoutine", { name: source.name });
+  let label: string = t("detail.postedBrief");
+  if (source.kind === "followUp") label = t("detail.postedFollowUp");
+  if (source.kind === "routine") {
+    label = t("detail.postedRoutine", { name: source.name });
+  }
   return <Text style={[styles.postedSource, { color }]}>{label}</Text>;
 }
 

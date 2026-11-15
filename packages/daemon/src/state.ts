@@ -278,6 +278,7 @@ export class DaemonState {
       notes: this.database.notes,
       personalAgents: this.database.personalAgents,
       routines: this.database.routines,
+      followUps: this.database.followUps,
       pushOutbox: this.database.pushOutbox,
       delegations: this.database.delegations,
       search: this.database.search,

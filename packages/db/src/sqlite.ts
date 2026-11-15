@@ -14,6 +14,10 @@ import {
   type EntityLinksRepository,
 } from "./entity-links";
 import {
+  createSqliteFollowUpRepository,
+  type FollowUpRepository,
+} from "./follow-ups";
+import {
   createSqliteHostAccessRepository,
   type HostAccessRepository,
 } from "./host-access";
@@ -139,6 +143,7 @@ export interface CocurdexDatabase {
   agentCapabilityCache: AgentCapabilityCacheRepository;
   personalAgents: PersonalAgentRepository;
   routines: RoutineRepository;
+  followUps: FollowUpRepository;
   pushOutbox: PushOutboxRepository;
   delegations: DelegationRepository;
   transaction<T>(fn: () => T): T;
@@ -236,6 +241,7 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     agentCapabilityCache: createSqliteAgentCapabilityCacheRepository(database),
     personalAgents: createSqlitePersonalAgentRepository(database),
     routines: createSqliteRoutineRepository(database),
+    followUps: createSqliteFollowUpRepository(database),
     pushOutbox: createSqlitePushOutboxRepository(database),
     delegations: createSqliteDelegationRepository(database),
     ...createProviderRepositories(database),
