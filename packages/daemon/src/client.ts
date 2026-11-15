@@ -15,6 +15,7 @@ import {
   type DaemonTransport,
 } from "@cocurdex/rpc/client";
 import type { CocurdexDaemonEvent, DaemonEventMeta } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared/errors";
 import { getConfiguredUserDataPath, getDaemonMetadataPath } from "./paths.ts";
 
 export {
@@ -95,12 +96,14 @@ export function resolveDaemonRequestArgs<M extends DaemonMethod>(
 } {
   const hasNoParams = daemonMethodHasNoParams(method);
   if (hasNoParams && args.length > 1) {
-    throw new Error(
+    throw new ReasonError(
+      "client.invalidArgs",
       `Daemon method "${method}" takes no params; pass client options as the only argument after the method name`,
     );
   }
   if (!hasNoParams && args.length > 2) {
-    throw new Error(
+    throw new ReasonError(
+      "client.invalidArgs",
       `Daemon method "${method}" accepts at most params and client options`,
     );
   }

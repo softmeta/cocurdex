@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin: CLI usage and argument errors are the cocurdex command contract that scripts read.
 import { PassThrough } from "node:stream";
 import { createCredentialReader } from "@cocurdex/cli/internal/read-secret";
 import { describe, expect, it, vi } from "vitest";

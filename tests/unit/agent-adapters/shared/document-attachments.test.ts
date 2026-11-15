@@ -118,7 +118,7 @@ describe("native document attachments", () => {
     const document = createDocumentAttachment();
 
     expect(() => buildInput("Summarize this PDF", [document])).toThrow(
-      "Codex does not support document attachments",
+      expect.objectContaining({ reason: "attachment.documentUnsupported" }),
     );
   });
 });

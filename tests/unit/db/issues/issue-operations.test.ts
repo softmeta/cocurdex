@@ -83,9 +83,9 @@ describe("issue operations", () => {
       labelIds: [bug.id, "agent"],
     });
     await createIssue(database, "Plain");
-    await expect(database.issues.createLabel({ name: "bug" })).rejects.toThrow(
-      "already exists",
-    );
+    await expect(
+      database.issues.createLabel({ name: "bug" }),
+    ).rejects.toMatchObject({ reason: "issue.labelExists" });
 
     const view = await database.issues.updateView({
       viewId: DEFAULT_VIEW_ID,
@@ -130,7 +130,7 @@ describe("issue operations", () => {
         id: epic.id,
         parentId: grandchild.id,
       }),
-    ).rejects.toThrow("own ancestor");
+    ).rejects.toMatchObject({ reason: "issue.cycle" });
 
     await database.issues.deleteIssue({ id: child.id });
     expect(
@@ -182,7 +182,7 @@ describe("issue operations", () => {
         kind: "blocks",
         relatedId: api.id,
       }),
-    ).rejects.toThrow("relate to itself");
+    ).rejects.toMatchObject({ reason: "issue.selfRelation" });
 
     const removed = await database.issues.removeRelation({
       id: ui.id,
@@ -235,7 +235,7 @@ describe("issue operations", () => {
     expect(detail.events[2]?.body).toBe("Checks pass.");
     await expect(
       database.issues.comment({ id: issue.id, body: "  " }),
-    ).rejects.toThrow("body is required");
+    ).rejects.toMatchObject({ reason: "issue.emptyComment" });
     database.close();
   });
 
@@ -280,7 +280,7 @@ describe("issue operations", () => {
     ).toBe(false);
     await expect(
       database.issues.linkSession({ id: issue.id, sessionId: "missing" }),
-    ).rejects.toThrow("Session not found");
+    ).rejects.toMatchObject({ reason: "session.notFound" });
 
     const detail = await database.issues.getIssueDetail({ id: issue.id });
     expect(detail?.sessions).toEqual([

@@ -74,6 +74,7 @@ describe("AgentAuthService", () => {
       }),
     });
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       service.login({ agentId, methodId: "gemini-api-key" }),
     ).rejects.toThrow("denied");
@@ -102,9 +103,9 @@ describe("AgentAuthService", () => {
   it("refuses login for agents without ACP sign-in", async () => {
     const { service } = createService({});
 
-    await expect(service.login({ agentId: "codex" })).rejects.toThrow(
-      "does not support login",
-    );
+    await expect(service.login({ agentId: "codex" })).rejects.toMatchObject({
+      reason: "agent.loginUnsupported",
+    });
   });
 
   it("reports the preferred method and live session count", async () => {

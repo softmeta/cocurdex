@@ -5,6 +5,7 @@ import type {
   ProviderAuthMethod,
   ProviderAuthPrompt,
 } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 
 type LoginInteraction = Parameters<typeof loginPiProvider>[3];
 type PiAuthPrompt = Parameters<LoginInteraction["prompt"]>[0];
@@ -112,7 +113,10 @@ export class ProviderLoginSessions {
   respond(loginId: string, promptId: string, value: string) {
     const prompt = this.logins.get(loginId)?.prompts.get(promptId);
     if (!prompt) {
-      throw new Error("Login prompt is no longer active");
+      throw new ReasonError(
+        "login.promptInactive",
+        "Login prompt is no longer active",
+      );
     }
     this.logins.get(loginId)?.prompts.delete(promptId);
     prompt.resolve(value);

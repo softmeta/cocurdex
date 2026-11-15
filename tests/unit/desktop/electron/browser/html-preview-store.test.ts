@@ -20,11 +20,15 @@ describe("HTML browser previews", () => {
     for (let index = 0; index < 31; index += 1) {
       latest = store.add(String(index));
     }
-    expect(() => store.add("overflow")).toThrow("Close a browser preview");
+    expect(() => store.add("overflow")).toThrow(
+      expect.objectContaining({ reason: "htmlPreview.limitReached" }),
+    );
     expect(store.read(first)).toBe("old");
     expect(store.read(latest)).toBe("30");
     store.remove(first);
     expect(store.read(store.add("new"))).toBe("new");
-    expect(() => store.add("x".repeat(17 * 1024 * 1024))).toThrow("too large");
+    expect(() => store.add("x".repeat(17 * 1024 * 1024))).toThrow(
+      expect.objectContaining({ reason: "htmlPreview.tooLarge" }),
+    );
   });
 });

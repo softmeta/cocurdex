@@ -26,7 +26,7 @@ describe("resolveDaemonRequestArgs", () => {
         // @ts-expect-error covers untyped callers that pass a params slot
         [undefined, { userDataPath: "/tmp/cocurdex-dev" }],
       ),
-    ).toThrow(/takes no params/);
+    ).toThrow(expect.objectContaining({ reason: "client.invalidArgs" }));
   });
 
   it("rejects extra arguments on methods with a payload", () => {
@@ -40,6 +40,6 @@ describe("resolveDaemonRequestArgs", () => {
           { userDataPath: "/tmp/other" },
         ],
       ),
-    ).toThrow(/at most params and client options/);
+    ).toThrow(expect.objectContaining({ reason: "client.invalidArgs" }));
   });
 });

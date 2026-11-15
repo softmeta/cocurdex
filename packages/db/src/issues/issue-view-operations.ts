@@ -7,6 +7,7 @@ import {
   type IssueStatusCategory,
   isClosedStatusCategory,
   normalizeViewDisplay,
+  ReasonError,
 } from "@cocurdex/shared";
 import {
   assertRevision,
@@ -252,7 +253,10 @@ export function createIssueViewOperations(
           (column) => column.id !== payload.id,
         );
         if (remaining.length === 0) {
-          throw new Error(`Cannot delete the last issue ${field} column`);
+          throw new ReasonError(
+            "issue.lastColumn",
+            `Cannot delete the last issue ${field} column`,
+          );
         }
         const fallbackId =
           (field === "status"

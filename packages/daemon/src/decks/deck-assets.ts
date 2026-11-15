@@ -2,6 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { readImageInfo } from "@cocurdex/deck/image-info";
 import type { DeckImage } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import {
   type ContentAddressedStore,
   createContentAddressedStore,
@@ -27,7 +28,7 @@ export class DeckAssetStore {
 
   async importFile(filePath: string): Promise<DeckImage> {
     if (!path.isAbsolute(filePath)) {
-      throw new Error("Image path must be absolute");
+      throw new ReasonError("path.notAbsolute", "Image path must be absolute");
     }
     const info = await stat(filePath).catch(() => null);
     if (!info?.isFile()) throw new Error(`Image not found: ${filePath}`);
@@ -35,7 +36,11 @@ export class DeckAssetStore {
       throw new Error("Image is larger than 20 MB");
     }
     const image = await this.putImage(await readFile(filePath));
-    if (!image) throw new Error("Only PNG and JPEG images are supported");
+    if (!image)
+      throw new ReasonError(
+        "deck.unsupportedImage",
+        "Only PNG and JPEG images are supported",
+      );
     return image;
   }
 
@@ -50,7 +55,11 @@ export class DeckAssetStore {
 
   async load(hash: string): Promise<Buffer> {
     const bytes = await this.store.get(hash);
-    if (!bytes) throw new Error(`Deck image not found: ${hash}`);
+    if (!bytes)
+      throw new ReasonError(
+        "deck.imageNotFound",
+        `Deck image not found: ${hash}`,
+      );
     return bytes;
   }
 
@@ -61,7 +70,8 @@ export class DeckAssetStore {
   async requireAll(hashes: Iterable<string>) {
     for (const hash of new Set(hashes)) {
       if (!(await this.store.locate(hash))) {
-        throw new Error(
+        throw new ReasonError(
+          "deck.imageNotFound",
           `Deck image not found: ${hash}; import it with deck.importImage first`,
         );
       }

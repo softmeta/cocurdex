@@ -14,6 +14,7 @@ import {
   type McpLoginStartResult,
   type McpServerConfig,
   type McpServerStatus,
+  ReasonError,
   readApplicationMetadata,
   type UpdateApplicationPayload,
   withApplicationMetadata,
@@ -90,7 +91,8 @@ export class ApplicationService {
     const app = APPLICATION_CATALOG.find(
       (item) => item.id === payload.applicationId,
     );
-    if (!app) throw new Error("Unknown application");
+    if (!app)
+      throw new ReasonError("application.unknown", "Unknown application");
     const now = new Date().toISOString();
     const id = `app-${app.id}-${randomUUID()}`;
     await this.mcp.config.saveServer(
@@ -132,7 +134,10 @@ export class ApplicationService {
     await this.mcp.config.updateServer(payload.id, (config) => {
       const metadata = this.metadata(config);
       if (metadata.revision !== payload.revision)
-        throw new Error("Application changed. Reload before saving.");
+        throw new ReasonError(
+          "application.stale",
+          "Application changed. Reload before saving.",
+        );
       return withApplicationMetadata(
         { ...config, enabled: payload.enabled },
         {
@@ -211,7 +216,10 @@ export class ApplicationService {
   submitRedirect(id: string, loginId: string, url: string) {
     this.requireLogin(id, loginId);
     if (this.deviceLogins.has(loginId))
-      throw new Error("GitHub authorization finishes in the browser");
+      throw new ReasonError(
+        "application.browserLogin",
+        "GitHub authorization finishes in the browser",
+      );
     this.mcp.logins.submitRedirectUrl(loginId, url);
   }
 
@@ -315,14 +323,22 @@ export class ApplicationService {
     try {
       const tools = await client.tools();
       const selected = tools.find((item) => item.name === tool);
-      if (!selected) throw new Error("Unknown application tool");
+      if (!selected)
+        throw new ReasonError(
+          "application.unknownTool",
+          "Unknown application tool",
+        );
       if (readOnly && !selected.readOnly)
-        throw new Error(
+        throw new ReasonError(
+          "application.notReadOnly",
           "This tool is not declared read-only. Describe the action for the user instead.",
         );
       const current = await this.require(id, principal);
       if (JSON.stringify(current) !== JSON.stringify(config))
-        throw new Error("Application configuration changed. Try again.");
+        throw new ReasonError(
+          "application.configChanged",
+          "Application configuration changed. Try again.",
+        );
       this.assertActive(id, client);
       return await client.call(tool, args);
     } finally {
@@ -339,7 +355,8 @@ export class ApplicationService {
   }
 
   private assertEnabled(config: McpServerConfig) {
-    if (config.enabled === false) throw new Error("Application is disabled");
+    if (config.enabled === false)
+      throw new ReasonError("application.disabled", "Application is disabled");
   }
 
   private async client(id: string, config: McpServerConfig) {
@@ -352,7 +369,8 @@ export class ApplicationService {
 
   private assertActive(id: string, client: ApplicationClient) {
     if (!this.clients.get(id)?.has(client))
-      throw new Error(
+      throw new ReasonError(
+        "application.closed",
         "Application connection was closed. Check its authorization before trying again.",
       );
   }
@@ -373,14 +391,19 @@ export class ApplicationService {
 
   private async connection(id: string) {
     const value = (await this.list()).find((item) => item.id === id);
-    if (!value) throw new Error("Application connection not found");
+    if (!value)
+      throw new ReasonError(
+        "application.notFound",
+        "Application connection not found",
+      );
     return value;
   }
 
   private metadata(config: McpServerConfig) {
     const value = readApplicationMetadata(config);
     if (!value)
-      throw new Error(
+      throw new ReasonError(
+        "application.invalidMetadata",
         "Invalid application metadata. Review the advanced MCP configuration.",
       );
     const app = APPLICATION_CATALOG.find(
@@ -392,7 +415,8 @@ export class ApplicationService {
       config.headers !== undefined ||
       config.auth !== undefined
     )
-      throw new Error(
+      throw new ReasonError(
+        "application.endpointChanged",
         "Managed application endpoint was changed. Review the advanced MCP configuration.",
       );
     return value;
@@ -410,22 +434,31 @@ export class ApplicationService {
     const [only, ...others] = matches;
     if (only && others.length === 0) return only;
     if (only)
-      throw new Error(
+      throw new ReasonError(
+        "application.ambiguous",
         `Several ${requested} connections are available. Pass one of these connection ids: ${matches.join(", ")}`,
       );
-    throw new Error(
+    throw new ReasonError(
+      "application.notFound",
       "Application connection not found. Pass the id field from applications_list.",
     );
   }
 
   private async require(id: string, principal?: ApplicationPrincipal) {
     const config = (await this.mcp.config.readServers())[id];
-    if (!config) throw new Error("Application connection not found");
+    if (!config)
+      throw new ReasonError(
+        "application.notFound",
+        "Application connection not found",
+      );
     this.metadata(config);
     if (principal && !applicationAllows(config, principal))
-      throw new Error("This session is not allowed to use this application");
+      throw new ReasonError(
+        "application.notAllowed",
+        "This session is not allowed to use this application",
+      );
     if (principal && config.enabled === false)
-      throw new Error("Application is disabled");
+      throw new ReasonError("application.disabled", "Application is disabled");
     return config;
   }
 
@@ -437,13 +470,20 @@ export class ApplicationService {
   private async validatePersonas(ids: string[]) {
     for (const id of ids)
       if (!(await this.personaExists(id)))
-        throw new Error(`Assistant not found: ${id}`);
+        throw new ReasonError(
+          "assistant.notFound",
+          `Assistant not found: ${id}`,
+        );
   }
 
   private requireLogin(id: string, loginId: string) {
     const owner =
       this.deviceLogins.get(loginId)?.connectionId ?? this.logins.get(loginId);
-    if (owner !== id) throw new Error("Unknown application login attempt");
+    if (owner !== id)
+      throw new ReasonError(
+        "application.unknownLogin",
+        "Unknown application login attempt",
+      );
   }
 
   private async cancelFor(id: string) {

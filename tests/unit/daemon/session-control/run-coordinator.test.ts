@@ -55,9 +55,9 @@ describe("SessionRunCoordinator", () => {
     const handle = await coordinator.start("s1", "m1", "codex");
 
     expect(coordinator.activeRunId("s1")).toBe("run-1");
-    await expect(coordinator.start("s1", "m2", "codex")).rejects.toThrow(
-      "already has an active turn",
-    );
+    await expect(coordinator.start("s1", "m2", "codex")).rejects.toMatchObject({
+      reason: "session.busy",
+    });
 
     const outcome = await coordinator.settle(handle, {
       kind: "resolved",
@@ -159,6 +159,7 @@ describe("SessionRunCoordinator", () => {
       createId: () => "run",
     });
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(failing.start("s1", "m1", "codex")).rejects.toThrow(
       "disk full",
     );

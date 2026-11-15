@@ -108,6 +108,7 @@ describe("daemon peer messaging over the real socket", () => {
         }),
       );
       try {
+        // biome-ignore lint/plugin: MCP SDK rejects the bearer token with its own wire text
         await expect(client.listTools()).rejects.toThrow(/not valid/);
       } finally {
         await client.close();

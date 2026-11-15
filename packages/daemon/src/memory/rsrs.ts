@@ -239,8 +239,12 @@ export function rsrsErrorText(payload: Record<string, unknown>) {
 }
 
 export function parseVersion(stdout: string) {
-  const match = /(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)/.exec(stdout);
-  return match?.[1] ?? null;
+  for (const token of stdout.trim().split(/\s+/)) {
+    const match =
+      /^v?(\d{1,9}\.\d{1,9}\.\d{1,9}(?:[-+][0-9A-Za-z.-]{1,64})?)$/.exec(token);
+    if (match) return match[1];
+  }
+  return null;
 }
 
 export async function readRsrsVersion(

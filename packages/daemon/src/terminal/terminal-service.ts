@@ -5,7 +5,11 @@ import type {
   PtySpawnResult,
   TerminalDaemonEvent,
 } from "@cocurdex/shared";
-import { hashLogValue, workspacePathsEqual } from "@cocurdex/shared";
+import {
+  hashLogValue,
+  ReasonError,
+  workspacePathsEqual,
+} from "@cocurdex/shared";
 import type { IPty } from "node-pty";
 import { logDaemonDiagnostic } from "../diagnostics";
 import { loadNodePty } from "../packaged-module";
@@ -161,7 +165,8 @@ export class TerminalService {
     if (rootPaths.some((rootPath) => workspacePathsEqual(cwd, rootPath))) {
       return;
     }
-    throw new Error(
+    throw new ReasonError(
+      "path.outsideWorkspace",
       "terminal.spawn rejected: cwd is not a registered workspace root or home directory",
     );
   }

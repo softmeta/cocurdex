@@ -78,6 +78,8 @@ describe("AgentToolRegistry", () => {
   it("refuses duplicate registrations", () => {
     const registry = new AgentToolRegistry();
     registry.register(echoTool());
-    expect(() => registry.register(echoTool())).toThrow(/already registered/);
+    expect(() => registry.register(echoTool())).toThrow(
+      expect.objectContaining({ reason: "agentTool.duplicate" }),
+    );
   });
 });

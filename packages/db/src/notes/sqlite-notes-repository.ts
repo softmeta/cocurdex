@@ -16,6 +16,7 @@ import {
   type NoteSummary,
   type NoteTag,
   noteExcerpt,
+  ReasonError,
   type UpdateNotePayload,
 } from "@cocurdex/shared";
 import type { SqliteRow } from "../sqlite-types";
@@ -169,7 +170,10 @@ function assertMoveDoesNotCreateCycle(
     )
     .get(id, parentId);
   if (id === parentId || cycle) {
-    throw new Error("Cannot move a note into its own descendant");
+    throw new ReasonError(
+      "note.cycle",
+      "Cannot move a note into its own descendant",
+    );
   }
 }
 

@@ -175,7 +175,7 @@ describe("built-in model parameter overrides", () => {
     it("must use a runtime the provider's catalog runs on", async () => {
       await expect(
         service.saveProviderModel({ ...added, api: "anthropic-messages" }),
-      ).rejects.toThrow(/run on openai-completions/);
+      ).rejects.toMatchObject({ reason: "provider.unsupportedApi" });
       expect(await listModels()).toEqual([catalogModel]);
     });
   });
@@ -183,6 +183,6 @@ describe("built-in model parameter overrides", () => {
   it("refuses to reset a model the catalog does not ship", async () => {
     await expect(
       service.resetProviderModel(provider.id, "not-in-catalog"),
-    ).rejects.toThrow(/not a built-in model/);
+    ).rejects.toMatchObject({ reason: "provider.notBuiltInModel" });
   });
 });

@@ -13,6 +13,7 @@ import {
   type McpServerConfig,
   mcpServerTargetsAgent,
   PI_MCP_AGENT_ID,
+  ReasonError,
   toAgentMcpServer,
 } from "@cocurdex/shared";
 import { DaemonMcpConfigService } from "./mcp-config";
@@ -38,7 +39,10 @@ export class DaemonMcpService {
   private async workspaceRoot(workspaceId: string) {
     const rootPath = await this.resolveWorkspaceRoot(workspaceId);
     if (!rootPath) {
-      throw new Error(`Workspace not found: ${workspaceId}`);
+      throw new ReasonError(
+        "workspace.notFound",
+        `Workspace not found: ${workspaceId}`,
+      );
     }
     return rootPath;
   }

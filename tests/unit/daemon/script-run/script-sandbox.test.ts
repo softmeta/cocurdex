@@ -71,6 +71,7 @@ describe("runScript", () => {
 
   it("rejects lists longer than the item limit", async () => {
     const { host, prompts } = fakeHost();
+    // biome-ignore lint/plugin: errors cross the worker boundary as messages only
     await expect(
       runScript(
         `return await pipeline([1, 2, 3, 4, 5], (item) => agent(String(item)));`,
@@ -147,6 +148,7 @@ describe("runScript", () => {
 
   it("surfaces runtime errors thrown by the script", async () => {
     const { host } = fakeHost();
+    // biome-ignore lint/plugin: errors cross the worker boundary as messages only
     await expect(
       runScript(`throw new Error("bad plan");`, host, options()),
     ).rejects.toThrow("bad plan");
@@ -167,6 +169,7 @@ describe("runScript", () => {
       options(),
     );
     expect(seen).toEqual([{ label: "one", worktree: true }]);
+    // biome-ignore lint/plugin: errors cross the worker boundary as messages only
     await expect(
       runScript(`await agent(42);`, host, options()),
     ).rejects.toThrow(/prompt must be a string/);

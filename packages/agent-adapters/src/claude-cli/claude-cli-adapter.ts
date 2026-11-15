@@ -22,7 +22,7 @@ import type {
   AgentProviderRuntimeSnapshot,
   MessageRecord,
 } from "@cocurdex/shared";
-import { errorKindForLog, hashLogValue } from "@cocurdex/shared";
+import { errorKindForLog, hashLogValue, ReasonError } from "@cocurdex/shared";
 import {
   buildClaudeUserContent,
   CLAUDE_SUPPORTED_DIALOG_KINDS,
@@ -740,7 +740,8 @@ export function createClaudeCliAdapter(
           runtimeFingerprint &&
           runtimeFingerprint !== currentRuntimeFingerprint
         ) {
-          const error = new Error(
+          const error = new ReasonError(
+            "session.runtimeMismatch",
             "Claude Agent SDK native session belongs to a different runtime. Start a new session after changing the Claude CLI, config directory, or workspace.",
           );
           logAdapterDiagnostic(

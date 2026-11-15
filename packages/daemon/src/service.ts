@@ -66,6 +66,7 @@ import {
   PERSONAL_WORKSPACE_ID,
   primaryWorkspaceRootPath,
   principalHasScope,
+  ReasonError,
   resolveSessionWorkingPath,
   resolveStartContext,
   runsOnDurablePi,
@@ -1467,7 +1468,10 @@ export class CocurdexDaemonService {
 
   async deleteAgentRole(id: string) {
     if (this.personalAgents.ownsRole(id)) {
-      throw new Error("Delete the personal agent instead of its role");
+      throw new ReasonError(
+        "personalAgent.roleDelete",
+        "Delete the personal agent instead of its role",
+      );
     }
     await this.state.deleteAgentRole(id);
   }
@@ -1532,7 +1536,11 @@ export class CocurdexDaemonService {
     principal: HostPrincipal,
   ) {
     const session = await this.state.getSession(input.sessionId);
-    if (!session) throw new Error(`Session ${input.sessionId} was not found.`);
+    if (!session)
+      throw new ReasonError(
+        "session.notFound",
+        `Session ${input.sessionId} was not found.`,
+      );
     const agent = (await this.agents.listAgents(session.agentType)).find(
       (candidate) => candidate.id === session.agentType,
     );
@@ -1633,7 +1641,11 @@ export class CocurdexDaemonService {
     validateSessionId(sessionId);
     return this.sessionCommands.run(sessionId, async () => {
       const session = await this.state.getSession(sessionId);
-      if (!session) throw new Error(`Session ${sessionId} was not found`);
+      if (!session)
+        throw new ReasonError(
+          "session.notFound",
+          `Session ${sessionId} was not found`,
+        );
       const updated: SessionRecord = {
         ...session,
         peerInbound: policy,
@@ -1653,9 +1665,16 @@ export class CocurdexDaemonService {
   ): Promise<SessionExecutionContext> {
     validateSessionId(sessionId);
     const session = await this.state.getSession(sessionId);
-    if (!session) throw new Error(`Session ${sessionId} was not found`);
+    if (!session)
+      throw new ReasonError(
+        "session.notFound",
+        `Session ${sessionId} was not found`,
+      );
     if (session.archivedAt)
-      throw new Error("Restore the session before sending messages");
+      throw new ReasonError(
+        "session.archived",
+        "Restore the session before sending messages",
+      );
     return { session, ...(await this.requireWorkspacePaths(sessionId)) };
   }
 
@@ -1666,7 +1685,10 @@ export class CocurdexDaemonService {
 
   private assertNotPersonalHome(sessionId: string) {
     if (this.personalAgents.ownsHomeSession(sessionId)) {
-      throw new Error("A personal agent's home thread cannot be removed");
+      throw new ReasonError(
+        "personalAgent.homeThread",
+        "A personal agent's home thread cannot be removed",
+      );
     }
   }
 
@@ -1735,7 +1757,11 @@ export class CocurdexDaemonService {
   async forkSession(payload: ForkSessionPayload): Promise<SessionRecord> {
     validateSessionId(payload.sessionId);
     const source = await this.state.getSession(payload.sessionId);
-    if (!source) throw new Error(`Session ${payload.sessionId} was not found`);
+    if (!source)
+      throw new ReasonError(
+        "session.notFound",
+        `Session ${payload.sessionId} was not found`,
+      );
     if (isChatSession(source))
       throw new Error("Chat sessions cannot be forked");
     const [messages, queuedInputs] = await Promise.all([
@@ -1838,9 +1864,16 @@ export class CocurdexDaemonService {
     validateSessionId(sessionId);
     return this.sessionCommands.run(sessionId, async () => {
       const session = await this.state.getSession(sessionId);
-      if (!session) throw new Error(`Session ${sessionId} was not found`);
+      if (!session)
+        throw new ReasonError(
+          "session.notFound",
+          `Session ${sessionId} was not found`,
+        );
       if (session.archivedAt) {
-        throw new Error("Restore the session before switching its agent");
+        throw new ReasonError(
+          "session.archived",
+          "Restore the session before switching its agent",
+        );
       }
       if (isChatSession(session)) {
         throw new Error("Chat sessions cannot switch agents");
@@ -2092,7 +2125,8 @@ export class CocurdexDaemonService {
       hold,
     });
     if (decision.kind === "reject") {
-      throw new Error(
+      throw new ReasonError(
+        decision.reason === "active-run" ? "session.busy" : "session.idle",
         decision.reason === "active-run"
           ? `Session ${sessionId} already has an active turn`
           : `Session ${sessionId} has no active turn`,
@@ -2406,7 +2440,8 @@ export class CocurdexDaemonService {
       );
 
       if (this.runs.hasActiveRun(sessionId)) {
-        throw new Error(
+        throw new ReasonError(
+          "session.busy",
           "Cannot send a queued message while the current turn is running.",
         );
       }
@@ -2638,7 +2673,10 @@ export class CocurdexDaemonService {
   private async requireWorkspacePaths(sessionId: string) {
     const session = await this.state.getSession(sessionId);
     if (!session) {
-      throw new Error(`Session ${sessionId} was not found`);
+      throw new ReasonError(
+        "session.notFound",
+        `Session ${sessionId} was not found`,
+      );
     }
     const workspace = (await this.state.listWorkspaces()).find(
       (candidate) => candidate.id === session.workspaceId,

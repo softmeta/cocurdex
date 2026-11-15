@@ -11,6 +11,7 @@ describe("Mac update architecture", () => {
     { platform: "darwin", arch: "arm64", translated: false },
     { platform: "darwin", arch: "x64", translated: true },
   ])("blocks Intel-only updates on Apple Silicon: %j", (host) => {
+    // biome-ignore lint/plugin: the message names the missing release asset
     expect(() => assertUpdateArchitecture(intelOnly, host)).toThrow(
       "missing Cocurdex-mac-arm64.zip",
     );
@@ -18,6 +19,7 @@ describe("Mac update architecture", () => {
   });
 
   it("requires a native ZIP even when an arm64 DMG is present", () => {
+    // biome-ignore lint/plugin: the message names the missing release asset
     expect(() =>
       assertUpdateArchitecture(
         { files: [...intelOnly.files, { url: "Cocurdex-mac-arm64.dmg" }] },
@@ -38,6 +40,7 @@ describe("Mac update architecture", () => {
   it("keeps Intel Macs on Intel updates", () => {
     const host = { platform: "darwin", arch: "x64", translated: false };
     expect(() => assertUpdateArchitecture(both, host)).not.toThrow();
+    // biome-ignore lint/plugin: the message names the missing release asset
     expect(() =>
       assertUpdateArchitecture(
         { files: [{ url: "Cocurdex-mac-arm64.zip" }] },

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { BrowserAnnotation } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { z } from "zod";
 import type {
@@ -155,7 +156,10 @@ export function registerChatWindowContext({
   });
   ipcMain.handle("chatWindow:setBrowserContext", (event, value: unknown) => {
     if (sender(event) !== primary())
-      throw new Error("Only the main window owns browser context");
+      throw new ReasonError(
+        "chatWindow.notMainWindow",
+        "Only the main window owns browser context",
+      );
     annotations = annotationsSchema.parse(value);
     const target = owner();
     if (target && target !== primary()) {

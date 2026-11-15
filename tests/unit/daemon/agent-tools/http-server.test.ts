@@ -128,6 +128,7 @@ describe("agent tool HTTP endpoint", () => {
     const url = await listen();
     const client = await connect(url, { Authorization: "Bearer nope" });
     try {
+      // biome-ignore lint/plugin: MCP SDK rejects the bearer token with its own wire text
       await expect(client.listTools()).rejects.toThrow(/not valid/);
       const result = await client.callTool({
         name: "messaging_list_agents",

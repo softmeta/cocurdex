@@ -1,4 +1,5 @@
 import type { NoteRecord, NoteSummary } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
 import { flushNoteDoc } from "./note-doc-registry";
 import { notesApi } from "./notes-api";
@@ -137,7 +138,10 @@ export const saveNoteTitleAtom = atom(
       await state.running;
     }
     if (state.queued !== null || !state.saved) {
-      throw new Error(`Note rename was not saved: ${payload.noteId}`);
+      throw new ReasonError(
+        "note.notSaved",
+        `Note rename was not saved: ${payload.noteId}`,
+      );
     }
     return state.saved;
   },

@@ -105,7 +105,7 @@ describe("doc image RPC", () => {
     ).resolves.toBeNull();
     await expect(
       call("image.locate", { uri: "cocurdex://image/../cocurdex.sqlite" }),
-    ).rejects.toThrow(/Not a Cocurdex image reference/);
+    ).rejects.toMatchObject({ reason: "docImage.invalidReference" });
   });
 
   it("refuses files that are not images and leaves nothing behind", async () => {
@@ -113,9 +113,9 @@ describe("doc image RPC", () => {
     const text = path.join(outside, "notes.png");
     writeFileSync(text, "not an image", "utf8");
 
-    await expect(call("image.import", { path: text })).rejects.toThrow(
-      /Only PNG, JPEG, GIF, or WebP/,
-    );
+    await expect(call("image.import", { path: text })).rejects.toMatchObject({
+      reason: "unsupported",
+    });
     expect(storedImages()).toEqual([]);
   });
 
@@ -124,7 +124,7 @@ describe("doc image RPC", () => {
 
     await expect(
       call("image.import", { path: path.join(outside, "outside.png") }, device),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     expect(storedImages()).toEqual([]);
     await expect(
       call(

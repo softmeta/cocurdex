@@ -424,6 +424,7 @@ describe("relocateWorkspaceAtom", () => {
     const moved = makeWorkspace("a", "2024-01-01T00:00:00.000Z");
     store.set(workspacesAtom, [moved]);
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       store.set(relocateWorkspaceAtom, "a", "/repo/app"),
     ).rejects.toThrow("already belongs");

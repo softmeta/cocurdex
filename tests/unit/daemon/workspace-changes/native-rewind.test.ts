@@ -191,6 +191,6 @@ describe("tryNativeRewind", () => {
         },
         files,
       ),
-    ).rejects.toThrow(/complete selection/);
+    ).rejects.toMatchObject({ reason: "rewind.incomplete" });
   });
 });

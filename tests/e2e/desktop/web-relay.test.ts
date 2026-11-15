@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
@@ -25,6 +26,14 @@ import { type StaticSite, serveStaticSite } from "../helpers/static-site";
 
 const desktopRoot = path.join(repoRoot, "apps", "desktop");
 const rendererRoot = path.join(desktopRoot, "out", "renderer");
+const unreachableCopy = (
+  JSON.parse(
+    readFileSync(
+      path.join(desktopRoot, "src", "locales", "en-US", "common.json"),
+      "utf8",
+    ),
+  ) as { webHostUnreachable: Record<"offline" | "retry" | "title", string> }
+).webHostUnreachable;
 const packageWebScript = path.join(
   path.dirname(
     createRequire(import.meta.url).resolve("@cocurdex/web/package.json"),
@@ -184,17 +193,19 @@ describe("web client through the relay", () => {
     await requestDaemon("host.relay.set", { url: null }, daemon.options);
     await page.reload();
     const unreachable = page.getByRole("heading", {
-      name: "Can't reach your computer",
+      name: unreachableCopy.title,
     });
     await expect
       .poll(() => unreachable.isVisible(), { timeout: 30_000 })
       .toBe(true);
     expect(
-      await page.getByText("isn't connected to its relay").isVisible(),
+      await page
+        .getByText(unreachableCopy.offline.split("{{name}}")[1]?.trim() ?? "")
+        .isVisible(),
     ).toBe(true);
     await requestDaemon("host.relay.set", { url: relay.url }, daemon.options);
     await relayEndpoint(daemon);
-    await page.getByRole("button", { name: "Try again" }).click();
+    await page.getByRole("button", { name: unreachableCopy.retry }).click();
     await expect
       .poll(() => page.getByText(WORKSPACE_NAME).first().isVisible(), {
         timeout: 30_000,

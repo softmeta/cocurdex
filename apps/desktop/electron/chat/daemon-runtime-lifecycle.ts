@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import { DAEMON_PROTOCOL_VERSION, type DaemonStatus } from "@cocurdex/rpc";
+import { ReasonError } from "@cocurdex/shared";
 import type {
   DaemonRuntimeClientOptions,
   DaemonRuntimeStatus,
@@ -154,7 +155,8 @@ export function createDaemonRuntimeLifecycle(
       if (matches(status, runtimeFingerprint)) return;
       if (!(await shutdownIfIdle(status))) {
         if (status.protocolVersion !== DAEMON_PROTOCOL_VERSION) {
-          throw new Error(
+          throw new ReasonError(
+            "daemon.incompatibleBusy",
             "The existing daemon is busy and uses an incompatible protocol; it was preserved",
           );
         }
@@ -329,7 +331,8 @@ export function createDaemonRuntimeLifecycle(
           if (!unavailable(error)) throw error;
         }
         if (status && !(await shutdownIfIdle(status))) {
-          throw new Error(
+          throw new ReasonError(
+            "daemon.busy",
             "Daemon is busy; finish or stop active work before restarting",
           );
         }

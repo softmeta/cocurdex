@@ -74,9 +74,9 @@ describe("DaemonSearchService", () => {
       canScanRoot: async () => false,
     });
 
-    await expect(service.start(basePayload)).rejects.toThrow(
-      "search.start rejected",
-    );
+    await expect(service.start(basePayload)).rejects.toMatchObject({
+      reason: "path.outsideWorkspace",
+    });
     expect(service.activeCount).toBe(0);
   });
 

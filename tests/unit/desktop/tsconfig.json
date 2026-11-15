@@ -6,6 +6,7 @@
     "paths": {
       "@/*": ["../../../apps/desktop/src/*"],
       "@desktop/*": ["../../../apps/desktop/*"],
+      "@cocurdex/shared/errors": ["../../../packages/shared/src/errors.ts"],
       "@cocurdex/shared/node": ["../../../packages/shared/src/node.ts"],
       "@cocurdex/shared": ["../../../packages/shared/src/index.ts"],
       "@cocurdex/rpc": ["../../../packages/rpc/src/index.ts"],

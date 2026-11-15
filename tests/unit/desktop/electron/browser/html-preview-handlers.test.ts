@@ -49,9 +49,9 @@ describe("HTML preview IPC", () => {
       { ...payload, html: "" },
       { ...payload, html: "x".repeat(2_000_001) },
     ]) {
-      await expect(listener({} as IpcMainInvokeEvent, invalid)).rejects.toThrow(
-        "Invalid payload",
-      );
+      await expect(
+        listener({} as IpcMainInvokeEvent, invalid),
+      ).rejects.toMatchObject({ reason: "payload.invalid" });
     }
   });
 

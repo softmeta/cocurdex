@@ -107,7 +107,7 @@ describe("CocurdexDaemonService workspace roots", () => {
             id: "workspace-home",
             rootPaths: [rootPath],
           }),
-        ).rejects.toThrow(/home directory/);
+        ).rejects.toMatchObject({ reason: "workspace.unsafeRoot" });
       }
       await expect(
         service.workspaces.saveWorkspace({
@@ -115,7 +115,7 @@ describe("CocurdexDaemonService workspace roots", () => {
           id: "workspace-root",
           rootPaths: [path.parse(home).root],
         }),
-      ).rejects.toThrow(/filesystem root/);
+      ).rejects.toMatchObject({ reason: "workspace.unsafeRoot" });
     } finally {
       await service.shutdown();
     }
@@ -138,7 +138,7 @@ describe("CocurdexDaemonService workspace roots", () => {
           id: "workspace-duplicate",
           rootPaths: [shared],
         }),
-      ).rejects.toThrow(/primary folder of workspace "Queue test"/);
+      ).rejects.toMatchObject({ reason: "workspace.primaryFolderTaken" });
     } finally {
       await service.shutdown();
     }
@@ -705,7 +705,7 @@ describe("CocurdexDaemonService follow-up queue", () => {
 
       await expect(
         service.sendQueuedAgentInputNow("session-1", secondQueued.id),
-      ).rejects.toThrow("while the current turn is running");
+      ).rejects.toMatchObject({ reason: "session.busy" });
       expect(cancel).not.toHaveBeenCalled();
       expect(send).toHaveBeenCalledOnce();
 

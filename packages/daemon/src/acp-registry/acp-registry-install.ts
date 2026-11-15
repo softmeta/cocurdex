@@ -8,6 +8,7 @@ import {
   type AcpRegistryInstalledAgent,
   type AcpRegistryInstallPlan,
   type AcpRegistryLaunchCommand,
+  ReasonError,
   toAcpRegistryAgentId,
 } from "@cocurdex/shared";
 import { downloadVerified } from "../verified-download";
@@ -50,7 +51,10 @@ export async function runPrefetch({
     });
   } catch (error) {
     const detail = stderr.trim() || (error as Error).message;
-    throw new Error(`${command} could not download the package: ${detail}`);
+    throw new ReasonError(
+      "acpRegistry.downloadFailed",
+      `${command} could not download the package: ${detail}`,
+    );
   }
 }
 

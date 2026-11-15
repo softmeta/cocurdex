@@ -25,9 +25,11 @@ describe("windowless daemon runtime", () => {
   });
 
   it("refuses files that are not Windows executables", () => {
+    // biome-ignore lint/plugin: build script error with no caller that branches on it
     expect(() => withWindowsGuiSubsystem(Buffer.from("#!/bin/sh\n"))).toThrow(
       "MZ",
     );
+    // biome-ignore lint/plugin: build script error with no caller that branches on it
     expect(() => withWindowsGuiSubsystem(executable(9))).toThrow("subsystem");
   });
 });

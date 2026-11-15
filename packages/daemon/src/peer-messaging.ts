@@ -5,6 +5,7 @@ import {
   PEER_EXCHANGE_LIMIT,
   type PeerMessageEvent,
   type PeerSessionSummary,
+  ReasonError,
   renderPeerEnvelope,
   type SendPeerMessagePayload,
   type SendPeerMessageResult,
@@ -68,7 +69,10 @@ export class PeerMessagingService {
       !isPeerReachable(target, payload.fromSessionId) ||
       (scope && !scope.has(target.id))
     ) {
-      throw new Error(`Session ${payload.toSessionId} is not reachable`);
+      throw new ReasonError(
+        "peer.unreachable",
+        `Session ${payload.toSessionId} is not reachable`,
+      );
     }
     const origin = {
       kind: "peer" as const,

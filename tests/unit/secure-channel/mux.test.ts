@@ -172,6 +172,7 @@ describe("mux streams", () => {
     const writing = stream.write(pattern(INITIAL_STREAM_WINDOW * 2));
     await settle();
     initiator.mux.close(new Error("socket closed"));
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(writing).rejects.toThrow("socket closed");
   });
 });

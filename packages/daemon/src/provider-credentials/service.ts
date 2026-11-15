@@ -11,7 +11,7 @@ import type {
   ProviderAuthState,
   SessionRecord,
 } from "@cocurdex/shared";
-import { getAgentTraits } from "@cocurdex/shared";
+import { getAgentTraits, ReasonError } from "@cocurdex/shared";
 import type { DaemonState } from "../state";
 import { type CredentialVault, createCredentialVault } from "./vault";
 
@@ -45,7 +45,7 @@ export class ProviderCredentials {
     const provider = await this.state.getProviderConfig(providerId);
     if (!provider) {
       if (apiKey === null) return;
-      throw new Error("Provider not found");
+      throw new ReasonError("provider.notFound", "Provider not found");
     }
     if (apiKey !== null && listPiBuiltInProviderIds().includes(provider.id)) {
       await logoutPiProvider(this.userDataPath, providerId);
@@ -109,7 +109,8 @@ export class ProviderCredentials {
       ? await this.vault.read(provider.apiKeySecretId)
       : null;
     if (provider?.apiKeySecretId && !apiKey)
-      throw new Error(
+      throw new ReasonError(
+        "provider.apiKeyMissing",
         "Provider API key is missing; set it again in provider settings",
       );
     return { ...snapshot, apiKey };

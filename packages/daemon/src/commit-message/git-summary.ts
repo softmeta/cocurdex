@@ -3,6 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { ReasonError } from "@cocurdex/shared";
 import { parseNameStatusZero } from "./git-name-status";
 
 const execFileAsync = promisify(execFile);
@@ -29,7 +30,7 @@ async function summarizeIndex(rootPath: string, indexPath?: string) {
   );
   const changes = parseNameStatusZero(raw);
   if (changes.length === 0) {
-    throw new Error("Nothing to commit");
+    throw new ReasonError("git.nothingToCommit", "Nothing to commit");
   }
   const diff = await runGit(
     rootPath,

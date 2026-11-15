@@ -30,7 +30,9 @@ describe("chat window handoff", () => {
     vi.useFakeTimers();
     const handoff = new ChatWindowHandoff();
     const first = handoff.begin(2, "preserved draft");
-    const rejected = expect(first.completion).rejects.toThrow("ready in time");
+    const rejected = expect(first.completion).rejects.toMatchObject({
+      reason: "chatWindow.timedOut",
+    });
     await vi.advanceTimersByTimeAsync(30_000);
     await rejected;
     const next = handoff.begin(2, "preserved draft");
@@ -42,6 +44,7 @@ describe("chat window handoff", () => {
   it("cancels a failed renderer without accepting its late acknowledgement", async () => {
     const handoff = new ChatWindowHandoff();
     const { transfer, completion } = handoff.begin(2, "draft");
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     const rejected = expect(completion).rejects.toThrow("Renderer exited");
     handoff.cancel(new Error("Renderer exited"));
     expect(handoff.complete(2, transfer.id)).toBe(false);

@@ -5,6 +5,7 @@ import {
   type IssueDetail,
   type IssueRelationKind,
   type IssueRelationPayload,
+  ReasonError,
 } from "@cocurdex/shared";
 import { listIssueEvents, recordIssueEvent } from "./issue-events";
 import {
@@ -134,7 +135,10 @@ export function createIssueCollaborationOperations(
         )
         .get(name, current.id);
       if (duplicate) {
-        throw new Error(`Issue label already exists: ${name}`);
+        throw new ReasonError(
+          "issue.labelExists",
+          `Issue label already exists: ${name}`,
+        );
       }
       const color = payload.color !== undefined ? payload.color : current.color;
       database
@@ -157,7 +161,10 @@ export function createIssueCollaborationOperations(
     async comment(payload) {
       const body = payload.body.trim();
       if (!body) {
-        throw new Error("Issue comment body is required");
+        throw new ReasonError(
+          "issue.emptyComment",
+          "Issue comment body is required",
+        );
       }
       const issue = requireIssue(database, payload.id);
       recordIssueEvent(database, {

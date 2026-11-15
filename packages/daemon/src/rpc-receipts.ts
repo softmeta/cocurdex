@@ -2,7 +2,7 @@ import { logDaemonDiagnostic } from "./diagnostics";
 
 export type DaemonReceiptOutcome =
   | { ok: true; result: unknown }
-  | { ok: false; error: { code: string; message: string } };
+  | { ok: false; error: { code: string; message: string; reason?: string } };
 
 export interface DaemonReceiptExecution {
   outcome: DaemonReceiptOutcome;

@@ -131,14 +131,14 @@ describe("settings set and pending changes", () => {
         value: "neon",
         workspaceId: "workspace-1",
       }),
-    ).rejects.toThrow("app.theme");
+    ).rejects.toMatchObject({ reason: "settings.invalidValue" });
     await expect(
       service.settings.setValue({
         key: "workspace.worktreeEnvironment",
         value: {},
         workspaceId: "workspace-1",
       }),
-    ).rejects.toThrow("settings_propose");
+    ).rejects.toMatchObject({ reason: "settings.notWritable" });
     expect(await service.settings.listPendingChanges()).toEqual([]);
   });
 

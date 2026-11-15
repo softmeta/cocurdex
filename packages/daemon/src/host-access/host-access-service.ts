@@ -24,6 +24,7 @@ import {
   type PairedDevice,
   type PairedDeviceRecord,
   parseRelayCredential,
+  ReasonError,
   type RelaySettings,
   type RelaySettingsUpdate,
   type RemoteAccessSettings,
@@ -134,7 +135,8 @@ function relayCredentialFor(
   }
   if (credential.relayUrl === url) return token;
   if (explicit) {
-    throw new Error(
+    throw new ReasonError(
+      "remoteAccess.credentialMismatch",
       `This credential is for ${credential.relayUrl}, not ${url}`,
     );
   }
@@ -179,7 +181,8 @@ function normalizeDeviceScopes(scopes: HostAccessScope[]) {
     (scope) => !PAIRABLE_HOST_ACCESS_SCOPES.includes(scope),
   );
   if (rejected.length > 0) {
-    throw new Error(
+    throw new ReasonError(
+      "remoteAccess.scopeNotPairable",
       `Scopes cannot be granted to a device: ${rejected.join(", ")}`,
     );
   }
@@ -221,7 +224,10 @@ export class HostAccessService {
 
   private assertRemoteAccessAllowed() {
     if (!this.remoteAccessAllowed) {
-      throw new Error("Remote access is disabled in this build");
+      throw new ReasonError(
+        "remoteAccess.unavailable",
+        "Remote access is disabled in this build",
+      );
     }
   }
 
@@ -679,7 +685,10 @@ export class HostAccessService {
   async setRelay(update: RelaySettingsUpdate, principal: HostPrincipal) {
     const url = update.url === null ? null : normalizeRelayUrl(update.url);
     if (update.url !== null && !url) {
-      throw new Error("Relay URL must be an http or https URL");
+      throw new ReasonError(
+        "remoteAccess.invalidRelayUrl",
+        "Relay URL must be an http or https URL",
+      );
     }
     const previous = await this.readRelaySettings();
     const credential = relayCredentialFor(

@@ -25,33 +25,35 @@ describe("resolvePdfReadPath", () => {
   it("rejects a path outside every workspace", () => {
     const target = path.resolve("/etc/secret.pdf");
     expect(() => resolvePdfReadPath(target, ROOTS)).toThrow(
-      /outside every registered workspace/,
+      expect.objectContaining({ reason: "path.outsideWorkspace" }),
     );
   });
 
   it("rejects everything when no workspace is registered", () => {
     const target = path.join(WORKSPACE_ROOT, "guide.pdf");
     expect(() => resolvePdfReadPath(target, [])).toThrow(
-      /outside every registered workspace/,
+      expect.objectContaining({ reason: "path.outsideWorkspace" }),
     );
   });
 
   it("rejects a traversal escape that resolves outside the workspace", () => {
     const target = path.join(WORKSPACE_ROOT, "..", "elsewhere", "x.pdf");
     expect(() => resolvePdfReadPath(target, ROOTS)).toThrow(
-      /outside every registered workspace/,
+      expect.objectContaining({ reason: "path.outsideWorkspace" }),
     );
   });
 
   it("rejects a sibling directory sharing the root as a prefix", () => {
     const target = `${WORKSPACE_ROOT}-evil${path.sep}x.pdf`;
     expect(() => resolvePdfReadPath(target, ROOTS)).toThrow(
-      /outside every registered workspace/,
+      expect.objectContaining({ reason: "path.outsideWorkspace" }),
     );
   });
 
   it("rejects a non-PDF file", () => {
     const target = path.join(WORKSPACE_ROOT, "notes.txt");
-    expect(() => resolvePdfReadPath(target, ROOTS)).toThrow(/not a PDF/);
+    expect(() => resolvePdfReadPath(target, ROOTS)).toThrow(
+      expect.objectContaining({ reason: "pdf.notPdf" }),
+    );
   });
 });

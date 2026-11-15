@@ -4,17 +4,19 @@ import {
   providerApis,
   reasoningEfforts,
 } from "../contracts";
+import { ReasonError } from "../errors";
 import type { SendSessionCommand, SessionConfiguration } from "./types";
 
 function record(value: unknown): asserts value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("Expected an object");
+    throw new ReasonError("payload.invalid", "Expected an object");
   }
 }
 
 function keys(value: Record<string, unknown>, allowed: readonly string[]) {
   for (const key of Object.keys(value)) {
-    if (!allowed.includes(key)) throw new Error(`Unexpected field: ${key}`);
+    if (!allowed.includes(key))
+      throw new ReasonError("payload.invalid", `Unexpected field: ${key}`);
   }
 }
 
@@ -25,7 +27,7 @@ function text(value: unknown, name: string, max = 4096, empty = false) {
     value.includes("\0") ||
     (!empty && !value.trim())
   ) {
-    throw new Error(`Invalid ${name}`);
+    throw new ReasonError("payload.invalid", `Invalid ${name}`);
   }
 }
 
@@ -35,7 +37,7 @@ function validateRecordId(value: unknown, name: string) {
     typeof value === "string" &&
     (value === "." || value === ".." || /[/\\]/.test(value))
   )
-    throw new Error(`Invalid ${name}`);
+    throw new ReasonError("payload.invalid", `Invalid ${name}`);
 }
 
 export function validateSessionId(value: unknown): asserts value is string {
@@ -87,7 +89,7 @@ function provider(value: unknown) {
   ])
     text(value[name], name, 4096, name !== "providerId");
   if (!providerApis.includes(value.api as never))
-    throw new Error("Invalid provider API");
+    throw new ReasonError("payload.invalid", "Invalid provider API");
   for (const name of strings) optionalText(value[name], name);
   for (const name of numbers) {
     const item = value[name];
@@ -95,16 +97,16 @@ function provider(value: unknown) {
       item != null &&
       (typeof item !== "number" || !Number.isFinite(item) || item < 0)
     )
-      throw new Error(`Invalid ${name}`);
+      throw new ReasonError("payload.invalid", `Invalid ${name}`);
   }
   for (const name of booleans)
     if (value[name] != null && typeof value[name] !== "boolean")
-      throw new Error(`Invalid ${name}`);
+      throw new ReasonError("payload.invalid", `Invalid ${name}`);
   for (const name of ["modelCapabilities", "supportedReasoningEfforts"]) {
     const items = value[name];
     if (items === undefined) continue;
     if (!Array.isArray(items) || items.length > 100)
-      throw new Error(`Invalid ${name}`);
+      throw new ReasonError("payload.invalid", `Invalid ${name}`);
     for (const item of items) {
       if (name === "modelCapabilities") text(item, name, 128);
       else {
@@ -142,19 +144,19 @@ export function validateSessionConfiguration(
     value.sessionKind !== "chat" &&
     value.sessionKind !== "personal"
   )
-    throw new Error("Invalid session kind");
+    throw new ReasonError("payload.invalid", "Invalid session kind");
   if (
     value.peerInbound !== undefined &&
     value.peerInbound !== "deliver" &&
     value.peerInbound !== "refuse"
   )
-    throw new Error("Invalid peer inbound policy");
+    throw new ReasonError("payload.invalid", "Invalid peer inbound policy");
   validateSessionId(value.workspaceId);
   text(value.title, "title", 4096, true);
   if (typeof value.agentType !== "string" || !isAgentId(value.agentType))
-    throw new Error("Invalid agent type");
+    throw new ReasonError("payload.invalid", "Invalid agent type");
   if (value.writeMode !== "read-only" && value.writeMode !== "native-write")
-    throw new Error("Invalid write mode");
+    throw new ReasonError("payload.invalid", "Invalid write mode");
   optionalText(value.sessionModeId, "session mode");
   for (const name of ["permissionMode", "agentRoleId", "worktreePath"])
     optionalText(value[name], name);
@@ -195,14 +197,15 @@ function validateMessageOrigin(value: unknown) {
     validateSessionId(value.sessionId);
     text(value.sessionTitle, "origin session title", 4096, true);
     if (!DELEGATION_REPORT_OUTCOMES.includes(value.outcome as never))
-      throw new Error("Invalid delegation outcome");
+      throw new ReasonError("payload.invalid", "Invalid delegation outcome");
     if (value.hostId !== undefined) validateRecordId(value.hostId, "host ID");
     if (value.hostName !== undefined)
       text(value.hostName, "origin host name", 4096, true);
     return;
   }
   keys(value, ["kind", "sessionId", "sessionTitle"]);
-  if (value.kind !== "peer") throw new Error("Invalid message origin");
+  if (value.kind !== "peer")
+    throw new ReasonError("payload.invalid", "Invalid message origin");
   validateSessionId(value.sessionId);
   text(value.sessionTitle, "origin session title", 4096, true);
 }
@@ -228,7 +231,7 @@ export function validateSendSessionCommand(
   if (value.createdAt !== undefined) {
     text(value.createdAt, "message timestamp", 64);
     if (!Number.isFinite(Date.parse(value.createdAt as string)))
-      throw new Error("Invalid message timestamp");
+      throw new ReasonError("payload.invalid", "Invalid message timestamp");
   }
   if (
     value.delivery !== undefined &&
@@ -236,24 +239,24 @@ export function validateSendSessionCommand(
       value.delivery as string,
     )
   )
-    throw new Error("Invalid delivery mode");
+    throw new ReasonError("payload.invalid", "Invalid delivery mode");
   if (
     value.thinkingLevel !== undefined &&
     !["default", "off", ...reasoningEfforts].includes(
       value.thinkingLevel as string,
     )
   )
-    throw new Error("Invalid thinking level");
+    throw new ReasonError("payload.invalid", "Invalid thinking level");
   if (value.attachments !== undefined) {
     if (!Array.isArray(value.attachments) || value.attachments.length > 100)
-      throw new Error("Invalid attachments");
+      throw new ReasonError("payload.invalid", "Invalid attachments");
     for (const attachment of value.attachments) {
       record(attachment);
       if (attachment.kind === "context-folder")
         text(attachment.folderPath, "folder path");
       else if (attachment.kind === "context-item") {
         if (attachment.itemKind !== "note" && attachment.itemKind !== "issue")
-          throw new Error("Invalid context item kind");
+          throw new ReasonError("payload.invalid", "Invalid context item kind");
         text(attachment.id, "context item ID", 256);
         text(attachment.title, "context item title", 4096, true);
         text(attachment.body, "context item body", 200_000, true);
@@ -268,7 +271,7 @@ export function validateSendSessionCommand(
             !Number.isFinite(attachment.sizeBytes) ||
             attachment.sizeBytes < 0
           )
-            throw new Error("Invalid attachment size");
+            throw new ReasonError("payload.invalid", "Invalid attachment size");
         } else if (
           attachment.kind === undefined ||
           attachment.kind === "context-file"
@@ -281,7 +284,8 @@ export function validateSendSessionCommand(
             200_000,
             true,
           );
-        } else throw new Error("Invalid attachment kind");
+        } else
+          throw new ReasonError("payload.invalid", "Invalid attachment kind");
       }
     }
   }

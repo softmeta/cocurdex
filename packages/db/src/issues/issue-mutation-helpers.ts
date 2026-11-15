@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { IssueColumnField } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import { type ColumnRow, listColumns } from "./issue-storage";
 
 export function assertRevision(
@@ -21,7 +22,8 @@ export function requireColumn(
   const column = columns.find((candidate) => candidate.id === columnId);
   if (!column) {
     const validIds = columns.map((candidate) => candidate.id).join(", ");
-    throw new Error(
+    throw new ReasonError(
+      "issue.columnNotFound",
       `Issue ${field} column not found: ${columnId} (valid: ${validIds})`,
     );
   }

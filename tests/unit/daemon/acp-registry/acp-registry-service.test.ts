@@ -217,7 +217,9 @@ describe("AcpRegistryService", () => {
       noLocalCli,
     );
 
-    await expect(service.install("demo")).rejects.toThrow(/Checksum/);
+    await expect(service.install("demo")).rejects.toMatchObject({
+      reason: "download.checksumMismatch",
+    });
     expect(service.listInstalled()).toEqual([]);
   });
 
@@ -387,7 +389,9 @@ describe("AcpRegistryService", () => {
       distribution: "local",
     });
     expect(fetchCatalog).not.toHaveBeenCalled();
-    await expect(service.install("codex-acp")).rejects.toThrow(/built in/);
+    await expect(service.install("codex-acp")).rejects.toMatchObject({
+      reason: "acpRegistry.builtIn",
+    });
   });
 
   it("describes the exact download and launch that install performs", async () => {
@@ -453,9 +457,10 @@ describe("AcpRegistryService", () => {
         target: { package: "demo-acp@1.0.0", args: ["--acp"], env: {} },
       },
     };
+    const failure = new Error("npx could not download the package");
     const prefetch = vi
       .fn()
-      .mockRejectedValueOnce(new Error("npx could not download the package"))
+      .mockRejectedValueOnce(failure)
       .mockResolvedValue(undefined);
     const service = new AcpRegistryService(
       memorySettings(),
@@ -473,7 +478,7 @@ describe("AcpRegistryService", () => {
       env: {},
     });
 
-    await expect(service.install("demo")).rejects.toThrow(/could not download/);
+    await expect(service.install("demo")).rejects.toBe(failure);
     expect(service.listInstalled()).toEqual([]);
 
     await expect(service.install("demo")).resolves.toMatchObject({
@@ -493,9 +498,9 @@ describe("AcpRegistryService", () => {
       async (command) => (command === "demo" ? "/opt/bin/demo" : null),
     );
 
-    await expect(service.installCommand("demo", "missing", [])).rejects.toThrow(
-      /Command not found/,
-    );
+    await expect(
+      service.installCommand("demo", "missing", []),
+    ).rejects.toMatchObject({ reason: "acpRegistry.commandNotFound" });
     await expect(
       service.installCommand("demo", "demo", ["--acp"]),
     ).resolves.toMatchObject({
@@ -566,9 +571,9 @@ describe("AcpRegistryService", () => {
     await service.ready;
 
     expect(await service.listUpdates()).toEqual([]);
-    await expect(service.update("acp:grok-build")).rejects.toThrow(
-      "installed outside Cocurdex",
-    );
+    await expect(service.update("acp:grok-build")).rejects.toMatchObject({
+      reason: "acpRegistry.externalCommand",
+    });
   });
 
   it("ignores corrupt persisted state", async () => {

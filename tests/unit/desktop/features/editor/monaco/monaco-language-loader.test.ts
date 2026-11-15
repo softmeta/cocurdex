@@ -25,6 +25,7 @@ describe("Monaco language loading", () => {
       .mockResolvedValue(undefined);
     const load = createMonacoLanguageLoader({ loadLanguage });
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(load("astro")).rejects.toThrow("Failed to load grammar");
     await load("astro");
     expect(loadLanguage).toHaveBeenCalledTimes(2);

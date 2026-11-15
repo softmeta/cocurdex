@@ -58,9 +58,9 @@ describe("connectOpenCode", () => {
     mocks.spawnSync.mockReturnValue({ stdout: "1.18.33\n" });
     const { connectOpenCode } = await loadRuntime();
 
-    await expect(connectOpenCode()).rejects.toThrow(
-      "OpenCode 1.18.33 is too old for Cocurdex",
-    );
+    await expect(connectOpenCode()).rejects.toMatchObject({
+      reason: "agent.tooOld",
+    });
     expect(mocks.ensure).not.toHaveBeenCalled();
   });
 
@@ -68,8 +68,8 @@ describe("connectOpenCode", () => {
     mocks.spawnSync.mockReturnValue({ error: new Error("spawn ENOENT") });
     const { connectOpenCode } = await loadRuntime();
 
-    await expect(connectOpenCode()).rejects.toThrow(
-      "OpenCode CLI was not found on PATH",
-    );
+    await expect(connectOpenCode()).rejects.toMatchObject({
+      reason: "agent.notInstalled",
+    });
   });
 });

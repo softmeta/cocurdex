@@ -17,6 +17,22 @@ export function needsManagedInstall(facts: MemoryInstallFacts) {
   return !facts.hasExecutable || facts.installedVersion !== facts.pinnedVersion;
 }
 
+export interface GlobalInstallFacts {
+  supported: boolean;
+  enabled: boolean;
+  customCli: boolean;
+  hasExecutable: boolean;
+  freshHome: boolean;
+  ownedHome: boolean;
+  blocked: boolean;
+}
+
+export function needsGlobalInstall(facts: GlobalInstallFacts) {
+  if (!facts.supported || !facts.enabled || facts.customCli) return false;
+  if (facts.blocked || facts.hasExecutable) return false;
+  return facts.freshHome || facts.ownedHome;
+}
+
 // rsrs reports these when a login, keygen or recovery step is waiting on the
 // user (respire-cli autostart control); retrying the install cannot clear them.
 const NEEDS_USER_ERROR =

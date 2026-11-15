@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import {
   isIssueColumnField,
+  ReasonError,
   UNGROUPED_COLUMN_ID,
   type ViewGroupBy,
 } from "@cocurdex/shared";
@@ -20,7 +21,7 @@ function requireWorkspace(database: DatabaseSync, id: string): string {
     .prepare("SELECT id FROM workspaces WHERE id = ?")
     .get(id) as { id: string } | undefined;
   if (!row) {
-    throw new Error(`Workspace not found: ${id}`);
+    throw new ReasonError("workspace.notFound", `Workspace not found: ${id}`);
   }
   return row.id;
 }

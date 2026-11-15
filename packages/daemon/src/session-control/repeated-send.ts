@@ -1,8 +1,15 @@
-import type { MessageRecord, SendSessionCommand } from "@cocurdex/shared";
+import {
+  type MessageRecord,
+  ReasonError,
+  type SendSessionCommand,
+} from "@cocurdex/shared";
 
-export class MessageIdConflictError extends Error {
+export class MessageIdConflictError extends ReasonError<"message.idConflict"> {
   constructor(messageId: string) {
-    super(`Message ID ${messageId} was already used for a different message`);
+    super(
+      "message.idConflict",
+      `Message ID ${messageId} was already used for a different message`,
+    );
     this.name = "MessageIdConflictError";
   }
 }

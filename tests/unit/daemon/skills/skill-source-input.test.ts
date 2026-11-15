@@ -62,7 +62,7 @@ describe("parseSkillSourceInput", () => {
   it("rejects other hosts and path traversal", () => {
     expect(() =>
       parseSkillSourceInput("https://gitlab.com/o/r", posix),
-    ).toThrow(/Only GitHub/);
+    ).toThrow(expect.objectContaining({ reason: "skills.unsupportedSource" }));
     expect(() => parseSkillSourceInput("o/r/../x", posix)).toThrow();
     expect(() => parseSkillSourceInput("just-a-word", posix)).toThrow();
   });

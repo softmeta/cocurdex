@@ -4,6 +4,7 @@ import type {
 } from "@anthropic-ai/claude-agent-sdk";
 import type { ForkProviderSessionPayload } from "@cocurdex/agent-core";
 import type { AgentProviderSessionRecord } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import { serializeProviderSessionState } from "../shared";
 
 export type ClaudeForkSession = (
@@ -57,7 +58,10 @@ export async function forkClaudeProviderSession(
   const state = readForkableState(source.providerStateJson);
   const sourceWorkspace = fingerprintWorkspace(state.runtimeFingerprint);
   if (sourceWorkspace && sourceWorkspace !== payload.workspaceRootPath) {
-    throw new Error("Claude transcript belongs to a different workspace");
+    throw new ReasonError(
+      "session.forkWorkspaceMismatch",
+      "Claude transcript belongs to a different workspace",
+    );
   }
   const { sessionId } = await forkSession(source.providerSessionId, {
     dir: payload.workspaceRootPath,

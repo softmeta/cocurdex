@@ -32,9 +32,9 @@ describe("daemon endpoint evidence", () => {
     vi.useFakeTimers();
     const socket = new net.Socket();
     vi.spyOn(net, "connect").mockReturnValue(socket);
-    const result = expect(probeDaemonEndpoint("unused")).rejects.toThrow(
-      "probe timed out",
-    );
+    const result = expect(probeDaemonEndpoint("unused")).rejects.toMatchObject({
+      reason: "daemon.endpointUnverified",
+    });
     await vi.runAllTimersAsync();
     await result;
     expect(socket.destroyed).toBe(true);

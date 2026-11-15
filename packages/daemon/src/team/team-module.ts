@@ -12,6 +12,7 @@ import {
   type MessageRecord,
   normalizeAgentRoleAvatar,
   normalizeTeamTemplateMembers,
+  ReasonError,
   type RequesterReportDelivery,
   type RunRecord,
   renderTeammateBriefing,
@@ -64,14 +65,14 @@ export type TeamErrorCode =
   | "team_exists"
   | "members_busy";
 
-export class TeamError extends Error {
+export class TeamError extends ReasonError {
   override readonly name = "TeamError";
 
   constructor(
     readonly code: TeamErrorCode,
     message: string = code,
   ) {
-    super(message);
+    super(`team.${code}`, message);
   }
 }
 

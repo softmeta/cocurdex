@@ -113,9 +113,9 @@ describe("session archive lifecycle", () => {
   it("rejects restoring a child beneath an archived parent without changing data", async () => {
     const { sessions } = await setup();
     await sessions.archive("parent", now);
-    await expect(sessions.restore("child")).rejects.toThrow(
-      "Restore the parent session first",
-    );
+    await expect(sessions.restore("child")).rejects.toMatchObject({
+      reason: "session.parentArchived",
+    });
     expect(await sessions.listArchived()).toHaveLength(3);
     expect((await sessions.list()).map((s) => s.id)).toEqual(["independent"]);
   });

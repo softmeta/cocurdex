@@ -30,6 +30,7 @@ describe("task client", () => {
     commandDaemon.mockRejectedValue(
       new Error("The Cocurdex daemon is unavailable"),
     );
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       taskApi.sendMessage({
         sessionId: "session-1",

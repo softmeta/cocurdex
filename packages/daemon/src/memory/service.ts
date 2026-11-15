@@ -46,13 +46,19 @@ import {
   type MessageRecord,
   memoryPartitionProject,
   memoryPlatformSupportsRsrs,
+  ReasonError,
   RSRS_CLI_VERSION,
+  RSRS_MIN_CLI_VERSION,
+  type RsrsCliAsset,
   redactMemorySecrets,
   rsrsCliAsset,
+  rsrsLibcFor,
+  rsrsVersionMeetsMinimum,
   type SessionRecord,
   withMemoryIdentityHint,
 } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
+import { getDefaultUserDataPath } from "../paths";
 import { buildSnapshotProviderRecords } from "../provider/session-title";
 import type { DaemonState } from "../state";
 import {
@@ -65,7 +71,11 @@ import {
   compactText as compactDigestText,
   conversationTurns,
 } from "./digest";
-import { installErrorNeedsUser, needsManagedInstall } from "./install-policy";
+import {
+  installErrorNeedsUser,
+  needsGlobalInstall,
+  needsManagedInstall,
+} from "./install-policy";
 import {
   PARTITION_UNAVAILABLE,
   readPartitionEntry,
@@ -95,9 +105,13 @@ import {
 } from "./rsrs";
 import {
   allocateLoopbackPort,
+  globalRsrsDataDir,
   installManagedRsrsCli,
+  isFreshRsrsHome,
   prepareRsrsDataDir,
   type RsrsHome,
+  readyRsrsModelDir,
+  usesGlobalRsrsHome,
 } from "./rsrs-install";
 import { RsrsMemoryProvider } from "./rsrs-provider";
 import {
@@ -152,7 +166,8 @@ export interface MemoryServiceOptions {
   installRetryDelaysMs?: readonly number[];
   turnRecallBudgetMs?: number;
   provider?: MemoryProvider;
-  userLibraryHome?: string;
+  homeDir?: string;
+  defaultUserDataPath?: string;
   now?: () => Date;
 }
 
@@ -221,12 +236,22 @@ function rsrsDataDirFromEnv() {
   return process.env.RSRS_DATA_DIR?.trim() || undefined;
 }
 
+function globalHomeWithoutCliMessage(dataDir: string) {
+  return `${dataDir} already holds rsrs data, but its CLI is missing from ${path.join(dataDir, "bin")}. Cocurdex does not change an rsrs it did not install: run \`rsrs runtime start\` with your rsrs to restore it, or move the folder aside to let Cocurdex set up a new one.`;
+}
+
+function upgradeRequiredMessage(
+  required: NonNullable<MemoryStatus["upgradeRequired"]>,
+) {
+  return `rsrs ${required.installed} is older than ${required.minimum}, the oldest version Cocurdex supports. Upgrade rsrs to use memory in Cocurdex.`;
+}
+
 function hostLibc(): MemoryPlatform["libc"] {
   if (process.platform !== "linux") return undefined;
   const report = process.report?.getReport() as
     | { header?: { glibcVersionRuntime?: string } }
     | undefined;
-  return report?.header?.glibcVersionRuntime ? "glibc" : "musl";
+  return rsrsLibcFor(report?.header?.glibcVersionRuntime);
 }
 
 function withIdentityHint(message: string) {
@@ -270,6 +295,7 @@ export class MemoryService {
   private homePromise: Promise<RsrsHome> | null = null;
   private readonly lifetime = new AbortController();
   private lastRecall: MemoryRecallStatus | null = null;
+  private upgradeRequired: MemoryStatus["upgradeRequired"] = null;
   private readonly rsrs: RsrsMemoryProvider;
   private readonly userLibrary: UserRsrsLibrary;
   private readonly provider: MemoryProvider;
@@ -301,10 +327,7 @@ export class MemoryService {
 
   // The user's own rsrs home, unless it is the store Cocurdex manages.
   private async userLibraryDir() {
-    const dataDir = path.join(
-      this.options.userLibraryHome ?? os.homedir(),
-      ".rsrs",
-    );
+    const dataDir = globalRsrsDataDir(this.homeDir());
     const own = await this.rsrsHome().catch(() => null);
     if (!own) return null;
     const user = await realpath(dataDir).catch(() => null);
@@ -321,19 +344,36 @@ export class MemoryService {
     return this.provider === this.rsrs && this.currentSettings().userLibrary;
   }
 
+  private homeDir() {
+    return this.options.homeDir ?? os.homedir();
+  }
+
   private rsrsHome(): Promise<RsrsHome> {
-    this.homePromise ??= (async () => {
+    this.homePromise ??= (async (): Promise<RsrsHome> => {
+      const explicit = this.options.rsrsDataDir ?? rsrsDataDirFromEnv();
+      const globalDir = globalRsrsDataDir(this.homeDir());
+      const global =
+        !explicit &&
+        usesGlobalRsrsHome({
+          userDataPath: this.options.userDataPath,
+          defaultUserDataPath:
+            this.options.defaultUserDataPath ?? getDefaultUserDataPath(),
+          os: this.platform.os,
+        });
+      if (global) {
+        const dataDir = await realpath(globalDir).catch(() => globalDir);
+        return { kind: "global", dataDir };
+      }
       const dataDir = await prepareRsrsDataDir(
-        this.options.rsrsDataDir ??
-          rsrsDataDirFromEnv() ??
-          path.join(this.options.userDataPath, "rsrs"),
+        explicit ?? path.join(this.options.userDataPath, "rsrs"),
       );
       let rpcPort = await readRsrsRpcPort(this.options.state);
       if (!rpcPort) {
         rpcPort = await allocateLoopbackPort();
         await writeRsrsRpcPort(this.options.state, rpcPort);
       }
-      return { dataDir, rpcPort };
+      const modelDir = explicit ? null : await readyRsrsModelDir(globalDir);
+      return { kind: "isolated", dataDir, rpcPort, modelDir };
     })().catch((error: unknown) => {
       this.homePromise = null;
       throw error;
@@ -384,6 +424,7 @@ export class MemoryService {
         error: null,
         doctor: null,
         blockedPin: null,
+        ownedHome: null,
       }
     );
   }
@@ -404,6 +445,7 @@ export class MemoryService {
   isReadyForTurns() {
     if (!this.currentSettings().enabled) return false;
     if (this.provider !== this.rsrs) return true;
+    if (this.upgradeRequired) return false;
     return (
       this.statusCache?.status.available === true ||
       this.installState?.status === "ready"
@@ -474,6 +516,19 @@ export class MemoryService {
 
   private async needsInstall() {
     const settings = this.currentSettings();
+    const home = await this.rsrsHome();
+    if (home.kind === "global") {
+      const state = this.currentInstallState();
+      return needsGlobalInstall({
+        supported: this.supported,
+        enabled: settings.enabled,
+        customCli: Boolean(settings.cliPath),
+        hasExecutable: (await this.resolveExecutable()) !== null,
+        freshHome: await isFreshRsrsHome(home.dataDir),
+        ownedHome: state.ownedHome === home.dataDir,
+        blocked: state.blockedPin === RSRS_CLI_VERSION,
+      });
+    }
     return needsManagedInstall({
       supported: this.supported,
       enabled: settings.enabled,
@@ -577,7 +632,7 @@ export class MemoryService {
         space: null,
         cloud: { ...DEFAULT_MEMORY_CLOUD_STATUS, autosync: false },
         doctor: pinned ? installState.doctor : null,
-        error: installState.error,
+        error: installState.error ?? (await this.globalHomeProblem()),
         checkedAt: installState.attemptedAt,
         lastRecall: null,
         userLibrary: NO_USER_LIBRARY,
@@ -596,6 +651,7 @@ export class MemoryService {
     ]);
     const version =
       versionResult.status === "fulfilled" ? versionResult.value : null;
+    this.noteVersion(version);
     const summary =
       statusResult.status === "fulfilled" ? statusResult.value : null;
     const error =
@@ -623,6 +679,7 @@ export class MemoryService {
         error ??
         (summary ? memoryStatusError(summary) : null) ??
         (installState.status === "failed" ? installState.error : null),
+      upgradeRequired: this.upgradeRequired,
       checkedAt: this.now().toISOString(),
       lastRecall: null,
       userLibrary: NO_USER_LIBRARY,
@@ -675,6 +732,7 @@ export class MemoryService {
             version: version ?? doctor.report.version,
           },
           blockedPin: null,
+          ownedHome: this.currentInstallState().ownedHome,
         });
         if (this.currentSettings().enabled) void this.rsrs.warmup();
         return {
@@ -740,6 +798,7 @@ export class MemoryService {
   // rsrs refuses library access after an interrupted runtime maintenance
   // (respire-cli autostart/lifecycle.rs) until the host restarts the runtime.
   private async restartRuntimeForRecovery() {
+    if (!(await this.rsrs.ownsRuntime())) return;
     const executable = await this.resolveExecutable(true);
     if (!executable) return;
     await restartRsrsRuntime(executable).catch((error: unknown) => {
@@ -766,18 +825,7 @@ export class MemoryService {
   private async setUpRsrs(signal: AbortSignal) {
     const asset = rsrsCliAsset(this.platform);
     if (!asset) throw new Error(this.unsupportedMessage());
-    if (!this.currentSettings().cliPath) {
-      const { dataDir } = await this.rsrsHome();
-      const managed = await installManagedRsrsCli({
-        dataDir,
-        os: this.platform.os,
-        asset,
-        beforeReplace: () => this.rsrs.stopRuntime(),
-      });
-      logDaemonDiagnostic("info", "memory.cliInstalled", {
-        replaced: managed.replaced,
-      });
-    }
+    if (!this.currentSettings().cliPath) await this.installCli(asset);
     const executable = await this.resolveExecutable(true);
     if (!executable) throw new Error(MEMORY_MISSING_EXECUTABLE_MESSAGE);
     this.rsrs.adoptExecutable(executable);
@@ -794,6 +842,48 @@ export class MemoryService {
     await installRsrsModel(executable);
     this.rsrs.invalidateRuntime();
     return executable;
+  }
+
+  private async globalHomeProblem() {
+    if (this.currentSettings().cliPath) return null;
+    const home = await this.rsrsHome().catch(() => null);
+    if (home?.kind !== "global") return null;
+    if (this.currentInstallState().ownedHome === home.dataDir) return null;
+    return (await isFreshRsrsHome(home.dataDir))
+      ? null
+      : globalHomeWithoutCliMessage(home.dataDir);
+  }
+
+  private async installCli(asset: RsrsCliAsset) {
+    const home = await this.rsrsHome();
+    if (home.kind === "isolated") {
+      const managed = await installManagedRsrsCli({
+        dataDir: home.dataDir,
+        os: this.platform.os,
+        asset,
+        beforeReplace: () => this.rsrs.stopRuntime(),
+      });
+      logDaemonDiagnostic("info", "memory.cliInstalled", {
+        replaced: managed.replaced,
+      });
+      return;
+    }
+    if (await this.resolveExecutable(true)) return;
+    const owned = this.currentInstallState().ownedHome === home.dataDir;
+    if (!owned && !(await isFreshRsrsHome(home.dataDir))) {
+      throw new Error(globalHomeWithoutCliMessage(home.dataDir));
+    }
+    await prepareRsrsDataDir(home.dataDir);
+    await this.persistInstallState({
+      ...this.currentInstallState(),
+      ownedHome: home.dataDir,
+    });
+    await installManagedRsrsCli({
+      dataDir: home.dataDir,
+      os: this.platform.os,
+      asset,
+    });
+    logDaemonDiagnostic("info", "memory.cliInstalled", { replaced: false });
   }
 
   async doctor(options: { remote?: boolean; checkUpdate?: boolean } = {}) {
@@ -818,6 +908,7 @@ export class MemoryService {
           : "rsrs doctor reported a failing critical check",
         doctor: { ...result.report, version },
         blockedPin: this.currentInstallState().blockedPin,
+        ownedHome: this.currentInstallState().ownedHome,
       });
       return result.report;
     })().finally(() => {
@@ -855,13 +946,20 @@ export class MemoryService {
     const password = input.password;
     const recoveryKey = input.recoveryKey?.trim() ?? "";
     if (user.length < 3) {
-      throw new Error("Username must be at least 3 characters");
+      throw new ReasonError(
+        "memory.invalidUsername",
+        "Username must be at least 3 characters",
+      );
     }
     if (password.length < 8) {
-      throw new Error("Login password must be at least 8 characters");
+      throw new ReasonError(
+        "memory.invalidPassword",
+        "Login password must be at least 8 characters",
+      );
     }
     if (input.mode === "signin" && !recoveryKey) {
-      throw new Error(
+      throw new ReasonError(
+        "memory.recoveryKeyRequired",
         "The recovery key is required to sign in on a new device",
       );
     }
@@ -920,7 +1018,8 @@ export class MemoryService {
     if (enabled) {
       const summary = await readRsrsStatus(executable).catch(() => null);
       if (!toCloudStatus(summary).connected) {
-        throw new Error(
+        throw new ReasonError(
+          "memory.cloudAccountRequired",
           "Connect an rsrs account before turning on multi-device sync",
         );
       }
@@ -944,6 +1043,7 @@ export class MemoryService {
     const settings = this.currentSettings();
     const installState = this.currentInstallState();
     const version = await readRsrsVersion(executable, 4_000).catch(() => null);
+    this.noteVersion(version);
     const failed = installState.status === "failed";
     const blocked = failed && installState.blockedPin === RSRS_CLI_VERSION;
     return {
@@ -971,10 +1071,18 @@ export class MemoryService {
       error:
         (failed ? installState.error : null) ?? memoryStatusError(cloudSummary),
       installBlocked: blocked,
+      upgradeRequired: this.upgradeRequired,
       checkedAt: this.now().toISOString(),
       lastRecall: null,
       userLibrary: NO_USER_LIBRARY,
     };
+  }
+
+  private noteVersion(version: string | null) {
+    const tooOld = version !== null && !rsrsVersionMeetsMinimum(version);
+    this.upgradeRequired = tooOld
+      ? { installed: version, minimum: RSRS_MIN_CLI_VERSION }
+      : null;
   }
 
   private async readyProvider() {
@@ -982,6 +1090,9 @@ export class MemoryService {
     if (!this.currentSettings().enabled) return MEMORY_DISABLED_MESSAGE;
     if (!(await this.provider.available())) {
       return MEMORY_MISSING_EXECUTABLE_MESSAGE;
+    }
+    if (this.provider === this.rsrs && this.upgradeRequired) {
+      return upgradeRequiredMessage(this.upgradeRequired);
     }
     return null;
   }
@@ -1058,7 +1169,10 @@ export class MemoryService {
 
   private assertWritable(ids: ReadonlyArray<string | null | undefined>) {
     if (ids.some((id) => id && isUserLibraryMemoryId(id))) {
-      throw new Error(USER_LIBRARY_READ_ONLY);
+      throw new ReasonError(
+        "memory.userLibraryReadOnly",
+        USER_LIBRARY_READ_ONLY,
+      );
     }
   }
 

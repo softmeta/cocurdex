@@ -26,6 +26,7 @@ import {
   getCompatibleProviderApis,
   isAcpRegistryAgentId,
   parseDisabledAgentIds,
+  ReasonError,
 } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import type { ProviderCredentials } from "../provider-credentials/service";
@@ -134,7 +135,10 @@ export class DaemonProviderService {
   async resetProviderModel(providerId: string, modelId: string) {
     const catalog = await this.findCatalogModel(providerId, modelId);
     if (!catalog) {
-      throw new Error(`${modelId} is not a built-in model of ${providerId}`);
+      throw new ReasonError(
+        "provider.notBuiltInModel",
+        `${modelId} is not a built-in model of ${providerId}`,
+      );
     }
     await this.state.deleteProviderModel(providerId, modelId);
     await this.state.deleteProviderModelOverride(providerId, modelId);
@@ -155,7 +159,8 @@ export class DaemonProviderService {
         .map((candidate) => candidate.api),
     );
     if (apis.size > 0 && !apis.has(model.api)) {
-      throw new Error(
+      throw new ReasonError(
+        "provider.unsupportedApi",
         `${config.name} models run on ${[...apis].join(", ")}, not ${model.api}`,
       );
     }
@@ -264,7 +269,10 @@ export class DaemonProviderService {
       : await this.state.getProviderConfig(providerId);
 
     if (!model && !provider) {
-      throw new Error("Provider model not found");
+      throw new ReasonError(
+        "provider.modelNotFound",
+        "Provider model not found",
+      );
     }
 
     const now = new Date().toISOString();
@@ -284,7 +292,10 @@ export class DaemonProviderService {
 
   async setTitleModel(selection: TitleModelSelection | null) {
     if (!isValidTitleModelSelection(selection)) {
-      throw new Error("Invalid title model selection");
+      throw new ReasonError(
+        "provider.invalidTitleModel",
+        "Invalid title model selection",
+      );
     }
     await setTitleModelSetting(this.state, selection);
   }
@@ -293,7 +304,10 @@ export class DaemonProviderService {
     selection: TitleModelSelection,
   ): Promise<TitleModelProbeResult> {
     if (!isValidTitleModelSelection(selection) || selection === null) {
-      throw new Error("Invalid title model selection");
+      throw new ReasonError(
+        "provider.invalidTitleModel",
+        "Invalid title model selection",
+      );
     }
     return probeTitleModel(
       this.state,

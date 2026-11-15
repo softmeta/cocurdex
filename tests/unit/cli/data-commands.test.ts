@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin: CLI usage and argument errors are the cocurdex command contract that scripts read.
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { handleIssueCommand } from "@cocurdex/cli/internal/issue-commands";

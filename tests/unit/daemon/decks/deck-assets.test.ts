@@ -48,11 +48,15 @@ describe("DeckAssetStore", () => {
   it("rejects relative paths, other formats, and unknown hashes", async () => {
     const gifPath = path.join(sourceDir, "a.gif");
     await writeFile(gifPath, "GIF89a\u0001\u0000\u0001\u0000", "latin1");
-    await expect(store.importFile("a.png")).rejects.toThrow("absolute");
-    await expect(store.importFile(gifPath)).rejects.toThrow("PNG and JPEG");
-    await expect(store.requireAll(["d".repeat(64)])).rejects.toThrow(
-      "deck.importImage",
-    );
+    await expect(store.importFile("a.png")).rejects.toMatchObject({
+      reason: "path.notAbsolute",
+    });
+    await expect(store.importFile(gifPath)).rejects.toMatchObject({
+      reason: "deck.unsupportedImage",
+    });
+    await expect(store.requireAll(["d".repeat(64)])).rejects.toMatchObject({
+      reason: "deck.imageNotFound",
+    });
   });
 });
 

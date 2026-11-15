@@ -136,6 +136,7 @@
         "!tests/harness/**",
         "!tests/fixtures/temp-dirs.ts"
       ],
+      "plugins": ["./biome-plugins/no-message-text-assertions.grit"],
       "linter": {
         "rules": {
           "style": {

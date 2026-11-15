@@ -1,5 +1,6 @@
 import type { DaemonBackgroundStatus } from "@cocurdex/rpc";
 import type { HostPrincipal } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import { type LoginItemTarget, loginItemFor } from "./login-item";
 import { type LoginItemStore, systemLoginItemStore } from "./login-item-store";
 
@@ -55,10 +56,16 @@ export class DaemonBackgroundService {
 
   async set(enabled: boolean, principal: HostPrincipal) {
     if (principal.kind !== "local") {
-      throw new Error("Only this computer can change background mode");
+      throw new ReasonError(
+        "principal.localOnly",
+        "Only this computer can change background mode",
+      );
     }
     if (!this.item) {
-      throw new Error("Background mode is not available for this daemon");
+      throw new ReasonError(
+        "background.unavailable",
+        "Background mode is not available for this daemon",
+      );
     }
     if (enabled) {
       await this.store.install(this.item);

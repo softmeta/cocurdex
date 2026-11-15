@@ -119,6 +119,7 @@ describe("Claude model probe isolation", () => {
   it("cleans up after initialization fails", async () => {
     responseMode = "error";
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       listClaudeCliProviderModels(async () => "/installed/claude"),
     ).rejects.toThrow("Initialization failed");
@@ -133,6 +134,7 @@ describe("Claude model probe isolation", () => {
       throw new Error("Cannot spawn Claude");
     });
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       listClaudeCliProviderModels(async () => "/installed/claude"),
     ).rejects.toThrow("Cannot spawn Claude");

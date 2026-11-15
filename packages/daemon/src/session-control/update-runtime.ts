@@ -4,6 +4,7 @@ import {
   type CompatibleProviderModel,
   createProviderSnapshotForModel,
   isAgentPermissionModeSupportedForModel,
+  ReasonError,
   type SessionConfiguration,
   type SessionRecord,
   sessionConfigurationOf,
@@ -50,7 +51,10 @@ export function resolveRuntimeUpdate(
   context: RuntimeUpdateContext,
 ): SessionConfiguration {
   if (session.archivedAt) {
-    throw new Error("Restore the session before changing its configuration");
+    throw new ReasonError(
+      "session.archived",
+      "Restore the session before changing its configuration",
+    );
   }
   const current = session.providerSnapshot;
   const requested = input.model ?? current;
@@ -59,7 +63,8 @@ export function resolveRuntimeUpdate(
   }
   const model = findModel(context.compatibleModels, requested);
   if (!model) {
-    throw new Error(
+    throw new ReasonError(
+      "session.modelUnavailable",
       `${requested.providerId}/${requested.modelId} is not available for ${session.agentType}`,
     );
   }

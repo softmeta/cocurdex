@@ -1,6 +1,7 @@
 import type { AgentRoleRecord, SaveAgentRolePayload } from "./agent-role";
 import { isChatWorkspaceId } from "./chat-session";
 import type { AgentId, SessionRecord } from "./contracts";
+import { ReasonError } from "./errors";
 import type { SupportedLocale } from "./locales";
 
 export const PERSONAL_WORKSPACE_ID = "personal";
@@ -80,7 +81,8 @@ export function personalAgentRoleDraft(name: string): PersonalAgentRolePayload {
 
 export function assertPersonalAgentRuntime(agentId: AgentId) {
   if (agentId !== PERSONAL_AGENT_RUNTIME_ID) {
-    throw new Error(
+    throw new ReasonError(
+      "personalAgent.runtimeFixed",
       `Personal agents run on ${PERSONAL_AGENT_RUNTIME_ID}, not ${agentId}`,
     );
   }

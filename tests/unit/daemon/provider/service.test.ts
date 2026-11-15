@@ -100,6 +100,7 @@ describe("DaemonProviderService", () => {
     await expect(
       service.listCompatibleProviderModels("opencode"),
     ).resolves.toEqual([]);
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(
       service.listCompatibleProviderModels("opencode", { forceRefresh: true }),
     ).rejects.toThrow("probe failed");
@@ -158,7 +159,7 @@ describe("DaemonProviderService", () => {
 
     await expect(
       service.setAgentProviderDefault("pi", "missing", "model-x"),
-    ).rejects.toThrow("Provider model not found");
+    ).rejects.toMatchObject({ reason: "provider.modelNotFound" });
     expect(saveAgentProviderDefault).not.toHaveBeenCalled();
   });
 
@@ -282,6 +283,6 @@ describe("DaemonProviderService", () => {
 
     await expect(
       service.setTitleModel({ providerId: 1 } as never),
-    ).rejects.toThrow("Invalid title model selection");
+    ).rejects.toMatchObject({ reason: "provider.invalidTitleModel" });
   });
 });

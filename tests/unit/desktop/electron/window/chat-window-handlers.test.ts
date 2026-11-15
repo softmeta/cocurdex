@@ -202,7 +202,9 @@ describe("independent chat window lifecycle", () => {
   it("preserves the source when the destination renderer fails", async () => {
     const primary = setup();
     const opening = invoke(primary, "detach", "preserved draft");
-    const rejected = expect(opening).rejects.toThrow("renderer exited");
+    const rejected = expect(opening).rejects.toMatchObject({
+      reason: "chatWindow.rendererExited",
+    });
     const chat = fixture.windows[1] as WindowStub;
     chat.webContents.emit("render-process-gone");
     await rejected;
@@ -217,7 +219,9 @@ describe("independent chat window lifecycle", () => {
   it("rejects requests from unrelated native windows", () => {
     setup();
     const unrelated = new WindowStub();
-    expect(() => invoke(unrelated, "bootstrap")).toThrow("application window");
+    expect(() => invoke(unrelated, "bootstrap")).toThrow(
+      expect.objectContaining({ reason: "chatWindow.noSourceWindow" }),
+    );
   });
 });
 
@@ -344,7 +348,9 @@ describe("chat intent routing", () => {
   it("keeps queued intents in the source when detaching fails", async () => {
     const primary = setup();
     const opening = invoke(primary, "detach", "draft");
-    const rejected = expect(opening).rejects.toThrow("renderer exited");
+    const rejected = expect(opening).rejects.toMatchObject({
+      reason: "chatWindow.rendererExited",
+    });
     const chat = fixture.windows[1] as WindowStub;
     invoke(primary, "dispatchIntent", code);
     chat.webContents.emit("render-process-gone");
@@ -373,13 +379,13 @@ describe("chat intent routing", () => {
       [],
     );
     expect(() => invoke(chat, "setBrowserContext", [annotation])).toThrow(
-      "main window",
+      expect.objectContaining({ reason: "chatWindow.notMainWindow" }),
     );
   });
   it("rejects intents from unrelated windows and malformed input", () => {
     const primary = setup();
     expect(() => invoke(new WindowStub(), "dispatchIntent", code)).toThrow(
-      "application window",
+      expect.objectContaining({ reason: "chatWindow.noSourceWindow" }),
     );
     expect(() =>
       invoke(primary, "dispatchIntent", {

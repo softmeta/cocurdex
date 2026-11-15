@@ -149,7 +149,7 @@ describe("worktree daemon RPC", () => {
         },
         token: "test",
       } satisfies DaemonRequest<"worktree.remove">),
-    ).rejects.toThrow(/still uses this worktree/);
+    ).rejects.toMatchObject({ reason: "worktree.inUse" });
 
     await service.deleteSession("session-1");
 

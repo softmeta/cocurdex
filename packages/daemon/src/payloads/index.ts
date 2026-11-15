@@ -1,4 +1,5 @@
 import type { DaemonMethod, DaemonRequest } from "@cocurdex/rpc";
+import { ReasonError } from "@cocurdex/shared";
 import { z } from "zod";
 import { applicationPayloadSchemas } from "./application-payloads";
 import { deckPayloadSchemas } from "./deck-payloads";
@@ -44,7 +45,8 @@ export function parseDaemonRequest<M extends DaemonMethod>(
   }
   const result = schema.safeParse(request.params);
   if (!result.success) {
-    throw new Error(
+    throw new ReasonError(
+      "payload.invalid",
       `Invalid ${request.method} payload: ${z.prettifyError(result.error)}`,
     );
   }

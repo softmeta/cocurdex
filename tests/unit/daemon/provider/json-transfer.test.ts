@@ -101,7 +101,7 @@ describe("importProviderJson", () => {
 
     await expect(
       importProviderJson(state, vi.fn(), '{"providers":{}}'),
-    ).rejects.toThrow("No providers found in JSON.");
+    ).rejects.toMatchObject({ reason: "provider.invalidJson" });
     expect(state.saveProviderConfig).not.toHaveBeenCalled();
   });
 });

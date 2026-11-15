@@ -57,7 +57,7 @@ describe("daemon idle shutdown RPC", () => {
         { pid: status.pid, startedAt: "previous" },
         { userDataPath },
       ),
-    ).rejects.toThrow("identity changed");
+    ).rejects.toMatchObject({ reason: "daemon.identityChanged" });
     expect(
       await requestDaemon("daemon.status", { userDataPath }),
     ).toMatchObject({ startedAt: status.startedAt });

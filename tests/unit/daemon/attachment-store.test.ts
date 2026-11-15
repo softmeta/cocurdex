@@ -163,7 +163,7 @@ describe("DaemonAttachmentStore", () => {
   it("rejects content that is not a PDF and keeps nothing", async () => {
     await expect(
       store.importDocument(Readable.from([Buffer.from("not-a-pdf")]), "x.pdf"),
-    ).rejects.toThrow("valid PDF");
+    ).rejects.toMatchObject({ reason: "invalid" });
     expect(await storedFiles("document-attachments")).toEqual([]);
   });
 

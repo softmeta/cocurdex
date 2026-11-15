@@ -310,6 +310,7 @@ describe("PersonalAgentService", () => {
   it("rolls back the role when the home thread cannot be created", async () => {
     harness.failNextHomeSession();
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(harness.service.create({ role: coachRole })).rejects.toThrow(
       "agent unavailable",
     );
@@ -345,14 +346,14 @@ describe("PersonalAgentService", () => {
   it("refuses to run a personal agent on another engine", async () => {
     await expect(
       harness.service.create({ role: { ...coachRole, agentId: "codex" } }),
-    ).rejects.toThrow("Personal agents run on pi");
+    ).rejects.toMatchObject({ reason: "personalAgent.runtimeFixed" });
     const coach = await harness.service.create({ role: coachRole });
     await expect(
       harness.service.update({
         id: coach.id,
         role: { ...coachRole, agentId: "claude-agent" },
       }),
-    ).rejects.toThrow("Personal agents run on pi");
+    ).rejects.toMatchObject({ reason: "personalAgent.runtimeFixed" });
     expect(await harness.database.agentRoles.list()).toEqual([
       expect.objectContaining({ id: coach.role.id, agentId: "pi" }),
     ]);

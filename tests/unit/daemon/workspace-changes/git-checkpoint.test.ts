@@ -150,7 +150,7 @@ describe("git checkpoint adapter", () => {
         userMessageId: "user-1",
         phase: "after",
       }),
-    ).rejects.toThrow("Git checkpoint changed-content limit");
+    ).rejects.toMatchObject({ reason: "checkpoint.tooLarge" });
   });
 
   it("restores exact bytes and deletes session checkpoint refs on cleanup", async () => {

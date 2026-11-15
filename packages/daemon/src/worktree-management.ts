@@ -4,6 +4,7 @@ import {
   type ManagedWorktree,
   parseWorktreeSettings,
   primaryWorkspaceRootPath,
+  ReasonError,
   serializeWorktreeSettings,
   sessionsUsingWorktreePath,
   WORKTREE_SETTING_KEY,
@@ -169,7 +170,8 @@ export async function removeManagedWorktree(input: {
     input.worktreePath,
   );
   if (bound.length > 0) {
-    throw new Error(
+    throw new ReasonError(
+      "worktree.inUse",
       bound.length === 1
         ? `Session "${bound[0]?.title}" still uses this worktree.`
         : `${bound.length} sessions still use this worktree.`,

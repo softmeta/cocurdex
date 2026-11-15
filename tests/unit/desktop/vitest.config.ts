@@ -6,6 +6,7 @@ const desktopRoot = path.resolve(import.meta.dirname, "../../../apps/desktop");
 const packagesRoot = path.resolve(import.meta.dirname, "../../../packages");
 
 const packageEntries: Record<string, string> = {
+  "@cocurdex/shared/errors": "shared/src/errors.ts",
   "@cocurdex/shared/node": "shared/src/node.ts",
   "@cocurdex/shared": "shared/src/index.ts",
   "@cocurdex/rpc/client": "rpc/src/client.ts",

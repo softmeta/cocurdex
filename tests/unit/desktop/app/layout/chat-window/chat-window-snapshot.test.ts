@@ -79,7 +79,9 @@ describe("chat presentation handoff", () => {
     store.set(activeWorkspaceIdAtom, "original");
     expect(() =>
       applyChatSnapshot(store, JSON.stringify({ version: 99 })),
-    ).toThrow("Invalid chat window snapshot");
+    ).toThrow(
+      expect.objectContaining({ reason: "chatWindow.invalidSnapshot" }),
+    );
     expect(store.get(activeWorkspaceIdAtom)).toBe("original");
   });
 });

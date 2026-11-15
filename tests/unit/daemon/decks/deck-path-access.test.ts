@@ -73,7 +73,7 @@ describe("deck path RPC access", () => {
         { path: path.join(outside, "outside.png") },
         device,
       ),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     await expect(
       call(
         "deck.importImage",
@@ -89,7 +89,7 @@ describe("deck path RPC access", () => {
         { id: deckId, outputPath: escaped, format: "pdf" },
         device,
       ),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     expect(existsSync(escaped)).toBe(false);
 
     const missingParent = path.join(workspace, "new-dir", "export.pdf");
@@ -99,7 +99,7 @@ describe("deck path RPC access", () => {
         { id: deckId, outputPath: missingParent, format: "pdf" },
         device,
       ),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
   });
 
   it("needs interact to import and the file scope to touch a path", async () => {
@@ -128,7 +128,7 @@ describe("deck path RPC access", () => {
         { path: path.join(workspace, "inside.png") },
         interactor,
       ),
-    ).rejects.toThrow(/missing the files.read scope/);
+    ).rejects.toMatchObject({ reason: "path.missingScope" });
     const output = path.join(workspace, "export.pdf");
     await expect(
       call(
@@ -136,7 +136,7 @@ describe("deck path RPC access", () => {
         { id: deckId, outputPath: output, format: "pdf" },
         { ...interactor, scopes: ["read", "files.read"] },
       ),
-    ).rejects.toThrow(/missing the files.write scope/);
+    ).rejects.toMatchObject({ reason: "path.missingScope" });
     expect(existsSync(output)).toBe(false);
   });
 

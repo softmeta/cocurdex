@@ -59,7 +59,7 @@ describe("CocurdexDatabase.issues", () => {
         title: "Stale title",
         expectedRevision: issue.revision,
       }),
-    ).rejects.toThrow("Issue was modified");
+    ).rejects.toMatchObject({ code: "ISSUE_REVISION_CONFLICT" });
 
     const view = await database.issues.loadView({
       viewId: DEFAULT_VIEW_ID,
@@ -102,7 +102,7 @@ describe("CocurdexDatabase.issues", () => {
         id: issue.id,
         status: "not-a-column",
       }),
-    ).rejects.toThrow("Issue status column not found");
+    ).rejects.toMatchObject({ reason: "issue.columnNotFound" });
     database.close();
   });
 
@@ -168,7 +168,7 @@ describe("CocurdexDatabase.issues", () => {
     }
     await expect(
       database.issues.deleteColumn({ field: "status", id: "backlog" }),
-    ).rejects.toThrow("Cannot delete the last issue status column");
+    ).rejects.toMatchObject({ reason: "issue.lastColumn" });
     database.close();
 
     const reopened = createCocurdexDatabase(databasePath);

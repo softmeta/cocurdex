@@ -150,6 +150,7 @@ describe("createSyncEngine", () => {
     const synchronization = engine.synchronize();
     engine.handleEvent("held", { epoch: "epoch", seq: 1 });
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(synchronization).rejects.toThrow("down");
     expect(applied).toEqual(["held"]);
   });

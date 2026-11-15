@@ -130,7 +130,7 @@ describe("issue view grouping", () => {
         columnId: "missing",
         sortOrder: 0,
       }),
-    ).rejects.toThrow("Workspace not found");
+    ).rejects.toMatchObject({ reason: "workspace.notFound" });
 
     await groupView(database, "parent");
     const nested = await database.issues.moveIssue({

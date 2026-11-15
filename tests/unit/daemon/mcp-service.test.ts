@@ -89,12 +89,14 @@ describe("DaemonMcpService", () => {
   it("rejects configs Pi would reject, with Pi's message", async () => {
     const service = await createService();
 
+    // biome-ignore lint/plugin: Pi's validator owns this text and the UI shows it as is
     await expect(
       service.config.saveServer("sentry", {
         url: "https://mcp.sentry.dev/mcp",
         headers: { Authorization: 1 },
       }),
     ).rejects.toThrow('server "sentry": headers must map names to strings');
+    // biome-ignore lint/plugin: Pi's validator owns this text and the UI shows it as is
     await expect(
       service.config.saveConfig(
         '{"mcpServers":{"legacy":{"type":"sse","url":"https://example.invalid/sse"}}}',
@@ -123,7 +125,7 @@ describe("DaemonMcpService", () => {
     ]);
     await expect(
       service.config.saveServer("b", { command: "b" }, "a2"),
-    ).rejects.toThrow('"b" already exists');
+    ).rejects.toMatchObject({ reason: "mcp.serverExists" });
 
     await service.config.removeServer("a2");
     expect(Object.keys(await service.config.readServers())).toEqual(["b"]);
@@ -151,9 +153,9 @@ describe("DaemonMcpService", () => {
         state: "connected",
       }),
     ]);
-    await expect(service.readProjectConfig("missing")).rejects.toThrow(
-      "Workspace not found",
-    );
+    await expect(service.readProjectConfig("missing")).rejects.toMatchObject({
+      reason: "workspace.notFound",
+    });
   });
 
   it("merges imported servers into the existing config", async () => {
@@ -218,7 +220,7 @@ describe("DaemonMcpService agent targets", () => {
     });
     await expect(
       service.config.setServerAgents("missing", ["codex"]),
-    ).rejects.toThrow('No MCP server named "missing"');
+    ).rejects.toMatchObject({ reason: "mcp.serverNotFound" });
   });
 
   it("explains which servers other agents cannot receive", async () => {

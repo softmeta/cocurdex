@@ -1,5 +1,6 @@
 import path from "node:path";
 import { RequestError } from "@agentclientprotocol/sdk/unstable";
+import { ReasonError } from "@cocurdex/shared";
 
 const ACP_AUTH_REQUIRED_CODE = -32000;
 const AUTH_REQUIRED_MESSAGE =
@@ -43,7 +44,8 @@ export function createAcpConnectionLostError(
 ) {
   const stderrExcerpt =
     cause instanceof AcpProcessExitError ? cause.stderrExcerpt : "";
-  return new Error(
+  return new ReasonError(
+    "agent.connectionLost",
     appendAgentOutput(
       `${agentLabel} stopped unexpectedly. Send your message again to continue.`,
       stderrExcerpt,
@@ -56,7 +58,8 @@ export function createAcpSignInRequiredError(
   agentLabel: string,
   cause: unknown,
 ) {
-  return new Error(
+  return new ReasonError(
+    "agent.signInRequired",
     `${agentLabel} needs you to sign in. Choose Sign in from the model menu, then send again.`,
     { cause },
   );

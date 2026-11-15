@@ -32,6 +32,7 @@ export * from "./delegation-transcript";
 export * from "./disabled-agents";
 export * from "./doc-images";
 export * from "./entity-links";
+export * from "./errors";
 export * from "./execution-tree";
 export * from "./files";
 export * from "./follow-up";

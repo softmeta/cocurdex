@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { ReasonError } from "@cocurdex/shared";
 
 export const HTML_PREVIEW_SCHEME = "cocurdex-html";
 export const HTML_PREVIEW_URL_PATTERN =
@@ -14,13 +15,19 @@ export class HtmlPreviewStore {
   add(html: string): string {
     const bytes = Buffer.byteLength(html, "utf8");
     if (bytes > MAX_PREVIEW_BYTES) {
-      throw new Error("HTML preview is too large");
+      throw new ReasonError(
+        "htmlPreview.tooLarge",
+        "HTML preview is too large",
+      );
     }
     if (
       this.totalBytes + bytes > MAX_PREVIEW_BYTES ||
       this.documents.size >= MAX_PREVIEWS
     ) {
-      throw new Error("Close a browser preview before opening another");
+      throw new ReasonError(
+        "htmlPreview.limitReached",
+        "Close a browser preview before opening another",
+      );
     }
     const url = `${HTML_PREVIEW_SCHEME}://preview/${randomUUID()}`;
     this.documents.set(url, html);
@@ -48,7 +55,11 @@ export class HtmlPreviewStore {
     if (previous === undefined) throw new Error("HTML preview not found");
     const bytes = Buffer.byteLength(html, "utf8");
     const total = this.totalBytes - Buffer.byteLength(previous, "utf8") + bytes;
-    if (total > MAX_PREVIEW_BYTES) throw new Error("HTML preview is too large");
+    if (total > MAX_PREVIEW_BYTES)
+      throw new ReasonError(
+        "htmlPreview.tooLarge",
+        "HTML preview is too large",
+      );
     this.documents.set(url, html);
     this.totalBytes = total;
   }

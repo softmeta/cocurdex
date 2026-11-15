@@ -104,13 +104,13 @@ describe("MCP RPC access", () => {
         { name: "probe", config: markerServer(marker) },
         executeDevice,
       ),
-    ).rejects.toThrow(/registered workspace/);
-    await expect(call("mcp.status", {}, executeDevice)).rejects.toThrow(
-      /registered workspace/,
-    );
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
+    await expect(call("mcp.status", {}, executeDevice)).rejects.toMatchObject({
+      reason: "path.outsideWorkspace",
+    });
     await expect(
       call("mcp.login.start", { name: "probe" }, executeDevice),
-    ).rejects.toThrow(/registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     expect(existsSync(marker)).toBe(false);
   });
 });

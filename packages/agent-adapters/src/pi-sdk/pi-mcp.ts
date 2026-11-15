@@ -8,6 +8,7 @@ import type {
   McpServerStatus,
   McpStatusReport,
 } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import {
   loadMcpConfig,
   type McpServerEntry,
@@ -279,7 +280,10 @@ export function findEntry(
     expectedConfig &&
     JSON.stringify(entry.config) !== JSON.stringify(expectedConfig)
   )
-    throw new Error("Application configuration changed. Try again.");
+    throw new ReasonError(
+      "application.configChanged",
+      "Application configuration changed. Try again.",
+    );
   return { agentDir, entry };
 }
 

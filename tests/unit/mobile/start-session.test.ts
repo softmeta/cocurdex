@@ -70,6 +70,7 @@ describe("createSessionStarter", () => {
     const fake = fakeConnection(1);
     const start = createSessionStarter(fake.connection);
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(start(request)).rejects.toThrow("offline");
     const started = await start(request);
 
@@ -96,6 +97,7 @@ describe("createSessionStarter", () => {
     const fake = fakeConnection(1);
     const start = createSessionStarter(fake.connection);
 
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(start(request)).rejects.toThrow("offline");
     const started = await start({ ...request, prompt: "Review tax rules" });
 

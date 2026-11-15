@@ -195,13 +195,14 @@
       "copyReport": "Copy full report",
       "doctor": "doctor: {{status}} · {{pass}} pass · {{warn}} warn · {{fail}} fail",
       "flaggedChecks": "Checks that need attention",
-      "installBlocked": "rsrs stopped partway through a key handoff that only a newer rsrs can finish. Memory still recalls and saves; Cocurdex picks up the fix automatically when it ships.",
+      "installBlocked": "rsrs stopped partway through a key handoff that only a newer rsrs can finish. Memory still recalls and saves; upgrade rsrs once a release with the fix ships.",
       "installing": "Installing rsrs and its local model; the first install can take 10+ minutes…",
       "missing": "rsrs is not installed",
       "reportCopied": "Report copied",
       "title": "Status",
       "unknown": "unknown version",
-      "unsupported": "Long-term memory needs the rsrs CLI, which has no build for Intel Macs, so it stays off on this machine."
+      "unsupported": "Long-term memory needs the rsrs CLI, which has no build for Intel Macs, so it stays off on this machine.",
+      "upgradeRequired": "rsrs {{installed}} on this machine is older than {{minimum}}, the oldest version Cocurdex supports. Memory in Cocurdex is paused until you upgrade rsrs; Cocurdex does not upgrade an rsrs it did not install."
     },
     "userLibrary": {
       "description": "Agent sessions also recall from the rsrs memory you set up yourself (~/.rsrs), as reference only. Cocurdex never writes to it, and its own memories win when the two disagree.",

@@ -7,6 +7,7 @@ import {
   type MessageRecord,
   messageAgentLookup,
   messageHandoffItem,
+  ReasonError,
   type StartContextRun,
   toolCallHandoffItem,
 } from "@cocurdex/shared";
@@ -161,7 +162,8 @@ export async function readSessionActivity(
     !ancestors.has(sessionId) &&
     !delegated
   ) {
-    throw new Error(
+    throw new ReasonError(
+      "session.outOfScope",
       `Session ${sessionId} is not this session, one it was forked from, or work it delegated`,
     );
   }

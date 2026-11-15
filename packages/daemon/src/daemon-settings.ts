@@ -14,6 +14,7 @@ import {
   MEMORY_SETTINGS_KEY,
   parseAgentRunLimits,
   parseDisabledAgentIds,
+  ReasonError,
   resolveStoredAgentRunLimits,
 } from "@cocurdex/shared";
 import { requireCatalogEntry, WORKTREE_ENVIRONMENT_KEY } from "./agent-tools";
@@ -78,7 +79,8 @@ export class DaemonSettingsService {
   }): Promise<{ status: "applied" | "queued" }> {
     const entry = requireCatalogEntry(input.key);
     if (entry.tier !== "write") {
-      throw new Error(
+      throw new ReasonError(
+        "settings.notWritable",
         `Settings key '${entry.key}' cannot be set directly (tier=${entry.tier}); use settings_propose`,
       );
     }

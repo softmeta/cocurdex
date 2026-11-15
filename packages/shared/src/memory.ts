@@ -259,6 +259,7 @@ export interface MemoryStatus {
   // The pinned install stopped on a state only the user or a newer rsrs can
   // clear, while the running store still serves recall and remember.
   installBlocked?: boolean;
+  upgradeRequired?: { installed: string; minimum: string } | null;
   checkedAt: string | null;
   lastRecall: MemoryRecallStatus | null;
 }

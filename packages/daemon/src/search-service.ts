@@ -10,6 +10,7 @@ import type {
   WorkspaceSearchMatch,
   WorkspaceSearchStartPayload,
 } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 
 const BATCH_SIZE = 50;
 const BATCH_INTERVAL_MS = 32;
@@ -199,7 +200,8 @@ export class DaemonSearchService {
 
   async start(payload: WorkspaceSearchStartPayload): Promise<void> {
     if (!(await this.options.canScanRoot(payload.rootPath))) {
-      throw new Error(
+      throw new ReasonError(
+        "path.outsideWorkspace",
         "search.start rejected: rootPath is not a registered workspace root or worktree",
       );
     }

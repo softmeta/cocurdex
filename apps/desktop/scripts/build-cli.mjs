@@ -131,6 +131,10 @@ const alias = {
     "packages/rpc/src/method-scopes.ts",
   ),
   "@cocurdex/rpc": path.join(repoRoot, "packages/rpc/src/index.ts"),
+  "@cocurdex/shared/errors": path.join(
+    repoRoot,
+    "packages/shared/src/errors.ts",
+  ),
   "@cocurdex/shared/node": path.join(repoRoot, "packages/shared/src/node.ts"),
   "@cocurdex/shared": path.join(repoRoot, "packages/shared/src/index.ts"),
 };

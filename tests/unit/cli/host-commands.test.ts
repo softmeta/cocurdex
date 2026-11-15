@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin: CLI usage and argument errors are the cocurdex command contract that scripts read.
 import {
   buildPairingLinks,
   parseScopesFlag,

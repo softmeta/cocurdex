@@ -101,7 +101,7 @@ describe("pdf annotations storage", () => {
           `${pdfAnnotationsStorageKey(path.resolve(filePath))}.json`,
         ),
       ),
-    ).rejects.toThrow("ENOENT");
+    ).rejects.toMatchObject({ code: "ENOENT" });
 
     await expect(service.loadAnnotations(filePath)).resolves.toEqual({
       bookmarks: [],
@@ -116,7 +116,7 @@ describe("pdf annotations storage", () => {
 
     await expect(
       service.loadAnnotations(path.join(userDataPath, "outside.pdf")),
-    ).rejects.toThrow("outside every registered workspace");
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
   });
 
   it("rejects non-PDF files", async () => {
@@ -126,7 +126,7 @@ describe("pdf annotations storage", () => {
 
     await expect(
       service.loadAnnotations(path.join(workspaceRootPath, "notes.txt")),
-    ).rejects.toThrow("not a PDF");
+    ).rejects.toMatchObject({ reason: "pdf.notPdf" });
   });
 
   it("keeps every concurrent mutation instead of the last snapshot", async () => {
@@ -180,7 +180,7 @@ describe("pdf annotations storage", () => {
       service.loadAnnotations(
         path.join(workspaceRootPath, "linked", "secret.pdf"),
       ),
-    ).rejects.toThrow("outside every registered workspace");
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
   });
 
   it("accepts a file when the workspace root itself is a symlink", async () => {

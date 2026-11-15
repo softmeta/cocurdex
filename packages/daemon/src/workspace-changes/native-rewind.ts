@@ -4,7 +4,7 @@ import type {
   TurnChangeSet,
   TurnFileChange,
 } from "@cocurdex/shared";
-import { nativeMatchesHostTransition } from "@cocurdex/shared";
+import { nativeMatchesHostTransition, ReasonError } from "@cocurdex/shared";
 
 export function nativeRewindCoversTransition(
   changeSet: TurnChangeSet,
@@ -72,7 +72,8 @@ export async function tryNativeRewind(
     nativeCheckpointRef: changeSet.nativeCheckpointRef,
   });
   if (!result.canRewind || (result.skippedLinks ?? 0) > 0) {
-    throw new Error(
+    throw new ReasonError(
+      "rewind.incomplete",
       result.error ?? "Native rewind did not restore the complete selection",
     );
   }

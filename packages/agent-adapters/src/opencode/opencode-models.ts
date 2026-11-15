@@ -1,4 +1,5 @@
 import type { CompatibleProviderModel, ProviderApi } from "@cocurdex/shared";
+import { ReasonError } from "@cocurdex/shared";
 import type {
   AgentInfo,
   ModelInfo,
@@ -25,7 +26,8 @@ export function assertOpenCodeModelAvailable(
     return;
   }
 
-  throw new Error(
+  throw new ReasonError(
+    "model.unavailable",
     `OpenCode model ${selection.providerId}/${selection.modelId} is no longer available. Refresh the model list and select another model.`,
   );
 }

@@ -38,10 +38,10 @@ describe("daemon team RPC over the real socket", () => {
           { leadSessionId: "nobody", name: "alpha", prompt: "go" },
           daemon.options,
         ),
-      ).rejects.toThrow(/lead_not_found/);
+      ).rejects.toMatchObject({ reason: "team.lead_not_found" });
       await expect(
         requestDaemon("team.stop", { teamId: "nope" }, daemon.options),
-      ).rejects.toThrow(/team_not_found/);
+      ).rejects.toMatchObject({ reason: "team.team_not_found" });
 
       const agents = await requestDaemon("agent.list", daemon.options);
       const agent = agents.find((item) => item.availability === "available");
@@ -69,7 +69,7 @@ describe("daemon team RPC over the real socket", () => {
           { leadSessionId: "lead", name: "Bad Name", prompt: "go" },
           daemon.options,
         ),
-      ).rejects.toThrow(/invalid_name/);
+      ).rejects.toMatchObject({ reason: "team.invalid_name" });
       expect(
         await requestDaemon(
           "team.get",

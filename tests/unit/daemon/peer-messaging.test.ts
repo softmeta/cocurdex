@@ -170,6 +170,6 @@ describe("PeerMessagingService", () => {
     const { service } = harness({ sessions: [alpha] });
     await expect(
       service.send({ fromSessionId: "a", toSessionId: "a", content: "x" }),
-    ).rejects.toThrow(/not reachable/);
+    ).rejects.toMatchObject({ reason: "peer.unreachable" });
   });
 });

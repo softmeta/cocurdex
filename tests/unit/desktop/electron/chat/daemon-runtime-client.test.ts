@@ -162,7 +162,9 @@ describe("daemon runtime replacement", () => {
     const { client, current, setBusy, setStatus } = await fixture();
     setBusy(true);
     setStatus({ ...current, protocolVersion: DAEMON_PROTOCOL_VERSION - 1 });
-    await expect(client.initialize()).rejects.toThrow("incompatible protocol");
+    await expect(client.initialize()).rejects.toMatchObject({
+      reason: "daemon.incompatibleBusy",
+    });
     expect(spawnOwnedDaemonProcess).not.toHaveBeenCalled();
     expect(subscribeDaemonEvents).not.toHaveBeenCalled();
     expect(process.kill).not.toHaveBeenCalled();
@@ -267,6 +269,7 @@ describe("daemon runtime replacement", () => {
         throw new Error("Unsupported daemon method");
       return { ...current, runtimeFingerprint: "old" };
     });
+    // biome-ignore lint/plugin: the test injects this error; the message is its identity
     await expect(client.initialize()).rejects.toThrow(
       "Unsupported daemon method",
     );
@@ -300,7 +303,9 @@ describe("daemon runtime replacement", () => {
     const { client, setBusy, shutdown } = await fixture();
     await client.initialize();
     setBusy(true);
-    await expect(client.restart()).rejects.toThrow("busy");
+    await expect(client.restart()).rejects.toMatchObject({
+      reason: "daemon.busy",
+    });
     expect(shutdown).not.toHaveBeenCalled();
     expect(spawnOwnedDaemonProcess).toHaveBeenCalledOnce();
     expect(process.kill).not.toHaveBeenCalled();

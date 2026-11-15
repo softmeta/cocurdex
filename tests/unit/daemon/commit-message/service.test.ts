@@ -111,6 +111,7 @@ describe("daemon commit message generation", () => {
         agentId: "pi",
         providerConfig,
       });
+      // biome-ignore lint/plugin: the test injects this error; the message is its identity
       if (fail) await expect(result).rejects.toThrow("Model failed");
       else await expect(result).resolves.toBe("feat: draft");
 
@@ -132,7 +133,7 @@ describe("daemon commit message generation", () => {
         agentId: "pi",
         providerConfig,
       }),
-    ).rejects.toThrow("Nothing to commit");
+    ).rejects.toMatchObject({ reason: "git.nothingToCommit" });
     expect(generate).not.toHaveBeenCalled();
   });
 
@@ -147,6 +148,6 @@ describe("daemon commit message generation", () => {
         agentId: "pi",
         providerConfig,
       }),
-    ).rejects.toThrow("Model returned an incomplete commit message");
+    ).rejects.toMatchObject({ reason: "commitMessage.incomplete" });
   });
 });

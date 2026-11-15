@@ -50,10 +50,12 @@ describe("getDaemonSocketPath", () => {
 
   it("rejects user data paths whose socket exceeds the platform limit", () => {
     const deep = `/${"a".repeat(94)}`;
-    expect(() => getDaemonSocketPath(deep, "darwin")).toThrow(/103 bytes/);
+    expect(() => getDaemonSocketPath(deep, "darwin")).toThrow(
+      expect.objectContaining({ reason: "daemon.socketPathTooLong" }),
+    );
     expect(getDaemonSocketPath(deep, "linux")).toBe(`${deep}/daemon.sock`);
     expect(() => getDaemonSocketPath(`${deep}aaaa`, "linux")).toThrow(
-      /107 bytes/,
+      expect.objectContaining({ reason: "daemon.socketPathTooLong" }),
     );
   });
 

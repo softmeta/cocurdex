@@ -14,7 +14,7 @@ describe("task message command validation", () => {
         content: "Run",
         [field]: "forged",
       }),
-    ).toThrow("Unexpected field");
+    ).toThrow(expect.objectContaining({ reason: "payload.invalid" }));
   });
 
   it.each([
@@ -45,7 +45,7 @@ describe("task message command validation", () => {
   it("requires a client-generated message ID for idempotent retries", () => {
     expect(() =>
       validateSendSessionCommand({ sessionId: "task-1", content: "Run" }),
-    ).toThrow("Invalid message ID");
+    ).toThrow(expect.objectContaining({ reason: "payload.invalid" }));
   });
 
   it("accepts a note-only message", () => {

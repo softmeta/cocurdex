@@ -4,8 +4,10 @@ import {
 } from "@cocurdex/rpc";
 import { DAEMON_METHOD_SCOPES } from "@cocurdex/rpc/method-scopes";
 import {
+  errorReason,
   type HostPrincipal,
   principalHasScope,
+  ReasonError,
   UNATTENDED_EXECUTION_SCOPE,
 } from "@cocurdex/shared";
 import type { DaemonShutdownGate } from "./daemon-shutdown-gate";
@@ -128,9 +130,11 @@ function unattendedExecutionLookup(
 }
 
 function requestFailedError(error: unknown) {
+  const reason = errorReason(error);
   return {
     code: "REQUEST_FAILED",
     message: error instanceof Error ? error.message : "Unknown error",
+    ...(reason ? { reason } : {}),
   };
 }
 
@@ -166,7 +170,7 @@ export async function handleDaemonWireMessage(
   let replayed = false;
   const send = (response: Record<string, unknown>, onSent?: () => void) => {
     const error = response.error as
-      | { code: string; message: string }
+      | { code: string; message: string; reason?: string }
       | undefined;
     logDaemonRequest({
       method: request.method,
@@ -205,7 +209,10 @@ export async function handleDaemonWireMessage(
         request.params.pid !== status.pid ||
         request.params.startedAt !== status.startedAt
       ) {
-        throw new Error("Daemon identity changed; shutdown was not accepted");
+        throw new ReasonError(
+          "daemon.identityChanged",
+          "Daemon identity changed; shutdown was not accepted",
+        );
       }
       const result = gate.prepare(service.getActiveWork());
       send(

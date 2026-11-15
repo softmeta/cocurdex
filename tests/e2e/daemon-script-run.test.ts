@@ -79,7 +79,7 @@ describe("daemon script runs over the real socket", () => {
           { requesterSessionId: "nobody", name: "audit", script: "return 1;" },
           daemon.options,
         ),
-      ).rejects.toThrow(/requester_not_found/);
+      ).rejects.toMatchObject({ reason: "scriptRun.requester_not_found" });
       expect(
         await requestDaemon("scriptRun.settings.get", daemon.options),
       ).toEqual({
@@ -110,7 +110,7 @@ describe("daemon script runs over the real socket", () => {
           },
           daemon.options,
         ),
-      ).rejects.toThrow(/import\(\)/);
+      ).rejects.toMatchObject({ reason: "scriptRun.invalid_script" });
       const draft = await requestDaemon(
         "scriptRun.create",
         {

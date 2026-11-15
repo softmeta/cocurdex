@@ -2,6 +2,7 @@ import type { AgentPermissionRequestRecord } from "@cocurdex/shared";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PermissionCard } from "@/features/agent/permission/permission-card";
+import { i18n } from "@/i18n";
 
 const command =
   'git diff --stat && echo "===" && echo "STAGED ONLY, NOT IN UNSTAGED"';
@@ -136,13 +137,17 @@ describe("PermissionCard", () => {
     expect(
       screen.getByText("Requested read access to /Users/richard/Documents"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Path")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(i18n.t("agent:permissions.path")),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps detail rows that add information beyond the summary", () => {
     render(<PermissionCard permission={permission} />);
 
-    expect(screen.getByText("Command")).toBeInTheDocument();
+    expect(
+      screen.getByText(i18n.t("agent:permissions.command")),
+    ).toBeInTheDocument();
     expect(screen.getByText(command)).toBeInTheDocument();
   });
 });

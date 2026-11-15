@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { linkSync, lstatSync, unlinkSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import { ReasonError } from "@cocurdex/shared";
 
 export function probeDaemonEndpoint(
   socketPath: string,
@@ -11,7 +12,8 @@ export function probeDaemonEndpoint(
     const timeout = setTimeout(() => {
       socket.destroy();
       reject(
-        new Error(
+        new ReasonError(
+          "daemon.endpointUnverified",
           `Cannot verify daemon endpoint at ${socketPath}: probe timed out`,
         ),
       );
@@ -35,7 +37,10 @@ export function probeDaemonEndpoint(
 
 export async function prepareDaemonEndpoint(socketPath: string) {
   if ((await probeDaemonEndpoint(socketPath)) === "live") {
-    throw new Error(`Cocurdex daemon is already running at ${socketPath}`);
+    throw new ReasonError(
+      "daemon.alreadyRunning",
+      `Cocurdex daemon is already running at ${socketPath}`,
+    );
   }
   if (process.platform === "win32") {
     return { bindPath: socketPath, publish() {}, remove() {} };

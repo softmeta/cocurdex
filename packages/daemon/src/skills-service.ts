@@ -16,7 +16,7 @@ import type {
   ProductSkillsRequestPayload,
   ProductSkillsStatusResult,
 } from "@cocurdex/shared";
-import { hashLogValue } from "@cocurdex/shared";
+import { hashLogValue, ReasonError } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "./diagnostics";
 import { readSkillDocument } from "./skills/skill-document";
 import { listSkillFiles, toSkillFileEntries } from "./skills/skill-files";
@@ -44,7 +44,8 @@ export class DaemonSkillsService {
     }
     const workspaceRootPath = payload.workspaceRootPath;
     if (!workspaceRootPath || !(await this.canScanRoot(workspaceRootPath))) {
-      throw new Error(
+      throw new ReasonError(
+        "path.outsideWorkspace",
         `Project skills target is not a registered workspace (path=${workspaceRootPath ?? "none"})`,
       );
     }
@@ -97,7 +98,10 @@ export class DaemonSkillsService {
 
   async show({ name }: ProductSkillShowPayload): Promise<ProductSkillDetail> {
     if (!PACK_SKILL_NAMES.has(name)) {
-      throw new Error(`${name} is not a Cocurdex pack skill`);
+      throw new ReasonError(
+        "skills.notPackSkill",
+        `${name} is not a Cocurdex pack skill`,
+      );
     }
     const skillDir = path.join(this.sourceRoot, name);
     const [document, files] = await Promise.all([

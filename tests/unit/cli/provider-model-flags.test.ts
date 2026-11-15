@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin: CLI usage and argument errors are the cocurdex command contract that scripts read.
 import { parseArgs } from "@cocurdex/cli/internal/parse-args";
 import { applyModelFlags } from "@cocurdex/cli/internal/provider-model-commands";
 import type { ProviderModelRecord } from "@cocurdex/shared";

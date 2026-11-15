@@ -9,6 +9,7 @@ import {
   type AgentAuthState,
   type AgentId,
   isAcpRegistryAgentId,
+  ReasonError,
 } from "@cocurdex/shared";
 import type { AcpRegistryService } from "./acp-registry-service";
 
@@ -45,7 +46,10 @@ export class AgentAuthService {
   async login(params: { agentId: AgentId; methodId?: string }) {
     const { agentId, methodId } = params;
     if (!isAcpRegistryAgentId(agentId)) {
-      throw new Error(`Agent ${agentId} does not support login`);
+      throw new ReasonError(
+        "agent.loginUnsupported",
+        `Agent ${agentId} does not support login`,
+      );
     }
     const switching =
       methodId !== undefined && methodId !== this.preferredMethodId(agentId);

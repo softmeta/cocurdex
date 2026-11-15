@@ -671,13 +671,13 @@ describe("remote host access", () => {
         workspaceId,
         worktreePath: outside,
       }),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     await expect(
       client.request("worktree.remove", {
         workspaceId,
         worktreePath: outside,
       }),
-    ).rejects.toThrow(/outside every registered workspace/);
+    ).rejects.toMatchObject({ reason: "path.outsideWorkspace" });
     expect(await readdir(outside)).toEqual([]);
 
     await expect(

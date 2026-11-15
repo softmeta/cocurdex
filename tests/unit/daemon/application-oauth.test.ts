@@ -190,6 +190,7 @@ describe("application OAuth and tool transport", () => {
     returned.searchParams.set("state", "wrong-state");
     returned.searchParams.set("code", "synthetic-code");
     signIn.submitRedirectUrl(returned.href);
+    // biome-ignore lint/plugin: pi's OAuth flow owns this text
     await expect(signIn.done).rejects.toThrow(/different sign-in/i);
     expect(exchanges()).toBe(0);
   }, 20_000);
@@ -200,13 +201,13 @@ describe("application OAuth and tool transport", () => {
         ...config,
         enabled: false,
       }),
-    ).toThrow("configuration changed");
+    ).toThrow(expect.objectContaining({ reason: "application.configChanged" }));
     expect(() =>
       startPiMcpSignIn(location, "synthetic", 15_000, {
         ...config,
         enabled: false,
       }),
-    ).toThrow("configuration changed");
+    ).toThrow(expect.objectContaining({ reason: "application.configChanged" }));
   });
   it("cancels a pending host sign-in before a connection is removed or signed out", async () => {
     const { mcp, location, config, exchanges } = await setup();

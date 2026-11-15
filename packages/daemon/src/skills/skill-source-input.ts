@@ -1,5 +1,6 @@
 import os from "node:os";
 import path from "node:path";
+import { ReasonError } from "@cocurdex/shared";
 
 export type SkillSourceInput =
   | {
@@ -96,7 +97,8 @@ export function parseSkillSourceInput(
   if (/^https?:\/\//i.test(value)) {
     const url = new URL(value);
     if (!GITHUB_HOSTS.has(url.hostname.toLowerCase())) {
-      throw new Error(
+      throw new ReasonError(
+        "skills.unsupportedSource",
         "Only GitHub repositories and local folders are supported",
       );
     }

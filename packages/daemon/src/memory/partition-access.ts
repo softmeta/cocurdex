@@ -3,6 +3,7 @@ import {
   type MemoryRememberInput,
   type MemoryRememberResult,
   memoryPartitionProject,
+  ReasonError,
 } from "@cocurdex/shared";
 import type { MemoryProvider } from "./provider";
 
@@ -11,7 +12,8 @@ export const PARTITION_UNAVAILABLE =
 
 export async function requirePartitions(provider: MemoryProvider) {
   const capabilities = await provider.capabilities();
-  if (!capabilities.partitions) throw new Error(PARTITION_UNAVAILABLE);
+  if (!capabilities.partitions)
+    throw new ReasonError("memory.partitionUnavailable", PARTITION_UNAVAILABLE);
 }
 
 export async function readPartitionEntry(
@@ -26,7 +28,10 @@ export async function readPartitionEntry(
   if (!result.entry) return null;
   const projects = new Set(partitions.map(memoryPartitionProject));
   if (!result.entry.project || !projects.has(result.entry.project)) {
-    throw new Error("Memory is outside the permitted partition.");
+    throw new ReasonError(
+      "memory.outsidePartition",
+      "Memory is outside the permitted partition.",
+    );
   }
   return result.entry;
 }
@@ -47,7 +52,8 @@ export async function validatePartitionRelations(
   for (const id of ids) {
     const entry = await readPartitionEntry(provider, id, [partition]);
     if (!entry)
-      throw new Error(
+      throw new ReasonError(
+        "memory.outsidePartition",
         "Memory relation target was not found in the permitted partition.",
       );
     canonical.set(id, entry.id);

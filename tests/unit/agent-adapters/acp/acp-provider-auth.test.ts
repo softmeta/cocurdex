@@ -133,7 +133,7 @@ describe("loginAcpProvider", () => {
 
     await expect(
       loginAcpProvider(spec, factory, { methodId: "made-up" }),
-    ).rejects.toThrow("does not offer the login method made-up");
+    ).rejects.toMatchObject({ reason: "login.methodUnavailable" });
     expect(connection.authenticate).not.toHaveBeenCalled();
   });
 
@@ -198,7 +198,7 @@ describe("loginAcpProvider", () => {
 
     await expect(
       loginAcpProvider(spec, factory, { methodId: "gemini-api-key" }),
-    ).rejects.toThrow("already signing in");
+    ).rejects.toMatchObject({ reason: "login.inProgress" });
     pending.resolve();
     await first;
   });
@@ -215,7 +215,7 @@ describe("loginAcpProvider", () => {
     );
 
     expect(cancelAcpProviderLogin(spec)).toBe(true);
-    await expect(login).rejects.toThrow("login was cancelled");
+    await expect(login).rejects.toMatchObject({ reason: "login.cancelled" });
     expect(close).toHaveBeenCalledOnce();
     expect(cancelAcpProviderLogin(spec)).toBe(false);
   });
@@ -227,7 +227,7 @@ describe("loginAcpProvider", () => {
 
     await expect(
       loginAcpProvider(spec, factory, { timeoutMs: 5 }),
-    ).rejects.toThrow("login timed out");
+    ).rejects.toMatchObject({ reason: "login.timedOut" });
   });
 });
 
@@ -249,9 +249,9 @@ describe("logoutAcpProvider", () => {
       { agentCapabilities: {} },
     );
 
-    await expect(logoutAcpProvider(spec, factory)).rejects.toThrow(
-      "does not support logging out",
-    );
+    await expect(logoutAcpProvider(spec, factory)).rejects.toMatchObject({
+      reason: "login.logoutUnsupported",
+    });
     expect(connection.logout).not.toHaveBeenCalled();
   });
 });

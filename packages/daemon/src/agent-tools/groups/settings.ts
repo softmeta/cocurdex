@@ -9,6 +9,7 @@ import {
   normalizeDisabledAgentIds,
   normalizeMemorySettings,
   parseAgentRunLimits,
+  ReasonError,
   type WorkspaceWorktreeEnvironment,
 } from "@cocurdex/shared";
 import type { AgentToolRegistry } from "../tool-registry";
@@ -55,7 +56,8 @@ function enumSetting(
 ): (value: unknown) => string {
   return (value: unknown) => {
     if (typeof value !== "string" || !allowed.includes(value)) {
-      throw new Error(
+      throw new ReasonError(
+        "settings.invalidValue",
         `Value for '${key}' must be one of: ${allowed.join(", ")}`,
       );
     }
@@ -69,13 +71,19 @@ function requireBooleanField(
   field: string,
 ) {
   if (typeof record[field] !== "boolean") {
-    throw new Error(`Value for '${key}.${field}' must be a boolean`);
+    throw new ReasonError(
+      "settings.invalidValue",
+      `Value for '${key}.${field}' must be a boolean`,
+    );
   }
 }
 
 function requireObjectValue(key: string, value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`Value for '${key}' must be an object`);
+    throw new ReasonError(
+      "settings.invalidValue",
+      `Value for '${key}' must be an object`,
+    );
   }
   return value as Record<string, unknown>;
 }
@@ -92,7 +100,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
     tier: "write",
     storage: "daemon",
     description:
-      "Long-term memory through Respire (rsrs). enabled is the master switch; agent controls automatic recall and memory tools for agent sessions; chat controls recall and automatic capture for chat sessions; userLibrary also recalls, read-only, from the user's own rsrs store (~/.rsrs) in agent sessions; cliPath optionally points at the rsrs executable.",
+      "Long-term memory through Respire (rsrs). enabled is the master switch; agent controls automatic recall and memory tools for agent sessions; chat controls recall and automatic capture for chat sessions; userLibrary makes a development profile, which keeps a store of its own, also recall read-only from the machine's rsrs store (~/.rsrs), which the installed app already uses; cliPath optionally points at the rsrs executable.",
     valueSchema: {
       type: "object",
       properties: {
@@ -187,14 +195,16 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
       const record = requireObjectValue("app.appearance", value);
       for (const field of ["themePreset", "uiFontFamily", "codeFontFamily"]) {
         if (typeof record[field] !== "string") {
-          throw new Error(
+          throw new ReasonError(
+            "settings.invalidValue",
             `Value for 'app.appearance.${field}' must be a string`,
           );
         }
       }
       for (const field of ["uiFontSize", "codeFontSize"]) {
         if (typeof record[field] !== "number") {
-          throw new Error(
+          throw new ReasonError(
+            "settings.invalidValue",
             `Value for 'app.appearance.${field}' must be a number`,
           );
         }
@@ -203,7 +213,8 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
         record.translucentSidebar !== undefined &&
         typeof record.translucentSidebar !== "boolean"
       ) {
-        throw new Error(
+        throw new ReasonError(
+          "settings.invalidValue",
           "Value for 'app.appearance.translucentSidebar' must be a boolean",
         );
       }
@@ -219,7 +230,8 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
             transparency < 0 ||
             transparency > max)
         ) {
-          throw new Error(
+          throw new ReasonError(
+            "settings.invalidValue",
             `Value for 'app.appearance.${field}' must be an integer from 0 to ${max}`,
           );
         }
@@ -335,7 +347,8 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
     validate(value) {
       const limits = parseAgentRunLimits(value);
       if (!limits) {
-        throw new Error(
+        throw new ReasonError(
+          "settings.invalidValue",
           `Value for '${AGENT_RUN_LIMITS_SETTING_KEY}' must be integers within the documented bounds; delegatedRunTimeoutMinutes may be null`,
         );
       }
@@ -355,18 +368,23 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
     },
     validate(value) {
       if (!Array.isArray(value)) {
-        throw new Error(
+        throw new ReasonError(
+          "settings.invalidValue",
           `Value for '${DISABLED_AGENTS_SETTING_KEY}' must be an array of agent IDs`,
         );
       }
       for (const item of value) {
         if (typeof item !== "string" || !isAgentId(item)) {
-          throw new Error(
+          throw new ReasonError(
+            "settings.invalidValue",
             `Value for '${DISABLED_AGENTS_SETTING_KEY}' contains invalid agent ID '${String(item)}'`,
           );
         }
         if (!canDisableAgent(item)) {
-          throw new Error("Built-in agent Pi cannot be disabled.");
+          throw new ReasonError(
+            "settings.invalidValue",
+            "Built-in agent Pi cannot be disabled.",
+          );
         }
       }
       return normalizeDisabledAgentIds(value);
@@ -397,7 +415,8 @@ const isMainSession = (caller: AgentToolCallerContext) =>
 export function requireCatalogEntry(key: string): SettingsCatalogEntry {
   const entry = SETTINGS_CATALOG.find((item) => item.key === key);
   if (!entry) {
-    throw new Error(
+    throw new ReasonError(
+      "settings.unknownKey",
       `Unknown settings key '${key}'. Call settings_list for valid keys.`,
     );
   }
@@ -406,7 +425,10 @@ export function requireCatalogEntry(key: string): SettingsCatalogEntry {
 
 function requireScript(value: unknown, name: string) {
   if (typeof value !== "string" || value.length > 100_000) {
-    throw new Error(`settings_propose value.${name} must be a string`);
+    throw new ReasonError(
+      "settings.invalidValue",
+      `settings_propose value.${name} must be a string`,
+    );
   }
   return value;
 }
@@ -549,13 +571,17 @@ export function registerSettingsTools(
     execute: async (caller, input) => {
       const entry = requireCatalogEntry(String(input.key));
       if (entry.tier !== "propose") {
-        throw new Error(
+        throw new ReasonError(
+          "settings.notProposable",
           `Settings key '${entry.key}' does not accept proposals (tier=${entry.tier})`,
         );
       }
       const value = input.value;
       if (!value || typeof value !== "object" || Array.isArray(value)) {
-        throw new Error("settings_propose value must be an object");
+        throw new ReasonError(
+          "settings.invalidValue",
+          "settings_propose value must be an object",
+        );
       }
       if (entry.key === WORKTREE_ENVIRONMENT_KEY) {
         const record = value as Record<string, unknown>;
@@ -565,7 +591,8 @@ export function registerSettingsTools(
           "cleanupScript",
         );
         if (!cleanupScript.trim()) {
-          throw new Error(
+          throw new ReasonError(
+            "settings.emptyCleanupScript",
             "settings_propose value.cleanupScript must not be empty. Propose a concrete cleanup command that only touches the worktree (build caches, temp directories, or processes the setup script starts); never touch shared caches outside it.",
           );
         }
@@ -581,7 +608,10 @@ export function registerSettingsTools(
           note: "Proposal recorded. It stays pending until the user confirms it in Settings; do not treat it as applied.",
         };
       }
-      throw new Error(`Settings key '${entry.key}' is not supported`);
+      throw new ReasonError(
+        "settings.unsupported",
+        `Settings key '${entry.key}' is not supported`,
+      );
     },
   });
 }

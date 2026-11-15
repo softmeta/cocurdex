@@ -1,3 +1,4 @@
+import { ReasonError } from "@cocurdex/shared";
 import type { OssLicenseEntry } from "@/lib/types";
 
 export const OSS_LICENSES_FILE_VERSION = 1;
@@ -15,7 +16,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function parseEntry(value: unknown): OssLicenseEntry {
   if (!isRecord(value)) {
-    throw new Error("Invalid OSS license entry");
+    throw new ReasonError("ossLicenses.invalid", "Invalid OSS license entry");
   }
   if (
     typeof value.id !== "string" ||
@@ -30,7 +31,7 @@ function parseEntry(value: unknown): OssLicenseEntry {
     (value.homepage !== null && typeof value.homepage !== "string") ||
     (value.textId !== null && typeof value.textId !== "string")
   ) {
-    throw new Error("Invalid OSS license entry");
+    throw new ReasonError("ossLicenses.invalid", "Invalid OSS license entry");
   }
   return {
     homepage: value.homepage,
@@ -45,21 +46,24 @@ function parseEntry(value: unknown): OssLicenseEntry {
 
 export function parseOssLicensesFile(raw: unknown): OssLicensesFile {
   if (!isRecord(raw)) {
-    throw new Error("Invalid OSS licenses file");
+    throw new ReasonError("ossLicenses.invalid", "Invalid OSS licenses file");
   }
   if (raw.version !== OSS_LICENSES_FILE_VERSION) {
-    throw new Error("Unsupported OSS licenses file version");
+    throw new ReasonError(
+      "ossLicenses.unsupportedVersion",
+      "Unsupported OSS licenses file version",
+    );
   }
   if (typeof raw.generatedAt !== "string" || !Array.isArray(raw.entries)) {
-    throw new Error("Invalid OSS licenses file");
+    throw new ReasonError("ossLicenses.invalid", "Invalid OSS licenses file");
   }
   if (!isRecord(raw.texts)) {
-    throw new Error("Invalid OSS licenses file");
+    throw new ReasonError("ossLicenses.invalid", "Invalid OSS licenses file");
   }
   const texts: Record<string, string> = {};
   for (const [textId, text] of Object.entries(raw.texts)) {
     if (typeof text !== "string") {
-      throw new Error("Invalid OSS licenses file");
+      throw new ReasonError("ossLicenses.invalid", "Invalid OSS licenses file");
     }
     texts[textId] = text;
   }
