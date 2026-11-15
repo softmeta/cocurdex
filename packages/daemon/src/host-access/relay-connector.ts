@@ -53,7 +53,7 @@ export type RelayLog = (
 ) => void;
 
 export interface RelayController {
-  apply(target: RelayTarget | null): void;
+  apply(target: RelayTarget | null): Promise<void>;
   state(): RelayConnectorState;
 }
 
@@ -199,12 +199,12 @@ export function createRelayConnector(options: RelayConnectorOptions) {
     options.onStateChanged?.();
   };
 
-  const stop = () => {
+  const stop = async () => {
     const fiber = supervisor;
     supervisor = null;
-    if (fiber) Effect.runFork(Fiber.interrupt(fiber));
     for (const socket of dataSockets) socket.terminate();
     dataSockets.clear();
+    if (fiber) await Effect.runPromise(Fiber.interrupt(fiber));
   };
 
   const acceptSession = (active: RelayTarget, ticket: string) => {
@@ -351,10 +351,11 @@ export function createRelayConnector(options: RelayConnectorOptions) {
     });
 
   return {
-    apply(next: RelayTarget | null) {
+    async apply(next: RelayTarget | null) {
       if (sameTarget(target, next)) return;
-      stop();
       target = next;
+      await stop();
+      if (target !== next) return;
       attempt = 0;
       if (!next) {
         setStatus({ state: "off", error: null });
@@ -364,9 +365,9 @@ export function createRelayConnector(options: RelayConnectorOptions) {
       supervisor = Effect.runFork(supervise(next));
     },
     state: () => status,
-    close() {
-      stop();
+    async close() {
       target = null;
+      await stop();
       status = { state: "off", error: null, latencyMs: null };
     },
   };

@@ -496,7 +496,7 @@ describe("HostAccessService", () => {
       state: () => ({ listening: listener.at(-1) === true, error: null }),
     });
     service.bindRelayConnector({
-      apply: () => undefined,
+      apply: async () => undefined,
       state: () => ({ state: "online", error: null, latencyMs: 42 }),
     });
 
@@ -522,7 +522,9 @@ describe("HostAccessService", () => {
       state: () => ({ listening: listener.at(-1) === true, error: null }),
     });
     service.bindRelayConnector({
-      apply: (target) => relay.push(target),
+      apply: async (target) => {
+        relay.push(target);
+      },
       state: () => ({ state: "online", error: null, latencyMs: 42 }),
     });
     const credential = relayToken({

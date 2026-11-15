@@ -609,7 +609,7 @@ export class HostAccessService {
     const relayUrl = enabled ? relay.url : null;
     const direct = enabled && !(relayUrl && relay.relayOnly);
     await this.remoteListener?.apply({ ...settings, enabled: direct });
-    this.relayConnector?.apply(
+    await this.relayConnector?.apply(
       relayUrl ? { url: relayUrl, credential: relay.credential } : null,
     );
   }

@@ -17,7 +17,10 @@ import type {
 import { hostEndpointBase } from "@cocurdex/shared";
 import { HostAccessError } from "./host-access-error";
 
-const HANDSHAKE_TIMEOUT_MS = 10_000;
+// Outlasts the relay's 10s HostAcceptTimeout (services/relay/internal/relay/
+// server.go), so a host the relay still lists but that never answers ends in
+// the relay's 4408 "offline" close instead of a bare client timeout.
+const HANDSHAKE_TIMEOUT_MS = 15_000;
 
 export interface SecureSocketHandlers {
   onMessage(message: Uint8Array): void;
