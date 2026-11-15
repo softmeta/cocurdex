@@ -314,5 +314,9 @@ async function handleMemoryRequest(
     case "memory.import":
       assertLocalPrincipal(context, request.method);
       return memory.importFrom(request.params.file);
+    case "memory.rsrs.preview":
+      return memory.previewRsrsSync();
+    case "memory.rsrs.sync":
+      return memory.syncRsrs();
   }
 }

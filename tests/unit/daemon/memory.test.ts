@@ -1,7 +1,6 @@
 import { AgentToolBridge } from "@cocurdex/daemon/internal/agent-tools/agent-tool-bridge";
 import { registerMemoryTools } from "@cocurdex/daemon/internal/agent-tools/groups/memory";
 import { AgentToolRegistry } from "@cocurdex/daemon/internal/agent-tools/tool-registry";
-import { appendTurnDiaryLine } from "@cocurdex/daemon/internal/memory/digest";
 import {
   parseInjectedHosts,
   parseRecallPayload,
@@ -12,9 +11,7 @@ import {
 import {
   buildMemoryRecallQuery,
   DEFAULT_MEMORY_SETTINGS,
-  gateMemorySettings,
   type MemoryRememberResult,
-  memoryPlatformSupportsRsrs,
   normalizeMemorySettings,
   parseMemorySettings,
   redactMemorySecrets,
@@ -68,28 +65,6 @@ describe("memory settings", () => {
     expect(DEFAULT_MEMORY_SETTINGS.enabled).toBe(true);
   });
 
-  it("turns memory off where the rsrs CLI has no build", () => {
-    expect(memoryPlatformSupportsRsrs({ os: "darwin", arch: "x64" })).toBe(
-      false,
-    );
-    expect(memoryPlatformSupportsRsrs({ os: "darwin", arch: "arm64" })).toBe(
-      true,
-    );
-    expect(memoryPlatformSupportsRsrs({ os: "win32", arch: "x64" })).toBe(true);
-    expect(
-      gateMemorySettings(DEFAULT_MEMORY_SETTINGS, {
-        os: "darwin",
-        arch: "x64",
-      }).enabled,
-    ).toBe(false);
-    expect(
-      gateMemorySettings(
-        { ...DEFAULT_MEMORY_SETTINGS, enabled: false },
-        { os: "linux", arch: "x64" },
-      ).enabled,
-    ).toBe(false);
-  });
-
   it("keeps valid values and falls back for invalid ones", () => {
     const settings = normalizeMemorySettings({
       enabled: false,
@@ -132,16 +107,6 @@ describe("memory secret redaction", () => {
     expect(redacted).not.toContain("AKIA");
     expect(redacted).not.toContain("secret");
     expect(redacted.match(/\[redacted\]/g)?.length).toBe(4);
-  });
-});
-
-describe("session turn diary", () => {
-  it("appends each turn to the session's diary and keeps only the latest lines", () => {
-    const diary = Array.from({ length: 20 }, (_, index) => `turn ${index}`);
-    const next = appendTurnDiaryLine(diary.join("\r\n"), "turn 20").split("\n");
-    expect(next).toHaveLength(20);
-    expect(next[0]).toBe("turn 1");
-    expect(next.at(-1)).toBe("turn 20");
   });
 });
 

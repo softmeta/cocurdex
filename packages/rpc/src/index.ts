@@ -80,6 +80,8 @@ export const DAEMON_NO_PARAM_METHODS = {
   "memory.cloud.keys": true,
   "memory.revision": true,
   "memory.capabilities": true,
+  "memory.rsrs.preview": true,
+  "memory.rsrs.sync": true,
   "scriptRun.settings.get": true,
   "application.list": true,
   "mcp.readConfig": true,

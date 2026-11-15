@@ -11,8 +11,10 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { AgentToolBridge } from "@cocurdex/daemon/internal/agent-tools/agent-tool-bridge";
 import { registerMemoryTools } from "@cocurdex/daemon/internal/agent-tools/groups/memory";
+import { RsrsMemoryProvider } from "@cocurdex/daemon/internal/memory/rsrs-provider";
 import { MemoryService } from "@cocurdex/daemon/internal/memory/service";
 import {
+  DEFAULT_MEMORY_SETTINGS,
   type MemorySettings,
   type MessageRecord,
   RSRS_CLI_VERSION,
@@ -21,6 +23,7 @@ import {
 } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
+import { createMemoryStore } from "./helpers/memory-store";
 
 const temp = createTempDirs();
 
@@ -197,6 +200,7 @@ function createState(settings: MemorySettings) {
     listMessagesBySessionId: async (sessionId: string) =>
       fakeSessions().has(sessionId) ? fakeMessages() : [],
     listWorkspaces: async () => [],
+    memoryStore: createMemoryStore(),
   };
 }
 
@@ -218,6 +222,7 @@ async function createService(
   const executable = await createFakeRsrs(directory, logPath, options);
   const settings: MemorySettings = {
     enabled: true,
+    rsrs: true,
     agent: { injectContext: true, tools: true },
     chat: { recall: true, saveTurns: true, saveOnEnd: true },
     userLibrary: options.userLibraryHome !== undefined,
@@ -239,6 +244,25 @@ async function createService(
     now: () => new Date("2026-10-28T10:00:02.000Z"),
   });
   return { service, state, logPath, directory };
+}
+
+async function createRsrsProvider() {
+  const directory = await temp.create("cocurdex-memory-");
+  const logPath = path.join(directory, "calls.log");
+  const cliPath = await createFakeRsrs(directory, logPath);
+  const provider = new RsrsMemoryProvider({
+    settings: () => ({ ...DEFAULT_MEMORY_SETTINGS, rsrs: true, cliPath }),
+    home: async () => ({
+      kind: "isolated",
+      dataDir: directory,
+      rpcPort: 1,
+      modelDir: null,
+    }),
+    os: process.platform,
+    startRuntime: false,
+    now: () => new Date("2026-10-28T10:00:02.000Z"),
+  });
+  return { provider, directory, logPath };
 }
 
 async function createGlobalService(options: {
@@ -263,6 +287,7 @@ async function createGlobalService(options: {
   }
   const settings: MemorySettings = {
     enabled: true,
+    rsrs: true,
     agent: { injectContext: true, tools: true },
     chat: { recall: true, saveTurns: true, saveOnEnd: true },
     userLibrary: false,
@@ -416,7 +441,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
       server.listen(0, "127.0.0.1", resolve),
     );
     try {
-      const { service, directory, logPath } = await createService();
+      const { provider, directory, logPath } = await createRsrsProvider();
       const { port } = server.address() as AddressInfo;
       await mkdir(path.join(directory, "runtime"), { recursive: true });
       await writeFile(
@@ -424,7 +449,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
         JSON.stringify({ url: `http://127.0.0.1:${port}` }),
       );
       await expect(
-        service.remember({ title: "Tea", content: "Prefers tea" }),
+        provider.remember({ title: "Tea", content: "Prefers tea" }),
       ).rejects.toMatchObject({ reason: "memory.writeUnconfirmed" });
       expect(writes).toBe(1);
       const calls = (await readFile(logPath, "utf8"))
@@ -493,7 +518,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
 
   it("switches to a newly configured rsrs executable", async () => {
     const { service } = await createService();
-    await service.list();
+    await service.recall({ query: "cocurdex" });
     const other = await temp.create("cocurdex-memory-other-");
     const otherLog = path.join(other, "calls.log");
     const otherExecutable = await createFakeRsrs(other, otherLog);
@@ -501,30 +526,28 @@ describe("MemoryService with a fake rsrs CLI", () => {
       ...(await service.getSettings()),
       cliPath: otherExecutable,
     });
-    await service.list();
+    await service.recall({ query: "cocurdex" });
     const calls = (await readFile(otherLog, "utf8"))
       .trim()
       .split("\n")
       .map((line) => JSON.parse(line) as string[]);
-    expect(calls.some((call) => call[0] === "list")).toBe(true);
+    expect(calls.some((call) => call[0] === "recall")).toBe(true);
   });
 
   it("reads the library through the rsrs CLI", async () => {
-    const { service, logPath } = await createService();
-    const mine = await service.list({ partition: { kind: "me" } });
-    expect(mine).toEqual({
-      error: null,
-      items: [
-        expect.objectContaining({
-          id: "me-1",
-          content: "Tea, not coffee",
-          project: "cocurdex/me",
-          tags: ["taste"],
-          updatedAt: "2026-10-02T00:00:00Z",
-        }),
-      ],
-    });
-    expect(await service.history({ id: "me-1" })).toEqual([
+    const { provider, logPath } = await createRsrsProvider();
+    expect(
+      await provider.list({ limit: 50, since: null, project: "cocurdex/me" }),
+    ).toEqual([
+      expect.objectContaining({
+        id: "me-1",
+        content: "Tea, not coffee",
+        project: "cocurdex/me",
+        tags: ["taste"],
+        updatedAt: "2026-10-02T00:00:00Z",
+      }),
+    ]);
+    expect(await provider.history({ id: "me-1", limit: 50 })).toEqual([
       {
         entryId: "me-1",
         action: "delete",
@@ -534,9 +557,9 @@ describe("MemoryService with a fake rsrs CLI", () => {
         at: "2026-10-03T00:00:00Z",
       },
     ]);
-    expect(await service.revision()).toBe("8c1de196");
+    expect(await provider.revision()).toBe("8c1de196");
     // biome-ignore lint/plugin: rsrs CLI error text is passed through to the caller
-    await expect(service.forget("missing")).rejects.toThrow(
+    await expect(provider.forget("missing")).rejects.toThrow(
       "not found #missing",
     );
     const calls = (await readFile(logPath, "utf8"))
@@ -565,95 +588,54 @@ describe("MemoryService with a fake rsrs CLI", () => {
     expect(context?.brief).toContain("Recall body");
   });
 
-  it("captures a chat turn as a trivial diary entry", async () => {
-    const { service, logPath } = await createService();
-    await service.getStatus();
-    const result = await service.captureTurn("chat-1", "a1");
-    expect(result).toMatchObject({ saved: true, memoryId: "saved-memory" });
-    const log = await readFile(logPath, "utf8");
-    expect(log).toContain('"remember"');
-    expect(log).toContain("--importance");
-    expect(log).toContain("trivial");
-  });
-
-  it("keeps one diary per session and leaves it out of that session's recall", async () => {
-    const { service, state, logPath } = await createService();
-    await service.getStatus();
-    await state.setAppSetting(
-      "memory.captures",
-      JSON.stringify({
-        "chat-1": {
-          provider: "rsrs",
-          memoryId: "memory-1",
-          savedAt: "2026-10-28T09:00:00.000Z",
-          lastAssistantMessageId: "earlier",
-          kind: "turn",
-        },
-      }),
-    );
-    expect(await service.captureTurn("chat-1", "a1")).toMatchObject({
-      saved: true,
-      memoryId: "memory-1",
-    });
-    const calls = (await readFile(logPath, "utf8"))
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as string[]);
-    expect(calls.some((args) => args[0] === "remember")).toBe(false);
-    expect(calls.find((args) => args[0] === "update")).toContain("memory-1");
-    expect(
-      await service.buildTurnContext(fakeSession(), "hi", "chat"),
-    ).toBeNull();
-  });
-
-  it("stores a manual session save as important and lets rsrs judge it", async () => {
-    const { service, logPath } = await createService();
-    await service.getStatus();
+  it("stores a manual session save as important", async () => {
+    const { service } = await createService();
     const result = await service.saveSession({
       sessionId: "chat-1",
       importance: "important",
     });
-    expect(result).toMatchObject({ saved: true, memoryId: "saved-memory" });
-    const calls = (await readFile(logPath, "utf8"))
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as string[]);
-    const remember = calls.find((args) => args[0] === "remember");
-    expect(remember).toContain("--importance");
-    expect(remember).toContain("important");
-    expect(remember).not.toContain("--force");
+    expect(result.saved).toBe(true);
+    expect(await service.show(result.memoryId ?? "")).toMatchObject({
+      importance: "important",
+    });
   });
 
   it("stores the session summary on its own instead of claiming a similar memory as its cause", async () => {
-    const { service, logPath } = await createService({
-      candidateOnRemember: true,
+    const { service } = await createService();
+    const earlier = await service.remember({
+      title: "Cocurdex chat：Test chat",
+      content: "An earlier summary of the same chat",
+      force: true,
     });
-    await service.getStatus();
     const result = await service.saveSession({ sessionId: "chat-1" });
-    expect(result).toMatchObject({ saved: true, memoryId: "forced-memory" });
-    const rememberCalls = (await readFile(logPath, "utf8"))
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as string[])
-      .filter((args) => args[0] === "remember");
-    expect(rememberCalls).toHaveLength(2);
-    expect(rememberCalls[1]).toContain("--force");
-    expect(rememberCalls[1]).not.toContain("--parent");
+    expect(result.saved).toBe(true);
+    expect(result.memoryId).not.toBe(earlier.id);
+    expect(await service.show(result.memoryId ?? "")).toMatchObject({
+      parentId: null,
+    });
+    expect((await service.list()).items).toHaveLength(2);
   });
 
-  it("records a failed turn recall so clients can surface it", async () => {
+  it("recalls from its own store when rsrs fails", async () => {
     const { service } = await createService({ failRecall: true });
-    await service.getStatus();
-    expect(
-      await service.buildTurnContext(fakeSession(), "anything", "chat"),
-    ).toBeNull();
-    const status = await service.getStatus();
-    expect(status.lastRecall).toMatchObject({
-      sessionId: "chat-1",
-      mode: "chat",
-      outcome: "failed",
+    await service.remember({
+      title: "Run Cocurdex with pnpm dev",
+      content: "The dev app starts with pnpm dev",
+      force: true,
     });
-    expect(status.lastRecall?.error).toBeTruthy();
+    const context = await service.buildTurnContext(
+      fakeSession(),
+      "How do I run Cocurdex?",
+      "chat",
+    );
+    expect(context?.items.map((item) => item.title)).toEqual([
+      "Run Cocurdex with pnpm dev",
+    ]);
+    expect((await service.getStatus()).lastRecall).toMatchObject({
+      sessionId: "chat-1",
+      outcome: "recalled",
+      error: null,
+    });
   });
 
   it("recalls through the CLI without waiting for a runtime that never starts", async () => {
@@ -721,8 +703,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
       expect(probes()).toBe(probesAfterFirstTurn);
       expect(requests.filter((name) => name === "recall")).toHaveLength(2);
       expect((await service.getStatus()).lastRecall).toMatchObject({
-        outcome: "failed",
-        error: expect.stringContaining("timed out"),
+        outcome: "empty",
       });
       const calls = (await readFile(logPath, "utf8")).trim().split("\n");
       expect(calls.some((line) => line.startsWith('["recall"'))).toBe(false);
@@ -732,7 +713,7 @@ describe("MemoryService with a fake rsrs CLI", () => {
     }
   });
 
-  it("stops recalling and capturing when the switch is off", async () => {
+  it("stops recalling and saving when the switch is off", async () => {
     const { service } = await createService();
     await service.getStatus();
     const settings = await service.getSettings();
@@ -741,40 +722,10 @@ describe("MemoryService with a fake rsrs CLI", () => {
       items: [],
       error: expect.stringContaining("cocurdex memory on"),
     });
-    expect(await service.captureTurn("chat-1", "a1")).toMatchObject({
+    expect(await service.saveSession({ sessionId: "chat-1" })).toMatchObject({
       saved: false,
       reason: "disabled",
     });
-  });
-
-  it("tells the agent how to register when rsrs has no identity", async () => {
-    const { service } = await createService({ identityMissing: true });
-    await service.getStatus();
-    const result = await service.remember({
-      content: "【前因】a\n【行为】b\n【后果】c",
-      title: "A title",
-    });
-    expect(result.action).toBe("skipped");
-    expect(result.message).toEqual(expect.any(String));
-  });
-
-  it("captures a work session's turn in the background but leaves assistants to their own judgment", async () => {
-    const { service, logPath } = await createService();
-    await service.getStatus();
-    expect(await service.captureTurn("work-1", "a1")).toMatchObject({
-      saved: true,
-    });
-    expect(await service.captureTurn("persona-1", "a1")).toMatchObject({
-      saved: false,
-      reason: "not-captured",
-    });
-    const remembers = (await readFile(logPath, "utf8"))
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as string[])
-      .filter((args) => args[0] === "remember");
-    expect(remembers).toHaveLength(1);
-    expect(remembers[0].join(" ")).toContain("Cocurdex session：Fix");
   });
 
   it("restarts the runtime after interrupted maintenance and finishes the install", async () => {
@@ -874,14 +825,14 @@ describe("MemoryService with a fake rsrs CLI", () => {
     async () => {
       const { service, dataDir } = await createGlobalService({ cli: false });
       await service.initializeOnStartup();
-      expect((await service.getStatus(true)).available).toBe(false);
+      expect((await service.getStatus(true)).rsrsAvailable).toBe(false);
       expect((await service.install(true)).installed).toBe(false);
       await expect(stat(path.join(dataDir, "bin"))).rejects.toThrow();
     },
   );
 
   it.skipIf(process.platform === "win32")(
-    "uses the machine's rsrs as it is and pauses memory while it is too old",
+    "uses the machine's rsrs as it is and leaves it out of recall while it is too old",
     async () => {
       const { service, dataDir, calls } = await createGlobalService({
         cli: true,
@@ -895,36 +846,45 @@ describe("MemoryService with a fake rsrs CLI", () => {
         installed: "2.0.0-dev.2",
         minimum: RSRS_MIN_CLI_VERSION,
       });
-      expect(service.isReadyForTurns()).toBe(false);
-      const recall = await service.recall({ query: "deploy" });
-      expect(recall.items).toEqual([]);
-      expect(recall.error).not.toBeNull();
+      expect(await service.recall({ query: "deploy" })).toMatchObject({
+        items: [],
+        error: null,
+      });
       expect(
         (await calls()).filter((args) =>
-          ["runtime", "model", "keygen"].includes(args[0] ?? ""),
+          ["runtime", "model", "keygen", "recall"].includes(args[0] ?? ""),
         ),
       ).toEqual([]);
       expect(await readFile(cli)).toEqual(before);
     },
   );
 
-  it("keeps memory off where the rsrs CLI has no build", async () => {
+  it("keeps memory on and rsrs off where the rsrs CLI has no build", async () => {
     const { service } = await createService({
       platform: { os: "darwin", arch: "x64" },
     });
     const settings = await service.getSettings();
-    expect(settings.enabled).toBe(false);
-    const status = await service.getStatus();
-    expect(status).toMatchObject({ supported: false, enabled: false });
-    expect(await service.recall({ query: "cocurdex" })).toMatchObject({
-      items: [],
+    expect(settings).toMatchObject({ enabled: true, rsrs: false });
+    expect(await service.getStatus()).toMatchObject({
+      supported: false,
+      available: true,
+      rsrsAvailable: false,
     });
+    const saved = await service.remember({
+      title: "Prefers tea",
+      content: "Green tea in the morning",
+    });
+    expect(
+      (await service.recall({ query: "green tea" })).items.map(
+        (item) => item.id,
+      ),
+    ).toEqual([saved.id]);
     const install = await service.install();
     expect(install.installed).toBe(false);
     expect(install.message).toContain("darwin/x64");
-    expect(
-      (await service.setSettings({ ...settings, enabled: true })).enabled,
-    ).toBe(false);
+    expect((await service.setSettings({ ...settings, rsrs: true })).rsrs).toBe(
+      false,
+    );
   });
 
   it("injects the memory policy into the agent catalog while memory is enabled", async () => {

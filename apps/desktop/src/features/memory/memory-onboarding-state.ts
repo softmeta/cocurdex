@@ -17,16 +17,15 @@ function onboardingStage(
   status: MemoryStatus | undefined,
   working: boolean,
 ): MemoryOnboardingStage {
-  if (!status?.supported) return "hidden";
+  if (!status) return "hidden";
+  if (!status.settings.enabled) return working ? "installing" : "off";
+  // Memory lives in the daemon; the remaining stages follow rsrs once the
+  // user turns it on.
+  if (!status.settings.rsrs) return "ready";
   if (working || status.installation === "installing") return "installing";
-  if (status.settings.enabled && status.available && status.error)
-    return "failed";
-  if (status.settings.enabled && status.available) return "ready";
-  if (status.settings.enabled && status.installation === "failed") {
-    return "failed";
-  }
-  // The daemon installs an enabled store on its own.
-  return status.settings.enabled ? "installing" : "off";
+  if (status.rsrsAvailable) return status.error ? "failed" : "ready";
+  // The daemon installs rsrs on its own once it is turned on.
+  return status.installation === "failed" ? "failed" : "installing";
 }
 
 function errorMessage(error: unknown) {
@@ -47,7 +46,7 @@ export function useMemoryOnboarding() {
       if (!settings.enabled) {
         await desktopApi.setMemorySettings({ ...settings, enabled: true });
       }
-      if (!status?.available) {
+      if (settings.rsrs && !status?.rsrsAvailable) {
         const result = await desktopApi.installMemory(true);
         if (!result.installed) setFailure(result.message);
       }

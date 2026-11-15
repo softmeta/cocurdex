@@ -279,13 +279,6 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
   ),
   row(
     "memory",
-    "chatSaveTurns",
-    m("settings.chatSaveTurns.title"),
-    m("settings.chatSaveTurns.description"),
-    memory,
-  ),
-  row(
-    "memory",
     "chatSaveOnEnd",
     m("settings.chatSaveOnEnd.title"),
     m("settings.chatSaveOnEnd.description"),
@@ -293,17 +286,30 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
   ),
   row(
     "memory",
-    "cloud",
-    m("settings.cloud.title"),
-    undefined,
-    m("settings.cloudTitle"),
+    "rsrs",
+    m("settings.rsrs.title"),
+    m("settings.rsrs.description"),
+    memory,
   ),
-  row(
-    "memory",
-    "cliPath",
-    m("settings.cliPath.title"),
-    m("settings.cliPath.description"),
-    m("settings.connectionTitle"),
+  shownVia(
+    row(
+      "memory",
+      "cloud",
+      m("settings.cloud.title"),
+      undefined,
+      m("settings.cloudTitle"),
+    ),
+    "memory.rsrs",
+  ),
+  shownVia(
+    row(
+      "memory",
+      "cliPath",
+      m("settings.cliPath.title"),
+      m("settings.cliPath.description"),
+      m("settings.connectionTitle"),
+    ),
+    "memory.rsrs",
   ),
   row(
     "teams",

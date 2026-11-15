@@ -1,3 +1,6 @@
+import { writeFile } from "node:fs/promises";
+import path from "node:path";
+import { writeFakeRsrs } from "@cocurdex/test-harness/fixtures/fake-rsrs/index.mjs";
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
@@ -181,7 +184,18 @@ async function dismissOnboarding(session) {
 
 runScenario("memory-switch", {
   open: () => openScenarioApp(args),
-  setup: async ({ session }) => {
+  setup: async ({ session, workspaceRoot }) => {
+    const statePath = path.join(workspaceRoot, "memory-switch-state.json");
+    await writeFile(
+      statePath,
+      JSON.stringify({ revision: 0, live: [], deleted: [], log: [] }),
+      "utf8",
+    );
+    const cliPath = await writeFakeRsrs(workspaceRoot, { statePath });
+    const original = await daemonRequest(session, "memory.settings.get");
+    await daemonRequest(session, "memory.settings.set", {
+      settings: { ...original, enabled: true, rsrs: false, cliPath },
+    });
     await dismissOnboarding(session);
     const memoryLabel = await translate(session, "memory:switch.label");
     const enableLabel = await translate(session, "memory:menu.enable");
@@ -196,7 +210,7 @@ runScenario("memory-switch", {
       { label: enableLabel },
       UI_TIMEOUT_MS,
     );
-    return { memoryLabel, enableLabel, syncLabel, settingsLabel };
+    return { memoryLabel, enableLabel, syncLabel, settingsLabel, original };
   },
   steps: [
     [
@@ -212,8 +226,8 @@ runScenario("memory-switch", {
           names,
         );
         check(
-          names.some((name) => name.includes(syncLabel)),
-          "multi-device sync item exists",
+          !names.some((name) => name.includes(syncLabel)),
+          "multi-device sync is not offered without rsrs",
           names,
         );
         const settingsItem = await queryAllByRole(session, {
@@ -261,7 +275,7 @@ runScenario("memory-switch", {
       },
     ],
     [
-      "the memory settings section exposes cloud sync",
+      "turning rsrs on in settings exposes cloud sync",
       async ({ session }) => {
         await closeMenus(session);
         await openSettingsSection(session, "memory");
@@ -277,13 +291,33 @@ runScenario("memory-switch", {
         const master = await readSwitch(session, masterLabel);
         check(master?.checked === "true", "master switch is on", master);
 
+        const rsrsTitle = await translate(
+          session,
+          "memory:settings.rsrs.title",
+        );
         const syncTitle = await translate(
           session,
           "memory:settings.cloud.title",
         );
-        const sync = await readSwitch(session, syncTitle);
-        check(sync !== null, "multi-device sync switch exists", sync);
-        return { master, sync };
+        const rsrs = await readSwitch(session, rsrsTitle);
+        check(rsrs?.checked === "false", "rsrs is off by default", rsrs);
+        check(
+          (await readSwitch(session, syncTitle)) === null,
+          "multi-device sync is hidden without rsrs",
+        );
+
+        await session.run(
+          ({ selector }) => document.querySelector(selector).click(),
+          { selector: switchSelector(rsrsTitle) },
+        );
+        await session.waitUntil(
+          ({ selector }) => Boolean(document.querySelector(selector)),
+          { selector: switchSelector(syncTitle) },
+          UI_TIMEOUT_MS,
+        );
+        const settings = await daemonRequest(session, "memory.settings.get");
+        check(settings.rsrs === true, "daemon setting has rsrs on", settings);
+        return { master, rsrs };
       },
     ],
     [
@@ -308,10 +342,10 @@ runScenario("memory-switch", {
       },
     ],
   ],
-  teardown: async ({ session }) => {
-    const settings = await daemonRequest(session, "memory.settings.get");
+  teardown: async ({ session, original }) => {
+    if (!original) return;
     await daemonRequest(session, "memory.settings.set", {
-      settings: { ...settings, enabled: true },
+      settings: original,
     });
   },
 });

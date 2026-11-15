@@ -136,6 +136,7 @@ async function createService(options: FakeOptions = {}) {
   const fake = await createFakeRsrs(directory, options);
   const settings: MemorySettings = {
     enabled: true,
+    rsrs: true,
     agent: { injectContext: true, tools: true },
     chat: { recall: true, saveTurns: true, saveOnEnd: true },
     userLibrary: false,

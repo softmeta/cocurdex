@@ -4,6 +4,7 @@ import { createDelegationsSchemaSql } from "./delegation/schema";
 import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
 import { createFollowUpsSchemaSql } from "./follow-ups/schema";
 import { createHostAccessSchemaSql } from "./host-access/schema";
+import { createMemoryEntriesSchemaSql } from "./memory/schema";
 import { createOutboxSchemaSql } from "./outbox/schema";
 import { createPersonalAgentsSchemaSql } from "./personal/schema";
 import { createRoutinesSchemaSql } from "./routines/schema";
@@ -603,5 +604,6 @@ export function createSchemaSql() {
     ${createFollowUpsSchemaSql()}
     ${createOutboxSchemaSql()}
     ${createDelegationsSchemaSql()}
+    ${createMemoryEntriesSchemaSql()}
   `;
 }

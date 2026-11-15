@@ -270,6 +270,13 @@ export class DaemonState {
     };
   }
 
+  get memoryStore() {
+    return {
+      entries: this.database.memoryEntries,
+      transaction: <T>(run: () => T) => this.database.transaction(run),
+    };
+  }
+
   get data() {
     return {
       decks: this.database.decks,

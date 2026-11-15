@@ -18,6 +18,7 @@ import {
   ensureIssueIndexes,
   migrateIssuesToAgentCore,
 } from "./issues/issue-schema";
+import { createMemoryEntriesSchemaSql } from "./memory/schema";
 import { migrateNotesToCollaborativeDocs } from "./notes/note-schema";
 import { createOutboxSchemaSql } from "./outbox/schema";
 import { migratePersonasToPi } from "./personal/migrate-personas-to-pi";
@@ -41,7 +42,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 48;
+export const CURRENT_SCHEMA_VERSION = 49;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -490,6 +491,10 @@ function createFollowUpsTable(database: DatabaseSync): void {
   database.exec(createFollowUpsSchemaSql());
 }
 
+function createMemoryEntriesTables(database: DatabaseSync): void {
+  database.exec(createMemoryEntriesSchemaSql());
+}
+
 function createRoutinesTables(database: DatabaseSync): void {
   database.exec(createRoutinesSchemaSql());
 }
@@ -691,6 +696,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [45, addRemoteDelegations],
   [46, addPersonalAgentUserAddress],
   [47, createFollowUpsTable],
+  [48, createMemoryEntriesTables],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

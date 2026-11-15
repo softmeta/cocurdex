@@ -24,10 +24,9 @@ import {
 } from "./memory-queries";
 
 function statusNote(t: TFunction<"memory">, status: MemoryStatus | undefined) {
-  if (!status) return null;
-  if (!status.supported) return t("status.unsupported");
+  if (!status?.settings.rsrs) return null;
   if (status.installation === "installing") return t("status.installing");
-  if (status.available) return null;
+  if (status.rsrsAvailable) return null;
   if (status.installation === "failed") return t("status.failed");
   return t("status.missing");
 }
@@ -42,8 +41,8 @@ export function MemoryMenuItem({
   const [pending, setPending] = useState(false);
   const enabled = data?.settings.enabled ?? true;
   const installing = data?.installation === "installing";
-  const available = data?.available;
-  const unsupported = data?.supported === false;
+  const usesRsrs = data?.settings.rsrs === true;
+  const available = usesRsrs ? data?.rsrsAvailable : data?.available;
   const note = statusNote(t, data);
   const cloud = data?.cloud;
   const syncEnabled = Boolean(cloud?.connected && cloud.autosync);
@@ -66,7 +65,7 @@ export function MemoryMenuItem({
       ]);
       const saved = await desktopApi.setMemorySettings(optimistic);
       await mutate(MEMORY_SETTINGS_KEY, saved, { revalidate: false });
-      if (next && !available) {
+      if (next && usesRsrs && !available) {
         void desktopApi.installMemory();
       }
     } catch (error) {
@@ -126,28 +125,28 @@ export function MemoryMenuItem({
         <DropdownMenuCheckboxItem
           checked={enabled}
           closeOnClick={false}
-          disabled={pending || installing || unsupported}
+          disabled={pending || installing}
           onCheckedChange={(checked) => void toggleMemory(checked === true)}
         >
           {t("menu.enable")}
         </DropdownMenuCheckboxItem>
-        <DropdownMenuCheckboxItem
-          checked={syncEnabled}
-          closeOnClick={!cloud?.connected}
-          disabled={
-            pending || installing || unsupported || !available || !enabled
-          }
-          onCheckedChange={(checked) => void toggleSync(checked === true)}
-        >
-          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-            <span className="min-w-0 truncate">{t("menu.sync")}</span>
-            {cloud?.connected ? (
-              <Text as="span" className="shrink-0" size="meta" tone="muted">
-                {cloud.user}
-              </Text>
-            ) : null}
-          </span>
-        </DropdownMenuCheckboxItem>
+        {usesRsrs ? (
+          <DropdownMenuCheckboxItem
+            checked={syncEnabled}
+            closeOnClick={!cloud?.connected}
+            disabled={pending || installing || !available || !enabled}
+            onCheckedChange={(checked) => void toggleSync(checked === true)}
+          >
+            <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+              <span className="min-w-0 truncate">{t("menu.sync")}</span>
+              {cloud?.connected ? (
+                <Text as="span" className="shrink-0" size="meta" tone="muted">
+                  {cloud.user}
+                </Text>
+              ) : null}
+            </span>
+          </DropdownMenuCheckboxItem>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => openSettings("memory")}>
           <Settings2 className="size-4 shrink-0" />

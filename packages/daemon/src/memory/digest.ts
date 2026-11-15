@@ -28,32 +28,6 @@ export function conversationTurns(messages: readonly MessageRecord[]) {
   return messages.filter(isUserMessage).length;
 }
 
-export function buildTurnDiaryLine(input: {
-  session: SessionRecord;
-  surface: "chat" | "session";
-  userMessage: string;
-  assistantMessage: string;
-  device: string;
-  at: string;
-}) {
-  const when = input.at.slice(0, 10);
-  const where = input.surface === "chat" ? "chat" : "会话";
-  return `${when} 在 ${input.device} 的 Cocurdex ${where}「${compactText(
-    input.session.title,
-    40,
-  )}」中，用户问「${compactText(
-    input.userMessage,
-    60,
-  )}」，助手答「${compactText(input.assistantMessage, 80)}」`;
-}
-
-const TURN_DIARY_MAX_LINES = 20;
-
-export function appendTurnDiaryLine(diary: string, line: string) {
-  const lines = [...diary.split(/\r?\n/), line].filter((item) => item.trim());
-  return lines.slice(-TURN_DIARY_MAX_LINES).join("\n");
-}
-
 export function buildTranscriptForSummary(
   messages: readonly MessageRecord[],
   options: { maxTurns?: number; maxChars?: number } = {},
@@ -159,13 +133,13 @@ export function buildAgentMemoryPolicy(hasTools: boolean) {
     "Never store passwords, API tokens, private keys, or other secrets. Memory is an aid, not part of the task: keep it out of your replies unless the user asks.";
   if (!hasTools) {
     return [
-      "Cocurdex memory: the user's long-term memory is available through Respire (rsrs).",
+      "Cocurdex memory: the user's long-term memory is available.",
       "No memory tools are available in this session; the runtime handles recall and capture.",
       safety,
     ].join("\n");
   }
   return [
-    "Cocurdex memory: the user's long-term memory is available through Respire (rsrs). The runtime recalls relevant entries before a turn and saves a diary line after it in the background, so memory never needs a step of its own.",
+    "Cocurdex memory: the user's long-term memory is available. The runtime recalls relevant entries before a turn, so recall never needs a step of its own.",
     "- A <memory-context> block holds this turn's recall. Without one, call memory_recall when the request may depend on earlier decisions, preferences, or past work, using the project name plus concrete keywords; read an entry with memory_show before relying on it.",
     "- Call memory_remember for a reusable decision, lesson, or repeatable procedure, with parentId when you know its cause. It saves in the background and returns at once: call it in the same message as your reply, never as a step before it.",
     safety,

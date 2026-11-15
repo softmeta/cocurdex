@@ -60,7 +60,7 @@ export function registerMemoryTools(
       name: "recall",
       readOnly: true,
       description:
-        "Search long-term memory through Respire (rsrs). Personal assistants search their own partition and shared about-me facts; other agent sessions search user-wide memory. Returns compact ids and titles; use memory_show before relying on an entry. Query with concrete keywords, not pronouns. Empty results are normal. A non-null error signals unavailable or incomplete recall; relay it instead of treating it as an empty store.",
+        "Search long-term memory. Personal assistants search their own partition and shared about-me facts; other agent sessions search user-wide memory. Returns compact ids and titles; use memory_show before relying on an entry. Query with concrete keywords, not pronouns. Empty results are normal. A non-null error signals unavailable or incomplete recall; relay it instead of treating it as an empty store.",
       inputSchema: {
         type: "object",
         properties: {
@@ -224,7 +224,7 @@ export function registerMemoryTools(
       name: "policy",
       deferred: true,
       description:
-        "Read the full Respire (rsrs) memory workflow: dedup, tree placement, importance tiers, diary rules, and maintenance. The session memory gates are already in your instructions; read this when that decision is still unclear.",
+        "Read the full memory workflow: what belongs in memory, dedup, and maintenance. The session memory gates are already in your instructions; read this when that decision is still unclear.",
       inputSchema: {
         type: "object",
         properties: {},

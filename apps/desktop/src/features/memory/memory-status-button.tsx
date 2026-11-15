@@ -106,19 +106,21 @@ export function MemoryStatusButton() {
               {stage === "failed" ? (
                 <Button
                   onClick={
-                    status?.available && !cloud?.hasKeys
+                    status?.rsrsAvailable && !cloud?.hasKeys
                       ? openSync
                       : () => void enable()
                   }
                   size="sm"
                   variant="ghost"
                 >
-                  {status?.available && !cloud?.hasKeys
+                  {status?.rsrsAvailable && !cloud?.hasKeys
                     ? t("onboarding.sync")
                     : t("onboarding.retry")}
                 </Button>
               ) : null}
-              {stage === "ready" && !cloud?.connected ? (
+              {stage === "ready" &&
+              status?.settings.rsrs &&
+              !cloud?.connected ? (
                 <Button onClick={openSync} size="sm" variant="ghost">
                   {t("onboarding.sync")}
                 </Button>

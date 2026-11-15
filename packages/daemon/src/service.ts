@@ -962,7 +962,6 @@ export class CocurdexDaemonService {
           sessionId: event.sessionId,
           messageId: event.messageId,
         });
-        void this.memory.captureTurn(event.sessionId, event.messageId);
       }
       await this.team.onAgentEvent(event);
       await this.delegations.onAgentEvent(event);

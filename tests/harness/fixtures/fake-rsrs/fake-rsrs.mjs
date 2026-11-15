@@ -49,6 +49,7 @@ Commands:
   forget           Delete a memory
   restore          Restore a deleted memory
   history          Show the change log
+  export           Write every memory to a file
   memory-revision  Print the library revision
   inject           Distribute the inject source
   prompt           Print the memory workflow
@@ -127,6 +128,8 @@ function rememberCommand(state) {
     content: args.at(-1) ?? "",
     project: flag("project") ?? null,
     tags: (flag("tags") ?? "").split(",").filter(Boolean),
+    importance: flag("importance") ?? "trivial",
+    parent_id: flag("parent") ?? "",
     updated_at: new Date().toISOString(),
   };
   state.live.unshift(entry);
@@ -230,6 +233,11 @@ function libraryCommand(state) {
   }
   if (command === "inject" && args.includes("--targets")) {
     injectTargetsCommand(state);
+    return true;
+  }
+  if (command === "export") {
+    writeFileSync(args[1], JSON.stringify(state.live), "utf8");
+    send({ command, status: "ok", summary: { count: state.live.length } });
     return true;
   }
   if (command === "memory-revision") {

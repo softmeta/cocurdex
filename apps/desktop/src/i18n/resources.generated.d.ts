@@ -1270,12 +1270,12 @@ export default interface Resources {
     };
     onboarding: {
       enable: "Turn on memory";
-      failed: "Memory could not be installed.";
+      failed: "rsrs could not be set up. Memory keeps working without it.";
       label: "Long-term memory";
       retry: "Retry";
       state: {
-        failed: "Memory is not ready";
-        installing: "Installing memory…";
+        failed: "rsrs is not ready";
+        installing: "Setting up rsrs…";
         off: "Memory is off";
         ready: "Memory is on";
       };
@@ -1307,12 +1307,8 @@ export default interface Resources {
         description: "Summarize a chat session when it is archived or deleted.";
         title: "Save chat sessions on end";
       };
-      chatSaveTurns: {
-        description: "Append each completed chat exchange to today's memory diary.";
-        title: "Save chat turns";
-      };
       cliPath: {
-        description: "Optional path to an rsrs executable to run instead of the one Cocurdex installs. It still uses the Cocurdex memory store.";
+        description: "Optional path to an rsrs executable to run instead of the one Cocurdex installs.";
         placeholder: "Auto-detect";
         title: "rsrs executable";
       };
@@ -1321,7 +1317,6 @@ export default interface Resources {
         conflicts_one: "{{count}} conflict";
         conflicts_other: "{{count}} conflicts";
         description: "Turn on to create or connect an rsrs account, then keep encrypted memories in sync across your devices. Off by default: nothing leaves this device until you turn it on.";
-        needsMemory: "Turn on memory first.";
         needsRsrs: "rsrs is not installed yet.";
         offline: "This device is offline.";
         pending_one: "{{count}} memory waiting to upload";
@@ -1342,7 +1337,7 @@ export default interface Resources {
       doctorFailed: "rsrs doctor reported a problem";
       doctorPassed: "rsrs doctor: {{status}}";
       enabled: {
-        description: "Recall before answers and save useful results to your long-term memory. Entries stay in the memory store Cocurdex keeps on this device and sync to your rsrs account when one is connected. You can turn this off at any time.";
+        description: "Recall before answers and save useful results to your long-term memory. Memories stay in Cocurdex on this device. You can turn this off at any time.";
         title: "Enable memory";
       };
       groupTitle: "Long-term memory";
@@ -1369,6 +1364,12 @@ export default interface Resources {
         };
       };
       linksTitle: "About Respire";
+      rsrs: {
+        description: "Cocurdex keeps your memories on this device. Turn this on to also use rsrs (Respire): recall by meaning, encrypted multi-device sync, and the memories already in your rsrs library. It installs rsrs and a local model of about 1.3 GB.";
+        title: "Use rsrs";
+        unsupported: "rsrs has no build for this machine yet. Memory works without it.";
+      };
+      rsrsTitle: "rsrs";
       saveFailed: "Could not save memory settings";
       status: {
         available: "rsrs {{version}}";
@@ -1384,8 +1385,8 @@ export default interface Resources {
         reportCopied: "Report copied";
         title: "Status";
         unknown: "unknown version";
-        unsupported: "Long-term memory needs the rsrs CLI, which has no build for Intel Macs, so it stays off on this machine.";
-        upgradeRequired: "rsrs {{installed}} on this machine is older than {{minimum}}, the oldest version Cocurdex supports. Memory in Cocurdex is paused until you upgrade rsrs; Cocurdex does not upgrade an rsrs it did not install.";
+        unsupported: "rsrs has no build for this machine yet.";
+        upgradeRequired: "rsrs {{installed}} on this machine is older than {{minimum}}, the oldest version Cocurdex supports. Cocurdex leaves rsrs out until you upgrade it, and memory keeps working from its own store. Cocurdex does not upgrade an rsrs it did not install.";
       };
       userLibrary: {
         description: "Agent sessions also recall from the rsrs memory you set up yourself (~/.rsrs), as reference only. Cocurdex never writes to it, and its own memories win when the two disagree.";
@@ -1399,7 +1400,6 @@ export default interface Resources {
       missing: "rsrs is not installed";
       ready: "rsrs {{version}}";
       readyUnknown: "rsrs is ready";
-      unsupported: "Unsupported here";
     };
     switch: {
       label: "Memory";

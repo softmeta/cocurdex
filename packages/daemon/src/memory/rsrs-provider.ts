@@ -1,4 +1,6 @@
-import { stat } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import type {
   MemoryEntry,
   MemoryImportResult,
@@ -46,6 +48,7 @@ import {
   type RuntimeEndpoint,
   RuntimeUnreachableError,
 } from "./runtime";
+import { parseMemoryTransfer } from "./transfer";
 
 const CACHE_MS = 30_000;
 const RUNTIME_START_TIMEOUT_MS = 60_000;
@@ -413,6 +416,17 @@ export class RsrsMemoryProvider implements MemoryProvider {
   async revision() {
     const executable = await this.requireExecutable();
     return readMemoryRevision(this.invoker(executable, "read"));
+  }
+
+  async snapshot() {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "cocurdex-memory-"));
+    const file = path.join(dir, "memories.json");
+    try {
+      await this.exportTo(file);
+      return parseMemoryTransfer(await readFile(file, "utf8"));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   }
 
   async exportTo(file: string) {

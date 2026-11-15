@@ -36,22 +36,21 @@ describe("cocurdex memory CLI", () => {
     await tempDirs.cleanup();
   });
 
-  it("browses, edits, deletes, and restores memories by partition", async () => {
+  it("browses and edits its own store and keeps rsrs in step with it", async () => {
     const directory = await tempDirs.create("cocu-memory-");
     const statePath = path.join(directory, "rsrs-state.json");
     await writeFile(statePath, JSON.stringify(SEED), "utf8");
+    const rsrsTitles = async () =>
+      (
+        JSON.parse(await readFile(statePath, "utf8")) as {
+          live: { title: string }[];
+        }
+      ).live
+        .map((entry) => entry.title)
+        .sort();
     const cliPath = await writeFakeRsrs(directory, { statePath });
     const daemon = await spawnDaemon();
     try {
-      const settings = await requestDaemon(
-        "memory.settings.get",
-        daemon.options,
-      );
-      await requestDaemon(
-        "memory.settings.set",
-        { settings: { ...settings, enabled: true, cliPath } },
-        daemon.options,
-      );
       const cli = async (args: string[]) => {
         const result = await runCli([...args, "--json"], {
           userDataPath: daemon.userDataPath,
@@ -61,10 +60,42 @@ describe("cocurdex memory CLI", () => {
         return JSON.parse(result.stdout) as unknown;
       };
 
-      expect(await cli(["memory", "list", "--partition", "me"])).toEqual({
+      const own = (await cli([
+        "memory",
+        "remember",
+        "--title",
+        "Likes hiking",
+        "--project",
+        "cocurdex/me",
+        "Long walks on weekends",
+      ])) as { id: string };
+      expect(await cli(["memory", "list", "--partition", "me"])).toMatchObject({
         error: null,
-        items: [expect.objectContaining({ id: "m-tea", title: "Prefers tea" })],
+        items: [{ id: own.id, title: "Likes hiking" }],
       });
+      expect(await rsrsTitles()).toEqual(["Prefers tea", "Runs on Tuesdays"]);
+
+      const settings = await requestDaemon(
+        "memory.settings.get",
+        daemon.options,
+      );
+      await requestDaemon(
+        "memory.settings.set",
+        { settings: { ...settings, rsrs: true, cliPath } },
+        daemon.options,
+      );
+      expect(await cli(["memory", "rsrs", "sync", "--dry-run"])).toEqual({
+        builtin: { added: 2, updated: 0 },
+        external: { added: 1, updated: 0, removed: 0 },
+        failed: 0,
+      });
+      expect(await rsrsTitles()).toEqual(["Prefers tea", "Runs on Tuesdays"]);
+      await cli(["memory", "rsrs", "sync"]);
+      expect(await rsrsTitles()).toEqual([
+        "Likes hiking",
+        "Prefers tea",
+        "Runs on Tuesdays",
+      ]);
       expect(
         await cli(["memory", "list", "--partition", "agent:coach"]),
       ).toMatchObject({ items: [{ id: "m-coach" }] });
@@ -73,25 +104,34 @@ describe("cocurdex memory CLI", () => {
         await cli(["memory", "update", "m-tea", "--title", "Prefers oolong"]),
       ).toMatchObject({ id: "m-tea", title: "Prefers oolong" });
       await cli(["memory", "forget", "m-tea"]);
-      expect(await cli(["memory", "list", "--partition", "me"])).toEqual({
-        error: null,
-        items: [],
-      });
       await cli(["memory", "restore", "m-tea"]);
-
+      await cli(["memory", "forget", own.id]);
       expect(await cli(["memory", "history", "m-tea"])).toEqual([
         expect.objectContaining({ entryId: "m-tea", action: "restore" }),
         expect.objectContaining({ entryId: "m-tea", action: "delete" }),
         expect.objectContaining({ entryId: "m-tea", action: "update" }),
+        expect.objectContaining({ entryId: "m-tea", action: "create" }),
       ]);
-      expect(await cli(["memory", "revision"])).toEqual({ revision: "4" });
 
-      const stored = JSON.parse(await readFile(statePath, "utf8"));
-      expect(stored.live).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ id: "m-tea", title: "Prefers oolong" }),
-        ]),
-      );
+      expect(await cli(["memory", "rsrs", "sync"])).toEqual({
+        builtin: { added: 0, updated: 0 },
+        external: { added: 0, updated: 1, removed: 1 },
+        failed: 0,
+      });
+      expect(await rsrsTitles()).toEqual([
+        "Prefers oolong",
+        "Runs on Tuesdays",
+      ]);
+      expect(await cli(["memory", "rsrs", "sync"])).toEqual({
+        builtin: { added: 0, updated: 0 },
+        external: { added: 0, updated: 0, removed: 0 },
+        failed: 0,
+      });
+
+      await cli(["memory", "rsrs", "off"]);
+      expect(await cli(["memory", "list", "--partition", "me"])).toMatchObject({
+        items: [{ id: "m-tea", title: "Prefers oolong" }],
+      });
 
       const missing = await runCli(["memory", "forget", "nope"], {
         userDataPath: daemon.userDataPath,

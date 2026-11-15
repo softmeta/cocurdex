@@ -48,7 +48,7 @@ runScenario("memory-onboarding", {
       statePath: state.statePath,
     });
     await daemonRequest(session, "memory.settings.set", {
-      settings: { ...state.original, enabled: false, cliPath },
+      settings: { ...state.original, enabled: false, rsrs: false, cliPath },
     });
     return {};
   },
@@ -68,7 +68,7 @@ runScenario("memory-onboarding", {
       },
     ],
     [
-      "turning memory on from the entry reaches the ready state",
+      "turning memory on from the entry is ready without rsrs",
       async ({ session }) => {
         const row = await openMemoryStatus(session);
         await clickByRole(session, {
@@ -87,16 +87,20 @@ runScenario("memory-onboarding", {
         );
         const status = await daemonRequest(session, "memory.status", {});
         check(
-          status.settings.enabled && status.available,
-          "the daemon reports memory on and available",
-          { enabled: status.settings.enabled, available: status.available },
+          status.settings.enabled && status.available && !status.settings.rsrs,
+          "the daemon reports memory on and available without rsrs",
+          { settings: status.settings, available: status.available },
         );
         return {};
       },
     ],
     [
-      "sync opens the account dialog",
+      "sync opens the account dialog once rsrs is on",
       async ({ session }) => {
+        const settings = await daemonRequest(session, "memory.settings.get");
+        await daemonRequest(session, "memory.settings.set", {
+          settings: { ...settings, rsrs: true },
+        });
         const row = await openMemoryStatus(session);
         await clickByRole(session, {
           role: "button",
@@ -148,8 +152,11 @@ runScenario("memory-onboarding", {
         );
         const status = await daemonRequest(session, "memory.status", {});
         check(
-          status.available && !status.cloud.hasKeys && Boolean(status.error),
-          "installed memory needs local setup",
+          status.available &&
+            status.rsrsAvailable &&
+            !status.cloud.hasKeys &&
+            Boolean(status.error),
+          "memory stays available while rsrs needs local setup",
           status.error,
         );
         return {};

@@ -5,6 +5,7 @@ export * from "./entity-links";
 export * from "./follow-ups";
 export * from "./host-access";
 export * from "./issues";
+export * from "./memory";
 export { CURRENT_SCHEMA_VERSION } from "./migrations";
 export * from "./notes";
 export * from "./outbox";

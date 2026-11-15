@@ -26,6 +26,10 @@ import {
   type IssueTrackerRepository,
 } from "./issues";
 import {
+  createSqliteMemoryEntriesRepository,
+  type MemoryEntriesRepository,
+} from "./memory";
+import {
   hasPendingMigration,
   initializeDatabase,
   shouldRecreateDatabase,
@@ -144,6 +148,7 @@ export interface CocurdexDatabase {
   personalAgents: PersonalAgentRepository;
   routines: RoutineRepository;
   followUps: FollowUpRepository;
+  memoryEntries: MemoryEntriesRepository;
   pushOutbox: PushOutboxRepository;
   delegations: DelegationRepository;
   transaction<T>(fn: () => T): T;
@@ -242,6 +247,7 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
     personalAgents: createSqlitePersonalAgentRepository(database),
     routines: createSqliteRoutineRepository(database),
     followUps: createSqliteFollowUpRepository(database),
+    memoryEntries: createSqliteMemoryEntriesRepository(database),
     pushOutbox: createSqlitePushOutboxRepository(database),
     delegations: createSqliteDelegationRepository(database),
     ...createProviderRepositories(database),

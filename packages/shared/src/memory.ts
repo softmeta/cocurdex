@@ -45,6 +45,8 @@ export interface MemoryChatSettings {
 
 export interface MemorySettings {
   enabled: boolean;
+  /** Keep the rsrs library in step with the built-in store and recall through it too. */
+  rsrs: boolean;
   agent: MemoryAgentSettings;
   chat: MemoryChatSettings;
   userLibrary: boolean;
@@ -53,6 +55,7 @@ export interface MemorySettings {
 
 export const DEFAULT_MEMORY_SETTINGS: MemorySettings = {
   enabled: true,
+  rsrs: false,
   agent: {
     injectContext: true,
     tools: true,
@@ -86,6 +89,7 @@ export function normalizeMemorySettings(input: unknown): MemorySettings {
       : null;
   return {
     enabled: optionalBoolean(input.enabled, DEFAULT_MEMORY_SETTINGS.enabled),
+    rsrs: optionalBoolean(input.rsrs, DEFAULT_MEMORY_SETTINGS.rsrs),
     agent: {
       injectContext: optionalBoolean(
         agent.injectContext,
@@ -177,9 +181,8 @@ export function gateMemorySettings(
   settings: MemorySettings,
   platform: MemoryPlatform,
 ): MemorySettings {
-  if (memoryPlatformSupportsRsrs(platform) || !settings.enabled)
-    return settings;
-  return { ...settings, enabled: false };
+  if (memoryPlatformSupportsRsrs(platform) || !settings.rsrs) return settings;
+  return { ...settings, rsrs: false };
 }
 
 export type MemoryCloudMode = "register" | "signin";
@@ -240,8 +243,20 @@ export interface MemoryUserLibraryStatus {
   reachable: boolean;
 }
 
+/** What one sync changed on each side of the built-in store and rsrs. */
+export interface MemoryLibrarySyncSummary {
+  builtin: { added: number; updated: number };
+  external: { added: number; updated: number; removed: number };
+  /** Changes rsrs refused; the next sync retries them. */
+  failed: number;
+}
+
 export interface MemoryStatus {
   settings: MemorySettings;
+  // The fields below from `supported` to `upgradeRequired` describe the optional
+  // rsrs library; memory itself lives in the daemon and needs none of them.
+  /** rsrs is turned on and its executable is present. */
+  rsrsAvailable: boolean;
   enabled: boolean;
   supported: boolean;
   available: boolean;
