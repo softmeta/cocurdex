@@ -12,6 +12,7 @@ const ASSISTANT_METHODS = new Set([
   "inbox.brief",
   "personalAgent.work.list",
   "routine.list",
+  "followUp.list",
   "session.lastMessage",
 ]);
 
@@ -89,5 +90,22 @@ export function useRoutines(hostId: string, agentId: string) {
     ([method, id, agent]) =>
       hostConnection(id).request(method, { agentId: agent }),
     DAEMON_READ,
+  );
+}
+
+export function usePendingFollowUps(hostId: string, agentId: string) {
+  return useSWR(
+    ["followUp.list", hostId, agentId] as const,
+    ([method, id, agent]) =>
+      hostConnection(id).request(method, { agentId: agent, status: "pending" }),
+    DAEMON_READ,
+  );
+}
+
+export async function cancelFollowUp(hostId: string, id: string) {
+  await hostConnection(hostId).request("followUp.cancel", { id });
+  await mutate(
+    (key) =>
+      Array.isArray(key) && key[0] === "followUp.list" && key[1] === hostId,
   );
 }

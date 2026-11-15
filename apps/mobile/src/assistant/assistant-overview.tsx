@@ -13,6 +13,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { RoleAvatar } from "@/agents";
 import { layout, space, useThemeColors } from "@/theme";
 import { Form, FormRow, FormSection, PendingIndicator } from "@/ui";
+import { AssistantFollowUps } from "./assistant-follow-ups";
 import {
   useInbox,
   usePersonalAgents,
@@ -206,6 +207,7 @@ function Overview({
             ))}
           </FormSection>
         ) : null}
+        <AssistantFollowUps hostId={host.hostId} personaId={persona.id} />
         <FormSection
           title={t("overview.routines")}
           footer={

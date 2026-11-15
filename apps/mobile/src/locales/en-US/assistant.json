@@ -82,7 +82,9 @@
     }
   },
   "overview": {
+    "cancelFollowUp": "Cancel follow-up",
     "description": "Coordinate work, keep context, and follow through.",
+    "followUps": "Follow-ups",
     "host": "Routines run on the connected computer while its background service is online.",
     "issues": "Issues",
     "needsYou": "Needs you",

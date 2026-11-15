@@ -78,6 +78,7 @@
     "pendingApproval": "等你批准",
     "planReady": "计划已写好，等你决定",
     "postedBrief": "今日简报",
+    "postedFollowUp": "你设的跟进",
     "postedRoutine": "来自例行任务 {{name}}",
     "promptNumber": "第 {{number}} 次提问",
     "prompts": "提问目录",

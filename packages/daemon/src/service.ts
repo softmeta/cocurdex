@@ -19,6 +19,7 @@ import type {
   CocurdexDaemonEvent,
   ContextTransferRecord,
   CreateSessionPayload,
+  FollowUpRecord,
   ForkSessionPayload,
   GetToolCallResultInput,
   MessageRecord,
@@ -77,6 +78,7 @@ import { AcpRegistryService, AgentAuthService } from "./acp-registry";
 import {
   AgentToolBridge,
   registerAssistantTools,
+  registerFollowUpTools,
   registerHistoryTools,
   registerMemoryTools,
   registerMessagingTools,
@@ -125,6 +127,8 @@ import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import {
+  FollowUpService,
+  followUpMessageId,
   inboxTurnContent,
   isPostedMessage,
   PersonalAgentService,
@@ -134,6 +138,7 @@ import {
   personaSystemSections,
   personaWritePartition,
   postedMessagesSinceReply,
+  renderFollowUpMessage,
   unansweredInputsBefore,
 } from "./personal";
 import { DaemonProviderService } from "./provider";
@@ -246,6 +251,7 @@ export class CocurdexDaemonService {
   readonly decks: DaemonDeckService;
   readonly personalAgents: PersonalAgentService;
   readonly routines: RoutineService;
+  readonly followUps: FollowUpService;
   readonly inbox: InboxService;
   readonly assistant: AssistantSessions;
   private readonly outbox: OutboxService;
@@ -413,6 +419,7 @@ export class CocurdexDaemonService {
       removeDependents: async (agentId) => {
         this.delegations.forgetPersona(agentId);
         await this.removeRoutinesOf(agentId);
+        this.followUps.deleteForAgent(agentId);
       },
       applyRole: (agentId, homeSessionId, role) =>
         this.applyPersonaRole(agentId, homeSessionId, role),
@@ -451,6 +458,17 @@ export class CocurdexDaemonService {
         this.events.emit("daemon.event", {
           type: "data.changed",
           areas: ["routines"],
+        }),
+    });
+    this.followUps = new FollowUpService({
+      repository: this.state.data.followUps,
+      personaExists: (id) =>
+        this.state.data.personalAgents.getById(id) !== null,
+      deliver: (followUp) => this.deliverFollowUp(followUp),
+      announceChanged: () =>
+        this.events.emit("daemon.event", {
+          type: "data.changed",
+          areas: ["personal"],
         }),
     });
     this.outbox = new OutboxService({
@@ -818,6 +836,13 @@ export class CocurdexDaemonService {
       reporting: (sessionId) => this.routines.isReporting(sessionId),
       report: (sessionId, report) => this.routines.report(sessionId, report),
     });
+    registerFollowUpTools(this.agentTools.registry, {
+      personaOf,
+      list: (agentId) => this.followUps.list(agentId),
+      get: (id) => this.followUps.get(id),
+      create: (payload) => this.followUps.create(payload),
+      cancel: (id) => this.followUps.cancel(id),
+    });
     registerSettingsTools(this.agentTools.registry, {
       getWorktreeEnvironment: (workspaceId) =>
         this.workspaces.getWorktreeEnvironment(workspaceId),
@@ -964,6 +989,7 @@ export class CocurdexDaemonService {
       await this.personalAgents.reconcileRoles();
       if (!this.stopping) {
         this.routines.start();
+        this.followUps.start();
         this.outbox.start();
       }
     } catch {
@@ -1015,6 +1041,24 @@ export class CocurdexDaemonService {
     const ids = new Set(this.routines.sessionIds(routineId));
     if (routine?.sessionId) ids.add(routine.sessionId);
     return [...ids];
+  }
+
+  private async deliverFollowUp(followUp: FollowUpRecord) {
+    const persona = this.state.data.personalAgents.getById(followUp.agentId);
+    if (!persona)
+      throw new Error(`Assistant ${followUp.agentId} was not found`);
+    await this.submitSessionMessage({
+      sessionId: persona.homeSessionId,
+      messageId: followUpMessageId(followUp.id),
+      content: renderFollowUpMessage(followUp),
+      delivery: "queue-after-run",
+      origin: {
+        kind: "followUp",
+        followUpId: followUp.id,
+        note: followUp.note,
+        dueAt: followUp.dueAt,
+      },
+    });
   }
 
   private async removeRoutinesOf(agentId: string) {
@@ -2523,6 +2567,7 @@ export class CocurdexDaemonService {
     this.stopping = true;
     await this.startupRecovery;
     this.routines.stop();
+    await this.followUps.stop();
     this.outbox.stop();
     clearInterval(this.checkpointReconcileTimer);
     this.keepAwake.dispose();

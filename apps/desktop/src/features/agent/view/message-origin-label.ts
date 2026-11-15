@@ -8,6 +8,7 @@ export function messageOriginLabel(
   if (origin.kind === "routine") {
     return t("peerMessage.fromRoutine", { name: origin.routineName });
   }
+  if (origin.kind === "followUp") return t("peerMessage.fromFollowUp");
   if (origin.kind === "brief") {
     return t("peerMessage.fromBrief");
   }

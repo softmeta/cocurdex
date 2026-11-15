@@ -79,6 +79,22 @@ cocurdex routine delete <routine> --json
 - Inside a persona's thread, the `routine` tool group (`routine_list`, `routine_create`, `routine_update`, `routine_run`, `routine_runs`, `routine_delete`) manages that persona's own routines; `routine_report` exists only inside a running routine. Tools cannot grant `full` access or change or run a `full` routine.
 - Deleting a routine deletes its run threads; deleting a persona deletes its routines and their threads.
 
+## Follow-ups
+
+A follow-up wakes a persona once, later, in its home thread: to check on something, remind the user, or continue a task that has to wait. Use a routine for anything that repeats. A `<persona>` argument accepts the id, a unique id prefix, or its name.
+
+```bash
+cocurdex persona follow-up list <persona> [--all] --json
+cocurdex persona follow-up set <persona> --note <text> (--at <ISO 8601 with offset>|--in <minutes>) --json
+cocurdex persona follow-up cancel <id> --json
+```
+
+- `list` shows pending follow-ups soonest first; `--all` adds fired and canceled ones. The note is at most 2000 characters, and the time is at most one year ahead.
+- At the due time the note is posted into the persona's home thread as a message marked as its follow-up (not written by the user), and the persona takes a turn with that thread's context. If the persona is busy, the follow-up waits behind the current run and is answered together with anything else that arrived meanwhile.
+- A follow-up that came due while the daemon was stopped fires once when it starts again. A failed delivery is retried a minute later.
+- Only pending follow-ups can be canceled. Deleting a persona deletes its follow-ups.
+- Inside a persona's thread, the `follow_up` tool group (`follow_up_set`, `follow_up_list`, `follow_up_cancel`) manages that persona's own follow-ups.
+
 ## Delegated work
 
 A persona does not write code itself. It hands repository work to an ordinary work session in one of the user's workspaces, which runs on the user's coding agents and shows up in the work sidebar, where the user can follow and take it over. A `<session-id>` is the `sessionId` that `start` and `list` return.

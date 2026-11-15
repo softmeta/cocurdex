@@ -11,10 +11,12 @@ import {
   isImageAttachment,
   type MessageRecord,
   type SessionInteractionSnapshot,
+  stripPeerEnvelope,
 } from "@cocurdex/shared";
 
 export type PostedSource =
   | { kind: "brief" }
+  | { kind: "followUp" }
   | { kind: "routine"; name: string }
   | { kind: "delegation"; sources: readonly DelegationSource[] };
 
@@ -25,6 +27,7 @@ export type TranscriptItem =
       text: string;
       images: ImageAttachment[];
       report: DelegationSource | null;
+      source?: PostedSource;
     }
   | {
       kind: "assistant";
@@ -80,6 +83,18 @@ function messageItem(
   }
   const images = message.attachments.filter(isImageAttachment);
   const text = message.content.trim() === "" ? "" : message.content;
+  if (message.role === "user" && message.origin?.kind === "followUp") {
+    const note = stripPeerEnvelope(message.content);
+    const source: PostedSource = { kind: "followUp" };
+    return {
+      kind: "user",
+      id: message.id,
+      text: note,
+      images,
+      report: null,
+      source,
+    };
+  }
   if (message.role === "user" && (text !== "" || images.length > 0)) {
     return { kind: "user", id: message.id, text, images, report: null };
   }

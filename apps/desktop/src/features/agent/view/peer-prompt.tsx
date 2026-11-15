@@ -26,6 +26,7 @@ const ORIGIN_ICONS = {
   peer: Bot,
   scriptRun: Workflow,
   routine: AlarmClock,
+  followUp: AlarmClock,
   brief: Newspaper,
   greeting: Bot,
   remoteHost: Laptop,

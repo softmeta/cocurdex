@@ -89,6 +89,7 @@
     "pendingApproval": "Waiting for your approval",
     "planReady": "Plan ready for review",
     "postedBrief": "Today's brief",
+    "postedFollowUp": "Your follow-up",
     "postedRoutine": "From routine {{name}}",
     "promptNumber": "Prompt {{number}}",
     "prompts": "Prompts",

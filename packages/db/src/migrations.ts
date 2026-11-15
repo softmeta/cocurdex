@@ -5,6 +5,7 @@ import {
   DELEGATION_REMOTE_COLUMNS,
 } from "./delegation/schema";
 import { createEntityLinksSchemaSql } from "./entity-links/entity-link-schema";
+import { createFollowUpsSchemaSql } from "./follow-ups/schema";
 import {
   ADD_HOST_DEVICE_APPROVED_AT_SQL,
   ADD_HOST_DEVICE_PUBLIC_KEY_SQL,
@@ -40,7 +41,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 47;
+export const CURRENT_SCHEMA_VERSION = 48;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -485,6 +486,10 @@ function addPersonalAgentUserAddress(database: DatabaseSync): void {
   }
 }
 
+function createFollowUpsTable(database: DatabaseSync): void {
+  database.exec(createFollowUpsSchemaSql());
+}
+
 function createRoutinesTables(database: DatabaseSync): void {
   database.exec(createRoutinesSchemaSql());
 }
@@ -685,6 +690,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [44, invalidateAntigravityContextUsage],
   [45, addRemoteDelegations],
   [46, addPersonalAgentUserAddress],
+  [47, createFollowUpsTable],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

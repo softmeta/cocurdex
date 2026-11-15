@@ -84,7 +84,9 @@ export default interface Resources {
       };
     };
     overview: {
+      cancelFollowUp: "Cancel follow-up";
       description: "Coordinate work, keep context, and follow through.";
+      followUps: "Follow-ups";
       host: "Routines run on the connected computer while its background service is online.";
       issues: "Issues";
       needsYou: "Needs you";
@@ -551,6 +553,7 @@ export default interface Resources {
       pendingApproval: "Waiting for your approval";
       planReady: "Plan ready for review";
       postedBrief: "Today's brief";
+      postedFollowUp: "Your follow-up";
       postedRoutine: "From routine {{name}}";
       promptNumber: "Prompt {{number}}";
       prompts: "Prompts";

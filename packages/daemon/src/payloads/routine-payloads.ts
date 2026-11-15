@@ -1,4 +1,6 @@
 import {
+  FOLLOW_UP_NOTE_MAX_LENGTH,
+  FOLLOW_UP_STATUSES,
   ROUTINE_ACCESS_VALUES,
   ROUTINE_DELIVER_VALUES,
   ROUTINE_MIN_INTERVAL_MINUTES,
@@ -86,5 +88,23 @@ export const routinePayloadSchemas: PayloadSchemas = {
       routineId: idSchema.nullish(),
       limit: z.number().int().min(1).max(200).optional(),
     }),
+  ),
+  "followUp.list": exact<Payload<"followUp.list">>()(
+    z.object({
+      agentId: idSchema,
+      status: z.enum(FOLLOW_UP_STATUSES).nullish(),
+    }),
+  ),
+  "followUp.create": exact<Payload<"followUp.create">>()(
+    z.object({
+      agentId: idSchema,
+      dueAt: boundedTextSchema(100),
+      note: boundedTextSchema(FOLLOW_UP_NOTE_MAX_LENGTH).pipe(
+        z.string().trim().min(1),
+      ),
+    }),
+  ),
+  "followUp.cancel": exact<Payload<"followUp.cancel">>()(
+    z.object({ id: idSchema }),
   ),
 };

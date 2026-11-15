@@ -11,6 +11,7 @@ const AUTOMATION_PREFIXES = [
   "agentRole.",
   "application.",
   "delegation.",
+  "followUp.",
   "inbox.",
   "memory.",
   "personalAgent.",
@@ -232,6 +233,15 @@ export async function handleAutomationRequest(
         request.params.routineId ?? null,
         request.params.limit,
       );
+    case "followUp.list":
+      return service.followUps.list(
+        request.params.agentId,
+        request.params.status ?? null,
+      );
+    case "followUp.create":
+      return service.followUps.create(request.params);
+    case "followUp.cancel":
+      return service.followUps.cancel(request.params.id);
   }
 }
 

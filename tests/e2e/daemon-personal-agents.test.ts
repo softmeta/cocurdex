@@ -292,4 +292,86 @@ describe("personal agents over the daemon socket", () => {
       await stub.close();
     }
   });
+  it("wakes an assistant in its home thread when its follow-up comes due", async () => {
+    const stub = await startStubLlmServer();
+    const daemon = await spawnDaemon();
+    try {
+      await saveAgentModel(daemon, stub, "e2e-agent-model");
+      const assistant = await requestDaemon(
+        "personalAgent.create",
+        {
+          role: {
+            ...personalAgentRoleDraft("Follow-up"),
+            providerId: "e2e-stub",
+            modelId: "e2e-agent-model",
+            modelName: "e2e-agent-model",
+          },
+        },
+        daemon.options,
+      );
+      const events: CocurdexDaemonEvent[] = [];
+      const subscription = await subscribeDaemonEvents(
+        (event) => events.push(event),
+        daemon.options,
+      );
+      stub.plan = { kind: "script", turns: [{ text: ["Checked the reply"] }] };
+      const later = await requestDaemon(
+        "followUp.create",
+        {
+          agentId: assistant.id,
+          dueAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+          note: "Never fires",
+        },
+        daemon.options,
+      );
+      await requestDaemon("followUp.cancel", { id: later.id }, daemon.options);
+      const due = await requestDaemon(
+        "followUp.create",
+        {
+          agentId: assistant.id,
+          dueAt: new Date().toISOString(),
+          note: "Check whether the landlord replied",
+        },
+        daemon.options,
+      );
+
+      const request = await stub.nextRequest();
+      expect(lastUserText(request.body)).toContain(
+        "Check whether the landlord replied",
+      );
+      await waitFor(() =>
+        events.some(
+          (event) =>
+            event.type === "message.completed" &&
+            event.message.content === "Checked the reply",
+        ),
+      );
+      const followUps = await requestDaemon(
+        "followUp.list",
+        { agentId: assistant.id },
+        daemon.options,
+      );
+      expect(
+        followUps.map((followUp) => [followUp.id, followUp.status]),
+      ).toEqual(
+        expect.arrayContaining([
+          [due.id, "fired"],
+          [later.id, "canceled"],
+        ]),
+      );
+      const { messages } = await requestDaemon(
+        "session.listMessages",
+        { sessionId: assistant.homeSessionId },
+        daemon.options,
+      );
+      expect(
+        messages.find((message) => message.origin?.kind === "followUp")?.role,
+      ).toBe("user");
+      expect(stub.requests).toHaveLength(1);
+      subscription.close();
+    } finally {
+      await daemon.dispose();
+      await stub.close();
+    }
+  });
 });

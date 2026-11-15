@@ -341,6 +341,13 @@ const TranscriptRow = memo(function TranscriptRow({
         {item.separatorTime === undefined ? null : (
           <TimeSeparator time={item.separatorTime} />
         )}
+        {item.source ? (
+          <PostedSourceLine
+            source={item.source}
+            color={colors.mutedForeground}
+            hostId={actions.hostId}
+          />
+        ) : null}
         <UserImages images={item.images} actions={actions} colors={colors} />
         {item.text ? (
           <View style={[styles.bubble, { backgroundColor: bubble.background }]}>
