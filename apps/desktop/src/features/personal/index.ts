@@ -9,5 +9,6 @@ export {
   usePersonaOfRole,
   usePersonaRole,
 } from "./personal-queries";
+export { useToldItems } from "./personal-told-queries";
 
 export { usePersonalWork } from "./personal-work-queries";

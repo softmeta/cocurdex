@@ -95,6 +95,19 @@ cocurdex persona follow-up cancel <id> --json
 - Only pending follow-ups can be canceled. Deleting a persona deletes its follow-ups.
 - Inside a persona's thread, the `follow_up` tool group (`follow_up_set`, `follow_up_list`, `follow_up_cancel`) manages that persona's own follow-ups.
 
+## Already told
+
+Each persona keeps a short list (at most 30 items) of the conclusions, facts, answers, and commitments it has already given the user, so it does not repeat them after older messages drop out of its context. The list is loaded before every persona turn.
+
+```bash
+cocurdex persona told list <persona> --json
+cocurdex persona told forget <persona> --item <text> --json
+```
+
+- The daemon updates the list in the background once a persona thread has been quiet for about a minute and a half, using the persona's model; routine runs do not update it. It needs memory to be enabled, since the list is stored as one important record in the persona's own memory partition.
+- `list` prints the items oldest first. `forget` removes one item, matched case-insensitively, and prints the remaining list.
+- Deleting a persona deletes its list.
+
 ## Delegated work
 
 A persona does not write code itself. It hands repository work to an ordinary work session in one of the user's workspaces, which runs on the user's coding agents and shows up in the work sidebar, where the user can follow and take it over. A `<session-id>` is the `sessionId` that `start` and `list` return.
