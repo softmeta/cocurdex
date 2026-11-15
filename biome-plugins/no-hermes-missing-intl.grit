@@ -1,0 +1,20 @@
+language js
+
+or {
+  `new Intl.$name($args)`,
+  `Intl.$name.$method($args)`
+} as $use where {
+  $name <: or {
+    r"^RelativeTimeFormat$",
+    r"^Segmenter$",
+    r"^Locale$",
+    r"^PluralRules$",
+    r"^ListFormat$",
+    r"^DisplayNames$",
+    r"^DurationFormat$"
+  },
+  not $use <: within JsIfStatement(test=$test) where {
+    $test <: contains `typeof Intl.$name`
+  },
+  register_diagnostic(span=$use, message="Hermes, the mobile JavaScript engine, has only Intl.Collator, Intl.DateTimeFormat, and Intl.NumberFormat on iOS and Android, so this throws there. Take the text from the caller's i18n, guard it with a typeof check and a fallback, or load a polyfill in the mobile module that needs it. See https://github.com/facebook/hermes/blob/main/doc/IntlAPIs.md.")
+}

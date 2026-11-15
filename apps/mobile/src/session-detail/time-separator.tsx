@@ -4,12 +4,17 @@ import { StyleSheet, Text, View } from "react-native";
 import { space, useThemeColors } from "@/theme";
 
 export function TimeSeparator({ time }: { time: number }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation("common");
   const colors = useThemeColors();
   return (
     <View style={styles.row} testID="transcript-time-separator">
       <Text style={[styles.text, { color: colors.mutedForeground }]}>
-        {formatSeparatorTime(time, Date.now(), i18n.language)}
+        {formatSeparatorTime(
+          time,
+          Date.now(),
+          i18n.language,
+          t("age.yesterday"),
+        )}
       </Text>
     </View>
   );

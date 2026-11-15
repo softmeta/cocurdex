@@ -164,6 +164,13 @@ const styles = StyleSheet.create({
   swatch: { width: SWATCH, height: SWATCH, borderRadius: SWATCH / 2 },
 });
 
+// Hermes has no Intl.Segmenter, which keeps a ZWJ or flag emoji whole. The
+// polyfill is large, so it loads on the first edit instead of at startup.
+// https://github.com/facebook/hermes/blob/main/doc/IntlAPIs.md
+function loadSegmenter() {
+  require("@formatjs/intl-segmenter/polyfill.js");
+}
+
 export function AvatarEmojiField({
   role,
   onChange,
@@ -181,6 +188,7 @@ export function AvatarEmojiField({
       defaultValue={current.kind === "emoji" ? current.emoji : ""}
       maxLength={8}
       onChangeText={(text) => {
+        loadSegmenter();
         const next = normalizeAgentRoleAvatar({
           kind: "emoji",
           emoji: text,

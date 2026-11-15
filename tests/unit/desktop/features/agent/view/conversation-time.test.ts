@@ -52,29 +52,39 @@ describe("formatSeparatorTime", () => {
   const now = at(6, 15).getTime();
 
   it("shows only the clock today", () => {
-    expect(formatSeparatorTime(at(6, 9, 5).getTime(), now, "en-US")).toBe(
-      "9:05 AM",
-    );
+    expect(
+      formatSeparatorTime(at(6, 9, 5).getTime(), now, "en-US", "Yesterday"),
+    ).toBe("9:05 AM");
   });
 
   it("names yesterday", () => {
-    expect(formatSeparatorTime(at(5, 14, 53).getTime(), now, "en-US")).toBe(
-      "Yesterday 2:53 PM",
-    );
-    expect(formatSeparatorTime(at(5, 14, 53).getTime(), now, "zh-CN")).toBe(
-      "昨天 14:53",
-    );
+    expect(
+      formatSeparatorTime(at(5, 14, 53).getTime(), now, "en-US", "Yesterday"),
+    ).toBe("Yesterday 2:53 PM");
+    expect(
+      formatSeparatorTime(at(5, 14, 53).getTime(), now, "zh-CN", "昨天"),
+    ).toBe("昨天 14:53");
   });
 
   it("names the weekday within a week and the date beyond", () => {
-    expect(formatSeparatorTime(at(3, 8).getTime(), now, "en-US")).toBe(
-      "Tuesday 8:00 AM",
-    );
     expect(
-      formatSeparatorTime(new Date(2026, 9, 21, 8).getTime(), now, "en-US"),
+      formatSeparatorTime(at(3, 8).getTime(), now, "en-US", "Yesterday"),
+    ).toBe("Tuesday 8:00 AM");
+    expect(
+      formatSeparatorTime(
+        new Date(2026, 9, 21, 8).getTime(),
+        now,
+        "en-US",
+        "Yesterday",
+      ),
     ).toBe("Oct 21 8:00 AM");
     expect(
-      formatSeparatorTime(new Date(2025, 0, 2, 8).getTime(), now, "en-US"),
+      formatSeparatorTime(
+        new Date(2025, 0, 2, 8).getTime(),
+        now,
+        "en-US",
+        "Yesterday",
+      ),
     ).toBe("Jan 2, 2025 8:00 AM");
   });
 });

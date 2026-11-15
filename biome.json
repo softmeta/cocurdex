@@ -118,6 +118,16 @@
       }
     },
     {
+      "includes": [
+        "apps/mobile/src/**",
+        "packages/client-runtime/src/**",
+        "packages/shared/src/**",
+        "packages/rpc/src/**",
+        "packages/secure-channel/src/**"
+      ],
+      "plugins": ["./biome-plugins/no-hermes-missing-intl.grit"]
+    },
+    {
       "includes": ["apps/desktop/src/**", "!apps/desktop/src/components/ui/**"],
       "plugins": ["./biome-plugins/no-effect-outside-hooks.grit"]
     },
