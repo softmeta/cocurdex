@@ -4,7 +4,10 @@ export interface MemoryPlatform {
   libc?: "glibc" | "musl";
 }
 
+// The build Cocurdex installs when a machine has no rsrs yet. A machine that
+// already has rsrs keeps its own version as long as it meets the minimum.
 export const RSRS_CLI_VERSION = "2.0.0-dev.3";
+export const RSRS_MIN_CLI_VERSION = "2.0.0-dev.3";
 export const RSRS_CLI_RELEASE_BASE_URL = `https://github.com/risense-ai/respire-cli/releases/download/v${RSRS_CLI_VERSION}`;
 
 export interface RsrsCliAsset {
@@ -54,6 +57,21 @@ const RSRS_CLI_ASSETS: readonly RsrsCliAsset[] = [
   },
 ];
 
+// The gnu builds link against GLIBC_2.39 symbols (COC-138); an older glibc
+// runs the statically linked musl build instead.
+const RSRS_GNU_MIN_GLIBC = "2.39";
+
+export function rsrsLibcFor(
+  glibcVersion: string | undefined,
+): MemoryPlatform["libc"] {
+  if (!glibcVersion) return "musl";
+  const order = compareRsrsVersions(
+    `${glibcVersion}.0`,
+    `${RSRS_GNU_MIN_GLIBC}.0`,
+  );
+  return order !== null && order < 0 ? "musl" : "glibc";
+}
+
 const ARCH_TRIPLE: Record<string, string> = {
   arm64: "aarch64",
   x64: "x86_64",
@@ -74,4 +92,52 @@ function targetTriple(platform: MemoryPlatform) {
 export function rsrsCliAsset(platform: MemoryPlatform): RsrsCliAsset | null {
   const target = targetTriple(platform);
   return RSRS_CLI_ASSETS.find((asset) => asset.target === target) ?? null;
+}
+
+const VERSION_PATTERN = /(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/;
+
+function comparePrerelease(
+  left: string | undefined,
+  right: string | undefined,
+) {
+  if (left === right) return 0;
+  if (left === undefined) return 1;
+  if (right === undefined) return -1;
+  const a = left.split(".");
+  const b = right.split(".");
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    const x = a[index];
+    const y = b[index];
+    if (x === undefined) return -1;
+    if (y === undefined) return 1;
+    const xNumeric = /^\d+$/.test(x);
+    const yNumeric = /^\d+$/.test(y);
+    if (xNumeric && yNumeric) {
+      const difference = Number(x) - Number(y);
+      if (difference !== 0) return Math.sign(difference);
+    } else if (xNumeric !== yNumeric) {
+      return xNumeric ? -1 : 1;
+    } else if (x !== y) {
+      return x < y ? -1 : 1;
+    }
+  }
+  return 0;
+}
+
+// Semantic version order (semver.org section 11). Returns null when either
+// side has no version in it, such as an unrecognized `rsrs --version` line.
+export function compareRsrsVersions(left: string, right: string) {
+  const a = VERSION_PATTERN.exec(left);
+  const b = VERSION_PATTERN.exec(right);
+  if (!a || !b) return null;
+  for (const index of [1, 2, 3]) {
+    const difference = Number(a[index]) - Number(b[index]);
+    if (difference !== 0) return Math.sign(difference);
+  }
+  return comparePrerelease(a[4], b[4]);
+}
+
+export function rsrsVersionMeetsMinimum(version: string) {
+  const order = compareRsrsVersions(version, RSRS_MIN_CLI_VERSION);
+  return order === null || order >= 0;
 }

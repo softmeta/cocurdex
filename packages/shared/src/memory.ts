@@ -259,6 +259,9 @@ export interface MemoryStatus {
   // The pinned install stopped on a state only the user or a newer rsrs can
   // clear, while the running store still serves recall and remember.
   installBlocked?: boolean;
+  // The machine's rsrs is older than Cocurdex supports; memory pauses until
+  // the user upgrades it. Cocurdex never upgrades an rsrs it did not install.
+  upgradeRequired?: { installed: string; minimum: string } | null;
   checkedAt: string | null;
   lastRecall: MemoryRecallStatus | null;
 }

@@ -195,13 +195,14 @@
       "copyReport": "复制完整报告",
       "doctor": "体检：{{status}} · 通过 {{pass}} · 警告 {{warn}} · 失败 {{fail}}",
       "flaggedChecks": "需要处理的检查项",
-      "installBlocked": "rsrs 停在了一次未完成的密钥交接上，需要更新的 rsrs 才能完成。记忆的召回和保存不受影响；修复版本发布后 Cocurdex 会自动更新。",
+      "installBlocked": "rsrs 停在了一次未完成的密钥交接上，需要更新的 rsrs 才能完成。记忆的召回和保存不受影响；修复版本发布后升级 rsrs 即可。",
       "installing": "正在安装 rsrs 和本地模型，首次可能需要十几分钟…",
       "missing": "rsrs 尚未安装",
       "reportCopied": "报告已复制",
       "title": "状态",
       "unknown": "未知版本",
-      "unsupported": "长期记忆依赖 rsrs CLI，而它没有 Intel Mac 版本，因此这台机器上保持关闭。"
+      "unsupported": "长期记忆依赖 rsrs CLI，而它没有 Intel Mac 版本，因此这台机器上保持关闭。",
+      "upgradeRequired": "本机的 rsrs {{installed}} 低于 Cocurdex 支持的最低版本 {{minimum}}。升级 rsrs 之前，Cocurdex 中的记忆会暂停；Cocurdex 不会升级不是由它安装的 rsrs。"
     },
     "userLibrary": {
       "description": "Agent 会话同时从你自己安装的 rsrs 记忆（~/.rsrs）中召回，仅作参考。Cocurdex 不会写入它；两边不一致时以 Cocurdex 的记忆为准。",

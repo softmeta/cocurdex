@@ -100,7 +100,8 @@ function DoctorSummary({
 
 export function MemoryDoctorDetails({ status }: { status: MemoryStatus }) {
   const { t } = useTranslation("memory");
-  if (!status.doctor && !status.error) return null;
+  const upgrade = status.upgradeRequired;
+  if (!status.doctor && !status.error && !upgrade) return null;
 
   const copyReport = async () => {
     try {
@@ -118,6 +119,14 @@ export function MemoryDoctorDetails({ status }: { status: MemoryStatus }) {
   return (
     <>
       <DoctorSummary status={status} t={t} />
+      {upgrade ? (
+        <Text className="mt-1 block" size="meta">
+          {t("settings.status.upgradeRequired", {
+            installed: upgrade.installed,
+            minimum: upgrade.minimum,
+          })}
+        </Text>
+      ) : null}
       {status.installBlocked ? (
         <Text className="mt-1 block" size="meta">
           {t("settings.status.installBlocked")}

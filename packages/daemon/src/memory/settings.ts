@@ -90,6 +90,9 @@ export interface MemoryInstallState {
   // The pinned rsrs version whose install failed on a state only the user can
   // resolve; startup does not retry it automatically.
   blockedPin: string | null;
+  // The rsrs home Cocurdex created itself. Only that home may be set up or
+  // repaired automatically; any other home belongs to the user.
+  ownedHome: string | null;
 }
 
 export interface MemorySettingsStore {
@@ -125,6 +128,7 @@ function parseInstallState(raw: string | null): MemoryInstallState {
       error: null,
       doctor: null,
       blockedPin: null,
+      ownedHome: null,
     };
   }
   try {
@@ -145,6 +149,7 @@ function parseInstallState(raw: string | null): MemoryInstallState {
       doctor: parsed.doctor ?? null,
       blockedPin:
         typeof parsed.blockedPin === "string" ? parsed.blockedPin : null,
+      ownedHome: typeof parsed.ownedHome === "string" ? parsed.ownedHome : null,
     };
   } catch {
     return {
@@ -155,6 +160,7 @@ function parseInstallState(raw: string | null): MemoryInstallState {
       error: null,
       doctor: null,
       blockedPin: null,
+      ownedHome: null,
     };
   }
 }

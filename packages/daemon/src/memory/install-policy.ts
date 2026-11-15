@@ -17,6 +17,25 @@ export function needsManagedInstall(facts: MemoryInstallFacts) {
   return !facts.hasExecutable || facts.installedVersion !== facts.pinnedVersion;
 }
 
+export interface GlobalInstallFacts {
+  supported: boolean;
+  enabled: boolean;
+  customCli: boolean;
+  hasExecutable: boolean;
+  freshHome: boolean;
+  ownedHome: boolean;
+  blocked: boolean;
+}
+
+// The shared home is the user's: Cocurdex sets it up only while it holds no
+// rsrs at all, or finishes a setup it started, and never replaces or upgrades
+// an rsrs that is already there.
+export function needsGlobalInstall(facts: GlobalInstallFacts) {
+  if (!facts.supported || !facts.enabled || facts.customCli) return false;
+  if (facts.blocked || facts.hasExecutable) return false;
+  return facts.freshHome || facts.ownedHome;
+}
+
 // rsrs reports these when a login, keygen or recovery step is waiting on the
 // user (respire-cli autostart control); retrying the install cannot clear them.
 const NEEDS_USER_ERROR =

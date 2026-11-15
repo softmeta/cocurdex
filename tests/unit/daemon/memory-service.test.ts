@@ -1,17 +1,26 @@
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  copyFile,
+  mkdir,
+  readFile,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { AgentToolBridge } from "@cocurdex/daemon/internal/agent-tools/agent-tool-bridge";
 import { registerMemoryTools } from "@cocurdex/daemon/internal/agent-tools/groups/memory";
 import { MemoryService } from "@cocurdex/daemon/internal/memory/service";
-import type {
-  MemorySettings,
-  MessageRecord,
-  SessionRecord,
+import {
+  type MemorySettings,
+  type MessageRecord,
+  RSRS_CLI_VERSION,
+  RSRS_MIN_CLI_VERSION,
+  type SessionRecord,
 } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, onTestFinished } from "vitest";
 
 const temp = createTempDirs();
 
@@ -76,8 +85,10 @@ async function createFakeRsrs(
     candidateOnRemember?: boolean;
     identityMissing?: boolean;
     modelInstall?: "ok" | "needsRestart" | "fails" | "needsUser";
+    version?: string;
   } = {},
 ) {
+  const version = options.version ?? RSRS_CLI_VERSION;
   const restartMarker = path.join(directory, "runtime-restarted");
   const scriptPath = path.join(directory, "fake-rsrs.mjs");
   const script = `import { appendFileSync, existsSync, writeFileSync } from "node:fs";
@@ -86,10 +97,8 @@ const args = process.argv.slice(2);
 appendFileSync(log, JSON.stringify(args) + "\\n");
 const command = args[0];
 const send = (value) => process.stdout.write(JSON.stringify(value));
-if (command === "--version") {
-  process.stdout.write("rsrs 1.0.0\\n");
-} else if (command === "v") {
-  process.stdout.write("rsrs 1.0.0\\n");
+if (command === "--version" || command === "v") {
+  process.stdout.write("rsrs ${version}\\n");
 } else if (command === "status") {
   send({
     command: "status",
@@ -136,7 +145,7 @@ if (command === "--version") {
   send({ command: "cli", status: "fail", errors: ["offline_keygen_handoff_pending: use the original operation's explicit handoff"] });
   process.exit(1);
 } else if (command === "doctor") {
-  send({ command: "doctor", status: "ok", summary: { total: 1, pass: 1, warn: 0, fail: 0, skip: 0, version: "1.0.0" }, items: [{ name: "store", status: "ok", value: "ok" }] });
+  send({ command: "doctor", status: "ok", summary: { total: 1, pass: 1, warn: 0, fail: 0, skip: 0, version: "${version}" }, items: [{ name: "store", status: "ok", value: "ok" }] });
 } else if (command === "prompt") {
   process.stdout.write("policy text");
 } else if (command === "list") {
@@ -201,6 +210,7 @@ async function createService(
     startRuntime?: boolean;
     userLibraryHome?: string;
     modelInstall?: "ok" | "needsRestart" | "fails" | "needsUser";
+    version?: string;
   } = {},
 ) {
   const directory = await temp.create("cocurdex-memory-");
@@ -222,13 +232,64 @@ async function createService(
     device: "test-host",
     platform: options.platform,
     rsrsDataDir: directory,
-    userLibraryHome: options.userLibraryHome,
+    homeDir: options.userLibraryHome,
     startRuntime: options.startRuntime ?? false,
     installRetryDelaysMs: [0],
     turnRecallBudgetMs: options.turnRecallBudgetMs,
     now: () => new Date("2026-10-28T10:00:02.000Z"),
   });
   return { service, state, logPath, directory };
+}
+
+async function createGlobalService(options: {
+  version?: string;
+  cli: boolean;
+}) {
+  // The unit setup isolates every store through RSRS_DATA_DIR, which would
+  // keep this service off the global home.
+  const isolated = process.env.RSRS_DATA_DIR;
+  delete process.env.RSRS_DATA_DIR;
+  onTestFinished(() => {
+    process.env.RSRS_DATA_DIR = isolated;
+  });
+  const directory = await temp.create("cocurdex-memory-");
+  const home = await temp.create("cocurdex-home-");
+  const dataDir = path.join(home, ".rsrs");
+  const logPath = path.join(directory, "calls.log");
+  await mkdir(dataDir, { recursive: true });
+  await writeFile(path.join(dataDir, "session.json"), "{}", "utf8");
+  if (options.cli) {
+    const fake = await createFakeRsrs(directory, logPath, options);
+    await mkdir(path.join(dataDir, "bin"), { recursive: true });
+    await copyFile(fake, path.join(dataDir, "bin", "rsrs"));
+  }
+  const settings: MemorySettings = {
+    enabled: true,
+    agent: { injectContext: true, tools: true },
+    chat: { recall: true, saveTurns: true, saveOnEnd: true },
+    userLibrary: false,
+    cliPath: "",
+  };
+  const service = new MemoryService({
+    userDataPath: directory,
+    defaultUserDataPath: directory,
+    homeDir: home,
+    state: createState(settings) as never,
+    broadcast: () => {},
+    resolveSessionProvider: async () => null,
+    device: "test-host",
+    platform: { os: process.platform, arch: "arm64" },
+    startRuntime: false,
+    installRetryDelaysMs: [0],
+    now: () => new Date("2026-10-28T10:00:02.000Z"),
+  });
+  const calls = async () =>
+    (await readFile(logPath, "utf8").catch(() => ""))
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as string[]);
+  return { service, dataDir, calls };
 }
 
 async function startUserRuntime(home: string) {
@@ -407,14 +468,14 @@ describe("MemoryService with a fake rsrs CLI", () => {
       }),
     );
     const status = await service.getStatus(true);
-    expect(status.version).toBe("1.0.0");
+    expect(status.version).toBe(RSRS_CLI_VERSION);
     expect(status.doctor).toBeNull();
   });
   it("reports status and recalls memories", async () => {
     const { service } = await createService();
     const status = await service.getStatus();
     expect(status.available).toBe(true);
-    expect(status.version).toBe("1.0.0");
+    expect(status.version).toBe(RSRS_CLI_VERSION);
     expect(status.dataDir).toBe("/tmp/rsrs");
     expect(status.cloud.connected).toBe(false);
 
@@ -807,6 +868,47 @@ describe("MemoryService with a fake rsrs CLI", () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });
+
+  // The global home is shared with the user's other rsrs clients; a posix
+  // shell script stands in for its CLI.
+  it.skipIf(process.platform === "win32")(
+    "leaves an rsrs home it did not install to the user",
+    async () => {
+      const { service, dataDir } = await createGlobalService({ cli: false });
+      await service.initializeOnStartup();
+      expect((await service.getStatus(true)).available).toBe(false);
+      expect((await service.install(true)).installed).toBe(false);
+      await expect(stat(path.join(dataDir, "bin"))).rejects.toThrow();
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "uses the machine's rsrs as it is and pauses memory while it is too old",
+    async () => {
+      const { service, dataDir, calls } = await createGlobalService({
+        cli: true,
+        version: "2.0.0-dev.2",
+      });
+      const cli = path.join(dataDir, "bin", "rsrs");
+      const before = await readFile(cli);
+      await service.initializeOnStartup();
+      const status = await service.getStatus(true);
+      expect(status.upgradeRequired).toEqual({
+        installed: "2.0.0-dev.2",
+        minimum: RSRS_MIN_CLI_VERSION,
+      });
+      expect(service.isReadyForTurns()).toBe(false);
+      const recall = await service.recall({ query: "deploy" });
+      expect(recall.items).toEqual([]);
+      expect(recall.error).not.toBeNull();
+      expect(
+        (await calls()).filter((args) =>
+          ["runtime", "model", "keygen"].includes(args[0] ?? ""),
+        ),
+      ).toEqual([]);
+      expect(await readFile(cli)).toEqual(before);
+    },
+  );
 
   it("keeps memory off where the rsrs CLI has no build", async () => {
     const { service } = await createService({

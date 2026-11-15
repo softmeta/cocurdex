@@ -143,7 +143,14 @@ export class RsrsMemoryProvider implements MemoryProvider {
     return (await isFile(command)) ? { command, env } : null;
   }
 
+  // Other rsrs clients share the global home's runtime, so only a private
+  // home's runtime is Cocurdex's to stop or restart.
+  async ownsRuntime() {
+    return (await this.options.home()).kind === "isolated";
+  }
+
   async stopRuntime(timeoutMs?: number) {
+    if (!(await this.ownsRuntime().catch(() => false))) return;
     const executable = await this.executable();
     this.warming = null;
     this.invalidateRuntime();
