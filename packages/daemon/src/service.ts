@@ -125,6 +125,7 @@ import { getDefaultUserDataPath } from "./paths";
 import { DaemonPdfAnnotationsService } from "./pdf-annotations";
 import { PeerMessagingService } from "./peer-messaging";
 import {
+  inboxTurnContent,
   isPostedMessage,
   PersonalAgentService,
   personaGreetingPrompt,
@@ -133,6 +134,7 @@ import {
   personaSystemSections,
   personaWritePartition,
   postedMessagesSinceReply,
+  unansweredInputsBefore,
 } from "./personal";
 import { DaemonProviderService } from "./provider";
 import { withServerProviderConnection } from "./provider/server-connection";
@@ -2365,7 +2367,7 @@ export class CocurdexDaemonService {
     if (this.stopping) return false;
     if (this.runs.hasActiveRun(sessionId)) return false;
 
-    const next = this.queuedFollowUps.take(sessionId);
+    const next = await this.takeQueuedTurnInput(sessionId);
     if (!next) return false;
 
     try {
@@ -2395,6 +2397,36 @@ export class CocurdexDaemonService {
       this.runtime.emitAgentEvent({ type: "error", sessionId, message });
       return this.dispatchNextQueuedInput(sessionId);
     }
+  }
+
+  private async takeQueuedTurnInput(sessionId: string) {
+    const next = this.queuedFollowUps.take(sessionId);
+    if (!next) return next;
+    if (!this.personalAgents.personaForSession(next.payload.session)) {
+      return next;
+    }
+    let trigger = next;
+    for (
+      let following = this.queuedFollowUps.peek(sessionId);
+      following && (trigger.payload.attachments?.length ?? 0) === 0;
+      following = this.queuedFollowUps.peek(sessionId)
+    ) {
+      await this.foldQueuedInput(sessionId, trigger.payload.messageId);
+      trigger = this.queuedFollowUps.take(sessionId) ?? trigger;
+    }
+    return trigger;
+  }
+
+  private async foldQueuedInput(sessionId: string, messageId: string) {
+    const message = await this.state.getMessageById(messageId);
+    if (!message) return;
+    const moved = await this.state.moveSteeredMessageToEnd(message, null);
+    await this.state.deleteQueuedAgentInput(messageId);
+    this.runtime.emitAgentEvent({
+      type: "message.completed",
+      sessionId,
+      message: moved,
+    });
   }
 
   setSessionRuntimeMode(sessionId: string, modeId: string) {
@@ -2628,8 +2660,14 @@ export class CocurdexDaemonService {
       if (pending?.kind === "fork") {
         this.consumeNativeFork(pending, session, userMessage, priorMessages);
       }
+      const content = persona
+        ? inboxTurnContent(
+            unansweredInputsBefore(priorMessages),
+            userMessage.content,
+          )
+        : userMessage.content;
       return {
-        content: `${memoryText}${userMessage.content}`,
+        content: `${memoryText}${content}`,
         history: persona
           ? history.filter((message) => !isPostedMessage(message))
           : history,

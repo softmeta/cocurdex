@@ -6,11 +6,47 @@ import {
 } from "@cocurdex/shared";
 import { saveStubProvider } from "@cocurdex/test-harness/helpers/chat-session";
 import {
+  type DaemonProcess,
   spawnDaemon,
   waitFor,
 } from "@cocurdex/test-harness/helpers/daemon-process";
-import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
+import {
+  type StubLlmServer,
+  startStubLlmServer,
+} from "@cocurdex/test-harness/helpers/llm-stub";
 import { describe, expect, it } from "vitest";
+
+function lastUserText(body: Record<string, unknown>) {
+  const messages = body.messages as { role: string; content: unknown }[];
+  const last = messages.filter((message) => message.role === "user").at(-1);
+  return JSON.stringify(last?.content ?? "");
+}
+
+async function saveAgentModel(
+  daemon: DaemonProcess,
+  stub: StubLlmServer,
+  modelId: string,
+) {
+  await saveStubProvider(daemon, stub);
+  const now = new Date().toISOString();
+  await requestDaemon(
+    "provider.model.save",
+    {
+      model: {
+        providerId: "e2e-stub",
+        modelId,
+        name: modelId,
+        api: "openai-completions",
+        enabled: true,
+        source: "manual",
+        capabilities: ["chat", "agent"],
+        createdAt: now,
+        updatedAt: now,
+      },
+    },
+    daemon.options,
+  );
+}
 
 function personalChanges(events: CocurdexDaemonEvent[]) {
   return events.filter(
@@ -108,27 +144,8 @@ describe("personal agents over the daemon socket", () => {
     const stub = await startStubLlmServer();
     const daemon = await spawnDaemon();
     try {
-      await saveStubProvider(daemon, stub);
-      const now = new Date().toISOString();
-      for (const modelId of ["e2e-agent-model", "e2e-other-model"]) {
-        await requestDaemon(
-          "provider.model.save",
-          {
-            model: {
-              providerId: "e2e-stub",
-              modelId,
-              name: modelId,
-              api: "openai-completions",
-              enabled: true,
-              source: "manual",
-              capabilities: ["chat", "agent"],
-              createdAt: now,
-              updatedAt: now,
-            },
-          },
-          daemon.options,
-        );
-      }
+      await saveAgentModel(daemon, stub, "e2e-agent-model");
+      await saveAgentModel(daemon, stub, "e2e-other-model");
       const assistant = await requestDaemon(
         "personalAgent.create",
         {
@@ -201,6 +218,75 @@ describe("personal agents over the daemon socket", () => {
       );
       expect(renamed?.title).toBe("Explorer");
       expect(renamed?.providerSnapshot?.modelId).toBe("e2e-agent-model");
+    } finally {
+      await daemon.dispose();
+      await stub.close();
+    }
+  });
+  it("answers inputs that arrive during a run together in one follow-up run", async () => {
+    const stub = await startStubLlmServer();
+    const daemon = await spawnDaemon();
+    try {
+      await saveAgentModel(daemon, stub, "e2e-agent-model");
+      const assistant = await requestDaemon(
+        "personalAgent.create",
+        {
+          role: {
+            ...personalAgentRoleDraft("Inbox"),
+            providerId: "e2e-stub",
+            modelId: "e2e-agent-model",
+            modelName: "e2e-agent-model",
+          },
+        },
+        daemon.options,
+      );
+      const sessionId = assistant.homeSessionId;
+      const events: CocurdexDaemonEvent[] = [];
+      const subscription = await subscribeDaemonEvents(
+        (event) => events.push(event),
+        daemon.options,
+      );
+      let release = () => {};
+      const firstRunHeld = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      stub.plan = {
+        kind: "script",
+        turns: [
+          { text: ["First answer", firstRunHeld] },
+          { text: ["Both answered"] },
+        ],
+      };
+      const send = (content: string, queue = false) =>
+        requestDaemon(
+          "session.send",
+          {
+            sessionId,
+            messageId: crypto.randomUUID(),
+            content,
+            ...(queue ? { delivery: "queue-after-run" as const } : {}),
+          },
+          daemon.options,
+        );
+
+      await send("first question");
+      await stub.nextRequest();
+      await send("second question", true);
+      await send("third question", true);
+      release();
+
+      const followUp = await stub.nextRequest();
+      expect(lastUserText(followUp.body)).toContain("second question");
+      expect(lastUserText(followUp.body)).toContain("third question");
+      await waitFor(() =>
+        events.some(
+          (event) =>
+            event.type === "message.completed" &&
+            event.message.content === "Both answered",
+        ),
+      );
+      expect(stub.requests).toHaveLength(2);
+      subscription.close();
     } finally {
       await daemon.dispose();
       await stub.close();
