@@ -799,8 +799,8 @@ export default interface Resources {
     team: {
       stop: "Stop team";
       stopConfirm: "Stop team";
-      stopMessage_one: "This stops the {{count}} teammate still working. Its queued messages stay queued.";
-      stopMessage_other: "This stops the {{count}} teammates still working. Their queued messages stay queued.";
+      stopMessage_one: "This stops {{count}} teammate. Its queued messages stay queued.";
+      stopMessage_other: "This stops {{count}} teammates. Their queued messages stay queued.";
       stopTitle: "Stop all teammates?";
     };
     tool: {
