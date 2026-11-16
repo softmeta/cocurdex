@@ -1164,6 +1164,9 @@ importers:
       '@cocurdex/agent-core':
         specifier: workspace:*
         version: link:../../../packages/agent-core
+      '@cocurdex/db':
+        specifier: workspace:*
+        version: link:../../../packages/db
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../../../packages/shared

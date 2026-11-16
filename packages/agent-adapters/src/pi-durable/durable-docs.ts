@@ -27,7 +27,7 @@ export const CocurdexRunDoc = defineDoc<CocurdexRunState>({
 
 /**
  * Ties a conversation to the provider state that names it. Conversation IDs count up per
- * database, so a recreated or different `pi-durable.sqlite` can hold an unrelated conversation
+ * store, so a recreated or different durable store can hold an unrelated conversation
  * under a stored ID; a session only resumes a conversation whose key matches its own.
  */
 export const CocurdexBindingDoc = defineDoc<{ key: string | null }>({
