@@ -35,6 +35,7 @@ export interface ScriptRunAgentRecord {
   sessionId: string;
   label: string;
   status: ScriptRunAgentStatus;
+  callKey: string | null;
   resultJson: string | null;
   error: string | null;
   createdAt: string;
@@ -51,6 +52,7 @@ export interface ScriptAgentOptions {
   agentRoleId?: string;
   schema?: Record<string, unknown>;
   worktree?: boolean;
+  key?: string;
 }
 
 export interface CreateScriptRunPayload {

@@ -27,6 +27,7 @@ export function createScriptRunSchemaSql(): string {
       session_id TEXT NOT NULL,
       label TEXT NOT NULL,
       status TEXT NOT NULL,
+      call_key TEXT,
       result_json TEXT,
       error TEXT,
       created_at TEXT NOT NULL,

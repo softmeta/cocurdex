@@ -1291,6 +1291,44 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds script run call keys from version 49 and keeps script runs", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE script_run_agents DROP COLUMN call_key");
+    const now = "2026-11-16T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Shop', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO sessions (id, workspace_id, title, agent_type, status, write_mode, created_at, updated_at)
+      VALUES ('s1', 'w1', 'Lead', 'pi', 'idle', 'read-only', '${now}', '${now}');
+      INSERT INTO messages (id, session_id, role, content, attachments_json, created_at)
+      VALUES ('m1', 's1', 'user', 'hello', '[]', '${now}');
+      INSERT INTO script_runs (id, workspace_id, requester_session_id, name, script, status, max_agents, agent_count, created_at)
+      VALUES ('r1', 'w1', 's1', 'audit', 'return 1;', 'completed', 5, 1, '${now}');
+      INSERT INTO script_run_agents (id, run_id, session_id, label, status, result_json, created_at)
+      VALUES ('a1', 'r1', 's1', 'agent-1', 'completed', '"ok"', '${now}');
+      PRAGMA user_version = 49;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, status, result_json, call_key FROM script_run_agents",
+        )
+        .all(),
+    ).toEqual([
+      { id: "a1", status: "completed", result_json: '"ok"', call_key: null },
+    ]);
+    expect(database.prepare("SELECT name FROM script_runs").all()).toEqual([
+      { name: "audit" },
+    ]);
+    expect(database.prepare("SELECT content FROM messages").all()).toEqual([
+      { content: "hello" },
+    ]);
+  });
+
   it("adds the memory store from version 48 and keeps sessions, notes, and issues", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

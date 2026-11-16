@@ -30,6 +30,7 @@ Prefer something else when:
 - Pass `worktree: true` only for agents that edit files in parallel. Read-only agents never need it.
 - Handle `null`: an agent that fails or is cancelled resolves to `null`. Filter or count those instead of letting them break the merge.
 - `return` only what you need back, already reduced. The returned value is the whole report you receive.
+- Build prompts only from your literal inputs and earlier `agent()` results, never from `Date.now()` or `Math.random()`. When the app restarts mid-run, the run resumes by running the script again: each `agent()` call with the same prompt and options as one that already finished gets that result back at once, and the rest start fresh agents. Pass a unique `key` to a call whose prompt is not fixed this way, to keep its result across a restart.
 
 Every `agent()` call counts toward the run's agent limit (5 by default; the user can raise it when approving). Exceeding it fails the whole run, so count your calls and say in your message how many agents the script starts.
 
@@ -90,7 +91,8 @@ Call `script_run_propose` with a kebab-case `name` and the script. Then tell the
 
 - `completed`: the body is your returned value as JSON. Merge it for the user, and name the items whose result was `null`.
 - `failed`: the body is the error (a script exception, the agent limit, or the time limit). Fix the cause and propose a corrected run, or do the remaining work yourself.
-- `cancelled` or `interrupted`: the user stopped it or the app restarted. Ask before proposing it again.
+- `cancelled`: the user stopped it. Ask before proposing it again.
+- `interrupted`: the app restarted after the requester session was archived, so the run could not resume.
 - To see what each agent did before a failure, run `cocurdex session tree <requester-session-id> [--json]` (`cocurdex script-run list` shows the requester); script agents appear as subagent sessions under the run that started them.
 
 Agents with `worktree: true` work on `script/<name>-<id>` branches. List those branches for the user; do not merge them unless asked.

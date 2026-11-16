@@ -998,7 +998,7 @@ export class CocurdexDaemonService {
     try {
       await this.state.waitForStartupRecovery();
       await this.resumeDurableTurns();
-      await this.scriptRuns.recoverInterrupted();
+      await this.scriptRuns.resumeInterrupted();
       await this.team.recoverReports();
       await this.delegations.recoverReports();
       await this.decks.collectUnusedImages();
@@ -2648,13 +2648,13 @@ export class CocurdexDaemonService {
     this.outbox.stop();
     clearInterval(this.checkpointReconcileTimer);
     this.keepAwake.dispose();
+    await this.scriptRuns.shutdown();
     this.runCapacity.close(new Error("Daemon is shutting down"));
     const interrupted = await this.runs.interruptAll();
     await this.state.noteRestartInterruptions(
       interrupted.map((run) => run.sessionId),
     );
     this.queuedFollowUps.clear();
-    await this.scriptRuns.shutdown();
     await this.delegations.dispose();
     this.remoteHosts.dispose();
     try {

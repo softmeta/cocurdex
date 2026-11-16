@@ -5,10 +5,15 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
+import { saveStubProvider } from "@cocurdex/test-harness/helpers/chat-session";
 import {
   type DaemonProcess,
   spawnDaemon,
 } from "@cocurdex/test-harness/helpers/daemon-process";
+import {
+  type StubLlmServer,
+  startStubLlmServer,
+} from "@cocurdex/test-harness/helpers/llm-stub";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
@@ -52,12 +57,37 @@ async function configureRequester(daemon: DaemonProcess) {
   return true;
 }
 
+async function configurePiRequester(
+  daemon: DaemonProcess,
+  stub: StubLlmServer,
+) {
+  const rootPath = tempDirs.createSync("cocurdex-e2e-script-");
+  await requestDaemon(
+    "workspace.save",
+    { workspace: workspaceRecord(rootPath) },
+    daemon.options,
+  );
+  await requestDaemon(
+    "session.configure",
+    {
+      id: "requester",
+      workspaceId: "e2e-workspace",
+      title: "Requester",
+      agentType: "pi",
+      writeMode: "read-only",
+      sessionModeId: null,
+      providerSnapshot: await saveStubProvider(daemon, stub),
+    },
+    daemon.options,
+  );
+}
+
 async function waitForStatus(
   daemon: DaemonProcess,
   runId: string,
   status: ScriptRunRecord["status"],
 ) {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 400; attempt += 1) {
     const { run } = await requestDaemon(
       "scriptRun.get",
       { runId },
@@ -148,17 +178,22 @@ describe("daemon script runs over the real socket", () => {
     }
   });
 
-  it("marks runs left running by a stopped daemon as interrupted", async () => {
+  it("resumes a run left running by a stopped daemon without rerunning finished agents", async () => {
+    const stub = await startStubLlmServer();
     const first = await spawnDaemon();
-    let runId: string | null = null;
+    let runId = "";
     try {
-      if (!(await configureRequester(first))) return;
+      await configurePiRequester(first, stub);
+      stub.plan = { kind: "stream", chunks: ["Alpha"] };
       const draft = await requestDaemon(
         "scriptRun.create",
         {
           requesterSessionId: "requester",
-          name: "long",
-          script: HANGING_SCRIPT,
+          name: "resume",
+          script: [
+            'const found = await agent("Collect the inventory");',
+            'return [found, await agent("Summarize " + found)];',
+          ].join("\n"),
         },
         first.options,
       );
@@ -167,25 +202,43 @@ describe("daemon script runs over the real socket", () => {
         { runId: draft.id },
         first.options,
       );
-      await waitForStatus(first, draft.id, "running");
+      await stub.nextRequest();
+      stub.plan = { kind: "hang" };
+      await stub.nextRequest();
       runId = draft.id;
       await first.stop();
     } catch (error) {
       await first.dispose();
+      await stub.close();
       throw error;
     }
-    if (!runId) {
-      await first.dispose();
-      return;
-    }
 
+    stub.plan = { kind: "stream", chunks: ["Beta"] };
+    const resumedFrom = stub.requests.length;
     const second = await spawnDaemon({ userDataPath: first.userDataPath });
     try {
-      expect(await waitForStatus(second, runId, "interrupted")).toMatchObject({
-        name: "long",
-      });
+      const run = await waitForStatus(second, runId, "completed");
+      expect(JSON.parse(run.resultJson ?? "null")).toEqual(["Alpha", "Beta"]);
+      const resumedRequests = stub.requests.slice(resumedFrom);
+      expect(resumedRequests.length).toBeGreaterThan(0);
+      expect(
+        resumedRequests.some((request) =>
+          JSON.stringify(request.body).includes("Collect the inventory"),
+        ),
+      ).toBe(false);
+      const { agents } = await requestDaemon(
+        "scriptRun.get",
+        { runId },
+        second.options,
+      );
+      expect(agents.map((agent) => agent.status).sort()).toEqual([
+        "cancelled",
+        "completed",
+        "completed",
+      ]);
     } finally {
       await second.dispose();
+      await stub.close();
     }
   });
 });

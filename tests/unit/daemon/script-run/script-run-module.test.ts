@@ -53,8 +53,8 @@ function memoryRepository(): ScriptRunRepository {
     async saveAgent(agent) {
       agents.set(agent.id, { ...agent });
     },
-    async interruptRunning() {
-      return [];
+    async listRunning() {
+      return [...runs.values()].filter((run) => run.status === "running");
     },
   };
 }
@@ -65,17 +65,21 @@ function harness(
   reply: Reply,
   settings: Record<string, unknown> = {},
   maxConcurrency = 4,
+  previous?: {
+    repository: ScriptRunRepository;
+    sessions: Map<string, SessionRecord>;
+  },
 ) {
-  const sessions = new Map<string, SessionRecord>([
-    ["lead", session({ id: "lead" })],
-  ]);
+  const sessions =
+    previous?.sessions ??
+    new Map<string, SessionRecord>([["lead", session({ id: "lead" })]]);
   const sent: SendSessionCommand[] = [];
   const stopped: string[] = [];
   const events: ScriptRunChangedEvent[] = [];
   const turns = new Map<string, Promise<SessionTurnOutcome>>();
   const hangs = new Map<string, (outcome: SessionTurnOutcome) => void>();
-  let ids = 0;
-  const repository = memoryRepository();
+  let ids = previous ? 1000 : 0;
+  const repository = previous?.repository ?? memoryRepository();
   const module = new ScriptRunModule({
     repository,
     getSession: async (id) => sessions.get(id) ?? null,
@@ -133,6 +137,7 @@ function harness(
 
   return {
     module,
+    repository,
     hangs,
     sessions,
     sent,
@@ -323,9 +328,55 @@ describe("ScriptRunModule", () => {
     await waitForHangingTurn();
     await module.shutdown();
     const { run, agents } = await module.get(draft.id);
-    expect(run.completedAt).toBeNull();
+    expect(run).toMatchObject({ status: "running", completedAt: null });
     expect(stopped).toHaveLength(1);
     expect(agents.map((agent) => agent.status)).toEqual(["cancelled"]);
     expect(sent.some((command) => command.sessionId === "lead")).toBe(false);
+  });
+
+  it("resumes an interrupted run, reusing completed agent results and rerunning the rest", async () => {
+    const script = [
+      'const plan = await agent("plan");',
+      "const [a, b] = await parallel([",
+      '  () => agent("build " + plan),',
+      '  () => agent("test " + plan),',
+      "]);",
+      'return [plan, a, b, await agent("plan")];',
+    ].join("\n");
+    const first = harness((prompt) =>
+      prompt.startsWith("test") ? "hang" : `${prompt}!`,
+    );
+    const draft = await first.module.create({
+      requesterSessionId: "lead",
+      name: "resume",
+      script,
+    });
+    await first.module.start({ runId: draft.id });
+    await first.waitForHangingTurn();
+    await first.module.shutdown();
+
+    const second = harness((prompt) => `${prompt}?`, {}, 4, first);
+    await second.module.resumeInterrupted();
+    const { run, agents } = await second.waitForRun(draft.id);
+
+    expect(run).toMatchObject({ status: "completed", agentCount: 4 });
+    expect(JSON.parse(run.resultJson ?? "null")).toEqual([
+      "plan!",
+      "build plan!!",
+      "test plan!?",
+      "plan?",
+    ]);
+    expect(
+      second.sent
+        .filter((command) => command.sessionId !== "lead")
+        .map((command) => command.content),
+    ).toEqual(["test plan!", "plan"]);
+    expect(agents.map((agent) => agent.status).sort()).toEqual([
+      "cancelled",
+      "completed",
+      "completed",
+      "completed",
+      "completed",
+    ]);
   });
 });

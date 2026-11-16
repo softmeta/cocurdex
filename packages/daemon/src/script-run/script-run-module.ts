@@ -92,13 +92,13 @@ function scriptRunLayer(maxConcurrency: number) {
   );
 }
 
-function withMaxDuration(minutes: number | null | undefined) {
+function withDeadline(remainingMs: number | null, minutes: number | null) {
   return <R>(
     self: Effect.Effect<ScriptRunOutcome, never, R>,
   ): Effect.Effect<ScriptRunOutcome, never, R> => {
-    if (!minutes) return self;
+    if (remainingMs === null) return self;
     return Effect.timeoutOrElse(self, {
-      duration: minutes * 60_000,
+      duration: Math.max(0, remainingMs),
       orElse: () =>
         Effect.succeed<ScriptRunOutcome>({
           kind: "failed",
@@ -207,16 +207,7 @@ export class ScriptRunModule {
       startedAt: this.deps.now(),
     };
     await this.save(run);
-
-    const abort = Deferred.makeUnsafe<ScriptRunOutcome>();
-    this.aborts.set(run.id, abort);
-    const execute = this.execute(run, requester, settings, abort);
-    this.runtime.runFork(
-      Effect.gen(function* () {
-        const fibers = yield* ScriptRunFibers;
-        yield* FiberMap.run(fibers, run.id, execute);
-      }),
-    );
+    this.launch(run, requester, settings, new Map());
     return run;
   }
 
@@ -246,12 +237,76 @@ export class ScriptRunModule {
 
   async shutdown() {
     await this.runtime.dispose();
-    await this.deps.repository.interruptRunning(this.deps.now());
   }
 
-  async recoverInterrupted() {
-    const runs = await this.deps.repository.interruptRunning(this.deps.now());
-    for (const run of runs) this.changed(run);
+  async resumeInterrupted() {
+    const settings = await this.getSettings();
+    for (const running of await this.deps.repository.listRunning()) {
+      const { run, agents } = await this.get(running.id);
+      const completedCalls = new Map<string, string>();
+      for (const agent of agents) {
+        if (agent.status === "completed" && agent.callKey) {
+          completedCalls.set(agent.callKey, agent.resultJson ?? "null");
+        } else if (agent.status === "queued" || agent.status === "running") {
+          await this.deps.saveAgent({
+            ...agent,
+            status: "cancelled",
+            error: "Interrupted by a daemon restart.",
+            completedAt: this.deps.now(),
+          });
+        }
+      }
+      const requester = await this.deps.getSession(run.requesterSessionId);
+      const resumable =
+        requester &&
+        !requester.archivedAt &&
+        (requester.sessionKind ?? "main") === "main";
+      if (!resumable) {
+        await this.save({
+          ...run,
+          status: "interrupted",
+          completedAt: this.deps.now(),
+        });
+        continue;
+      }
+      this.changed(run);
+      this.launch(
+        { ...run, agentCount: 0 },
+        requester,
+        settings,
+        completedCalls,
+      );
+    }
+  }
+
+  private launch(
+    run: ScriptRunRecord,
+    requester: SessionRecord,
+    settings: ScriptRunSettings,
+    completedCalls: ReadonlyMap<string, string>,
+  ) {
+    const abort = Deferred.makeUnsafe<ScriptRunOutcome>();
+    this.aborts.set(run.id, abort);
+    const execute = this.execute(
+      run,
+      requester,
+      settings,
+      completedCalls,
+      abort,
+    );
+    this.runtime.runFork(
+      Effect.gen(function* () {
+        const fibers = yield* ScriptRunFibers;
+        yield* FiberMap.run(fibers, run.id, execute);
+      }),
+    );
+  }
+
+  private remainingMs(run: ScriptRunRecord, settings: ScriptRunSettings) {
+    if (!settings.maxDurationMinutes) return null;
+    const startedAt = Date.parse(run.startedAt ?? this.deps.now());
+    const elapsed = Date.parse(this.deps.now()) - startedAt;
+    return settings.maxDurationMinutes * 60_000 - elapsed;
   }
 
   private abort(runId: string, reason: ScriptRunAbortReason) {
@@ -263,6 +318,7 @@ export class ScriptRunModule {
     run: ScriptRunRecord,
     requester: SessionRecord,
     settings: ScriptRunSettings,
+    completedCalls: ReadonlyMap<string, string>,
     abort: AbortRequest,
   ) {
     const deps = this.deps;
@@ -270,6 +326,8 @@ export class ScriptRunModule {
       run,
       requester,
       schemaMaxAttempts: settings.schemaMaxAttempts,
+      completedCalls,
+      callCounts: new Map(),
       abort: (reason) => Deferred.doneUnsafe(abort, Exit.succeed(reason)),
       onChanged: async () => {
         if (this.aborts.has(run.id)) await this.save(run);
@@ -310,7 +368,10 @@ export class ScriptRunModule {
         }
       });
     return Effect.raceFirst(script, Deferred.await(abort)).pipe(
-      withMaxDuration(settings.maxDurationMinutes),
+      withDeadline(
+        this.remainingMs(run, settings),
+        settings.maxDurationMinutes,
+      ),
       Effect.flatMap(finish),
       Effect.ensuring(Effect.sync(() => this.aborts.delete(run.id))),
     );
