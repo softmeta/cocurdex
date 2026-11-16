@@ -105,6 +105,27 @@ async function pull(
   );
 }
 
+async function pullUntilIdleWith(
+  daemon: DaemonProcess,
+  sessionId: string,
+  content: string,
+) {
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    const result = await pull(daemon, sessionId, null);
+    const entry = result.sessions.find((item) => item.id === sessionId);
+    const messages = result.transcripts[sessionId]?.messages ?? [];
+    if (
+      entry?.status === "idle" &&
+      messages.some((message) => message.content === content)
+    ) {
+      return result;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Session ${sessionId} never finished with "${content}"`);
+}
+
 async function withStub(run: (stub: StubLlmServer) => Promise<void>) {
   const stub = await startStubLlmServer();
   try {
@@ -185,7 +206,7 @@ describe("sync.pull across daemon restarts", () => {
     });
   });
 
-  it("keeps a work reply that was streaming when the daemon stopped", async () => {
+  it("finishes a work reply that was streaming when the daemon stopped", async () => {
     await withStub(async (stub) => {
       const userDataPath = tempDirs.createSync("cocu-sync-");
       const first = await spawnDaemon({ userDataPath });
@@ -210,27 +231,31 @@ describe("sync.pull across daemon restarts", () => {
         first.options,
       );
       await waitFor(
-        () =>
-          events.filter((event) => event.type === "message.delta").length > 40,
+        () => events.some((event) => event.type === "message.delta"),
+        15_000,
       );
       subscription.close();
       await first.stop();
 
+      stub.plan = { kind: "stream", chunks: ["resumed", " answer"] };
       const second = await spawnDaemon({ userDataPath });
       try {
-        const result = await pull(second, session.id, null);
-        const reply = result.transcripts[session.id]?.messages.find(
-          (message) => message.role === "assistant",
+        const result = await pullUntilIdleWith(
+          second,
+          session.id,
+          "resumed answer",
         );
-        expect(reply?.content.startsWith("c0 c1 c2 ")).toBe(true);
         const transcript = result.transcripts[session.id]?.messages ?? [];
         expect(transcript.at(-1)).toMatchObject({
-          role: "system",
-          content: expect.stringContaining("Cocurdex restarted"),
+          role: "assistant",
+          content: "resumed answer",
         });
         expect(
-          result.sessions.find((entry) => entry.id === session.id)?.status,
-        ).toBe("idle");
+          transcript.filter((message) => message.role === "user"),
+        ).toHaveLength(1);
+        expect(transcript.some((message) => message.role === "system")).toBe(
+          false,
+        );
       } finally {
         await second.stop();
       }

@@ -10,6 +10,7 @@ import {
   hashLogValue,
   isChatSession,
   piThinkingLevels,
+  resumesDurablePiTurn,
 } from "@cocurdex/shared";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
@@ -77,7 +78,7 @@ function failureMessage(record: SubmissionRecord) {
 }
 
 /**
- * An assistant or chat session on the durable pi harness. Each Cocurdex session is one durable
+ * A pi session on the durable pi harness. Each Cocurdex session is one durable
  * conversation; a turn is one input submission keyed by the Cocurdex message ID, so sending the
  * same message again after a daemon restart attaches to the run the Harness resumed instead of
  * starting another one.
@@ -533,7 +534,7 @@ export function createDurablePiSession(
         files,
       };
     },
-    resumesAfterRestart: true,
+    resumesAfterRestart: resumesDurablePiTurn(payload.session),
     stop() {
       stopRequested = true;
       void conversation?.abort(BACKGROUND_CONTEXT).catch((error) => {

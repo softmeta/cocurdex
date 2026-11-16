@@ -217,6 +217,9 @@ describe("session runs", () => {
       startedAt: timestamp,
     });
     const database = await service.state.getDatabase();
+    const session = await database.sessions.getById("session-1");
+    if (!session) throw new Error("session-1 was not saved");
+    await database.sessions.upsert({ ...session, agentType: "codex" });
     await database.sessions.updateStatus("session-1", "running");
     await service.shutdown();
 
