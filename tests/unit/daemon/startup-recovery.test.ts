@@ -42,7 +42,7 @@ async function seedActiveWork(
     id: "session",
     workspaceId: "workspace",
     title: "Active session",
-    agentType: "pi",
+    agentType: "codex",
     status: "running",
     writeMode: "read-only",
     sessionModeId: null,

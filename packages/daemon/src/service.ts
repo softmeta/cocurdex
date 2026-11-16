@@ -1,7 +1,9 @@
 import { EventEmitter } from "node:events";
 import os, { homedir } from "node:os";
 import {
+  abortDurableConversations,
   closeDurableHosts,
+  type DurableInFlightInput,
   deleteAgentProviderSession,
   listDurableInFlightInputs,
 } from "@cocurdex/agent-adapters";
@@ -71,7 +73,7 @@ import {
   ReasonError,
   resolveSessionWorkingPath,
   resolveStartContext,
-  runsOnDurablePi,
+  resumesDurablePiTurn,
   sameName,
   toolMayMutateWorkspace,
   validateSendSessionCommand,
@@ -2294,31 +2296,46 @@ export class CocurdexDaemonService {
     }
   }
 
+  /**
+   * The turns to dispatch again. Work left in the harness for a session that does not resume (a
+   * subagent or teammate, an archived session, a deleted message) is aborted first, since the
+   * harness runs every pending task once anything starts it.
+   */
   private async interruptedDurableTurns() {
     const turns = new Map<string, InterruptedDurableTurn>();
     for (const turn of await this.state.takeInterruptedDurableTurns()) {
       turns.set(turn.sessionId, turn);
     }
     const userDataPath = this.state.userDataPath;
-    const inFlight = userDataPath
-      ? await listDurableInFlightInputs(userDataPath).catch(
-          (error: unknown) => {
-            logDaemonDiagnostic("warn", "session.durableInspectFailed", {
-              error: errorMessage(error, "Unknown durable harness error"),
-            });
-            return [];
-          },
-        )
-      : [];
-    for (const messageId of inFlight) {
-      const message = await this.state.getMessageById(messageId);
-      if (!message) continue;
-      turns.set(message.sessionId, {
-        sessionId: message.sessionId,
-        triggerMessageId: message.id,
+    if (!userDataPath) return [...turns.values()];
+    try {
+      const abandoned: DurableInFlightInput["conversationId"][] = [];
+      for (const input of await listDurableInFlightInputs(userDataPath)) {
+        const message = await this.state.getMessageById(input.requestId);
+        const session = message
+          ? await this.state.getSession(message.sessionId)
+          : null;
+        if (!message || !session || !this.resumesTurn(session)) {
+          abandoned.push(input.conversationId);
+          if (message) turns.delete(message.sessionId);
+          continue;
+        }
+        turns.set(message.sessionId, {
+          sessionId: message.sessionId,
+          triggerMessageId: message.id,
+        });
+      }
+      await abortDurableConversations(userDataPath, abandoned);
+    } catch (error) {
+      logDaemonDiagnostic("warn", "session.durableInspectFailed", {
+        error: errorMessage(error, "Unknown durable harness error"),
       });
     }
     return [...turns.values()];
+  }
+
+  private resumesTurn(session: SessionRecord) {
+    return !session.archivedAt && resumesDurablePiTurn(session);
   }
 
   private async resumeDurableTurn(turn: InterruptedDurableTurn) {
@@ -2326,7 +2343,7 @@ export class CocurdexDaemonService {
     const message = await this.state.getMessageById(turn.triggerMessageId);
     if (!message || message.sessionId !== turn.sessionId) return;
     const session = await this.state.getSession(turn.sessionId);
-    if (!session || session.archivedAt || !runsOnDurablePi(session)) return;
+    if (!session || !this.resumesTurn(session)) return;
     const payload: SessionRuntimeMessage = {
       messageId: message.id,
       createdAt: message.createdAt,

@@ -1,4 +1,10 @@
-import { existsSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+} from "node:fs";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -390,6 +396,20 @@ function replaceBuildPaths(database: DatabaseSync, scratch: string) {
   }
 }
 
+function storeInterruptedTurnsAsCodex(database: DatabaseSync) {
+  const asCodex = database.prepare(
+    "UPDATE sessions SET agent_type = 'codex' WHERE id = ?",
+  );
+  const stillRunning = database.prepare(
+    "UPDATE runs SET status = 'running', ended_at = NULL WHERE session_id = ? AND status = 'interrupted'",
+  );
+  for (const session of FIXTURE_SESSIONS) {
+    if (!session.interruptedTurn) continue;
+    asCodex.run(session.id);
+    stillRunning.run(session.id);
+  }
+}
+
 function exportDatabase(source: string, target: string, scratch: string) {
   rmSync(target, { force: true });
   const reader = new DatabaseSync(source, { readOnly: true });
@@ -402,6 +422,7 @@ function exportDatabase(source: string, target: string, scratch: string) {
   try {
     writer.exec("PRAGMA journal_mode = DELETE; PRAGMA secure_delete = ON;");
     replaceBuildPaths(writer, scratch);
+    storeInterruptedTurnsAsCodex(writer);
     writer.exec("VACUUM");
   } finally {
     writer.close();
@@ -424,8 +445,13 @@ export async function buildFixtureDb(outDir: string): Promise<FixtureManifest> {
   const scratch = mkdtempSync(path.join(tmpdir(), "cfx-"));
   const userDataPath = path.join(scratch, "u");
   const workspaceParent = path.join(scratch, "w");
+  const home = path.join(scratch, "h");
+  mkdirSync(home);
   const stub = await startStubLlmServer();
-  const daemon = await spawnDaemon({ userDataPath });
+  const daemon = await spawnDaemon({
+    userDataPath,
+    env: { HOME: home, USERPROFILE: home },
+  });
   const events: CocurdexDaemonEvent[] = [];
   const subscription = await subscribeDaemonEvents(
     (event) => events.push(event),

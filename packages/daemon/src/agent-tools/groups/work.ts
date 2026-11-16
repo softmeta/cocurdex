@@ -208,7 +208,6 @@ export function registerWorkTools(
     descriptor: {
       group: "work",
       name: "report",
-      deferred: true,
       description:
         "Report the turn you are ending to the personal assistant that delegated this work. Call it once, at the end of each turn. dropped tells the assistant nothing; any other status reaches it with your summary.",
       inputSchema: {

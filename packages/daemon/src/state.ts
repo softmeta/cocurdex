@@ -43,7 +43,7 @@ import {
   mergeUsageRecords,
   NETWORK_PROXY_SETTING_KEY,
   parseProviderModelOverride,
-  runsOnDurablePi,
+  resumesDurablePiTurn,
 } from "@cocurdex/shared";
 import { applyNodeGlobalProxy } from "@cocurdex/shared/node";
 import { SessionAttentionProjection } from "./attention";
@@ -990,7 +990,7 @@ export class DaemonState {
     await this.database.teams.failActiveMembers();
     for (const run of runs) {
       const session = await this.database.sessions.getById(run.sessionId);
-      if (!session || !runsOnDurablePi(session)) continue;
+      if (!session || !resumesDurablePiTurn(session)) continue;
       this.durableTurns.push({
         sessionId: run.sessionId,
         triggerMessageId: run.triggerMessageId,
@@ -1016,7 +1016,7 @@ export class DaemonState {
   ) {
     for (const sessionId of sessionIds) {
       const session = await this.database.sessions.getById(sessionId);
-      if (session && runsOnDurablePi(session)) continue;
+      if (session && resumesDurablePiTurn(session)) continue;
       await this.flushBufferedMessages(sessionId);
       await this.database.messages.append(
         this.createSystemMessage(

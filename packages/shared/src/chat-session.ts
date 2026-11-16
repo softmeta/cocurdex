@@ -12,14 +12,15 @@ export function isChatSession(session: Pick<SessionRecord, "sessionKind">) {
 }
 
 /**
- * Whether a session runs on the durable pi harness: assistant (personal) and chat sessions on pi.
- * Work sessions keep pi's coding agent.
+ * Whether a pi session's turn continues after a daemon restart. Subagent and teammate turns
+ * belong to a script run or team that the restart ends, so they stop with it.
  */
-export function runsOnDurablePi(
+export function resumesDurablePiTurn(
   session: Pick<SessionRecord, "agentType" | "sessionKind">,
 ) {
   return (
     session.agentType === "pi" &&
-    (session.sessionKind === "personal" || session.sessionKind === "chat")
+    session.sessionKind !== "subagent" &&
+    session.sessionKind !== "teammate"
   );
 }
