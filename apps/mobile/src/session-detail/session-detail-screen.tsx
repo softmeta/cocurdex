@@ -59,6 +59,7 @@ import { buildTranscript, pendingInteraction } from "./transcript";
 import { condenseTranscript } from "./transcript-activity";
 import { type TranscriptHandle, TranscriptView } from "./transcript-view";
 import { useResponseStall } from "./use-response-stall";
+import { useTeamStopAction } from "./use-team-stop-action";
 
 function sessionSubtitle(
   observation: SessionObservationSnapshot | null,
@@ -297,7 +298,13 @@ export function SessionDetailScreen({
     ? t("assistant:thread.placeholder", { name: persona.role.name })
     : undefined;
 
-  const headerActions: HeaderButtonItem[] = persona
+  const teamStop = useTeamStopAction(
+    host.hostId,
+    sessionId,
+    presentation === "work" && canInteract,
+    () => setActionFailed(true),
+  );
+  const personaActions: HeaderButtonItem[] = persona
     ? [
         {
           key: "overview",
@@ -311,6 +318,9 @@ export function SessionDetailScreen({
         },
       ]
     : [];
+  const headerActions = teamStop.action
+    ? [...personaActions, teamStop.action]
+    : personaActions;
 
   let composerAccessory: ReactNode;
   if (presentation === "work") {
@@ -473,6 +483,7 @@ export function SessionDetailScreen({
           </View>
         </KeyboardAvoidingView>
       </View>
+      {teamStop.dialog}
     </>
   );
 }

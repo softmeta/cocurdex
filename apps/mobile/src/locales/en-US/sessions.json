@@ -331,6 +331,13 @@
     "running": "Running",
     "unread": "Unread"
   },
+  "team": {
+    "stop": "Stop team",
+    "stopConfirm": "Stop team",
+    "stopMessage_one": "This stops {{count}} teammate. Its queued messages stay queued.",
+    "stopMessage_other": "This stops {{count}} teammates. Their queued messages stay queued.",
+    "stopTitle": "Stop all teammates?"
+  },
   "tool": {
     "completed": "Done",
     "copyOutput": "Copy Output",

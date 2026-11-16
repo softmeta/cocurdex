@@ -30,6 +30,7 @@ interface ScriptRunAgentRow extends SqliteRow {
   session_id: string;
   label: string;
   status: ScriptRunAgentStatus;
+  call_key: string | null;
   result_json: string | null;
   error: string | null;
   created_at: string;
@@ -61,6 +62,7 @@ function mapAgent(row: ScriptRunAgentRow): ScriptRunAgentRecord {
     sessionId: row.session_id,
     label: row.label,
     status: row.status,
+    callKey: row.call_key,
     resultJson: row.result_json,
     error: row.error,
     createdAt: row.created_at,
@@ -135,9 +137,9 @@ export function createSqliteScriptRunRepository(
       database
         .prepare(
           `INSERT INTO script_run_agents (
-             id, run_id, session_id, label, status, result_json, error,
-             created_at, completed_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             id, run_id, session_id, label, status, call_key, result_json,
+             error, created_at, completed_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              status = excluded.status,
              result_json = excluded.result_json,
@@ -150,34 +152,18 @@ export function createSqliteScriptRunRepository(
           agent.sessionId,
           agent.label,
           agent.status,
+          agent.callKey,
           agent.resultJson,
           agent.error,
           agent.createdAt,
           agent.completedAt,
         );
     },
-    async interruptRunning(now) {
+    async listRunning() {
       const rows = database
         .prepare("SELECT * FROM script_runs WHERE status = 'running'")
         .all() as ScriptRunRow[];
-      database
-        .prepare(
-          `UPDATE script_run_agents SET status = 'cancelled', completed_at = ?
-           WHERE status IN ('queued', 'running')
-             AND run_id IN (SELECT id FROM script_runs WHERE status = 'running')`,
-        )
-        .run(now);
-      database
-        .prepare(
-          `UPDATE script_runs SET status = 'interrupted', completed_at = ?
-           WHERE status = 'running'`,
-        )
-        .run(now);
-      return rows.map((row) => ({
-        ...mapRun(row),
-        status: "interrupted" as const,
-        completedAt: now,
-      }));
+      return rows.map(mapRun);
     },
   };
 }

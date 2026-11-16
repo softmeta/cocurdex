@@ -12,5 +12,5 @@ export interface ScriptRunRepository {
     requesterSessionId?: string;
   }): Promise<ScriptRunRecord[]>;
   saveAgent(agent: ScriptRunAgentRecord): Promise<void>;
-  interruptRunning(now: string): Promise<ScriptRunRecord[]>;
+  listRunning(): Promise<ScriptRunRecord[]>;
 }

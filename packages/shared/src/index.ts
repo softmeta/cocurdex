@@ -16,6 +16,7 @@ export * from "./brief";
 export type { BrowserTab, BrowserTabsSnapshot } from "./browser-tabs";
 export * from "./build-policy";
 export * from "./chat-session";
+export * from "./child-permission-mode";
 export * from "./codex-models";
 export type {
   GenerateGitCommitMessagePayload,

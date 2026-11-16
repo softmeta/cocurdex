@@ -1,4 +1,7 @@
+import { createHash } from "node:crypto";
 import {
+  type AgentId,
+  type AgentPermissionModeOption,
   type AgentRoleRecord,
   extractJsonReply,
   type MessageRecord,
@@ -19,6 +22,7 @@ export type ScriptRunAbortReason =
 
 export interface ScriptAgentDeps {
   getAgentRole(id: string): Promise<AgentRoleRecord | null>;
+  permissionModes(agentId: AgentId): Promise<AgentPermissionModeOption[]>;
   saveSession(session: SessionRecord): Promise<void>;
   saveAgent(agent: ScriptRunAgentRecord): Promise<void>;
   createWorktree?(input: {
@@ -36,6 +40,8 @@ export interface ScriptAgentRun {
   run: ScriptRunRecord;
   requester: SessionRecord;
   schemaMaxAttempts: number;
+  completedCalls: ReadonlyMap<string, string>;
+  callCounts: Map<string, number>;
   abort(reason: ScriptRunAbortReason): void;
   onChanged(): Promise<void>;
 }
@@ -74,7 +80,31 @@ function parseOptions(raw: Record<string, unknown>): ScriptAgentOptions {
       : {}),
     ...(schema ? { schema: schema as Record<string, unknown> } : {}),
     ...(raw.worktree === true ? { worktree: true } : {}),
+    ...(typeof raw.key === "string" && raw.key ? { key: raw.key } : {}),
   };
+}
+
+function callKeyOf(
+  context: ScriptAgentRun,
+  prompt: string,
+  options: ScriptAgentOptions,
+) {
+  const base = options.key
+    ? `key:${options.key}`
+    : `sha256:${createHash("sha256")
+        .update(
+          JSON.stringify([
+            prompt,
+            options.label ?? null,
+            options.agentRoleId ?? null,
+            options.schema ?? null,
+            options.worktree ?? false,
+          ]),
+        )
+        .digest("hex")}`;
+  const occurrence = context.callCounts.get(base) ?? 0;
+  context.callCounts.set(base, occurrence + 1);
+  return `${base}#${occurrence}`;
 }
 
 async function createAgentSession(
@@ -101,7 +131,7 @@ async function createAgentSession(
         ).path
       : (requester.worktreePath ?? null);
   const agentType = role?.agentId ?? requester.agentType;
-  const session = buildChildSession({
+  const { session } = buildChildSession({
     id,
     parent: requester,
     sessionKind: "subagent",
@@ -110,6 +140,10 @@ async function createAgentSession(
     role,
     worktreePath,
     now: deps.now(),
+    permissionModes: {
+      parent: await deps.permissionModes(requester.agentType),
+      child: await deps.permissionModes(agentType),
+    },
   });
   await deps.saveSession(session);
   return session;
@@ -206,6 +240,7 @@ function runAgentSession(
   prompt: string,
   options: ScriptAgentOptions,
   label: string,
+  callKey: string,
 ) {
   return Effect.gen(function* () {
     const session = yield* attempt(() =>
@@ -217,6 +252,7 @@ function runAgentSession(
       sessionId: session.id,
       label,
       status: "running",
+      callKey,
       resultJson: null,
       error: null,
       createdAt: deps.now(),
@@ -271,12 +307,15 @@ export function runScriptAgent(
       });
       return null;
     }
+    const callKey = callKeyOf(context, prompt, options);
     run.agentCount += 1;
-    const label = options.label?.trim() || `agent-${run.agentCount}`;
     yield* attempt(() => context.onChanged());
+    const completed = context.completedCalls.get(callKey);
+    if (completed !== undefined) return JSON.parse(completed) as unknown;
+    const label = options.label?.trim() || `agent-${run.agentCount}`;
     const slots = yield* ScriptAgentSlots;
     return yield* slots.withPermits(1)(
-      runAgentSession(deps, context, prompt, options, label),
+      runAgentSession(deps, context, prompt, options, label, callKey),
     );
   });
 }

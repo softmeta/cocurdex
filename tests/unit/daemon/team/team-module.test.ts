@@ -126,8 +126,16 @@ const leadRole: AgentRoleRecord = {
   name: "Lead",
 };
 
+const bypassRole: AgentRoleRecord = {
+  ...role,
+  id: "role-bypass",
+  name: "Bypass",
+  permissionMode: "claude-bypass-permissions",
+};
+
 const roles = new Map([
   [role.id, role],
+  [bypassRole.id, bypassRole],
   [testerRole.id, testerRole],
   [leadRole.id, leadRole],
 ]);
@@ -182,6 +190,7 @@ function harness({ busy = new Set<string>() } = {}) {
     },
     getAgentRole: async (id) => roles.get(id) ?? null,
     listAgentRoles: async () => [role],
+    permissionModes: async () => [],
     getSetting: async (key) => settings.get(key) ?? null,
     setSetting: async (key, value) => {
       settings.set(key, value);
@@ -613,6 +622,19 @@ describe("TeamModule", () => {
       module.create({ leadSessionId: "lead", templateId: "missing" }),
     ).rejects.toMatchObject({ code: "template_not_found" });
     expect(await module.get("lead")).toBeNull();
+  });
+
+  it("never gives a teammate a riskier permission mode than its lead's", async () => {
+    const { module, sessions } = harness();
+    const member = await module.spawn("lead", {
+      name: "bypass",
+      prompt: "go",
+      agentRoleId: bypassRole.id,
+    });
+    expect(member.permissionLimitedTo).toBe("claude-default");
+    expect(sessions.get(member.sessionId)?.permissionMode).toBe(
+      "claude-default",
+    );
   });
 
   it("spawns only roster members and applies their role and standing instructions", async () => {

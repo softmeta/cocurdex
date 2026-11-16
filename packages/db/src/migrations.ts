@@ -42,7 +42,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 49;
+export const CURRENT_SCHEMA_VERSION = 50;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -652,6 +652,12 @@ function invalidateAntigravityContextUsage(database: DatabaseSync) {
   `);
 }
 
+function addScriptRunAgentCallKeys(database: DatabaseSync) {
+  if (!hasColumn(database, "script_run_agents", "call_key")) {
+    database.exec("ALTER TABLE script_run_agents ADD COLUMN call_key TEXT");
+  }
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
@@ -697,6 +703,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [46, addPersonalAgentUserAddress],
   [47, createFollowUpsTable],
   [48, createMemoryEntriesTables],
+  [49, addScriptRunAgentCallKeys],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

@@ -315,6 +315,12 @@
     "running": "运行中",
     "unread": "未读"
   },
+  "team": {
+    "stop": "停止团队",
+    "stopConfirm": "停止团队",
+    "stopMessage_other": "将停止 {{count}} 个队友，它们排队中的消息会保留。",
+    "stopTitle": "停止所有队友？"
+  },
   "tool": {
     "completed": "已完成",
     "copyOutput": "复制输出",

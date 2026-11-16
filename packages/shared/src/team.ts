@@ -1,5 +1,10 @@
 import type { AgentRoleAvatar } from "./agent-role";
-import type { AgentId, RunRecord, RunStatus } from "./contracts";
+import type {
+  AgentId,
+  AgentPermissionMode,
+  RunRecord,
+  RunStatus,
+} from "./contracts";
 
 export type TeamStatus = "active" | "stopped";
 export type TeamMemberStatus =
@@ -41,6 +46,11 @@ export interface TeamMemberRecord {
   status: TeamMemberStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SpawnedTeammate extends TeamMemberRecord {
+  /** The mode the teammate got when its role asked for a riskier one than the lead's. */
+  permissionLimitedTo?: AgentPermissionMode;
 }
 
 export interface TeamTaskRecord {

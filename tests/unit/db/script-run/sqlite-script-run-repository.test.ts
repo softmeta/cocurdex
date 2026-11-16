@@ -61,6 +61,7 @@ const agent: ScriptRunAgentRecord = {
   sessionId: "child",
   label: "first",
   status: "running",
+  callKey: "key:first#0",
   resultJson: null,
   error: null,
   createdAt: now,
@@ -87,20 +88,5 @@ describe("createSqliteScriptRunRepository", () => {
     expect(await repository.listRuns({ requesterSessionId: "child" })).toEqual(
       [],
     );
-  });
-
-  it("marks running runs and their agents as interrupted after a restart", async () => {
-    const repository = await createRepository();
-    await repository.saveRun(run);
-    await repository.saveRun({ ...run, id: "run-2", status: "draft" });
-    await repository.saveAgent(agent);
-    const later = "2026-09-16T01:00:00.000Z";
-    const interrupted = await repository.interruptRunning(later);
-    expect(interrupted.map((item) => item.id)).toEqual(["run-1"]);
-    expect(await repository.getRun("run-1")).toMatchObject({
-      run: { status: "interrupted", completedAt: later },
-      agents: [{ status: "cancelled", completedAt: later }],
-    });
-    expect((await repository.getRun("run-2"))?.run.status).toBe("draft");
   });
 });
