@@ -43,7 +43,16 @@ try {
   if ($expected -ne $actual) { throw "cocurdex install: checksum mismatch for $asset" }
 
   $extract = Join-Path $work 'extract'
-  Expand-Archive -Path $archive -DestinationPath $extract
+  New-Item -ItemType Directory -Path $extract | Out-Null
+  # Expand-Archive in Windows PowerShell 5.1 spends most of an install on the many small files in the archive;
+  # the bsdtar shipped in System32 since Windows 10 1803 reads zip archives in seconds.
+  $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+  if (Test-Path $tar) {
+    & $tar -xf $archive -C $extract
+    if ($LASTEXITCODE -ne 0) { throw "cocurdex install: could not extract $asset" }
+  } else {
+    Expand-Archive -Path $archive -DestinationPath $extract
+  }
   $source = Join-Path $extract $name
   if (-not (Test-Path (Join-Path $source 'bin\cocurdex.cmd'))) {
     throw "cocurdex install: $asset has no bin\cocurdex.cmd"
