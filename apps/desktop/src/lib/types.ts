@@ -47,6 +47,7 @@ import type {
   DiagnosticsExportResult,
   DocumentAttachment,
   EditorViewRecord,
+  EntityRef,
   ForkSessionPayload,
   GetIssueDetailPayload,
   GetIssuePayload,
@@ -776,6 +777,8 @@ export interface HostApi {
     filePaths: string[];
   }>;
   consumePendingOpenFolder(): Promise<{ rootPath: string } | null>;
+  consumeEntityOpenRequest(): Promise<EntityRef | null>;
+  onEntityOpenRequested(listener: () => void): () => void;
   getPathForFile(file: File): string | null;
   onOpenWorkspaceFromCli(
     listener: (event: { rootPath: string }) => void,

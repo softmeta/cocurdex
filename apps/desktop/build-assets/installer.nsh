@@ -1,6 +1,7 @@
 !macro customUnInstall
   ${ifNot} ${isUpdated}
     ReadEnvStr $0 LOCALAPPDATA
+    DeleteRegKey HKCU "Software\Classes\cocurdex"
     Delete "$0\Cocurdex\bin\cocurdex.cmd"
     RMDir "$0\Cocurdex\bin"
     RMDir "$0\Cocurdex"

@@ -15,6 +15,7 @@ import {
   openWorkspaceByPathAtom,
 } from "@/features/workspaces";
 import { desktopApi, useMountEffect } from "@/lib";
+import { openEntity } from "@/lib/entity-events";
 import { adoptAgentSyncCursor } from "./agent-event-bridge";
 import { appBootstrappedAtom } from "./app-bootstrap-store";
 import { startEditorContextSync } from "./editor-context-sync";
@@ -91,6 +92,7 @@ export function useAppPersistence() {
             error,
           );
         });
+        if (!cancelled) await openRequestedEntity();
 
         setAppBootstrapped(true);
       })
@@ -111,6 +113,12 @@ export function useAppPersistence() {
   );
 
   useMountEffect(() =>
+    desktopApi.onEntityOpenRequested(() => {
+      void openRequestedEntity();
+    }),
+  );
+
+  useMountEffect(() =>
     desktopApi.onRemoteHostSession(() => {
       void showRequestedRemoteSession();
     }),
@@ -123,4 +131,13 @@ export function useAppPersistence() {
     window.addEventListener("focus", redetect);
     return () => window.removeEventListener("focus", redetect);
   });
+}
+
+async function openRequestedEntity() {
+  try {
+    const ref = await desktopApi.consumeEntityOpenRequest();
+    if (ref) openEntity(ref);
+  } catch (error) {
+    console.error("[AppPersistence] consumeEntityOpenRequest failed", error);
+  }
 }
