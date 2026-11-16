@@ -306,6 +306,7 @@
     "failed": "Couldn't save the role. Try again.",
     "name": "Name",
     "namePlaceholder": "Role name",
+    "nameTaken": "Another role or assistant already uses this name.",
     "open": "Save as Role…",
     "save": "Save",
     "saving": "Saving…",

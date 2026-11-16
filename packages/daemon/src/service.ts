@@ -41,6 +41,7 @@ import type {
   UpdateSessionTitlePayload,
 } from "@cocurdex/shared";
 import {
+  AGENT_ROLE_NAME_TAKEN,
   assertPersonalAgentRuntime,
   buildContextHandoffText,
   buildPolicy,
@@ -53,6 +54,7 @@ import {
   isChatWorkspaceId,
   isFeatureEnabled,
   isHandoffVisibleMessage,
+  isNameTaken,
   isPersonalSession,
   isPersonalWorkspaceId,
   isSessionRuntimeEvent,
@@ -70,6 +72,7 @@ import {
   resolveSessionWorkingPath,
   resolveStartContext,
   runsOnDurablePi,
+  sameName,
   toolMayMutateWorkspace,
   validateSendSessionCommand,
   validateSessionConfiguration,
@@ -382,6 +385,7 @@ export class CocurdexDaemonService {
     this.personalAgents = new PersonalAgentService({
       repository: this.state.data.personalAgents,
       getRole: (id) => this.state.getAgentRole(id),
+      listRoles: () => this.state.listAgentRoles(),
       saveRole: (payload) => this.saveAgentRole(payload),
       deleteRole: (id) => this.state.deleteAgentRole(id),
       createHomeSession: (role) =>
@@ -1415,8 +1419,18 @@ export class CocurdexDaemonService {
     const existing = payload.id
       ? await this.state.getAgentRole(payload.id)
       : null;
+    const id = existing?.id ?? payload.id ?? crypto.randomUUID();
+    if (
+      !(existing && sameName(existing.name, name)) &&
+      isNameTaken(name, await this.state.listAgentRoles(), id)
+    ) {
+      throw new ReasonError(
+        AGENT_ROLE_NAME_TAKEN,
+        `An agent role or assistant named "${name}" already exists.`,
+      );
+    }
     const role: AgentRoleRecord = {
-      id: existing?.id ?? payload.id ?? crypto.randomUUID(),
+      id,
       name,
       agentId: payload.agentId,
       providerId: payload.providerId,

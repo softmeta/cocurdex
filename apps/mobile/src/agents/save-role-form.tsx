@@ -1,5 +1,10 @@
 import type { SavedHost } from "@cocurdex/client-runtime";
-import type { AgentRoleDraft, AgentRoleRecord } from "@cocurdex/shared";
+import {
+  AGENT_ROLE_NAME_TAKEN,
+  type AgentRoleDraft,
+  type AgentRoleRecord,
+  errorReason,
+} from "@cocurdex/shared";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -35,6 +40,7 @@ export function SaveRoleForm({
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [nameTaken, setNameTaken] = useState(false);
   const trimmedName = name.trim();
   const canSave =
     !saving &&
@@ -58,8 +64,13 @@ export function SaveRoleForm({
       onSaved?.(role);
       await keyboardHidden();
       router.back();
-    } catch {
+    } catch (error) {
       setSaving(false);
+      if (errorReason(error) === AGENT_ROLE_NAME_TAKEN) {
+        setNameTaken(true);
+        nameInput.current?.focus();
+        return;
+      }
       setFailed(true);
     }
   };
@@ -74,7 +85,13 @@ export function SaveRoleForm({
       <Form adjustsForKeyboard>
         <FieldSection
           title={t("saveRole.name")}
-          footer={<FormNote>{summary}</FormNote>}
+          footer={
+            nameTaken ? (
+              <FormNote tone="destructive">{t("saveRole.nameTaken")}</FormNote>
+            ) : (
+              <FormNote>{summary}</FormNote>
+            )
+          }
         >
           <FormTextField
             ref={nameInput}
@@ -83,7 +100,10 @@ export function SaveRoleForm({
             autoFocus
             returnKeyType="next"
             onSubmitEditing={() => descriptionInput.current?.focus()}
-            onChangeText={setName}
+            onChangeText={(value) => {
+              setName(value);
+              setNameTaken(false);
+            }}
           />
         </FieldSection>
         <FieldSection

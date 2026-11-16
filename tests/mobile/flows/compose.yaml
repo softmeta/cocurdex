@@ -87,7 +87,7 @@ appId: dev.cocurdex.mobile
     visible:
       id: "save-role-name"
     timeout: 10000
-- inputText: "E2E Reviewer"
+- inputText: ${SAVED_ROLE_NAME}
 - waitForAnimationToEnd
 - takeScreenshot: save-role
 - tapOn: ${SAVE_ROLE_SAVE}

@@ -571,7 +571,32 @@ runScenario("personal-agents", {
           document.execCommand("selectAll");
           return true;
         });
+        await session.send("Input.insertText", { text: "overview BUILDER" });
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "settings:agentRoles.save"),
+          within: dialog,
+        });
+        const nameTaken = {
+          role: "StaticText",
+          name: await translate(session, "settings:agentRoles.nameTaken"),
+          within: { role: "alert" },
+        };
+        await waitForRole(session, nameTaken, UI_TIMEOUT_MS);
+        check(
+          (await personas(session)).length === 1,
+          "a name another role holds is refused under the name field",
+        );
+        await clickPoint(
+          session,
+          await centerOf(session, nameField.backendNodeId),
+        );
+        await session.run(() => {
+          document.execCommand("selectAll");
+          return true;
+        });
         await session.send("Input.insertText", { text: "Coach" });
+        await waitForNoRole(session, nameTaken);
         for (const [label, text] of [
           ["personal:edit.instructions", "Plan workouts"],
           ["personal:edit.userAddress", "Captain"],

@@ -1,8 +1,10 @@
 import {
   AGENT_ROLE_DESCRIPTION_MAX_LENGTH,
   AGENT_ROLE_NAME_MAX_LENGTH,
+  AGENT_ROLE_NAME_TAKEN,
   type AgentId,
   type AgentRoleAvatar,
+  errorReason,
 } from "@cocurdex/shared";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,6 +12,7 @@ import { toast } from "sonner";
 import {
   Button,
   Field,
+  FieldError,
   FieldGroup,
   FieldLabel,
   Input,
@@ -47,6 +50,7 @@ export function SaveAgentRoleDialog({
 }) {
   const { t } = useTranslation("sessions");
   const [name, setName] = useState("");
+  const [nameTaken, setNameTaken] = useState(false);
   const [description, setDescription] = useState("");
   const [draftId, setDraftId] = useState(() => crypto.randomUUID());
   const [avatar, setAvatar] = useState<AgentRoleAvatar | null>(null);
@@ -55,6 +59,7 @@ export function SaveAgentRoleDialog({
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setName("");
+      setNameTaken(false);
       setDescription("");
       setAvatar(null);
       setDraftId(crypto.randomUUID());
@@ -78,8 +83,12 @@ export function SaveAgentRoleDialog({
         avatar,
       });
       handleOpenChange(false);
-    } catch {
+    } catch (error) {
       setSaving(false);
+      if (errorReason(error) === AGENT_ROLE_NAME_TAKEN) {
+        setNameTaken(true);
+        return;
+      }
       toast.error(t("agentRole.saveFailed"));
     }
   };
@@ -114,9 +123,13 @@ export function SaveAgentRoleDialog({
                   maxLength={AGENT_ROLE_NAME_MAX_LENGTH}
                   placeholder={t("agentRole.namePlaceholder")}
                   value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setNameTaken(false);
+                  }}
                 />
               </div>
+              {nameTaken && <FieldError>{t("agentRole.nameTaken")}</FieldError>}
             </Field>
             <Field>
               <FieldLabel htmlFor="save-agent-role-description">

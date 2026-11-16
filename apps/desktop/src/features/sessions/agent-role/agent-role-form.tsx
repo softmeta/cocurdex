@@ -1,10 +1,12 @@
 import {
   AGENT_ROLE_DESCRIPTION_MAX_LENGTH,
+  AGENT_ROLE_NAME_TAKEN,
   type AgentId,
   type AgentPermissionMode,
   type AgentRoleRecord,
   type AgentThinkingLevel,
   type CodexReasoningEffort,
+  errorReason,
   getAgentTraits,
   type SaveAgentRolePayload,
 } from "@cocurdex/shared";
@@ -20,6 +22,7 @@ import { toast } from "sonner";
 import {
   Button,
   Field,
+  FieldError,
   FieldGroup,
   FieldLabel,
   Input,
@@ -67,6 +70,7 @@ export function AgentRoleForm({
   const { t } = useTranslation(["settings", "sessions"]);
   const agents = useAtomValue(agentsAtom);
   const [name, setName] = useState(role.name);
+  const [nameTaken, setNameTaken] = useState(false);
   const [avatar, setAvatar] = useState(role.avatar ?? null);
   const [description, setDescription] = useState(role.description ?? "");
   const [agentId, setAgentId] = useState<AgentId>(role.agentId);
@@ -216,8 +220,12 @@ export function AgentRoleForm({
         avatar,
       });
       onSaved(saved);
-    } catch {
+    } catch (error) {
       setSaving(false);
+      if (errorReason(error) === AGENT_ROLE_NAME_TAKEN) {
+        setNameTaken(true);
+        return;
+      }
       toast.error(t("settings:agentRoles.saveFailed"));
     }
   };
@@ -240,9 +248,15 @@ export function AgentRoleForm({
               maxLength={80}
               placeholder={t("settings:agentRoles.namePlaceholder")}
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value);
+                setNameTaken(false);
+              }}
             />
           </div>
+          {nameTaken && (
+            <FieldError>{t("settings:agentRoles.nameTaken")}</FieldError>
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor="agent-role-description">

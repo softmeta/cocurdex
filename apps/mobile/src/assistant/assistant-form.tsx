@@ -3,6 +3,8 @@ import {
   type SavedHost,
 } from "@cocurdex/client-runtime";
 import {
+  AGENT_ROLE_NAME_TAKEN,
+  errorReason,
   PERSONAL_AGENT_RUNTIME_ID,
   PERSONAL_AGENT_SOUL_MAX_LENGTH,
   PERSONAL_AGENT_USER_ADDRESS_MAX_LENGTH,
@@ -184,7 +186,7 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
   const models = useCompatibleModels(host.hostId, PERSONAL_AGENT_RUNTIME_ID);
   const open = useOptionSheet();
   const [saving, setSaving] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<"failed" | "nameTaken" | null>(null);
   const canSave =
     !saving &&
     host.scopes.includes("interact") &&
@@ -200,7 +202,7 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
   const save = async () => {
     if (!canSave) return;
     setSaving(true);
-    setFailed(false);
+    setFailure(null);
     const connection = hostConnection(host.hostId);
     const role = { ...rolePayload(subject, draft), ...model, avatar };
     const soul = draft.soul.trim() || null;
@@ -230,9 +232,11 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
         pathname: "/session/[hostId]/[sessionId]",
         params: { hostId: host.hostId, sessionId: saved.homeSessionId },
       });
-    } catch {
+    } catch (error) {
       setSaving(false);
-      setFailed(true);
+      setFailure(
+        errorReason(error) === AGENT_ROLE_NAME_TAKEN ? "nameTaken" : "failed",
+      );
     }
   };
 
@@ -250,9 +254,11 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
       <Form adjustsForKeyboard>
         <FieldSection
           footer={
-            failed ? (
+            failure ? (
               <Text style={[styles.failed, { color: colors.destructive }]}>
-                {t("form.failed")}
+                {failure === "nameTaken"
+                  ? t("form.nameTaken")
+                  : t("form.failed")}
               </Text>
             ) : undefined
           }
@@ -264,7 +270,10 @@ function Editor({ host, subject }: { host: SavedHost; subject: Subject }) {
             defaultValue={initial.name}
             autoFocus={agent === null}
             returnKeyType="next"
-            onChangeText={field("name")}
+            onChangeText={(value) => {
+              field("name")(value);
+              if (failure === "nameTaken") setFailure(null);
+            }}
           />
           <FormTextField
             testID="assistant-form-description"

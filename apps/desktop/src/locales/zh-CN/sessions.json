@@ -32,6 +32,7 @@
     "menuManage": "管理角色",
     "name": "名称",
     "namePlaceholder": "角色名称",
+    "nameTaken": "已有角色或助理使用这个名称。",
     "save": "保存为角色",
     "saveAction": "保存",
     "saved": "角色已保存",

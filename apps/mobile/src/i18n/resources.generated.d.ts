@@ -62,6 +62,7 @@ export default interface Resources {
       instructions: "Instructions";
       instructionsPlaceholder: "What this assistant is for and how it should work";
       name: "Name";
+      nameTaken: "Another role or assistant already uses this name.";
       needsModel: "Set up a model on your computer to create an assistant";
       newTitle: "New assistant";
       save: "Save";
@@ -770,6 +771,7 @@ export default interface Resources {
       failed: "Couldn't save the role. Try again.";
       name: "Name";
       namePlaceholder: "Role name";
+      nameTaken: "Another role or assistant already uses this name.";
       open: "Save as Role…";
       save: "Save";
       saving: "Saving…";
