@@ -1,4 +1,3 @@
-import path from "node:path";
 import type { RuntimeProviderConfig } from "@cocurdex/agent-core";
 import { errorKindForLog } from "@cocurdex/shared";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
@@ -14,7 +13,6 @@ import {
 } from "@earendil-works/pi-durable";
 import { createCodemodeExtension } from "@earendil-works/pi-durable/codemode";
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
-import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 import { createToolSearchExtension } from "@earendil-works/pi-durable/tool-search";
 import { createCodingTools } from "@earendil-works/pi-durable/tools";
 import { logAdapterDiagnostic } from "../diagnostics";
@@ -32,8 +30,7 @@ import {
 import { DurableMcpServers } from "./durable-mcp";
 import { WorkspaceResourceCache } from "./durable-resources";
 import { SearchTools } from "./durable-search-tools";
-
-export const DURABLE_DATABASE_FILENAME = "pi-durable.sqlite";
+import { openDurableStorage } from "./durable-store";
 
 function modelKey(provider: string, modelId: string) {
   return `${provider}\u0000${modelId}`;
@@ -50,7 +47,7 @@ export interface DurableExtensions {
 
 /**
  * One durable Harness per user data directory, shared by every assistant and chat session. Its
- * conversations, runs, and tool calls live in `pi-durable.sqlite`, owned by the daemon process;
+ * conversations, runs, and tool calls live in cocurdex.sqlite, owned by the daemon process;
  * a run the daemon was stopped in resumes when the daemon opens it again.
  */
 export class DurableHost {
@@ -173,10 +170,7 @@ export class DurableHost {
   private async open() {
     process.env.PI_CODING_AGENT_DIR = this.agentDir;
     await this.modelRuntime([]);
-    const databasePath = this.userDataPath
-      ? path.join(this.userDataPath, DURABLE_DATABASE_FILENAME)
-      : ":memory:";
-    const storage = await openNodeSqliteStorage(databasePath);
+    const storage = await openDurableStorage(this.userDataPath);
     const harness = await Harness.open(
       storage,
       {

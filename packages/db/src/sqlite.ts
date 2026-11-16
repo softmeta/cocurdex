@@ -9,6 +9,7 @@ import {
   createSqliteDelegationRepository,
   type DelegationRepository,
 } from "./delegation";
+import { createDurableStore, type DurableStore } from "./durable-store";
 import {
   createSqliteEntityLinksRepository,
   type EntityLinksRepository,
@@ -104,6 +105,7 @@ import { createSqliteSyncRepository, type SyncRepository } from "./sync";
 import { createSqliteTeamRepository, type TeamRepository } from "./team";
 
 export interface CocurdexDatabase {
+  durableStore: DurableStore;
   notes: NotesRepository;
   decks: DecksRepository;
   entityLinks: EntityLinksRepository;
@@ -214,6 +216,7 @@ export function createCocurdexDatabase(databasePath: string): CocurdexDatabase {
   ensureIncrementalAutoVacuum(database);
 
   return {
+    durableStore: createDurableStore(database),
     notes: createSqliteNotesRepository(database),
     decks: createSqliteDecksRepository(database),
     entityLinks: createSqliteEntityLinksRepository(database),

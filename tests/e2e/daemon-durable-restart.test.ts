@@ -1,10 +1,10 @@
-import { rm } from "node:fs/promises";
-import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import {
-  DURABLE_DATABASE_FILENAME,
+  DURABLE_TABLE_PREFIX,
   killProcessTree,
 } from "@cocurdex/agent-adapters";
 import { requestDaemon } from "@cocurdex/daemon/client";
+import { getDatabasePath } from "@cocurdex/daemon/paths";
 import type { MessageRecord } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { startChatSession } from "@cocurdex/test-harness/helpers/chat-session";
@@ -17,6 +17,21 @@ import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
 afterAll(() => tempDirs.cleanup());
+
+function dropDurableTables(userDataPath: string) {
+  const database = new DatabaseSync(getDatabasePath(userDataPath));
+  try {
+    const tables = database
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE ?",
+      )
+      .all(`${DURABLE_TABLE_PREFIX}%`)
+      .map((row) => String(row.name));
+    for (const table of tables) database.exec(`DROP TABLE "${table}"`);
+  } finally {
+    database.close();
+  }
+}
 
 async function crash(daemon: DaemonProcess) {
   if (process.platform === "win32" && daemon.child.pid) {
@@ -154,9 +169,7 @@ describe("durable assistant and chat runs across daemon restarts", () => {
       await ask(second.id, "Second secret");
       await waitForAnswer(daemon, second.id);
       await daemon.stop();
-      await rm(path.join(userDataPath, DURABLE_DATABASE_FILENAME), {
-        force: true,
-      });
+      dropDurableTables(userDataPath);
 
       daemon = await spawnDaemon({ userDataPath });
       stub.plan = { kind: "stream", chunks: ["Second again"] };

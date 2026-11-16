@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { useDurableStore } from "@cocurdex/agent-adapters";
 import {
   type AgentCapabilityCacheRepository,
   type ContextTransferConsumption,
@@ -97,6 +98,7 @@ export class DaemonState {
 
   constructor(readonly userDataPath: string) {
     this.database = createCocurdexDatabase(getDatabasePath(userDataPath));
+    useDurableStore(userDataPath, this.database.durableStore);
     this.toolOutputs = createToolOutputStore(userDataPath);
     this.storageMaintenance = new StorageMaintenance({
       toolCalls: this.database.toolCalls,
