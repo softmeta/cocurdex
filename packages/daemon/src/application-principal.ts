@@ -2,15 +2,14 @@ import type { ApplicationPrincipal, SessionRecord } from "@cocurdex/shared";
 
 type ApplicationSession = Pick<
   SessionRecord,
-  "id" | "agentType" | "sessionKind" | "agentRoleId" | "parentSessionId"
+  "id" | "sessionKind" | "agentRoleId" | "parentSessionId"
 >;
 
 const WORK_SESSION_KINDS = new Set(["main", "subagent", "teammate"]);
 
-function isPiWorkSession(session: ApplicationSession | null) {
+function isWorkSession(session: ApplicationSession | null) {
   return (
-    session?.agentType === "pi" &&
-    WORK_SESSION_KINDS.has(session.sessionKind ?? "main")
+    session !== null && WORK_SESSION_KINDS.has(session.sessionKind ?? "main")
   );
 }
 
@@ -44,6 +43,6 @@ export async function resolveApplicationPrincipal(
   return {
     personaId: null,
     delegated: false,
-    workSession: isPiWorkSession(caller),
+    workSession: isWorkSession(caller),
   };
 }

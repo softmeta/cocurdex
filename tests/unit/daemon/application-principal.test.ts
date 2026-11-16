@@ -33,23 +33,22 @@ describe("application caller identity", () => {
       });
   });
 
-  it("treats a pi work session outside any assistant as a work session", async () => {
+  it("treats a work session of any agent outside an assistant as a work session", async () => {
     const deps = dependencies();
-    for (const id of ["other", "cycle"])
+    for (const id of ["other", "cycle", "codex-work"])
       expect(await resolveApplicationPrincipal(id, deps)).toEqual({
         personaId: null,
         delegated: false,
         workSession: true,
       });
-    for (const id of ["codex-work", "chat"])
-      expect(await resolveApplicationPrincipal(id, deps)).toEqual({
-        personaId: null,
-        delegated: false,
-        workSession: false,
-      });
+    expect(await resolveApplicationPrincipal("chat", deps)).toEqual({
+      personaId: null,
+      delegated: false,
+      workSession: false,
+    });
   });
 
-  it("does not grant work access merely from an assistant parent or matching role", async () => {
+  it("does not grant assistant access merely from an assistant parent or matching role", async () => {
     const deps = dependencies();
     deps.getSession = async (id) => ({
       id,
@@ -61,7 +60,7 @@ describe("application caller identity", () => {
     expect(await resolveApplicationPrincipal("unrelated", deps)).toEqual({
       personaId: null,
       delegated: false,
-      workSession: false,
+      workSession: true,
     });
   });
 });
