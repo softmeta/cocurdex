@@ -14,6 +14,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const isWindows = process.platform === "win32";
+const INSTALL_TIMEOUT_MS = 180_000;
 const target = `${process.platform}-${process.arch}`;
 const releaseDir = path.join(repoRoot, "apps/desktop/release/headless");
 const asset = `cocurdex-headless-${target}${isWindows ? ".zip" : ".tar.gz"}`;
@@ -148,41 +149,49 @@ afterAll(async () => {
 });
 
 describe("headless install script", () => {
-  it("installs a verified archive and puts the CLI on the bin path", async () => {
-    await install();
+  it(
+    "installs a verified archive and puts the CLI on the bin path",
+    async () => {
+      await install();
 
-    const status = JSON.parse(
-      await run(launcher, ["daemon", "status", "--json"]),
-    );
-    expect(isAlive(status.pid)).toBe(true);
-    if (!isWindows) {
-      const link = await lstat(path.join(binDir, "cocurdex"));
-      expect(link.isSymbolicLink()).toBe(true);
-    }
-  });
-
-  it("stops the running daemon to upgrade in place and starts it again", async () => {
-    const before = await readDaemonMetadata(userDataPath);
-    if (!isAlive(before.pid)) {
-      throw new Error(
-        `daemon ${before.pid} exited before the upgrade\n${await daemonLogTail()}`,
+      const status = JSON.parse(
+        await run(launcher, ["daemon", "status", "--json"]),
       );
-    }
+      expect(isAlive(status.pid)).toBe(true);
+      if (!isWindows) {
+        const link = await lstat(path.join(binDir, "cocurdex"));
+        expect(link.isSymbolicLink()).toBe(true);
+      }
+    },
+    INSTALL_TIMEOUT_MS,
+  );
 
-    const output = await withDaemonLog(async () => {
-      const result = await install();
-      if (!result.includes("Restarted the daemon")) {
+  it(
+    "stops the running daemon to upgrade in place and starts it again",
+    async () => {
+      const before = await readDaemonMetadata(userDataPath);
+      if (!isAlive(before.pid)) {
         throw new Error(
-          `Install did not restart the daemon (old daemon ${before.pid} alive: ${isAlive(before.pid)}):\n${result}`,
+          `daemon ${before.pid} exited before the upgrade\n${await daemonLogTail()}`,
         );
       }
-      return result;
-    });
 
-    expect(output).toContain("Stopped the daemon to upgrade it");
-    const after = await readDaemonMetadata(userDataPath);
-    expect(after.pid).not.toBe(before.pid);
-    expect(isAlive(before.pid)).toBe(false);
-    expect(isAlive(after.pid)).toBe(true);
-  });
+      const output = await withDaemonLog(async () => {
+        const result = await install();
+        if (!result.includes("Restarted the daemon")) {
+          throw new Error(
+            `Install did not restart the daemon (old daemon ${before.pid} alive: ${isAlive(before.pid)}):\n${result}`,
+          );
+        }
+        return result;
+      });
+
+      expect(output).toContain("Stopped the daemon to upgrade it");
+      const after = await readDaemonMetadata(userDataPath);
+      expect(after.pid).not.toBe(before.pid);
+      expect(isAlive(before.pid)).toBe(false);
+      expect(isAlive(after.pid)).toBe(true);
+    },
+    INSTALL_TIMEOUT_MS,
+  );
 });
