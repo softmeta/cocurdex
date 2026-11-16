@@ -40,12 +40,6 @@ export const personalPayloadSchemas: PayloadSchemas = {
   "personalAgent.draft": exact<Payload<"personalAgent.draft">>()(
     z.object({ locale: z.enum(supportedLocales).nullish() }),
   ),
-  "personalAgent.told.list": exact<Payload<"personalAgent.told.list">>()(
-    z.object({ id: idSchema }),
-  ),
-  "personalAgent.told.forget": exact<Payload<"personalAgent.told.forget">>()(
-    z.object({ id: idSchema, item: boundedTextSchema(1_000) }),
-  ),
   "personalAgent.greet": exact<Payload<"personalAgent.greet">>()(
     z.object({
       id: idSchema,

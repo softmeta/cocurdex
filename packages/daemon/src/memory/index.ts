@@ -11,4 +11,4 @@ export {
   type MemoryTurnContext,
 } from "./service";
 export { type MemoryCaptureRecord, parseMemoryCaptures } from "./settings";
-export { ToldLedgerStore } from "./told-ledger-store";
+export { cleanUpToldLedgers } from "./told-ledger-cleanup";
