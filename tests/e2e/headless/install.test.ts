@@ -149,11 +149,14 @@ afterAll(async () => {
 
 describe("headless install script", () => {
   it("installs a verified archive and puts the CLI on the bin path", async () => {
-    await install();
-
+    const t0 = Date.now();
+    process.stdout.write(`[timing-test] install output\n${await install()}\n`);
+    process.stdout.write(`[timing-test] install ${Date.now() - t0}\n`);
+    const t1 = Date.now();
     const status = JSON.parse(
       await run(launcher, ["daemon", "status", "--json"]),
     );
+    process.stdout.write(`[timing-test] status ${Date.now() - t1}\n`);
     expect(isAlive(status.pid)).toBe(true);
     if (!isWindows) {
       const link = await lstat(path.join(binDir, "cocurdex"));
@@ -170,7 +173,11 @@ describe("headless install script", () => {
     }
 
     const output = await withDaemonLog(async () => {
+      const t2 = Date.now();
       const result = await install();
+      process.stdout.write(
+        `[timing-test] upgrade ${Date.now() - t2}\n${result}\n`,
+      );
       if (!result.includes("Restarted the daemon")) {
         throw new Error(
           `Install did not restart the daemon (old daemon ${before.pid} alive: ${isAlive(before.pid)}):\n${result}`,
