@@ -41,6 +41,18 @@ export function createRoutineSessions(deps: RoutineSessionDeps) {
     }
   }
 
+  async function awaitTurn(
+    sessionId: string,
+  ): Promise<SessionTurnOutcome | null> {
+    const outcome = await waitWithTimeout(sessionId);
+    if (outcome !== "timeout") return outcome;
+    await deps.stopSessionTurn(sessionId).catch(() => undefined);
+    return {
+      status: "failed",
+      error: `The run hit its ${timeoutMinutes(timeoutMs)}-minute limit and was stopped.`,
+    };
+  }
+
   return {
     async ensureSession(routine: RoutineRecord) {
       const persona = deps.getPersona(routine.agentId);
@@ -73,15 +85,14 @@ export function createRoutineSessions(deps: RoutineSessionDeps) {
           routineName: routine.name,
         },
       });
-      const outcome = await waitWithTimeout(sessionId);
-      if (outcome === "timeout") {
-        await deps.stopSessionTurn(sessionId).catch(() => undefined);
-        return {
+      return (
+        (await awaitTurn(sessionId)) ?? {
           status: "failed",
-          error: `The run hit its ${timeoutMinutes(timeoutMs)}-minute limit and was stopped.`,
-        };
-      }
-      return outcome ?? { status: "failed", error: "The run did not finish." };
+          error: "The run did not finish.",
+        }
+      );
     },
+
+    awaitTurn,
   };
 }

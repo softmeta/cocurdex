@@ -11,6 +11,7 @@ import {
 import {
   AssistantEntry,
   CompactionEntry,
+  type EntryId,
   type EntryRecord,
   type LiveState,
   ToolResultEntry,
@@ -115,6 +116,7 @@ export class DurableProjector {
   private activeCompactionTask: number | null = null;
   private lastResponse: MessageRecord | null = null;
   private lastFailure: string | null = null;
+  private usageCountedThrough: EntryId | undefined;
 
   constructor(
     private readonly sessionId: string,
@@ -140,7 +142,12 @@ export class DurableProjector {
   }
 
   /** Starts a new turn: file changes and the final response are per turn. */
-  beginTurn() {
+  /**
+   * Starts projecting one turn. A run resumed after a restart passes the newest entry that
+   * existed when it attached: usage up to there was counted before the restart.
+   */
+  beginTurn(countedThrough?: EntryId) {
+    this.usageCountedThrough = countedThrough;
     this.nativeFiles.clear();
     this.nativeSnapshots.clear();
     this.lastResponse = null;
@@ -267,7 +274,10 @@ export class DurableProjector {
         ? (message.errorMessage ?? "Model request failed")
         : null;
     const usage = mapDurableUsage(message.usage);
-    if (usage) {
+    const counted =
+      this.usageCountedThrough !== undefined &&
+      (entry.id as number) <= (this.usageCountedThrough as number);
+    if (usage && !counted) {
       this.emit({
         type: "usage.updated",
         sessionId: this.sessionId,

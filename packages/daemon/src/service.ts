@@ -448,6 +448,7 @@ export class CocurdexDaemonService {
         this.state.data.personalAgents.getById(id) !== null,
       ensureSession: routineSessions.ensureSession,
       runTurn: routineSessions.runTurn,
+      resumedTurn: routineSessions.awaitTurn,
       deliverResult: (routine, run, content) =>
         this.inbox
           .postToHomeThread(routine.agentId, content, {
@@ -997,7 +998,9 @@ export class CocurdexDaemonService {
   private async recoverInterruptedWork() {
     try {
       await this.state.waitForStartupRecovery();
+      this.routines.recoverInterrupted();
       await this.resumeDurableTurns();
+      this.routines.awaitRecovered();
       await this.scriptRuns.resumeInterrupted();
       await this.team.recoverReports();
       await this.delegations.recoverReports();

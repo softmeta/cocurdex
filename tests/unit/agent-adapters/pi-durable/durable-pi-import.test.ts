@@ -5,27 +5,25 @@ import {
   closeDurableHosts,
   DURABLE_TABLE_PREFIX,
   LEGACY_DURABLE_DATABASE_FILENAME,
-  useDurableStore,
 } from "@cocurdex/agent-adapters";
 import { readDurableConversation } from "@cocurdex/agent-adapters/internal/pi-durable/durable-conversations";
 import { createDurablePiSession } from "@cocurdex/agent-adapters/internal/pi-durable/durable-session";
-import { createCocurdexDatabase } from "@cocurdex/db";
-import {
-  type AgentProviderSessionRecord,
-  CHAT_WORKSPACE_ID,
-  createProviderSnapshotForModel,
-  type SessionRecord,
-} from "@cocurdex/shared";
+import type { AgentProviderSessionRecord } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { startStubLlmServer } from "@cocurdex/test-harness/helpers/llm-stub";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { afterAll, describe, expect, it } from "vitest";
+import {
+  chatSession,
+  closeDatabases,
+  stubSnapshot,
+  useCocurdexDatabase,
+} from "./durable-fixtures";
 
 const tempDirs = createTempDirs();
-const databases: { close(): void }[] = [];
 afterAll(async () => {
   await closeDurableHosts();
-  for (const database of databases.splice(0)) database.close();
+  closeDatabases();
   await tempDirs.cleanup();
 });
 
@@ -47,59 +45,6 @@ function assistant(text: string) {
     stopReason: "stop" as const,
     timestamp: Date.now(),
   };
-}
-
-function stubSnapshot(baseUrl: string) {
-  return createProviderSnapshotForModel({
-    provider: {
-      id: "e2e-stub",
-      name: "E2E Stub",
-      baseUrl: baseUrl,
-      enabled: true,
-      apiKeySecretId: null,
-      headersJson: null,
-      createdAt: "2026-11-14T00:00:00.000Z",
-      updatedAt: "2026-11-14T00:00:00.000Z",
-    },
-    model: {
-      providerId: "e2e-stub",
-      modelId: "e2e-model",
-      name: "E2E Model",
-      api: "openai-completions",
-      enabled: true,
-      source: "manual",
-      capabilities: ["chat"],
-      createdAt: "2026-11-14T00:00:00.000Z",
-      updatedAt: "2026-11-14T00:00:00.000Z",
-    },
-  });
-}
-
-function useCocurdexDatabase(userDataPath: string) {
-  const databasePath = path.join(userDataPath, "cocurdex.sqlite");
-  const database = createCocurdexDatabase(databasePath);
-  databases.push(database);
-  useDurableStore(userDataPath, database.durableStore);
-  return { database, databasePath };
-}
-
-function chatSession(providerSnapshot: SessionRecord["providerSnapshot"]) {
-  const now = new Date().toISOString();
-  return {
-    id: "chat-session",
-    workspaceId: CHAT_WORKSPACE_ID,
-    sessionKind: "chat",
-    title: "Chat",
-    agentType: "pi",
-    status: "idle",
-    writeMode: "read-only",
-    sessionModeId: null,
-    createdAt: now,
-    updatedAt: now,
-    lastMessageAt: null,
-    archivedAt: null,
-    providerSnapshot,
-  } as SessionRecord;
 }
 
 describe("chat sessions that ran on the pi coding agent", () => {

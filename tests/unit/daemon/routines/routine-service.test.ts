@@ -36,6 +36,7 @@ function harness(
   outcomes: SessionTurnOutcome[] | Record<string, SessionTurnOutcome> = [],
   reports: Record<string, RoutineReport> = {},
   database = seededDatabase(),
+  resumedTurn?: (sessionId: string) => Promise<SessionTurnOutcome | null>,
 ) {
   const repository = createSqliteRoutineRepository(database);
   let clock = new Date("2026-11-05T09:00:00Z");
@@ -57,6 +58,7 @@ function harness(
     deliverResult: async (routine, run, content) => {
       delivered.push({ routine: routine.name, run: run.id, content });
     },
+    ...(resumedTurn ? { resumedTurn } : {}),
     announceChanged: () => {},
     now: () => clock,
   });
@@ -227,6 +229,57 @@ describe("RoutineService", () => {
       sessionId: "old-session",
       nextRunAt: "2026-11-05T10:00:00.000Z",
     });
+  });
+
+  it("finishes a run whose turn resumed after a restart with the report it made", async () => {
+    const database = seededDatabase();
+    const first = harness([], {}, database);
+    const routine = await first.service.create({
+      agentId: "coach",
+      name: "Check in",
+      prompt: "Check in",
+      schedule: { kind: "interval", minutes: 60 },
+      timeZone: "UTC",
+    });
+    first.repository.saveRun({
+      id: "interrupted",
+      routineId: routine.id,
+      sessionId: "old-session",
+      trigger: "schedule",
+      status: "running",
+      summary: null,
+      error: null,
+      outcome: null,
+      question: null,
+      startedAt: "2026-11-05T08:00:00.000Z",
+      finishedAt: null,
+    });
+
+    const restarted = harness([], {}, database, async (sessionId) => {
+      restarted.service.report(sessionId, {
+        status: "ready",
+        summary: "Picked up where it left off",
+        question: null,
+      });
+      return reply("Done");
+    });
+    restarted.service.recoverInterrupted();
+    restarted.service.awaitRecovered();
+    restarted.service.start();
+    restarted.service.stop();
+    await restarted.service.idle();
+
+    expect(restarted.prompts).toEqual([]);
+    expect(restarted.repository.listRuns(routine.id, 5)).toEqual([
+      expect.objectContaining({
+        id: "interrupted",
+        status: "succeeded",
+        summary: "Picked up where it left off",
+      }),
+    ]);
+    expect(restarted.delivered.map((item) => item.content)).toEqual([
+      "Picked up where it left off",
+    ]);
   });
 
   it("runs once to catch up after the machine slept through several runs", async () => {

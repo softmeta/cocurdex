@@ -42,6 +42,8 @@ export interface RoutineServiceDeps {
     content: string,
   ): Promise<void>;
   alertRun?(run: RoutineRunRecord): Promise<void>;
+  /** Waits for the turn a restart resumed in a routine's session; `null` when none resumed. */
+  resumedTurn?(sessionId: string): Promise<SessionTurnOutcome | null>;
   announceChanged(): void;
   defaultTimeZone?: () => string;
   now?: () => Date;
@@ -162,28 +164,38 @@ export class RoutineService {
     this.now = deps.now ?? (() => new Date());
   }
 
-  start() {
-    const now = this.now();
-    const at = now.toISOString();
+  /**
+   * Takes back the runs a stopped daemon left running, before their sessions' turns resume, so
+   * a resumed turn can still report to its routine.
+   */
+  recoverInterrupted() {
+    if (!this.deps.resumedTurn) return;
     for (const run of this.deps.repository.listRunning()) {
-      this.deps.repository.saveRun({
-        ...run,
-        status: "failed",
-        error: "The daemon stopped during the run.",
-        finishedAt: at,
+      if (!run.sessionId || this.sessionRuns.has(run.sessionId)) continue;
+      this.sessionRuns.set(run.sessionId, {
+        routineId: run.routineId,
+        runId: run.id,
+        report: null,
       });
-      const routine = this.deps.repository.getById(run.routineId);
-      if (!routine) continue;
-      this.deps.repository.upsert({
-        ...routine,
-        sessionId: run.sessionId ?? routine.sessionId,
-        nextRunAt: routineNextRunAt(
-          routine.schedule,
-          routine.timeZone,
-          now,
-        ).toISOString(),
-        updatedAt: at,
+    }
+  }
+
+  /** Waits for the turns that resumed in the sessions `recoverInterrupted` took back. */
+  awaitRecovered() {
+    for (const run of this.deps.repository.listRunning()) {
+      const sessionId = run.sessionId;
+      if (!sessionId || this.running.has(run.routineId)) continue;
+      if (this.sessionRuns.get(sessionId)?.runId !== run.id) continue;
+      const done = this.resume(run, sessionId).finally(() => {
+        this.running.delete(run.routineId);
       });
+      this.running.set(run.routineId, { run, done });
+    }
+  }
+
+  start() {
+    for (const run of this.deps.repository.listRunning()) {
+      if (!this.running.has(run.routineId)) this.interrupted(run);
     }
     if (this.timer) return;
     this.timer = setInterval(
@@ -444,6 +456,48 @@ export class RoutineService {
     const active = { run, done };
     this.running.set(routine.id, active);
     return active;
+  }
+
+  private async resume(run: RoutineRunRecord, sessionId: string) {
+    const outcome = await this.deps
+      .resumedTurn?.(sessionId)
+      .catch((): SessionTurnOutcome | null => null);
+    const report = this.sessionRuns.get(sessionId)?.report ?? null;
+    this.sessionRuns.delete(sessionId);
+    if (!outcome) {
+      this.interrupted(run);
+      return run;
+    }
+    return this.finish(run.routineId, run, outcome, report);
+  }
+
+  private interrupted(run: RoutineRunRecord) {
+    if (
+      run.sessionId &&
+      this.sessionRuns.get(run.sessionId)?.runId === run.id
+    ) {
+      this.sessionRuns.delete(run.sessionId);
+    }
+    const now = this.now();
+    const at = now.toISOString();
+    this.deps.repository.saveRun({
+      ...run,
+      status: "failed",
+      error: "The daemon stopped during the run.",
+      finishedAt: at,
+    });
+    const routine = this.deps.repository.getById(run.routineId);
+    if (!routine) return;
+    this.deps.repository.upsert({
+      ...routine,
+      sessionId: run.sessionId ?? routine.sessionId,
+      nextRunAt: routineNextRunAt(
+        routine.schedule,
+        routine.timeZone,
+        now,
+      ).toISOString(),
+      updatedAt: at,
+    });
   }
 
   private async perform(routine: RoutineRecord, started: RoutineRunRecord) {
