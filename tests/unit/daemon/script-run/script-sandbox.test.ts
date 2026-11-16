@@ -115,6 +115,18 @@ describe("runScript", () => {
     ).toEqual(["undefined", "undefined", "undefined"]);
   });
 
+  it("keeps the host realm out of reach through the injected functions", async () => {
+    const { host } = fakeHost();
+    expect(
+      await runScript(
+        `const reach = (fn) => fn.constructor.constructor("return typeof process")();
+         return [reach(agent), reach(log), reach(parallel), reach(pipeline)];`,
+        host,
+        options(),
+      ),
+    ).toEqual(["undefined", "undefined", "undefined", "undefined"]);
+  });
+
   it("terminates a script stuck in a loop after an await when aborted", async () => {
     const controller = new AbortController();
     const { host } = fakeHost((prompt) => {
