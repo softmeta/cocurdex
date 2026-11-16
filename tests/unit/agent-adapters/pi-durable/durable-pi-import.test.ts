@@ -22,8 +22,10 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { afterAll, describe, expect, it } from "vitest";
 
 const tempDirs = createTempDirs();
+const databases: { close(): void }[] = [];
 afterAll(async () => {
   await closeDurableHosts();
+  for (const database of databases.splice(0)) database.close();
   await tempDirs.cleanup();
 });
 
@@ -76,6 +78,7 @@ function stubSnapshot(baseUrl: string) {
 function useCocurdexDatabase(userDataPath: string) {
   const databasePath = path.join(userDataPath, "cocurdex.sqlite");
   const database = createCocurdexDatabase(databasePath);
+  databases.push(database);
   useDurableStore(userDataPath, database.durableStore);
   return { database, databasePath };
 }
