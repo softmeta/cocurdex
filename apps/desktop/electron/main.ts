@@ -47,6 +47,13 @@ import {
   getBundledDaemonEntryPath,
   registerCliPathHandlers,
 } from "./cli-path";
+import {
+  consumePendingEntityOpen,
+  DEEP_LINK_SCHEME,
+  entityRefFromArgv,
+  entityRefFromDeepLink,
+  requestEntityOpen,
+} from "./deep-link";
 import { registerHandler, registerHandlerArgs, schemas } from "./ipc";
 import {
   configureLogging,
@@ -154,6 +161,8 @@ if (backgroundLaunch) {
   app.on(
     "second-instance",
     (_event, argv, _workingDirectory, additionalData) => {
+      const entity = entityRefFromArgv(argv);
+      if (entity) requestEntityOpen(entity);
       const folder =
         extractOpenFolderFromAdditionalData(additionalData) ??
         extractOpenFolderFromProcess(argv);
@@ -168,6 +177,15 @@ if (backgroundLaunch) {
       focusMainWindow();
     },
   );
+  app.on("open-url", (event, url) => {
+    const entity = entityRefFromDeepLink(url);
+    if (!entity) return;
+    event.preventDefault();
+    requestEntityOpen(entity);
+    focusMainWindow();
+  });
+  const entityFromLaunch = entityRefFromArgv(process.argv);
+  if (entityFromLaunch) requestEntityOpen(entityFromLaunch);
 }
 
 async function handleCliOpenFolder(
@@ -543,6 +561,7 @@ app
     if (!gotTheLock) {
       return;
     }
+    if (app.isPackaged) app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME);
 
     const userDataPath = app.getPath("userData");
     configureAppLogging(userDataPath);
@@ -661,6 +680,9 @@ app
       async (event, url) => {
         event.sender.downloadURL(url);
       },
+    );
+    ipcMain.handle("entity:consumeOpenRequest", () =>
+      consumePendingEntityOpen(),
     );
     ipcMain.handle("workspace:consumeOpenFolder", () => {
       const rootPath = consumePendingOpenFolder();

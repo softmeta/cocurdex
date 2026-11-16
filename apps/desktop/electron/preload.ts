@@ -1,4 +1,4 @@
-import type { RendererLogPayload } from "@cocurdex/shared";
+import type { EntityRef, RendererLogPayload } from "@cocurdex/shared";
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
   AppUpdateChannel,
@@ -50,6 +50,17 @@ const hostBridge: HostBridge = {
     ipcRenderer.invoke("workspace:consumeOpenFolder") as Promise<{
       rootPath: string;
     } | null>,
+  consumeEntityOpenRequest: () =>
+    ipcRenderer.invoke(
+      "entity:consumeOpenRequest",
+    ) as Promise<EntityRef | null>,
+  onEntityOpenRequested: (listener: () => void) => {
+    const handler = () => listener();
+    ipcRenderer.on("entity:openRequested", handler);
+    return () => {
+      ipcRenderer.removeListener("entity:openRequested", handler);
+    };
+  },
   getPathForFile: (file: File) => {
     try {
       return webUtils.getPathForFile(file);

@@ -149,6 +149,15 @@
   },
   "build": {
     "appId": "dev.cocurdex.desktop",
+    "protocols": [
+      {
+        "name": "Cocurdex",
+        "schemes": [
+          "cocurdex"
+        ],
+        "role": "Viewer"
+      }
+    ],
     "productName": "Cocurdex",
     "directories": {
       "output": "release",
