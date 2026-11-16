@@ -533,13 +533,6 @@ export class CocurdexDaemonService {
       getSession: (sessionId) => this.state.getSession(sessionId),
       listMessages: (sessionId) =>
         this.state.listMessagesBySessionId(sessionId),
-      personaName: async (id) =>
-        (await this.personalAgents.get(id))?.role.name ?? null,
-      announceChanged: () =>
-        this.events.emit("daemon.event", {
-          type: "data.changed",
-          areas: ["personal"],
-        }),
     });
     this.attachments = new DaemonAttachmentStore(options.userDataPath);
     this.workspaces = new WorkspaceHost({
@@ -979,7 +972,14 @@ export class CocurdexDaemonService {
       return persisted;
     });
     if (options.autoStartMemory === true) {
-      void this.memory.initializeOnStartup();
+      void this.memory
+        .initializeOnStartup()
+        .then(() => this.toldLedger.migrateLegacy())
+        .catch((error: unknown) =>
+          logDaemonDiagnostic("warn", "memory.toldLedgerMigrationFailed", {
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
     }
   }
 

@@ -13,7 +13,6 @@ const ASSISTANT_METHODS = new Set([
   "personalAgent.work.list",
   "routine.list",
   "followUp.list",
-  "personalAgent.told.list",
   "session.lastMessage",
 ]);
 
@@ -109,27 +108,4 @@ export async function cancelFollowUp(hostId: string, id: string) {
     (key) =>
       Array.isArray(key) && key[0] === "followUp.list" && key[1] === hostId,
   );
-}
-
-export function useToldItems(hostId: string, personaId: string) {
-  return useSWR(
-    ["personalAgent.told.list", hostId, personaId] as const,
-    ([method, id, persona]) =>
-      hostConnection(id).request(method, { id: persona }),
-    DAEMON_READ,
-  );
-}
-
-export async function forgetToldItem(
-  hostId: string,
-  personaId: string,
-  item: string,
-) {
-  const items = await hostConnection(hostId).request(
-    "personalAgent.told.forget",
-    { id: personaId, item },
-  );
-  await mutate(["personalAgent.told.list", hostId, personaId], items, {
-    revalidate: false,
-  });
 }

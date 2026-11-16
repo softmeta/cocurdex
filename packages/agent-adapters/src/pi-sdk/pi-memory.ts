@@ -109,9 +109,10 @@ You receive the current list and the newest part of the conversation. Return the
 Return strict JSON: {"items": string[]}
 
 Rules:
-- One item per conclusion, fact, answer, commitment, or open follow-up the assistant gave the user. Each item is one short sentence that stands on its own, with the concrete values (names, dates, numbers).
-- Keep items from the current list unless the conversation shows they changed, were resolved, or were withdrawn; rewrite changed ones and drop resolved or withdrawn ones.
-- Skip greetings, small talk, questions the assistant asked, and anything the user said that the assistant did not answer.
+- One item per conclusion, fact, answer, or commitment the assistant gave the user about the user's world: their work, plans, questions, and what the assistant promised to do. Each item is one short sentence that stands on its own, with the concrete values (names, dates, numbers), stating what was told (for example "Release moved to Monday 10:00"), not narrating who said it.
+- Skip greetings, small talk, introductions of what the assistant can do, questions or requests the assistant made, and anything the user said that the assistant did not answer.
+- Skip the assistant's own state and process: what it remembers or does not, what it searched or found empty, its tools, memory, or settings. Skip facts about the user, such as their name, how to address them, or their preferences; long-term memory keeps those.
+- Keep items from the current list unless the conversation shows they changed, were resolved, or were withdrawn; rewrite changed ones and drop resolved or withdrawn ones. Drop current items that break these rules.
 - Order oldest first. At most {max} items; when over, drop the oldest that matter least.
 - Do not invent anything. Never include passwords, API tokens, private keys, or personal identifiers.
 - Write each item in the language the assistant used.

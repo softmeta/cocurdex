@@ -37,7 +37,6 @@ import { openSettings } from "@/features/settings";
 import { requestDaemon } from "@/lib";
 import { AssistantFollowUps } from "./assistant-follow-ups";
 import { OverviewRow, OverviewSection } from "./assistant-overview-sections";
-import { AssistantTold } from "./assistant-told";
 import { AssistantWorkRow } from "./assistant-work-row";
 import {
   type RightPanelView,
@@ -279,7 +278,6 @@ function AssistantOverviewContent({
               onClick={() => openRoutine(null)}
             />
           </OverviewSection>
-          <AssistantTold personaId={persona.id} />
           <OverviewSection
             title={t("overview.resources", {
               defaultValue: "Context and resources",

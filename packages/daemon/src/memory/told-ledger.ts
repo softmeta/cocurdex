@@ -9,10 +9,11 @@ const TRANSCRIPT_MESSAGE_MAX_CHARS = 2_000;
 const ITEM_PREFIX = "- ";
 
 export interface ToldLedgerRef {
-  provider: string;
-  memoryId: string | null;
+  items: string[];
   // Last message folded into the ledger, per assistant thread.
   cursors: Record<string, string>;
+  // Releases up to v0.1.104-beta.18 kept the items in a memory record.
+  legacy?: { provider: string; memoryId: string };
 }
 
 export type ToldLedgerRefs = Record<string, ToldLedgerRef>;
@@ -52,18 +53,7 @@ export function removeToldItem(existing: readonly string[], item: string) {
   return existing.filter((entry) => itemKey(entry) !== key);
 }
 
-export function toldLedgerTitle(personaName: string) {
-  return `What ${personaName} already told the user`;
-}
-
-export function renderToldLedgerBody(items: readonly string[]) {
-  return [
-    "Conclusions, facts and answers this assistant already gave the user, oldest first. Cocurdex maintains this list; edit it from the assistant overview.",
-    ...items.map((item) => `${ITEM_PREFIX}${item}`),
-  ].join("\n");
-}
-
-export function parseToldLedgerBody(body: string) {
+export function parseLegacyToldLedgerBody(body: string) {
   return body
     .split(/\r?\n/)
     .filter((line) => line.startsWith(ITEM_PREFIX))
@@ -133,13 +123,35 @@ export function parseToldLedgerRefs(raw: string | null): ToldLedgerRefs {
   const refs: ToldLedgerRefs = {};
   for (const [personaId, value] of Object.entries(parsed)) {
     if (!value || typeof value !== "object") continue;
-    const { provider, memoryId, cursors } = value as Partial<ToldLedgerRef>;
-    if (typeof provider !== "string") continue;
+    const { items, cursors, provider, memoryId } = value as Record<
+      string,
+      unknown
+    >;
     refs[personaId] = {
-      provider,
-      memoryId: typeof memoryId === "string" ? memoryId : null,
+      items: Array.isArray(items)
+        ? items
+            .filter((item): item is string => typeof item === "string")
+            .map(normalizeItem)
+            .filter((item) => item !== "")
+        : [],
       cursors: parseCursors(cursors),
+      ...(typeof provider === "string" && typeof memoryId === "string"
+        ? { legacy: { provider, memoryId } }
+        : {}),
     };
   }
   return refs;
+}
+
+// Keeps a ref not yet migrated in the flat shape older releases wrote, so
+// saving another persona's ledger never loses it.
+export function serializeToldLedgerRefs(refs: ToldLedgerRefs) {
+  return JSON.stringify(
+    Object.fromEntries(
+      Object.entries(refs).map(([personaId, { legacy, ...ref }]) => [
+        personaId,
+        legacy ? { ...ref, ...legacy } : ref,
+      ]),
+    ),
+  );
 }

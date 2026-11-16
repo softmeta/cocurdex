@@ -85,7 +85,6 @@
     "cancelFollowUp": "取消跟进",
     "description": "协调工作、记住上下文、跟进到底。",
     "followUps": "跟进",
-    "forgetTold": "从已告知中移除",
     "host": "例行任务在已连接的电脑上运行，需要它的后台服务在线。",
     "issues": "事项",
     "needsYou": "需要你处理",
@@ -108,8 +107,6 @@
       "running": "运行中"
     },
     "title": "概览",
-    "told": "已经告诉你的",
-    "toldHint": "助理每次回复前都会读这份记录，避免重复说过的话。",
     "unscheduled": "没有安排下次运行",
     "work": "委派的工作",
     "workFailed": "工作列表加载失败，下拉刷新后重试。"

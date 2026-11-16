@@ -20,7 +20,6 @@ import {
   usePersonalWork,
   useRoutines,
 } from "./assistant-queries";
-import { AssistantTold } from "./assistant-told";
 import { inboxKindLabel } from "./inbox-kind";
 
 type Symbol = { ios: SFSymbol; android: AndroidSymbol };
@@ -231,7 +230,6 @@ function Overview({
             </FormRow>
           ))}
         </FormSection>
-        <AssistantTold hostId={host.hostId} personaId={persona.id} />
         <FormSection title={t("overview.resources")}>
           <FormRow
             leading={<RowIcon name={NOTES_ICON} />}

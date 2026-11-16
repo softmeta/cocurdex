@@ -104,7 +104,7 @@ cocurdex persona told list <persona> --json
 cocurdex persona told forget <persona> --item <text> --json
 ```
 
-- The daemon updates the list in the background once a persona thread has been quiet for about a minute and a half, using the persona's model; routine runs do not update it. It needs memory to be enabled, since the list is stored as one important record in the persona's own memory partition.
+- The daemon updates the list in the background once a persona thread has been quiet for about a minute and a half, using the persona's model; routine runs do not update it. It needs memory to be enabled. The daemon keeps the list in its own settings, not as a memory record, so it never appears in the memory list or in memory recall, and the app does not show it.
 - `list` prints the items oldest first. `forget` removes one item, matched case-insensitively, and prints the remaining list.
 - Deleting a persona deletes its list.
 

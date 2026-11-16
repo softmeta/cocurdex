@@ -1,9 +1,5 @@
 import type {
   MemoryEntry,
-  MemoryPartition,
-  MemoryRememberInput,
-  MemoryRememberResult,
-  MemoryUpdateInput,
   MessageRecord,
   SessionRecord,
 } from "@cocurdex/shared";
@@ -11,31 +7,25 @@ import { logDaemonDiagnostic } from "../diagnostics";
 import {
   mergeToldItems,
   messagesAfterCursor,
-  parseToldLedgerBody,
+  parseLegacyToldLedgerBody,
   parseToldLedgerRefs,
   removeToldItem,
-  renderToldLedgerBody,
+  serializeToldLedgerRefs,
   TOLD_LEDGER_KEY,
   TOLD_LEDGER_MAX_ITEMS,
   type ToldLedgerRef,
   type ToldLedgerRefs,
   toldLedgerBrief,
-  toldLedgerTitle,
   toldLedgerTranscript,
 } from "./told-ledger";
 
 const IDLE_MS = 90_000;
-const BRIEF_TIMEOUT_MS = 2_500;
+const LEGACY_READ_TIMEOUT_MS = 2_500;
 
 export interface ToldLedgerMemory {
   providerId(): string;
   isReadyForTurns(): boolean;
   show(id: string, timeoutMs?: number): Promise<MemoryEntry | null>;
-  rememberIn(
-    input: MemoryRememberInput,
-    partition: MemoryPartition,
-  ): Promise<MemoryRememberResult>;
-  update(input: MemoryUpdateInput): Promise<MemoryEntry | null>;
   forget(id: string): Promise<void>;
   summarizeTold(
     session: SessionRecord,
@@ -51,15 +41,12 @@ export interface ToldLedgerStoreDeps {
   setAppSetting(key: string, value: string): Promise<void>;
   getSession(sessionId: string): Promise<SessionRecord | null>;
   listMessages(sessionId: string): Promise<MessageRecord[]>;
-  personaName(personaId: string): Promise<string | null>;
-  announceChanged(personaId: string): void;
   idleMs?: number;
 }
 
-function personaPartition(personaId: string): MemoryPartition {
-  return { kind: "agent", agentId: personaId };
-}
-
+// The ledger is the assistant's private anti-repetition list. It lives in
+// the daemon's own settings, never in the memory store, so it is not shown
+// or recalled as a memory.
 export class ToldLedgerStore {
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly queues = new Map<string, Promise<unknown>>();
@@ -67,16 +54,17 @@ export class ToldLedgerStore {
 
   constructor(private readonly deps: ToldLedgerStoreDeps) {}
 
-  async items(personaId: string, timeoutMs?: number): Promise<string[]> {
-    const ref = await this.ref(personaId);
-    const entry = await this.entry(ref, timeoutMs);
-    return entry ? parseToldLedgerBody(entry.content) : [];
+  items(personaId: string): Promise<string[]> {
+    return this.serialize(
+      personaId,
+      async () => (await this.ref(personaId))?.items ?? [],
+    );
   }
 
   async brief(personaId: string): Promise<string | null> {
     if (!this.deps.memory.isReadyForTurns()) return null;
     try {
-      return toldLedgerBrief(await this.items(personaId, BRIEF_TIMEOUT_MS));
+      return toldLedgerBrief(await this.items(personaId));
     } catch (error) {
       logDaemonDiagnostic("info", "memory.toldLedgerUnavailable", {
         personaId,
@@ -115,14 +103,12 @@ export class ToldLedgerStore {
   forgetItem(personaId: string, item: string): Promise<string[]> {
     return this.serialize(personaId, async () => {
       const ref = await this.ref(personaId);
-      const entry = await this.entry(ref);
-      if (!ref || !entry) throw new Error("Nothing is recorded yet.");
-      const items = parseToldLedgerBody(entry.content);
-      const remaining = removeToldItem(items, item);
-      if (remaining.length === items.length) {
+      if (!ref) throw new Error("Nothing is recorded yet.");
+      const remaining = removeToldItem(ref.items, item);
+      if (remaining.length === ref.items.length) {
         throw new Error("That item is not in the list.");
       }
-      await this.write(personaId, ref, remaining, ref.cursors);
+      await this.save(personaId, { items: remaining, cursors: ref.cursors });
       return remaining;
     });
   }
@@ -137,17 +123,19 @@ export class ToldLedgerStore {
       const refs = await this.refs();
       const ref = refs[personaId];
       if (!ref) return;
-      if (ref.memoryId && ref.provider === this.deps.memory.providerId()) {
-        await this.deps.memory.forget(ref.memoryId).catch((error: unknown) =>
-          logDaemonDiagnostic("info", "memory.toldLedgerForgetFailed", {
-            personaId,
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        );
-      }
+      if (ref.legacy) await this.forgetLegacyRecord(personaId, ref.legacy);
       const { [personaId]: _removed, ...rest } = refs;
       await this.saveRefs(rest);
     });
+  }
+
+  // Moves every ledger an older release kept in the memory store, so the
+  // record leaves the memory list without waiting for that persona's turn.
+  async migrateLegacy() {
+    const refs = await this.refs();
+    for (const [personaId, ref] of Object.entries(refs)) {
+      if (ref.legacy) await this.items(personaId);
+    }
   }
 
   stop() {
@@ -167,64 +155,71 @@ export class ToldLedgerStore {
     if (!last || !fresh.some((message) => message.role === "assistant")) {
       return false;
     }
-    const entry = await this.entry(ref);
-    const items = entry ? parseToldLedgerBody(entry.content) : [];
     const curated = await this.deps.memory.summarizeTold(
       session,
-      items,
+      ref?.items ?? [],
       toldLedgerTranscript(fresh),
       TOLD_LEDGER_MAX_ITEMS,
     );
     if (!curated) return false;
-    const next = mergeToldItems([], curated);
-    const cursors = { ...(ref?.cursors ?? {}), [sessionId]: last.id };
-    await this.write(personaId, entry ? ref : null, next, cursors);
+    await this.save(personaId, {
+      items: mergeToldItems([], curated),
+      cursors: { ...(ref?.cursors ?? {}), [sessionId]: last.id },
+    });
     return true;
   }
 
-  private async write(
-    personaId: string,
-    ref: ToldLedgerRef | null,
-    items: readonly string[],
-    cursors: Record<string, string>,
-  ) {
-    const name = (await this.deps.personaName(personaId)) ?? "The assistant";
-    const title = toldLedgerTitle(name);
-    const content = renderToldLedgerBody(items);
-    let memoryId = ref?.memoryId ?? null;
-    if (memoryId) {
-      await this.deps.memory.update({ id: memoryId, title, content });
-    } else {
-      const result = await this.deps.memory.rememberIn(
-        { title, content, importance: "important", force: true },
-        personaPartition(personaId),
+  // Reads the persona's ref, moving a ledger an older release kept as a
+  // memory record into settings and deleting that record.
+  private async ref(personaId: string): Promise<ToldLedgerRef | null> {
+    const ref = (await this.refs())[personaId];
+    if (!ref?.legacy) return ref ?? null;
+    const legacy = ref.legacy;
+    if (legacy.provider !== this.deps.memory.providerId()) {
+      const moved = { items: ref.items, cursors: ref.cursors };
+      await this.save(personaId, moved);
+      return moved;
+    }
+    let entry: MemoryEntry | null;
+    try {
+      entry = await this.deps.memory.show(
+        legacy.memoryId,
+        LEGACY_READ_TIMEOUT_MS,
       );
-      if (!result.id) {
-        throw new Error(result.message ?? `Memory write ${result.action}`);
-      }
-      memoryId = result.id;
+    } catch (error) {
+      logDaemonDiagnostic("info", "memory.toldLedgerMigrationDeferred", {
+        personaId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return { items: ref.items, cursors: ref.cursors };
     }
+    const moved = {
+      items: entry
+        ? mergeToldItems(ref.items, parseLegacyToldLedgerBody(entry.content))
+        : ref.items,
+      cursors: ref.cursors,
+    };
+    await this.save(personaId, moved);
+    if (entry) await this.forgetLegacyRecord(personaId, legacy);
+    return moved;
+  }
+
+  private async forgetLegacyRecord(
+    personaId: string,
+    legacy: NonNullable<ToldLedgerRef["legacy"]>,
+  ) {
+    if (legacy.provider !== this.deps.memory.providerId()) return;
+    await this.deps.memory.forget(legacy.memoryId).catch((error: unknown) =>
+      logDaemonDiagnostic("info", "memory.toldLedgerForgetFailed", {
+        personaId,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
+
+  private async save(personaId: string, ref: ToldLedgerRef) {
     const refs = await this.refs();
-    await this.saveRefs({
-      ...refs,
-      [personaId]: {
-        provider: this.deps.memory.providerId(),
-        memoryId,
-        cursors,
-      },
-    });
-    this.deps.announceChanged(personaId);
-  }
-
-  private async entry(ref: ToldLedgerRef | null, timeoutMs?: number) {
-    if (!ref?.memoryId || ref.provider !== this.deps.memory.providerId()) {
-      return null;
-    }
-    return this.deps.memory.show(ref.memoryId, timeoutMs);
-  }
-
-  private async ref(personaId: string) {
-    return (await this.refs())[personaId] ?? null;
+    await this.saveRefs({ ...refs, [personaId]: ref });
   }
 
   private async refs() {
@@ -232,7 +227,10 @@ export class ToldLedgerStore {
   }
 
   private saveRefs(refs: ToldLedgerRefs) {
-    return this.deps.setAppSetting(TOLD_LEDGER_KEY, JSON.stringify(refs));
+    return this.deps.setAppSetting(
+      TOLD_LEDGER_KEY,
+      serializeToldLedgerRefs(refs),
+    );
   }
 
   private serialize<T>(personaId: string, work: () => Promise<T>) {

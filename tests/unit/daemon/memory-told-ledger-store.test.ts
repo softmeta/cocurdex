@@ -7,6 +7,7 @@ import type {
 import { describe, expect, it } from "vitest";
 
 const SESSION = { id: "home", sessionKind: "personal" } as SessionRecord;
+const LEDGER_KEY = "memory.toldLedgers";
 
 function message(id: string, role: "user" | "assistant", content: string) {
   return {
@@ -24,33 +25,15 @@ function createHarness() {
   const entries = new Map<string, MemoryEntry>();
   const messages: MessageRecord[] = [];
   const transcripts: string[] = [];
-  let nextId = 1;
+  let showFails = false;
   let reply: (items: readonly string[]) => string[] = (items) => [...items];
   const store = new ToldLedgerStore({
     memory: {
-      providerId: () => "rsrs",
+      providerId: () => "builtin",
       isReadyForTurns: () => true,
-      show: async (id) => entries.get(id) ?? null,
-      rememberIn: async (input) => {
-        const id = `m${nextId++}`;
-        entries.set(id, {
-          id,
-          title: input.title,
-          content: input.content,
-        } as MemoryEntry);
-        return {
-          action: "created",
-          id,
-          title: input.title,
-          candidates: [],
-          message: null,
-        };
-      },
-      update: async (input) => {
-        const entry = entries.get(input.id);
-        if (!entry) throw new Error("missing");
-        entries.set(input.id, { ...entry, content: input.content ?? "" });
-        return entries.get(input.id) ?? null;
+      show: async (id) => {
+        if (showFails) throw new Error("memory unavailable");
+        return entries.get(id) ?? null;
       },
       forget: async (id) => {
         entries.delete(id);
@@ -66,22 +49,24 @@ function createHarness() {
     },
     getSession: async () => SESSION,
     listMessages: async () => messages,
-    personaName: async () => "Ada",
-    announceChanged: () => {},
   });
   return {
     store,
+    settings,
     entries,
     messages,
     transcripts,
     reply: (next: typeof reply) => {
       reply = next;
     },
+    failShow: (fails: boolean) => {
+      showFails = fails;
+    },
   };
 }
 
 describe("told ledger store", () => {
-  it("folds only the messages since the last curation into the stored list", async () => {
+  it("folds only the messages since the last curation, outside the memory store", async () => {
     const h = createHarness();
     h.messages.push(
       message("u1", "user", "When is the release?"),
@@ -100,13 +85,13 @@ describe("told ledger store", () => {
     expect(h.transcripts[1]).not.toContain("Release is Friday.");
     expect(h.transcripts[1]).toContain("Monday now");
     expect(await h.store.items("p1")).toEqual(["Release moved to Monday"]);
-    expect(h.entries.size).toBe(1);
+    expect(h.entries.size).toBe(0);
     expect(await h.store.brief("p1")).toContain("- Release moved to Monday");
 
     expect(await h.store.curate("p1", SESSION.id)).toBe(false);
   });
 
-  it("forgets one item, recreates a record the user deleted, and clears on persona delete", async () => {
+  it("forgets one item and clears on persona delete", async () => {
     const h = createHarness();
     h.messages.push(message("a1", "assistant", "Two facts."));
     h.reply(() => ["Fact one", "Fact two"]);
@@ -115,15 +100,56 @@ describe("told ledger store", () => {
     expect(await h.store.forgetItem("p1", "fact one")).toEqual(["Fact two"]);
     expect(await h.store.items("p1")).toEqual(["Fact two"]);
 
-    h.entries.clear();
-    expect(await h.store.items("p1")).toEqual([]);
-    h.messages.push(message("a2", "assistant", "Fact three."));
-    h.reply((items) => [...items, "Fact three"]);
-    await h.store.curate("p1", SESSION.id);
-    expect(await h.store.items("p1")).toEqual(["Fact three"]);
-
     await h.store.clear("p1");
-    expect(h.entries.size).toBe(0);
     expect(await h.store.items("p1")).toEqual([]);
+  });
+
+  it("moves a ledger kept as a memory record into settings and deletes the record", async () => {
+    const h = createHarness();
+    h.entries.set("m1", {
+      id: "m1",
+      title: "What Ada already told the user",
+      content:
+        "Conclusions, facts and answers this assistant already gave the user.\r\n- Flight lands at 18:05\r\n- Dentist is on Friday",
+    } as MemoryEntry);
+    h.entries.set("m2", {
+      id: "m2",
+      title: "What Bo already told the user",
+      content: "- Gym moved to 7:00",
+    } as MemoryEntry);
+    h.settings.set(
+      LEDGER_KEY,
+      JSON.stringify({
+        p1: { provider: "builtin", memoryId: "m1", cursors: { home: "a1" } },
+        p2: { provider: "builtin", memoryId: "m2", cursors: {} },
+      }),
+    );
+
+    h.failShow(true);
+    expect(await h.store.items("p1")).toEqual([]);
+    expect(h.entries.has("m1")).toBe(true);
+
+    h.failShow(false);
+    expect(await h.store.items("p1")).toEqual([
+      "Flight lands at 18:05",
+      "Dentist is on Friday",
+    ]);
+    expect(h.entries.has("m1")).toBe(false);
+    expect(h.settings.get(LEDGER_KEY)).not.toContain("m1");
+    await h.store.migrateLegacy();
+    expect(h.entries.size).toBe(0);
+    expect(await h.store.items("p2")).toEqual(["Gym moved to 7:00"]);
+
+    h.messages.push(
+      message("a1", "assistant", "Flight lands at 18:05."),
+      message("a2", "assistant", "Dentist moved to Monday."),
+    );
+    h.reply((items) => [items[0], "Dentist moved to Monday"]);
+    await h.store.curate("p1", SESSION.id);
+    expect(h.transcripts[0]).not.toContain("18:05");
+    expect(await h.store.items("p1")).toEqual([
+      "Flight lands at 18:05",
+      "Dentist moved to Monday",
+    ]);
   });
 });

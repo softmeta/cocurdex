@@ -1,9 +1,4 @@
-import {
-  mergeToldItems,
-  parseToldLedgerBody,
-  removeToldItem,
-  renderToldLedgerBody,
-} from "@cocurdex/daemon/internal/memory/told-ledger";
+import { mergeToldItems } from "@cocurdex/daemon/internal/memory/told-ledger";
 import { describe, expect, it } from "vitest";
 
 describe("told ledger", () => {
@@ -18,14 +13,5 @@ describe("told ledger", () => {
       "dentist is on friday",
       "Build is green",
     ]);
-  });
-
-  it("survives a round trip through the stored body, including user edits around it", () => {
-    const items = mergeToldItems([], ["  Flight   lands at 18:05 ", ""]);
-    const body = `${renderToldLedgerBody(items)}\n\nnote added by hand`;
-    expect(parseToldLedgerBody(body.replace(/\n/g, "\r\n"))).toEqual([
-      "Flight lands at 18:05",
-    ]);
-    expect(removeToldItem(items, "flight lands at 18:05")).toEqual([]);
   });
 });
