@@ -832,6 +832,9 @@ importers:
       '@cocurdex/shared':
         specifier: workspace:*
         version: link:../shared
+      '@earendil-works/pi-codemode':
+        specifier: 1.5.2
+        version: 1.5.2
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.1
         version: 1.32.2(supports-color@7.2.0)(zod@4.6.7)
@@ -1183,12 +1186,18 @@ importers:
       '@cocurdex/test-harness':
         specifier: workspace:*
         version: link:../../harness
+      '@earendil-works/chord':
+        specifier: 1.5.2
+        version: 1.5.2(esbuild@0.28.2)(ws@8.22.1)
       '@earendil-works/pi-ai':
         specifier: 1.5.2
         version: 1.5.2(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.2(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(undici@8.12.3)(ws@8.22.1)(zod@4.6.7)
       '@earendil-works/pi-coding-agent':
         specifier: 1.5.2
         version: 1.5.2(patch_hash=eea185123377d66f00f08016338c464e53cc871fd7637c3bcd217739d28f13ff)(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.2(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(supports-color@7.2.0)(ws@8.22.1)(zod@4.6.7)
+      '@earendil-works/pi-durable':
+        specifier: 1.5.2
+        version: 1.5.2(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.32.2(supports-color@7.2.0)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(esbuild@0.28.2)(supports-color@7.2.0)(undici@8.12.3)(ws@8.22.1)(zod@4.6.7)
       '@opencode/client':
         specifier: 2.2.5
         version: 2.2.5(effect@4.0.6)

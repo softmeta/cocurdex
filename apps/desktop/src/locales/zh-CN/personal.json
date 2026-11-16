@@ -58,7 +58,7 @@
     "waitingHint": "请在浏览器中完成授权，返回后这里会自动更新。",
     "workMode": "工作模式",
     "workSessions": "工作模式可用",
-    "workSessionsDescription": "工作模式里的 Pi 会话也可以使用这个账号，写操作遵循会话的权限模式。"
+    "workSessionsDescription": "工作模式里任何 agent 的会话也可以使用这个账号，写操作遵循会话的权限模式。"
   },
   "brief": {
     "open": "今日简报"

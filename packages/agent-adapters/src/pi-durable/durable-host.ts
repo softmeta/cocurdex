@@ -112,8 +112,24 @@ export class DurableHost {
     return this.registry.snapshot().extension(name);
   }
 
+  /** The open Harness; after a storage error ends it, the next call opens a new one. */
   harness() {
-    this.harnessPromise ??= this.open();
+    if (!this.harnessPromise) {
+      const opening = this.open();
+      this.harnessPromise = opening;
+      const forget = () => {
+        if (this.harnessPromise === opening) this.harnessPromise = null;
+      };
+      opening.then((harness) => {
+        void harness.closed.then((end) => {
+          if (end.kind !== "failed") return;
+          logAdapterDiagnostic("warn", "pi-durable: harness failed", {
+            errorKind: errorKindForLog(end.error),
+          });
+          forget();
+        });
+      }, forget);
+    }
     return this.harnessPromise;
   }
 

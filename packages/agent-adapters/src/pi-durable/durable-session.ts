@@ -22,6 +22,7 @@ import {
   type EntryId,
   type EntryRecord,
   type Extension,
+  type Harness,
   type LiveState,
   type SubmissionRecord,
   type ToolRegistration,
@@ -89,10 +90,11 @@ export function createDurablePiSession(
   const chat = isChatSession(payload.session);
   const host: DurableHost = getDurableHost(payload.userDataPath);
   const persisted = payload.providerSession?.providerStateJson ?? null;
-  const persistedRef = persisted ? readDurableConversation(persisted) : null;
+  let persistedRef = persisted ? readDurableConversation(persisted) : null;
   const legacySessionFile =
     persisted && persistedRef === null ? readPiSessionFile(persisted) : null;
   let conversationPromise: Promise<Conversation> | null = null;
+  let conversationHarness: Harness | null = null;
   let conversation: Conversation | null = null;
   let projector: DurableProjector | null = null;
   let disposed = false;
@@ -110,8 +112,7 @@ export function createDurablePiSession(
     if (!disposed) onEvent(event);
   }
 
-  async function createConversation() {
-    const harness = await host.harness();
+  async function createConversation(harness: Harness) {
     const created = await harness.createConversation(
       { ownership: { kind: "ownerless" } },
       BACKGROUND_CONTEXT,
@@ -130,12 +131,12 @@ export function createDurablePiSession(
       });
     }
     const ref = await bindConversation(created);
+    persistedRef = ref;
     payload.onProviderSessionUpdate?.(providerSessionRecord(sessionId, ref));
     return { conversation: created, key: ref.key };
   }
 
-  async function openConversation() {
-    const harness = await host.harness();
+  async function openConversation(harness: Harness) {
     const existing = persistedRef
       ? await openBoundConversation(harness, persistedRef)
       : undefined;
@@ -147,7 +148,7 @@ export function createDurablePiSession(
     const bound =
       existing && persistedRef
         ? { conversation: existing, key: persistedRef.key }
-        : await createConversation();
+        : await createConversation(harness);
     const opened = bound.conversation;
     conversation = opened;
     projector = new DurableProjector(sessionId, bound.key, emit, (files) =>
@@ -167,9 +168,14 @@ export function createDurablePiSession(
     return opened;
   }
 
-  function getConversation() {
-    conversationPromise ??= openConversation();
-    return conversationPromise;
+  /** Reopens the conversation when the Harness it came from failed and a new one replaced it. */
+  async function getConversation() {
+    const harness = await host.harness();
+    if (conversationHarness !== harness) {
+      conversationHarness = harness;
+      conversationPromise = openConversation(harness);
+    }
+    return conversationPromise ?? openConversation(harness);
   }
 
   function extensionsFor(cwd: string): Extension[] {
@@ -387,7 +393,7 @@ export function createDurablePiSession(
         undefined,
         false,
       );
-      return awaitRun(target, turnProjector, submissionId, baseline);
+      return awaitRun(target, turnProjector, submissionId, baseline, false);
     }
     if (steering) return accepted;
     if (prior?.status === "unanswered" && prior.reason === "no_model") {
@@ -395,13 +401,26 @@ export function createDurablePiSession(
         { type: "continue" },
         BACKGROUND_CONTEXT,
       );
-      return awaitRun(target, turnProjector, retry.id, baseline, prior.entry);
+      return awaitRun(
+        target,
+        turnProjector,
+        retry.id,
+        baseline,
+        true,
+        prior.entry,
+      );
     }
     if (prior?.status === "unanswered" && prior.reason === "aborted") {
       emit({ type: "state.changed", sessionId, status: "idle" });
       return turnProjector.response() ?? emptyResponse();
     }
-    return awaitRun(target, turnProjector, submissionId, baseline);
+    return awaitRun(
+      target,
+      turnProjector,
+      submissionId,
+      baseline,
+      prior !== undefined,
+    );
   }
 
   async function awaitRun(
@@ -409,6 +428,7 @@ export function createDurablePiSession(
     turnProjector: DurableProjector,
     submissionId: Awaited<ReturnType<typeof admit>>,
     baseline: EntryId | undefined,
+    resumed: boolean,
     inputEntry?: EntryId,
   ): Promise<MessageRecord> {
     const harness = await host.harness();
@@ -421,7 +441,7 @@ export function createDurablePiSession(
     const placed = inputEntry ?? status.entry;
     const floor = (placed ??
       (baseline === undefined ? 0 : (baseline as number) + 1)) as EntryId;
-    turnProjector.beginTurn();
+    turnProjector.beginTurn(resumed ? baseline : undefined);
     const following = await follow(target, turnProjector, floor);
     let settled: SubmissionRecord;
     try {
