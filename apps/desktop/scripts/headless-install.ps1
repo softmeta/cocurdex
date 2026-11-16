@@ -7,8 +7,6 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 $repository = 'softmeta/cocurdex'
-$sw = [Diagnostics.Stopwatch]::StartNew()
-function T($n) { Write-Host "[timing] $n $($sw.ElapsedMilliseconds)" }
 
 $osArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
 $arch = switch ($osArch) {
@@ -33,24 +31,33 @@ $installDir = if ($env:COCURDEX_INSTALL_DIR) {
 $binDir = Join-Path $installDir 'bin'
 $launcher = Join-Path $binDir 'cocurdex.cmd'
 
+# Invoke-WebRequest in Windows PowerShell 5.1 takes tens of seconds for the archive even from a
+# local mirror; the curl shipped in System32 since Windows 10 1803 streams it to disk.
+function Save-Download($uri, $outFile) {
+  $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
+  if (Test-Path $curl) {
+    & $curl -fsSL --retry 3 -o $outFile $uri
+    if ($LASTEXITCODE -ne 0) { throw "cocurdex install: could not download $uri" }
+  } else {
+    Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile
+  }
+}
+
 $work = Join-Path ([System.IO.Path]::GetTempPath()) ("cocurdex-install-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $work | Out-Null
 try {
   Write-Host "Downloading $asset"
   $archive = Join-Path $work $asset
-  Invoke-WebRequest -UseBasicParsing -Uri "$base/$asset" -OutFile $archive
-  T downloaded
-  Invoke-WebRequest -UseBasicParsing -Uri "$base/$asset.sha256" -OutFile "$archive.sha256"
-  T sha-fetched
+  Save-Download "$base/$asset" $archive
+  Save-Download "$base/$asset.sha256" "$archive.sha256"
   $expected = ((Get-Content -Raw "$archive.sha256").Trim() -split '\s+')[0].ToLowerInvariant()
   $actual = (Get-FileHash -Algorithm SHA256 -Path $archive).Hash.ToLowerInvariant()
   if ($expected -ne $actual) { throw "cocurdex install: checksum mismatch for $asset" }
 
-  T hashed
   $extract = Join-Path $work 'extract'
   New-Item -ItemType Directory -Path $extract | Out-Null
-  # Expand-Archive in Windows PowerShell 5.1 spends most of an install on the many small files in the archive;
-  # the bsdtar shipped in System32 since Windows 10 1803 reads zip archives in seconds.
+  # The bsdtar shipped in System32 since Windows 10 1803 extracts the archive faster than
+  # Expand-Archive in Windows PowerShell 5.1.
   $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
   if (Test-Path $tar) {
     & $tar -xf $archive -C $extract
@@ -58,7 +65,6 @@ try {
   } else {
     Expand-Archive -Path $archive -DestinationPath $extract
   }
-  T extracted
   $source = Join-Path $extract $name
   if (-not (Test-Path (Join-Path $source 'bin\cocurdex.cmd'))) {
     throw "cocurdex install: $asset has no bin\cocurdex.cmd"
@@ -90,7 +96,6 @@ try {
     }
   }
 
-  T stopped
   $parent = Split-Path -Parent $installDir
   New-Item -ItemType Directory -Force -Path $parent | Out-Null
   $previous = "$installDir.old"
@@ -98,12 +103,10 @@ try {
   if (Test-Path $installDir) { Move-Item -Path $installDir -Destination $previous }
   Move-Item -Path $source -Destination $installDir
   if (Test-Path $previous) { Remove-Item -Recurse -Force $previous }
-  T moved
 } finally {
   Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 }
 
-  T cleaned
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 $entries = if ($userPath) { $userPath -split ';' } else { @() }
 if (-not $env:COCURDEX_NO_MODIFY_PATH -and $entries -notcontains $binDir) {
@@ -114,7 +117,6 @@ if (-not $env:COCURDEX_NO_MODIFY_PATH -and $entries -notcontains $binDir) {
 
 $installed = (Get-Content (Join-Path $installDir 'VERSION'))[0]
 Write-Host "Installed $installed to $installDir"
-  T versioned
 if ($wasRunning) {
   # A call operator child inherits this shell's handles and passes them on to the daemon the CLI
   # launches, which then holds a capturing caller's pipes open. ShellExecute inherits none.
@@ -126,5 +128,4 @@ if ($wasRunning) {
   }
   Write-Host 'Restarted the daemon'
 }
-  T restarted
 Write-Host 'Run `cocurdex daemon background on` to start the daemon when you sign in'
