@@ -57,7 +57,6 @@ export function ChatVirtualTimeline({
           const isLatestConversation = index === groups.length - 1;
           const isAnchored =
             isLatestConversation &&
-            conversationProps.isRunning &&
             anchoredPromptId !== null &&
             group.prompt?.id === anchoredPromptId;
           const separatorTime = showsTimeSeparators

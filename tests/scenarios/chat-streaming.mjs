@@ -108,6 +108,30 @@ async function waitForJumpToSettle() {
   throw new Error("Explicit jump did not settle");
 }
 
+function startPromptRecorder(prompt) {
+  const timeline = document.querySelector("[data-testid=chat-timeline]");
+  const bubble = [...timeline.querySelectorAll("*")].findLast(
+    (node) => node.textContent.trim() === prompt,
+  );
+  if (!bubble) throw new Error("Missing sent prompt");
+  const record = { tops: [], done: false };
+  window.__promptRecorder = record;
+  const sample = () => {
+    record.tops.push(bubble.getBoundingClientRect().top);
+    if (!record.done) requestAnimationFrame(sample);
+  };
+  requestAnimationFrame(sample);
+}
+
+async function stopPromptRecorder() {
+  for (let frame = 0; frame < 20; frame += 1) {
+    await new Promise(requestAnimationFrame);
+  }
+  const record = window.__promptRecorder;
+  record.done = true;
+  return record.tops;
+}
+
 const createdSessionIds = [];
 
 async function configureScenarioSession(session, payload) {
@@ -647,6 +671,90 @@ runScenario("chat-streaming", {
         }
         await clearColorScheme(session);
         return { themes: reports };
+      },
+    ],
+    [
+      "a prompt sent from the composer keeps its place when the reply finishes",
+      async ({ session, workspaceId, providerSnapshot }) => {
+        const title = "Anchored send";
+        const prompt = "how are you today";
+        const configured = await configureScenarioSession(session, {
+          id: crypto.randomUUID(),
+          workspaceId,
+          sessionKind: "main",
+          title,
+          agentType: "pi",
+          writeMode: "read-only",
+          sessionModeId: null,
+          providerSnapshot,
+        });
+        await clickByRole(
+          session,
+          { role: "button", name: new RegExp(`^${title}`) },
+          30_000,
+        );
+        const stop = {
+          role: "button",
+          name: await translate(session, "common:actions.stop"),
+        };
+        stub.plan = {
+          kind: "script",
+          turns: [{ text: ["Earlier answer. ".repeat(120)] }],
+        };
+        await daemonRequest(session, "session.send", {
+          sessionId: configured.id,
+          messageId: crypto.randomUUID(),
+          content: "Earlier question.",
+          attachments: [],
+        });
+        await session.waitUntil(
+          () => document.body.textContent.includes("Earlier answer."),
+          null,
+          30_000,
+        );
+        await waitForNoRole(session, stop, 30_000);
+
+        const reply = Promise.withResolvers();
+        stub.plan = {
+          kind: "script",
+          turns: [{ text: [reply.promise, "Doing well, thanks."] }],
+        };
+        const requests = stub.requests.length;
+        await clickByRole(session, {
+          role: "textbox",
+          name: await translate(
+            session,
+            "sessions:composer.sendFollowUpCompact",
+          ),
+          exact: false,
+        });
+        await session.send("Input.insertText", { text: prompt });
+        for (const type of ["keyDown", "keyUp"]) {
+          await session.send("Input.dispatchKeyEvent", {
+            type,
+            key: "Enter",
+            code: "Enter",
+            windowsVirtualKeyCode: 13,
+          });
+        }
+        while (stub.requests.length <= requests) await stub.nextRequest();
+        await session.run(waitForJumpToSettle);
+        await session.run(startPromptRecorder, prompt);
+        reply.resolve();
+        await session.waitUntil(
+          () => document.body.textContent.includes("Doing well, thanks."),
+          null,
+          30_000,
+        );
+        await waitForNoRole(session, stop, 30_000);
+        const tops = await session.run(stopPromptRecorder);
+        const drift = Math.max(...tops.map((top) => Math.abs(top - tops[0])));
+        check(
+          tops.length > 10 && drift <= 1,
+          "the sent prompt moved when the reply finished",
+          { drift, first: tops[0], last: tops.at(-1), frames: tops.length },
+        );
+        return { drift, frames: tops.length };
       },
     ],
     [
