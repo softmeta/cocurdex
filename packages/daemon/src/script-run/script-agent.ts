@@ -1,4 +1,6 @@
 import {
+  type AgentId,
+  type AgentPermissionModeOption,
   type AgentRoleRecord,
   extractJsonReply,
   type MessageRecord,
@@ -19,6 +21,7 @@ export type ScriptRunAbortReason =
 
 export interface ScriptAgentDeps {
   getAgentRole(id: string): Promise<AgentRoleRecord | null>;
+  permissionModes(agentId: AgentId): Promise<AgentPermissionModeOption[]>;
   saveSession(session: SessionRecord): Promise<void>;
   saveAgent(agent: ScriptRunAgentRecord): Promise<void>;
   createWorktree?(input: {
@@ -101,7 +104,7 @@ async function createAgentSession(
         ).path
       : (requester.worktreePath ?? null);
   const agentType = role?.agentId ?? requester.agentType;
-  const session = buildChildSession({
+  const { session } = buildChildSession({
     id,
     parent: requester,
     sessionKind: "subagent",
@@ -110,6 +113,10 @@ async function createAgentSession(
     role,
     worktreePath,
     now: deps.now(),
+    permissionModes: {
+      parent: await deps.permissionModes(requester.agentType),
+      child: await deps.permissionModes(agentType),
+    },
   });
   await deps.saveSession(session);
   return session;

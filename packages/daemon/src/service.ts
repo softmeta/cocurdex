@@ -440,7 +440,7 @@ export class CocurdexDaemonService {
       archiveSession: (sessionId) => this.archiveSession(sessionId),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
       waitForSessionTurn: (sessionId) => this.waitForSessionTurn(sessionId),
-      stopSessionTurn: (sessionId) => this.stopSession(sessionId),
+      stopSessionTurn: (sessionId) => this.stopSessionWork(sessionId),
     });
     this.routines = new RoutineService({
       repository: this.state.data.routines,
@@ -614,6 +614,7 @@ export class CocurdexDaemonService {
       saveSession: (session) => this.state.saveSession(session),
       getAgentRole: (id) => this.state.getAgentRole(id),
       listAgentRoles: () => this.state.listAgentRoles(),
+      permissionModes: (agentId) => this.agentPermissionModes(agentId),
       getSetting: (key) => this.state.getAppSetting(key),
       setSetting: (key, value) => this.state.setAppSetting(key, value),
       sendSessionMessage: (command) => this.sendSessionMessage(command),
@@ -625,7 +626,8 @@ export class CocurdexDaemonService {
       getRunReply: (sessionId, runId) =>
         this.state.getRunReply(sessionId, runId),
       latestRun: (sessionId) => this.state.getLatestRun(sessionId),
-      stopSession: (sessionId) => this.stopTeammateSession(sessionId),
+      stopSession: (sessionId, options) =>
+        this.stopTeammateSession(sessionId, options),
       track: (work) => void this.runs.track(work),
       onReportFailed: (error) =>
         logDaemonDiagnostic("warn", "team.reportFailed", {
@@ -669,7 +671,7 @@ export class CocurdexDaemonService {
       listWorkspaces: () => this.state.listWorkspaces(),
       listRoles: () => this.listAgentRoles(),
       getSession: (sessionId) => this.state.getSession(sessionId),
-      stopSession: (sessionId) => this.stopSession(sessionId),
+      stopSession: (sessionId) => this.stopSessionWork(sessionId),
       latestRun: (sessionId) => this.state.getLatestRun(sessionId),
       getRunReply: (sessionId, runId) =>
         this.state.getRunReply(sessionId, runId),
@@ -709,7 +711,7 @@ export class CocurdexDaemonService {
       createTeam: (input) => this.team.create(input),
       submitReport: (command, options) =>
         this.submitSessionMessage(command, options),
-      stopSession: (sessionId) => this.stopSession(sessionId),
+      stopSession: (sessionId) => this.stopSessionWork(sessionId),
       latestRun: (sessionId) => this.state.getLatestRun(sessionId),
       getRunReply: (sessionId, runId) =>
         this.state.getRunReply(sessionId, runId),
@@ -759,6 +761,7 @@ export class CocurdexDaemonService {
       saveSession: (session) => this.state.saveSession(session),
       saveAgent: (agent) => this.state.scriptRuns.saveAgent(agent),
       getAgentRole: (id) => this.state.getAgentRole(id),
+      permissionModes: (agentId) => this.agentPermissionModes(agentId),
       getSetting: (key) => this.state.getAppSetting(key),
       setSetting: (key, value) => this.state.setAppSetting(key, value),
       createWorktree: (input) => this.worktrees.createWorktree(input),
@@ -1336,6 +1339,14 @@ export class CocurdexDaemonService {
   async listAgentRoles() {
     const roles = await this.state.listAgentRoles();
     return roles.filter((role) => !this.personalAgents.ownsRole(role.id));
+  }
+
+  private async agentPermissionModes(agentId: AgentId) {
+    const agents = await this.agents.listAgents(agentId);
+    return (
+      agents.find((agent) => agent.id === agentId)?.capabilities
+        .permissionModes ?? []
+    );
   }
 
   getAgentRole(id: string) {
@@ -2548,15 +2559,24 @@ export class CocurdexDaemonService {
 
   async stopSession(sessionId: string) {
     validateSessionId(sessionId);
-    await this.team.onLeadStopped(sessionId);
     await this.scriptRuns.cancelForRequester(sessionId);
     return this.sessionCommands.run(sessionId, () =>
       this.stopSessionTurn(sessionId),
     );
   }
 
-  private async stopTeammateSession(sessionId: string) {
+  private async stopSessionWork(sessionId: string) {
+    validateSessionId(sessionId);
+    await this.team.onLeadStopped(sessionId);
+    return this.stopSession(sessionId);
+  }
+
+  private async stopTeammateSession(
+    sessionId: string,
+    { discardQueued }: { discardQueued: boolean },
+  ) {
     await this.stopSession(sessionId);
+    if (!discardQueued) return;
     await this.sessionCommands.run(sessionId, async () => {
       const inputs = await this.state.listQueuedAgentInputs(sessionId);
       for (const input of inputs) {

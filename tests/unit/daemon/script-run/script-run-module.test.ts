@@ -84,6 +84,7 @@ function harness(
     },
     saveAgent: (agent) => repository.saveAgent(agent),
     getAgentRole: async () => null,
+    permissionModes: async () => [],
     hasActiveTurn: () => false,
     supportsSteering: async () => true,
     getSetting: async () => JSON.stringify(settings),

@@ -57,6 +57,7 @@ import type {
   ScriptRunSettings,
   ScriptRunSnapshot,
   SendDelegatedWorkPayload,
+  SpawnedTeammate,
   SpawnTeammatePayload,
   SpawnTeamTemplatePayload,
   StartDelegatedWorkPayload,
@@ -181,10 +182,10 @@ export type AutomationRequests = {
 export type AutomationResults = {
   "team.get": TeamSnapshot | null;
   "team.create": TeamRecord;
-  "team.spawn": TeamMemberRecord;
+  "team.spawn": SpawnedTeammate;
   "team.stopMember": TeamMemberRecord;
   "team.stop": TeamRecord;
-  "team.spawnTemplate": TeamMemberRecord[];
+  "team.spawnTemplate": SpawnedTeammate[];
   "teamTemplate.list": TeamTemplateRecord[];
   "teamTemplate.save": TeamTemplateRecord;
   "teamTemplate.delete": null;

@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import type { TeamRepository } from "@cocurdex/db";
 import {
   type AgentEvent,
+  type AgentId,
+  type AgentPermissionModeOption,
   type AgentRoleRecord,
   buildTeamRosterMembers,
   type CreateTeamPayload,
@@ -23,6 +25,7 @@ import {
   type SendPeerMessageResult,
   type SendSessionCommand,
   type SessionRecord,
+  type SpawnedTeammate,
   type SpawnTeammatePayload,
   type SpawnTeammateRejection,
   type SpawnTeamTemplatePayload,
@@ -93,6 +96,7 @@ export interface TeamModuleDependencies {
   saveSession(session: SessionRecord): Promise<void>;
   getAgentRole(id: string): Promise<AgentRoleRecord | null>;
   listAgentRoles(): Promise<AgentRoleRecord[]>;
+  permissionModes(agentId: AgentId): Promise<AgentPermissionModeOption[]>;
   getSetting(key: string): Promise<string | null>;
   setSetting(key: string, valueJson: string): Promise<void>;
   sendSessionMessage(command: SendSessionCommand): Promise<MessageRecord>;
@@ -105,7 +109,10 @@ export interface TeamModuleDependencies {
   supportsSteering(session: SessionRecord): Promise<boolean>;
   getRunReply(sessionId: string, runId: string): Promise<MessageRecord | null>;
   latestRun(sessionId: string): RunRecord | null;
-  stopSession(sessionId: string): Promise<unknown>;
+  stopSession(
+    sessionId: string,
+    options: { discardQueued: boolean },
+  ): Promise<unknown>;
   track(work: Promise<unknown>): void;
   onReportFailed(error: unknown): void;
   isSessionBusy(sessionId: string): boolean;
@@ -259,7 +266,7 @@ export class TeamModule {
   async spawn(
     leadSessionId: string,
     payload: SpawnTeammatePayload,
-  ): Promise<TeamMemberRecord> {
+  ): Promise<SpawnedTeammate> {
     validateSessionId(leadSessionId);
     const lead = await this.requireLead(leadSessionId);
     const existing = await this.deps.repository.getByLead(leadSessionId);
@@ -297,7 +304,7 @@ export class TeamModule {
             })
           ).path
         : null;
-    const session = buildChildSession({
+    const { session, permissionLimitedTo } = buildChildSession({
       id: this.createId(),
       parent: lead,
       sessionKind: "teammate",
@@ -306,6 +313,10 @@ export class TeamModule {
       role,
       worktreePath,
       now,
+      permissionModes: {
+        parent: await this.deps.permissionModes(lead.agentType),
+        child: await this.deps.permissionModes(agentType),
+      },
     });
     await this.deps.saveSession(session);
     const member: TeamMemberRecord = {
@@ -330,7 +341,7 @@ export class TeamModule {
       delivery: "start-new-run",
       origin: { kind: "peer", sessionId: lead.id, sessionTitle: lead.title },
     });
-    return member;
+    return permissionLimitedTo ? { ...member, permissionLimitedTo } : member;
   }
 
   async create(payload: CreateTeamPayload): Promise<TeamRecord> {
@@ -357,13 +368,13 @@ export class TeamModule {
     return snapshot?.team.roster ?? null;
   }
 
-  async stopMember(teamId: string, sessionId: string) {
+  async stopMember(teamId: string, sessionId: string, { force = false } = {}) {
     const snapshot = await this.requireTeam(teamId);
     const member = snapshot.members.find(
       (item) => item.sessionId === sessionId,
     );
     if (!member) throw new TeamError("member_not_found");
-    const stopped = await this.stopOne(member);
+    const stopped = await this.stopOne(member, force);
     this.changed(snapshot.team);
     return stopped;
   }
@@ -379,13 +390,13 @@ export class TeamModule {
         snapshot.members.filter((member) => member.sessionId === sessionId),
       );
     }
-    return this.stopMember(snapshot.team.id, sessionId);
+    return this.stopMember(snapshot.team.id, sessionId, { force });
   }
 
   async stopLeadTeam(leadSessionId: string, { force = false } = {}) {
     const snapshot = await this.requireLeadTeam(leadSessionId);
     if (!force) this.assertMembersIdle(snapshot.members);
-    return this.stop(snapshot.team.id);
+    return this.stop(snapshot.team.id, { force });
   }
 
   private assertMembersIdle(members: TeamMemberRecord[]) {
@@ -402,7 +413,7 @@ export class TeamModule {
     );
   }
 
-  async stop(teamId: string) {
+  async stop(teamId: string, { force = false } = {}) {
     const snapshot = await this.requireTeam(teamId);
     const team: TeamRecord = {
       ...snapshot.team,
@@ -411,7 +422,7 @@ export class TeamModule {
     };
     await this.deps.repository.saveTeam(team);
     for (const member of snapshot.members) {
-      await this.stopOne(member);
+      await this.stopOne(member, force);
     }
     this.changed(team);
     return team;
@@ -625,7 +636,7 @@ export class TeamModule {
       leadSessionId,
       templateId: payload.templateId,
     });
-    const members: TeamMemberRecord[] = [];
+    const members: SpawnedTeammate[] = [];
     for (const member of team.roster?.members ?? []) {
       members.push(
         await this.spawn(leadSessionId, {
@@ -684,7 +695,7 @@ export class TeamModule {
     return team;
   }
 
-  private async stopOne(member: TeamMemberRecord) {
+  private async stopOne(member: TeamMemberRecord, force: boolean) {
     if (member.status === "stopped") return member;
     const stopped = transitionTeamMember(
       member,
@@ -692,7 +703,7 @@ export class TeamModule {
       this.now(),
     );
     await this.deps.repository.saveMember(stopped);
-    await this.deps.stopSession(member.sessionId);
+    await this.deps.stopSession(member.sessionId, { discardQueued: force });
     return stopped;
   }
 

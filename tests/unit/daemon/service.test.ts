@@ -467,15 +467,66 @@ describe("CocurdexDaemonService follow-up queue", () => {
     await service.shutdown();
   });
 
-  it("discards a stopped teammate's queued follow-ups", async () => {
+  it.each([
+    { force: false, kept: 1 },
+    { force: true, kept: 0 },
+  ])(
+    "keeps a stopped teammate's queued follow-ups unless forced (force: $force)",
+    async ({ force, kept }) => {
+      const service = await createService();
+      let finishActiveTurn: (() => void) | undefined;
+      const activeTurn = new Promise<MessageRecord>((resolve) => {
+        finishActiveTurn = () => resolve(createRuntimeMessage("Stopped"));
+      });
+      const send = vi
+        .spyOn(service.runtime, "sendSessionMessage")
+        .mockImplementationOnce(() => activeTurn);
+      const now = "2026-08-02T00:00:00.000Z";
+      await service.state.saveSession({
+        ...createSession(),
+        id: "lead-session",
+      });
+      await service.state.teams.saveTeam({
+        id: "team-1",
+        leadSessionId: "lead-session",
+        workspaceId: createWorkspace().id,
+        status: "active",
+        roster: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await service.state.teams.saveMember({
+        teamId: "team-1",
+        sessionId: "session-1",
+        name: "researcher",
+        agentRoleId: null,
+        status: "running",
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await service.sendSessionMessage(
+        createPayload("First turn", "start-new-run"),
+      );
+      await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
+      await service.sendSessionMessage(
+        createPayload("Lead follow-up", "queue-after-run"),
+      );
+
+      await service.team.stopMember("team-1", "session-1", { force });
+      finishActiveTurn?.();
+
+      await expect(
+        service.state.listQueuedAgentInputs("session-1"),
+      ).resolves.toHaveLength(kept);
+      expect(send).toHaveBeenCalledOnce();
+
+      await service.shutdown();
+    },
+  );
+
+  it("keeps a team working when its lead's turn is stopped, and stops it when the lead is archived", async () => {
     const service = await createService();
-    let finishActiveTurn: (() => void) | undefined;
-    const activeTurn = new Promise<MessageRecord>((resolve) => {
-      finishActiveTurn = () => resolve(createRuntimeMessage("Stopped"));
-    });
-    const send = vi
-      .spyOn(service.runtime, "sendSessionMessage")
-      .mockImplementationOnce(() => activeTurn);
     const now = "2026-08-02T00:00:00.000Z";
     await service.state.saveSession({ ...createSession(), id: "lead-session" });
     await service.state.teams.saveTeam({
@@ -497,22 +548,17 @@ describe("CocurdexDaemonService follow-up queue", () => {
       updatedAt: now,
     });
 
-    await service.sendSessionMessage(
-      createPayload("First turn", "start-new-run"),
-    );
-    await waitForDispatch(() => expect(send).toHaveBeenCalledOnce());
-    await service.sendSessionMessage(
-      createPayload("Lead follow-up", "queue-after-run"),
-    );
+    await service.stopSession("lead-session");
+    expect(await service.team.get("lead-session")).toMatchObject({
+      team: { status: "active" },
+      members: [{ status: "running" }],
+    });
 
-    await service.team.stopMember("team-1", "session-1");
-    finishActiveTurn?.();
-
-    expect(service.getActiveWork()).toMatchObject({ queuedInputs: 0 });
-    await expect(
-      service.state.listQueuedAgentInputs("session-1"),
-    ).resolves.toEqual([]);
-    expect(send).toHaveBeenCalledOnce();
+    await service.archiveSession("lead-session");
+    expect(await service.team.get("lead-session")).toMatchObject({
+      team: { status: "stopped" },
+      members: [{ status: "stopped" }],
+    });
 
     await service.shutdown();
   });

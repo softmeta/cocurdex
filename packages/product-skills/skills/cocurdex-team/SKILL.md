@@ -21,7 +21,7 @@ Do not use a team when:
 - The work is small enough to finish in one turn yourself.
 - The same task runs over many items, or a fixed pipeline needs no conversation with its workers: propose a script run instead (`/cocurdex-script-run`).
 
-Teammates cannot spawn their own teammates. A team holds at most 8 members.
+Teammates cannot spawn their own teammates. A team holds at most 8 members. A teammate never runs with a riskier permission mode than yours: when its role asks for more, it gets the riskiest mode of its agent within your level, and the spawn result names that mode in `permissionLimitedTo` (an agent without tool approvals, such as Pi, is not limited). Tell the user when a teammate was limited.
 
 ### Assigned team
 
@@ -68,9 +68,9 @@ Each report arrives as a separate message and may arrive in any order.
 - When every task is `review` or `done`, write the merged result for the user and state which teammates contributed what.
 - If teammates used isolated worktrees, list the branches for the user to merge; do not merge branches yourself unless asked.
 
-Once every report is merged, call `team_stop`. Use `team_stop_member` earlier for a single teammate that is done. Stopping or archiving your own session also stops every teammate.
+Once every report is merged, call `team_stop`. Use `team_stop_member` earlier for a single teammate that is done. Archiving your own session also stops every teammate. When the user stops your turn, only your turn ends: teammates keep working, and their reports start your next turn.
 
-`team_stop` and `team_stop_member` fail with `members_busy` while a teammate is running or holds unread messages. Do not answer that by forcing: end your turn and let the reports wake you. Pass `force: true` only for a teammate that is off track; forcing interrupts it and discards its unread messages.
+`team_stop` and `team_stop_member` fail with `members_busy` while a teammate is running or holds unread messages. Do not answer that by forcing: end your turn and let the reports wake you. Pass `force: true` only for a teammate that is off track; forcing interrupts it and discards its unread messages. A stop without force, including one by the user, keeps a teammate's unread messages queued on it.
 
 A `messaging_send_message` to a running teammate is injected into its current turn (`steer-active-run`) or, when its agent cannot be steered, queued until that turn ends (`queue-after-run`). Reports to you follow the same rule, so a lead whose agent cannot be steered sees them only after ending its turn.
 

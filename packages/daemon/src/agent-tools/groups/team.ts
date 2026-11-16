@@ -1,5 +1,6 @@
 import {
   type AgentToolCallerContext,
+  type SpawnedTeammate,
   type SpawnTeammatePayload,
   TEAM_TASK_STATUSES,
   type TeamMemberRecord,
@@ -18,7 +19,7 @@ export interface TeamToolDependencies {
   spawn(
     leadSessionId: string,
     payload: SpawnTeammatePayload,
-  ): Promise<TeamMemberRecord>;
+  ): Promise<SpawnedTeammate>;
   rosterForLead(leadSessionId: string): Promise<TeamRoster | null>;
   listRoles(): Promise<TeamRoleSummary[]>;
   listTemplates(): Promise<TeamTemplateRecord[]>;
@@ -65,7 +66,7 @@ export function registerTeamTools(
       name: "spawn_teammate",
       deferred: true,
       description:
-        "Spawn a teammate agent session that works alongside you. It shares your task list, can message you, and its final reply for each turn is delivered back to you: injected into your current turn when your agent supports steering, otherwise as a new turn after yours ends. To wait for teammates, end your turn; their reports wake you. Do not poll or stop teammates to finish early. The name addresses the teammate: a roster name exactly as listed, otherwise a lowercase slug (a-z, 0-9, dashes); title is the human-readable label shown to the user, written in the user's language. When your team has a roster (see team_roster), only roster names can be spawned and their role and standing instructions are applied automatically; omit agentRoleId and agentType.",
+        "Spawn a teammate agent session that works alongside you. It shares your task list, can message you, and its final reply for each turn is delivered back to you: injected into your current turn when your agent supports steering, otherwise as a new turn after yours ends. To wait for teammates, end your turn; their reports wake you. Do not poll or stop teammates to finish early. The name addresses the teammate: a roster name exactly as listed, otherwise a lowercase slug (a-z, 0-9, dashes); title is the human-readable label shown to the user, written in the user's language. When your team has a roster (see team_roster), only roster names can be spawned and their role and standing instructions are applied automatically; omit agentRoleId and agentType. A teammate never gets a riskier permission mode than yours: when its role asks for one, the result names the mode it got in permissionLimitedTo.",
       inputSchema: {
         type: "object",
         properties: {
