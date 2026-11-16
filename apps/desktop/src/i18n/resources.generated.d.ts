@@ -1664,8 +1664,6 @@ export default interface Resources {
       description: "Coordinate work, keep context, and follow through.";
       failed: "Failed";
       followUps: "Follow-ups";
-      forgetTold: "Remove from what it told you";
-      forgetToldFailed: "The item could not be removed";
       host: "Runs on the connected host while its background service is online.";
       hostOffline: "{{host}} is offline";
       idle: "Idle";
@@ -1685,8 +1683,6 @@ export default interface Resources {
       retryRoutines: "Routines could not load. Retry";
       retryWork: "Work could not load. Retry";
       running: "Running";
-      told: "Already told you";
-      toldHint: "The assistant reads this before each reply so it does not repeat itself.";
       unscheduled: "No next run scheduled";
       waitingForYou: "Waiting for you";
       waitingOnHost: "Waiting for you on {{host}}";
@@ -1907,6 +1903,7 @@ export default interface Resources {
       menuManage: "Manage roles";
       name: "Name";
       namePlaceholder: "Role name";
+      nameTaken: "Another role or assistant already uses this name.";
       save: "Save as role";
       saveAction: "Save";
       saveDescription: "Name this combination of agent, model, and runtime options.";
@@ -2508,6 +2505,7 @@ export default interface Resources {
       model: "Model";
       name: "Name";
       namePlaceholder: "Role name";
+      nameTaken: "Another role or assistant already uses this name.";
       roleDescription: "Description";
       roleDescriptionPlaceholder: "What this role does and what it is good at. Team leads use it to pick teammates.";
       runtime: "Agent and model";
@@ -3873,6 +3871,7 @@ export default interface Resources {
       membersHint: "The first member is the lead: it runs the session and dispatches the others.";
       name: "Name";
       namePlaceholder: "Team name";
+      nameTaken: "Another team already uses this name.";
       removeMember: "Remove teammate";
       role: "Role";
       roleMissing: "Role was deleted";

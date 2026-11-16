@@ -23,6 +23,7 @@ import {
   type SessionRecord,
   type SupportedLocale,
   type UpdatePersonalAgentPayload,
+  uniqueName,
 } from "@cocurdex/shared";
 import { logDaemonDiagnostic } from "../diagnostics";
 import {
@@ -33,6 +34,7 @@ import {
 export interface PersonalAgentServiceDeps {
   repository: PersonalAgentRepository;
   getRole(id: string): Promise<AgentRoleRecord | null>;
+  listRoles(): Promise<AgentRoleRecord[]>;
   saveRole(payload: SaveAgentRolePayload): Promise<AgentRoleRecord>;
   deleteRole(id: string): Promise<void>;
   createHomeSession(role: AgentRoleRecord): Promise<SessionRecord>;
@@ -147,7 +149,7 @@ export class PersonalAgentService {
       matchSupportedLocale([Intl.DateTimeFormat().resolvedOptions().locale]);
     const name = pickPersonaName(
       PERSONA_NAME_POOLS[locale],
-      agents.map((agent) => agent.role.name),
+      (await this.deps.listRoles()).map((role) => role.name),
     );
     const model = await this.defaultModel(agents);
     return {
@@ -270,7 +272,12 @@ export class PersonalAgentService {
     const row = this.require(payload.id);
     const role = await this.deps.getRole(row.roleId);
     if (!role) throw new Error(`Agent role ${row.roleId} was not found.`);
-    return this.insert(roleCopy(role, payload.name), {
+    const roles = await this.deps.listRoles();
+    const name = uniqueName(
+      payload.name,
+      roles.map((other) => other.name),
+    );
+    return this.insert(roleCopy(role, name), {
       soul: row.soul,
       userAddress: row.userAddress,
     });

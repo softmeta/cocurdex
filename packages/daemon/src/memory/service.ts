@@ -1,10 +1,7 @@
 import { realpath } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import {
-  generatePiMemoryDigest,
-  generatePiToldLedger,
-} from "@cocurdex/agent-adapters";
+import { generatePiMemoryDigest } from "@cocurdex/agent-adapters";
 import {
   type AgentRuntimeProviderConfig,
   buildMemoryRecallQuery,
@@ -1897,38 +1894,6 @@ export class MemoryService {
         sessionId: session.id,
       });
       return null;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  async summarizeTold(
-    session: SessionRecord,
-    items: readonly string[],
-    transcript: string,
-    maxItems: number,
-  ): Promise<string[] | null> {
-    const runtime = await this.options.resolveSessionProvider(session);
-    if (!runtime?.modelId) return null;
-    const { provider, model } = buildSnapshotProviderRecords(runtime);
-    const controller = new AbortController();
-    const timer = setTimeout(
-      () => controller.abort(),
-      SESSION_DIGEST_TIMEOUT_MS,
-    );
-    timer.unref?.();
-    try {
-      return await generatePiToldLedger({
-        userDataPath: this.options.userDataPath,
-        provider,
-        model,
-        apiKey: runtime.apiKey ?? null,
-        items,
-        transcript: redactMemorySecrets(transcript),
-        maxItems,
-        sessionId: session.id,
-        signal: controller.signal,
-      });
     } finally {
       clearTimeout(timer);
     }

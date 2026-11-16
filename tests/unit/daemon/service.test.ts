@@ -193,6 +193,61 @@ describe("CocurdexDaemonService agent role avatars", () => {
       await reopened.shutdown();
     }
   });
+
+  it("refuses a name another role or assistant holds, but keeps saving a role whose name is unchanged", async () => {
+    const service = await createService(
+      await tempDirs.create("cocurdex-role-names-"),
+    );
+    const draft = {
+      name: "Reviewer",
+      agentId: "pi" as const,
+      providerId: null,
+      modelId: null,
+      modelName: null,
+      permissionMode: null,
+      sessionModeId: null,
+      reasoningEffort: null,
+      serviceTier: null,
+      fastMode: null,
+      thinkingLevel: null,
+      openCodeAgent: null,
+      openCodeVariant: null,
+    };
+    try {
+      const reviewer = await service.saveAgentRole(draft);
+      const writer = await service.saveAgentRole({ ...draft, name: "Writer" });
+      await service.personalAgents.create({
+        role: { ...draft, name: "Coach" },
+      });
+
+      for (const name of [" reviewer ", "COACH"]) {
+        await expect(
+          service.saveAgentRole({ ...draft, name }),
+        ).rejects.toMatchObject({ reason: "agentRole.nameTaken" });
+        await expect(
+          service.saveAgentRole({ ...draft, id: writer.id, name }),
+        ).rejects.toMatchObject({ reason: "agentRole.nameTaken" });
+      }
+      expect(
+        (await service.listAgentRoles()).map((role) => role.name).sort(),
+      ).toEqual(["Reviewer", "Writer"]);
+
+      await expect(
+        service.saveAgentRole({ ...draft, id: reviewer.id, name: "REVIEWER" }),
+      ).resolves.toMatchObject({ name: "REVIEWER" });
+
+      await service.state.saveAgentRole({ ...reviewer, id: "older-duplicate" });
+      await expect(
+        service.saveAgentRole({
+          ...draft,
+          id: "older-duplicate",
+          modelName: "Other model",
+        }),
+      ).resolves.toMatchObject({ modelName: "Other model" });
+    } finally {
+      await service.shutdown();
+    }
+  });
 });
 
 describe("CocurdexDaemonService follow-up queue", () => {

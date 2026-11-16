@@ -149,8 +149,6 @@ export type AutomationRequests = {
   "personalAgent.update": UpdatePersonalAgentPayload;
   "personalAgent.duplicate": DuplicatePersonalAgentPayload;
   "personalAgent.delete": { id: string };
-  "personalAgent.told.list": { id: string };
-  "personalAgent.told.forget": { id: string; item: string };
   "personalAgent.work.catalog": DelegationCatalogQuery;
   "personalAgent.work.list": { personaId: string };
   "personalAgent.work.start": StartDelegatedWorkPayload;
@@ -245,8 +243,6 @@ export type AutomationResults = {
   "personalAgent.greet": boolean;
   "personalAgent.update": PersonalAgentRecord;
   "personalAgent.duplicate": PersonalAgentRecord;
-  "personalAgent.told.list": string[];
-  "personalAgent.told.forget": string[];
   "personalAgent.delete": null;
   "personalAgent.work.catalog": DelegationCatalog;
   "personalAgent.work.list": DelegatedWorkRecord[];

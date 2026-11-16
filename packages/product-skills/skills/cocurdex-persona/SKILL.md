@@ -25,6 +25,7 @@ cocurdex persona thread <persona> [--limit <n>] --json
 ```
 
 - Personas always run on Pi; pick a model the user has configured (`cocurdex provider list`). Without `--provider`/`--model`, `create` uses the default persona's model, else the first compatible one.
+- A persona's name is unique among all personas and saved agent roles, ignoring case and surrounding spaces. `create` or a renaming `update` with a taken name fails (`An agent role or assistant named "…" already exists.`); pick another name. `duplicate` never fails on the name: a taken `--name` gets a number appended (`Coach copy 2`), so read the name back from its output.
 - A muted persona (`--mute`) never notifies the desktop or the phone; what needs the user from its threads still shows in the assistant overview and `cocurdex inbox`.
 - `send` posts to the persona's home thread and returns the message id. With `--wait` it returns the reply once the turn settles, and fails with the persona's error when the turn fails. Without `--wait`, read the reply later with `thread`.
 - `--user-address` is how this persona addresses the user (`userAddress` in the JSON output); each persona keeps its own, and an empty string clears it. `persona create` without the flag carries over the address the user most recently gave any persona, so a new persona does not ask again; pass `--user-address ""` to start without one. A persona without one asks the user in its first greeting and saves the answer itself with its `assistant_set_user_address` tool; every later turn, including routine runs and reports, uses it.
@@ -94,19 +95,6 @@ cocurdex persona follow-up cancel <id> --json
 - A follow-up that came due while the daemon was stopped fires once when it starts again. A failed delivery is retried a minute later.
 - Only pending follow-ups can be canceled. Deleting a persona deletes its follow-ups.
 - Inside a persona's thread, the `follow_up` tool group (`follow_up_set`, `follow_up_list`, `follow_up_cancel`) manages that persona's own follow-ups.
-
-## Already told
-
-Each persona keeps a short list (at most 30 items) of the conclusions, facts, answers, and commitments it has already given the user, so it does not repeat them after older messages drop out of its context. The list is loaded before every persona turn.
-
-```bash
-cocurdex persona told list <persona> --json
-cocurdex persona told forget <persona> --item <text> --json
-```
-
-- The daemon updates the list in the background once a persona thread has been quiet for about a minute and a half, using the persona's model; routine runs do not update it. It needs memory to be enabled, since the list is stored as one important record in the persona's own memory partition.
-- `list` prints the items oldest first. `forget` removes one item, matched case-insensitively, and prints the remaining list.
-- Deleting a persona deletes its list.
 
 ## Delegated work
 

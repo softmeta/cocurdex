@@ -62,6 +62,7 @@ export default interface Resources {
       instructions: "Instructions";
       instructionsPlaceholder: "What this assistant is for and how it should work";
       name: "Name";
+      nameTaken: "Another role or assistant already uses this name.";
       needsModel: "Set up a model on your computer to create an assistant";
       newTitle: "New assistant";
       save: "Save";
@@ -87,7 +88,6 @@ export default interface Resources {
       cancelFollowUp: "Cancel follow-up";
       description: "Coordinate work, keep context, and follow through.";
       followUps: "Follow-ups";
-      forgetTold: "Remove from what it told you";
       host: "Routines run on the connected computer while its background service is online.";
       issues: "Issues";
       needsYou: "Needs you";
@@ -110,8 +110,6 @@ export default interface Resources {
         running: "Running";
       };
       title: "Overview";
-      told: "Already told you";
-      toldHint: "The assistant reads this before each reply so it does not repeat itself.";
       unscheduled: "No next run scheduled";
       work: "Delegated work";
       workFailed: "Work couldn't load.";
@@ -773,6 +771,7 @@ export default interface Resources {
       failed: "Couldn't save the role. Try again.";
       name: "Name";
       namePlaceholder: "Role name";
+      nameTaken: "Another role or assistant already uses this name.";
       open: "Save as Role…";
       save: "Save";
       saving: "Saving…";

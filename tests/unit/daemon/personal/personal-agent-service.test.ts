@@ -62,6 +62,7 @@ async function createHarness(): Promise<Harness> {
   const service = new PersonalAgentService({
     repository: database.personalAgents,
     getRole: (id) => database.agentRoles.getById(id),
+    listRoles: () => database.agentRoles.list(),
     async saveRole(payload) {
       const role: AgentRoleRecord = {
         description: null,
@@ -381,6 +382,12 @@ describe("PersonalAgentService", () => {
         instructions: "Plan workouts",
       },
     });
+
+    const again = await harness.service.duplicate({
+      id: coach.id,
+      name: "coach 2",
+    });
+    expect(again.role.name).toBe("coach 2 2");
   });
 
   it("deletes an agent with its role and home thread", async () => {

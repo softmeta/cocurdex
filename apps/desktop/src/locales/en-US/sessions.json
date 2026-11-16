@@ -32,6 +32,7 @@
     "menuManage": "Manage roles",
     "name": "Name",
     "namePlaceholder": "Role name",
+    "nameTaken": "Another role or assistant already uses this name.",
     "save": "Save as role",
     "saveAction": "Save",
     "saved": "Role saved",

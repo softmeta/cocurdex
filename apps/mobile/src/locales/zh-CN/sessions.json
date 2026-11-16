@@ -290,6 +290,7 @@
     "failed": "无法保存角色，请重试。",
     "name": "名称",
     "namePlaceholder": "角色名称",
+    "nameTaken": "已有角色或助理使用这个名称。",
     "open": "另存为角色…",
     "save": "保存",
     "saving": "正在保存…",

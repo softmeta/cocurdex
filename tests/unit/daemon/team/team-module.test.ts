@@ -536,6 +536,17 @@ describe("TeamModule", () => {
     expect((await module.listTemplates()).map((item) => item.name)).toEqual([
       "Squad",
     ]);
+    await expect(
+      module.saveTemplate({ name: " squad ", members: squadMembers }),
+    ).rejects.toMatchObject({ reason: "team.name_taken" });
+    const other = await module.saveTemplate({
+      name: "Pair",
+      members: squadMembers,
+    });
+    await expect(
+      module.saveTemplate({ ...other, name: "SQUAD" }),
+    ).rejects.toMatchObject({ reason: "team.name_taken" });
+    await module.deleteTemplate(other.id);
 
     const members = await module.spawnTemplate("lead", {
       templateId: template.id,

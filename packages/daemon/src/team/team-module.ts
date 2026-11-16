@@ -9,6 +9,7 @@ import {
   checkTeamTaskUpdate,
   decideRequesterReport,
   findRosterMember,
+  isNameTaken,
   type MessageRecord,
   normalizeAgentRoleAvatar,
   normalizeTeamTemplateMembers,
@@ -25,6 +26,7 @@ import {
   type SpawnTeammatePayload,
   type SpawnTeammateRejection,
   type SpawnTeamTemplatePayload,
+  sameName,
   TEAM_MAX_MEMBERS,
   TEAM_MIN_MEMBERS,
   TEAM_NAME_PATTERN,
@@ -62,6 +64,7 @@ export type TeamErrorCode =
   | "invalid_status"
   | "template_not_found"
   | "invalid_template"
+  | "name_taken"
   | "team_exists"
   | "members_busy";
 
@@ -578,6 +581,15 @@ export class TeamModule {
     const templates = await this.listTemplates();
     const now = this.now();
     const existing = templates.find((item) => item.id === payload.id);
+    if (
+      !(existing && sameName(existing.name, name)) &&
+      isNameTaken(name, templates, existing?.id ?? null)
+    ) {
+      throw new TeamError(
+        "name_taken",
+        `A team template named "${name}" already exists.`,
+      );
+    }
     const record: TeamTemplateRecord = {
       id: existing?.id ?? this.createId(),
       name,

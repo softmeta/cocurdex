@@ -196,6 +196,7 @@ function sendLabels(locale: SupportedLocale) {
     RENAMED_COMPUTER: `Studio Mac ${locale}`,
     NEW_NOTE_TITLE: `Release checklist ${locale}`,
     NEW_NOTE_BODY: `Ship the order export ${locale}`,
+    SAVED_ROLE_NAME: `E2E Reviewer ${locale}`,
   };
 }
 

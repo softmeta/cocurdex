@@ -65,10 +65,6 @@ import {
   personaFollowUpUsageLines,
 } from "./persona-follow-up-commands";
 import {
-  handlePersonaToldCommand,
-  personaToldUsageLines,
-} from "./persona-told-commands";
-import {
   handlePersonaWorkCommand,
   personaWorkUsageLines,
 } from "./persona-work-commands";
@@ -180,10 +176,6 @@ async function main(rawArgs: string[]) {
     }
   }
 
-  if (resource === "persona" && action === "told") {
-    await handlePersonaToldCommand(args, parsed);
-    return;
-  }
   if (resource === "persona" && action === "follow-up") {
     await handlePersonaFollowUpCommand(args, parsed);
     return;
@@ -570,7 +562,6 @@ function usageLines(): string[] {
     ...personaUsageLines(),
     ...personaWorkUsageLines(),
     ...personaFollowUpUsageLines(),
-    ...personaToldUsageLines(),
     ...routineUsageLines(),
     ...inboxUsageLines(),
     ...teamUsageLines(),

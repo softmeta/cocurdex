@@ -80,6 +80,39 @@ export function normalizeAgentRoleName(name: string) {
   return name.trim().slice(0, AGENT_ROLE_NAME_MAX_LENGTH);
 }
 
+export const AGENT_ROLE_NAME_TAKEN = "agentRole.nameTaken";
+export const TEAM_TEMPLATE_NAME_TAKEN = "team.name_taken";
+
+// Agent roles (assistants included) and team templates are told apart by
+// name in every picker and transcript, so a name names one record.
+function nameKey(name: string) {
+  return name.trim().toLocaleLowerCase();
+}
+
+export function sameName(a: string, b: string) {
+  return nameKey(a) === nameKey(b);
+}
+
+export function isNameTaken(
+  name: string,
+  records: readonly { id: string; name: string }[],
+  ownId: string | null = null,
+) {
+  return records.some(
+    (record) => record.id !== ownId && sameName(record.name, name),
+  );
+}
+
+export function uniqueName(base: string, usedNames: readonly string[]) {
+  const used = new Set(usedNames.map(nameKey));
+  const trimmed = base.trim();
+  if (!used.has(nameKey(trimmed))) return trimmed;
+  for (let suffix = 2; ; suffix += 1) {
+    const name = trimmed ? `${trimmed} ${suffix}` : String(suffix);
+    if (!used.has(nameKey(name))) return name;
+  }
+}
+
 export function normalizeAgentRoleDescription(
   description: string | null | undefined,
 ) {

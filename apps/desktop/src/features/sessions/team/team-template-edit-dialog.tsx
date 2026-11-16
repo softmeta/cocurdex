@@ -1,9 +1,11 @@
 import {
   type AgentRoleAvatar as AgentRoleAvatarValue,
   type AgentRoleRecord,
+  errorReason,
   TEAM_MAX_MEMBERS,
   TEAM_MIN_MEMBERS,
   TEAM_TEMPLATE_DESCRIPTION_MAX_LENGTH,
+  TEAM_TEMPLATE_NAME_TAKEN,
   type TeamTemplateMember,
   type TeamTemplateRecord,
 } from "@cocurdex/shared";
@@ -16,6 +18,7 @@ import {
   Button,
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
   FieldSeparator,
@@ -103,6 +106,7 @@ function TeamTemplateForm({
   const roles = useSyncExternalStore(subscribeAgentRoles, getAgentRoles);
   const [avatarSeed] = useState(() => template?.id ?? crypto.randomUUID());
   const [name, setName] = useState(template?.name ?? "");
+  const [nameTaken, setNameTaken] = useState(false);
   const [description, setDescription] = useState(template?.description ?? "");
   const [avatar, setAvatar] = useState<AgentRoleAvatarValue | null>(
     template?.avatar ?? null,
@@ -150,8 +154,12 @@ function TeamTemplateForm({
       });
       toast.success(t("teams.saved"));
       onOpenChange(false);
-    } catch {
+    } catch (error) {
       setSaving(false);
+      if (errorReason(error) === TEAM_TEMPLATE_NAME_TAKEN) {
+        setNameTaken(true);
+        return;
+      }
       toast.error(t("teams.saveFailed"));
     }
   };
@@ -213,10 +221,16 @@ function TeamTemplateForm({
                       aria-label={t("teams.name")}
                       autoFocus
                       maxLength={80}
-                      onChange={(event) => setName(event.target.value)}
+                      onChange={(event) => {
+                        setName(event.target.value);
+                        setNameTaken(false);
+                      }}
                       placeholder={t("teams.namePlaceholder")}
                       value={name}
                     />
+                    {nameTaken && (
+                      <FieldError>{t("teams.nameTaken")}</FieldError>
+                    )}
                     <Textarea
                       aria-label={t("teams.teamDescription")}
                       className="max-h-32 min-h-16"
