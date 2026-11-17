@@ -6,8 +6,14 @@ import type {
 import { ArrowUp, Bot, SquareTerminal, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppActivityTime } from "@/components/app";
-import { IconButton, Text } from "@/components/ui";
+import {
+  IconButton,
+  Text,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui";
+import { useActivityTimeLabel } from "@/lib/relative-time";
 
 interface FieldOptions {
   statusOptions: ReadonlyArray<{ id: string; title: string }>;
@@ -25,6 +31,25 @@ function useActorLabel() {
     }
     return t("activity.actor.user");
   };
+}
+
+function EventTime({ timestamp }: { timestamp: string }) {
+  const time = useActivityTimeLabel(timestamp);
+  if (!time) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Text
+          size="meta"
+          tone="muted"
+          className="ms-auto shrink-0 tabular-nums"
+        >
+          {time.relative}
+        </Text>
+      </TooltipTrigger>
+      <TooltipContent>{time.absolute}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 function ActorIcon({ actor }: { actor: IssueActor }) {
@@ -151,9 +176,7 @@ export function IssueActivity({
                   ? t("activity.commented")
                   : eventText(event)}
               </Text>
-              <span className="ms-auto shrink-0">
-                <AppActivityTime timestamp={event.createdAt} />
-              </span>
+              <EventTime timestamp={event.createdAt} />
             </div>
             {event.body ? (
               <Text
