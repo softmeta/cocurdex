@@ -35,7 +35,7 @@ function ActionButton({
   );
 }
 
-function TurnMeta({ turn }: { turn: TurnEnd }) {
+export function TurnMeta({ turn }: { turn: TurnEnd }) {
   const { t } = useTranslation("sessions");
   const colors = useThemeColors();
   const parts = [

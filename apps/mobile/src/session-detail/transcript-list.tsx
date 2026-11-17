@@ -1,5 +1,4 @@
 import {
-  type ComponentRef,
   type ReactElement,
   type Ref,
   useImperativeHandle,
@@ -25,12 +24,26 @@ import {
   isFarFromOldest,
   nextJumpState,
   type ScrollMetrics,
-  transcriptEdges,
 } from "./transcript-jump";
 import { type TranscriptTurn, transcriptTurns } from "./transcript-turns";
 
 export interface TranscriptHandle {
   jumpToItem(id: string): void;
+}
+
+const MAX_INDEX_RETRIES = 12;
+const KEEP_VISIBLE = { minIndexForVisible: 0 };
+
+function topDownMetrics(
+  fromLatest: number,
+  contentHeight: number,
+  viewportHeight: number,
+): ScrollMetrics {
+  return {
+    offset: Math.max(0, contentHeight - viewportHeight - fromLatest),
+    contentHeight,
+    viewportHeight,
+  };
 }
 
 export function TranscriptList({
@@ -55,176 +68,120 @@ export function TranscriptList({
   const headerOverlap = frame.overlap;
   const indicator = useScrollIndicatorWhileScrolling();
   const list = useRef<FlatList<TranscriptTurn>>(null);
-  const metrics = useRef<ScrollMetrics | null>(null);
-  const listHeight = useRef(0);
-  const latestView = useRef<ComponentRef<typeof View>>(null);
-  const indexFailed = useRef(false);
-  const latestLayoutId = useRef<string | null>(null);
-  const following = useRef(true);
-  const navigation = useRef<{
-    sentMessageId?: string;
-    target?: string;
-    initialPosition: boolean;
-    retries: number;
-  }>({ sentMessageId, initialPosition: true, retries: 0 });
-  if (navigation.current.sentMessageId !== sentMessageId) {
-    navigation.current = {
-      sentMessageId,
-      initialPosition: true,
-      retries: 0,
-    };
-    following.current = true;
+  const scroll = useRef({ fromLatest: 0, contentHeight: 0, viewportHeight: 0 });
+  const directionFrom = useRef(0);
+  const target = useRef<{ id: string; retries: number } | null>(null);
+  const toOldest = useRef(false);
+  const sent = useRef(sentMessageId);
+  const toLatestOnLayout = useRef(false);
+  if (sent.current !== sentMessageId) {
+    sent.current = sentMessageId;
+    target.current = null;
+    toOldest.current = false;
+    toLatestOnLayout.current = true;
   }
-  const latestJump = useRef<{ animated: boolean } | null>(null);
   const [jump, setJump] = useState(INITIAL_JUMP_STATE);
-  const [placed, setPlaced] = useState(false);
   const turns = useMemo(() => transcriptTurns(items), [items]);
-  const history = useMemo(() => turns.slice(0, -1), [turns]);
-  const latest = turns.at(-1);
+  const newestFirst = useMemo(() => [...turns].reverse(), [turns]);
   const streaming = items.some(
     (item) =>
       (item.kind === "activity" && item.running) ||
       (item.kind === "assistant" && item.streaming),
   );
-  const directionOffset = useRef(0);
+
+  const metrics = () =>
+    topDownMetrics(
+      scroll.current.fromLatest,
+      scroll.current.contentHeight,
+      scroll.current.viewportHeight,
+    );
   const refreshJump = () => {
-    const current = metrics.current;
-    if (!current) return;
+    if (!scroll.current.viewportHeight) return;
+    const next = metrics();
     setJump((state) =>
-      nextJumpState(state, current, current.offset, items.length, streaming),
+      nextJumpState(state, next, next.offset, items.length, streaming),
     );
   };
-  const currentJump = metrics.current
-    ? nextJumpState(
-        jump,
-        metrics.current,
-        metrics.current.offset,
-        items.length,
-        streaming,
-      )
-    : jump;
 
-  const scrollInstantly = (offset: number) => {
-    list.current?.scrollToOffset({ offset, animated: false });
-    if (metrics.current) metrics.current = { ...metrics.current, offset };
-  };
-  const align = () => {
-    const state = navigation.current;
-    if (state.target) {
-      const index = turns.findIndex((turn) =>
-        turn.items.some((item) => item.id === state.target),
-      );
-      if (index === turns.length - 1 && metrics.current) {
-        if (!latest || latestLayoutId.current !== latest.id) return;
-        const content = list.current?.getNativeScrollRef()?.getInnerViewRef();
-        if (!content) return;
-        const target = state.target;
-        latestView.current?.measureLayout(
-          content,
-          (_x, y) => {
-            if (navigation.current.target !== target) return;
-            scrollInstantly(Math.max(0, y - space.md - headerOverlap));
-            setPlaced(true);
-          },
-          () => {},
-        );
-      } else if (index >= 0) {
-        indexFailed.current = false;
-        list.current?.scrollToIndex({
-          index,
-          viewPosition: 0,
-          viewOffset: space.md + headerOverlap,
-          animated: false,
-        });
-        if (!indexFailed.current) {
-          state.target = undefined;
-          setPlaced(true);
-        }
-      } else {
-        setPlaced(true);
-      }
-    } else if (
-      state.initialPosition &&
-      metrics.current &&
-      latest &&
-      latestLayoutId.current === latest.id
-    ) {
-      state.initialPosition = false;
-      scrollInstantly(
-        Math.max(
-          0,
-          metrics.current.contentHeight - metrics.current.viewportHeight,
-        ),
-      );
-      setPlaced(true);
-    }
-  };
   const scrollToLatest = (animated: boolean) => {
-    const current = metrics.current;
-    if (!current) return;
-    const offset = Math.max(0, current.contentHeight - current.viewportHeight);
-    if (current.offset >= offset - 1) {
-      latestJump.current = null;
+    const { fromLatest, viewportHeight } = scroll.current;
+    if (fromLatest <= 1) return;
+    if (animated && fromLatest > viewportHeight)
+      list.current?.scrollToOffset({ offset: viewportHeight, animated: false });
+    list.current?.scrollToOffset({ offset: 0, animated });
+  };
+  const scrollToTarget = () => {
+    const pending = target.current;
+    if (!pending) return;
+    const index = newestFirst.findIndex((turn) =>
+      turn.items.some((item) => item.id === pending.id),
+    );
+    if (index < 0) {
+      target.current = null;
       return;
     }
-    latestJump.current = { animated };
-    const glideStart = offset - current.viewportHeight;
-    if (animated && current.offset < glideStart)
-      list.current?.scrollToOffset({ offset: glideStart, animated: false });
-    list.current?.scrollToOffset({ offset, animated });
+    list.current?.scrollToIndex({
+      index,
+      viewPosition: 1,
+      viewOffset: -(space.md + headerOverlap),
+      animated: false,
+    });
   };
   useImperativeHandle(ref, () => ({
     jumpToItem(id) {
-      latestJump.current = null;
-      following.current = false;
-      navigation.current.target = id;
-      navigation.current.initialPosition = false;
-      navigation.current.retries = 0;
-      align();
+      toOldest.current = false;
+      toLatestOnLayout.current = false;
+      target.current = { id, retries: 0 };
+      scrollToTarget();
     },
   }));
+
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const next = {
-      offset: contentOffset.y,
+    const fromLatest = contentOffset.y;
+    scroll.current = {
+      fromLatest,
       contentHeight: contentSize.height,
-      viewportHeight: listHeight.current || layoutMeasurement.height,
+      viewportHeight: scroll.current.viewportHeight || layoutMeasurement.height,
     };
-    const previous = directionOffset.current;
-    if (Math.abs(next.offset - previous) >= 12)
-      directionOffset.current = next.offset;
-    metrics.current = next;
-    const atLatest = transcriptEdges(next).nearLatest;
-    if (atLatest) latestJump.current = null;
-    if (!latestJump.current) following.current = atLatest;
+    const previous = directionFrom.current;
+    if (Math.abs(fromLatest - previous) >= 12)
+      directionFrom.current = fromLatest;
+    const next = metrics();
     setJump((current) =>
-      nextJumpState(current, next, previous, items.length, streaming),
+      nextJumpState(
+        current,
+        next,
+        next.offset + fromLatest - previous,
+        items.length,
+        streaming,
+      ),
     );
   };
   const jumpToLatest = () => {
-    navigation.current.target = undefined;
-    navigation.current.initialPosition = false;
+    target.current = null;
+    toOldest.current = false;
     scrollToLatest(!reducedMotion);
   };
   const jumpToOldest = () => {
-    latestJump.current = null;
-    following.current = false;
-    navigation.current.target = undefined;
-    navigation.current.initialPosition = false;
-    list.current?.scrollToOffset({
-      offset: 0,
-      animated: metrics.current !== null && !isFarFromOldest(metrics.current),
-    });
+    target.current = null;
+    toOldest.current = true;
+    list.current?.scrollToEnd({ animated: !isFarFromOldest(metrics()) });
   };
+  const current = scroll.current.viewportHeight ? metrics() : null;
+  const shown = current
+    ? nextJumpState(jump, current, current.offset, items.length, streaming)
+    : jump;
+  const away = shown.awayFromLatestAt !== null;
   return (
     <View ref={frame.ref} style={styles.fill} onLayout={frame.onLayout}>
       <FlatList
         {...indicator}
         ref={list}
-        style={!placed && latest ? styles.placing : undefined}
-        data={history}
+        inverted
+        data={newestFirst}
         keyExtractor={(turn) => turn.id}
-        extraData={[renderRow, footer]}
+        extraData={renderRow}
         scrollsChildToFocus={false}
         keyboardDismissMode="interactive"
         contentInsetAdjustmentBehavior="never"
@@ -232,100 +189,68 @@ export function TranscriptList({
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: space.md + headerOverlap,
-            paddingBottom: space.md + bottomInset,
+            paddingTop: space.md + bottomInset,
+            paddingBottom: space.md + headerOverlap,
           },
         ]}
         scrollEventThrottle={32}
         onScroll={onScroll}
-        maintainVisibleContentPosition={
-          onReachOldest ? { minIndexForVisible: 0 } : undefined
-        }
-        onStartReached={() => {
+        maintainVisibleContentPosition={away ? KEEP_VISIBLE : undefined}
+        onEndReached={() => {
           if (jump.userScrolled) onReachOldest?.();
         }}
         onScrollBeginDrag={() => {
-          latestJump.current = null;
-          following.current = false;
-          navigation.current.target = undefined;
-          navigation.current.initialPosition = false;
-          setPlaced(true);
+          target.current = null;
+          toOldest.current = false;
           indicator.onScrollBeginDrag();
           setJump((current) => ({ ...current, userScrolled: true }));
         }}
         onLayout={(event) => {
-          const { height } = event.nativeEvent.layout;
-          listHeight.current = height;
-          if (metrics.current) metrics.current.viewportHeight = height;
+          scroll.current.viewportHeight = event.nativeEvent.layout.height;
           refreshJump();
-          if (following.current && placed && !latestJump.current)
-            requestAnimationFrame(() => {
-              if (following.current) scrollToLatest(false);
-            });
         }}
         onContentSizeChange={(_width, height) => {
-          const previous = metrics.current;
-          const next = {
-            offset: previous?.offset ?? 0,
-            contentHeight: height,
-            viewportHeight: previous?.viewportHeight ?? listHeight.current,
-          };
-          metrics.current = next;
-          setJump((current) =>
-            nextJumpState(current, next, next.offset, items.length, streaming),
-          );
-          align();
-          if (latestJump.current) scrollToLatest(latestJump.current.animated);
-          else if (following.current && placed) scrollToLatest(false);
+          scroll.current.contentHeight = height;
+          refreshJump();
+          if (toLatestOnLayout.current) {
+            toLatestOnLayout.current = false;
+            scrollToLatest(false);
+          } else if (target.current) {
+            scrollToTarget();
+          } else if (toOldest.current) {
+            list.current?.scrollToEnd({ animated: false });
+          }
         }}
         onScrollToIndexFailed={({ index, averageItemLength }) => {
-          indexFailed.current = true;
-          if (navigation.current.retries >= 12) {
-            setPlaced(true);
+          const pending = target.current;
+          if (!pending) return;
+          if (pending.retries >= MAX_INDEX_RETRIES) {
+            target.current = null;
             return;
           }
-          navigation.current.retries += 1;
+          pending.retries += 1;
           list.current?.scrollToOffset({
             offset: averageItemLength * index,
             animated: false,
           });
-          requestAnimationFrame(align);
+          requestAnimationFrame(scrollToTarget);
         }}
         renderItem={({ item }) => (
           <View testID={`transcript-turn-${item.id}`} style={styles.turn}>
             {item.items.map(renderRow)}
           </View>
         )}
-        ListFooterComponent={
-          latest ? (
-            <View
-              key={latest.id}
-              ref={latestView}
-              testID={`transcript-turn-${latest.id}`}
-              style={styles.turn}
-              onLayout={() => {
-                latestLayoutId.current = latest.id;
-                refreshJump();
-                align();
-              }}
-            >
-              {latest.items.map(renderRow)}
-              {footer}
-            </View>
-          ) : (
-            footer
-          )
-        }
+        ListHeaderComponent={footer}
       />
-      {placed && currentJump.kind ? (
+      {shown.kind ? (
         <JumpButton
-          target={currentJump.kind}
+          target={shown.kind}
           streaming={streaming}
           bottomInset={bottomInset}
           unseen={
-            currentJump.kind === "latest" && hasUnseenLatest(jump, items.length)
+            shown.kind === "latest" && hasUnseenLatest(jump, items.length)
           }
-          onPress={currentJump.kind === "latest" ? jumpToLatest : jumpToOldest}
+          onPress={shown.kind === "latest" ? jumpToLatest : jumpToOldest}
         />
       ) : null}
     </View>
@@ -334,10 +259,10 @@ export function TranscriptList({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  placing: { opacity: 0 },
   content: {
+    flexGrow: 1,
+    justifyContent: "flex-end",
     paddingHorizontal: layout.sideMargin,
-    paddingVertical: space.md,
     gap: space.md,
   },
   turn: { gap: space.md },

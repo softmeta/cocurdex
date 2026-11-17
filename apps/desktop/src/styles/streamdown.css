@@ -18,6 +18,12 @@
   border-radius: var(--radius-card);
   background: var(--chat-code-block);
   padding: 0;
+  /* biome-ignore lint/complexity/noImportantStyles: overrides the inline
+     content-visibility streamdown writes on its code block; the 200px
+     placeholder shifts the chat timeline after it is revealed */
+  content-visibility: visible !important;
+  /* biome-ignore lint/complexity/noImportantStyles: same streamdown inline style */
+  contain-intrinsic-size: none !important;
 }
 
 [data-streamdown="code-block-header"] {
