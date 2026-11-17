@@ -70,7 +70,7 @@ export function TranscriptList({
   if (navigation.current.sentMessageId !== sentMessageId) {
     navigation.current = {
       sentMessageId,
-      initialPosition: false,
+      initialPosition: true,
       retries: 0,
     };
     following.current = true;
