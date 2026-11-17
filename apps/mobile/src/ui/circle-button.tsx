@@ -1,5 +1,5 @@
 import { type AndroidSymbol, type SFSymbol, SymbolView } from "expo-symbols";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { type ThemeName, themeColors, useThemeName } from "@/theme";
 
 const TONAL_FILL = {
@@ -8,6 +8,28 @@ const TONAL_FILL = {
 } as const;
 
 const SIZE = 44;
+
+function BadgeMark({
+  badge,
+  tint,
+  foreground,
+}: {
+  badge: boolean | number;
+  tint: string;
+  foreground: string;
+}) {
+  if (typeof badge === "number") {
+    if (badge <= 0) return null;
+    return (
+      <View style={[styles.countBadge, { backgroundColor: tint }]}>
+        <Text style={[styles.countText, { color: foreground }]}>{badge}</Text>
+      </View>
+    );
+  }
+  return badge ? (
+    <View style={[styles.badge, { backgroundColor: tint }]} />
+  ) : null;
+}
 
 export function CircleButton({
   icon,
@@ -22,7 +44,7 @@ export function CircleButton({
   icon: { ios: SFSymbol; android: AndroidSymbol };
   label: string;
   onPress(): void;
-  badge?: boolean;
+  badge?: boolean | number;
   disabled?: boolean;
   tonal?: boolean;
   scheme?: ThemeName;
@@ -34,7 +56,9 @@ export function CircleButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={
+        typeof badge === "number" && badge > 0 ? `${label}, ${badge}` : label
+      }
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
@@ -47,9 +71,11 @@ export function CircleButton({
       testID={testID}
     >
       <SymbolView name={icon} size={22} tintColor={colors.foreground} />
-      {badge ? (
-        <View style={[styles.badge, { backgroundColor: colors.tint }]} />
-      ) : null}
+      <BadgeMark
+        badge={badge}
+        tint={colors.tint}
+        foreground={colors.background}
+      />
     </Pressable>
   );
 }
@@ -71,4 +97,16 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
+  countBadge: {
+    position: "absolute",
+    top: 4,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countText: { fontSize: 11, fontWeight: "600", fontVariant: ["tabular-nums"] },
 });

@@ -1,15 +1,12 @@
 import type {
+  IssueActivityLookup,
   IssueRecord,
   ViewSummary,
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import { useTranslation } from "react-i18next";
 import { SidebarPanelHeader } from "@/app/layout/sidebar-panel-header";
-import {
-  type IssueActivityLookup,
-  type IssueNavSelection,
-  navPlace,
-} from "./issue-nav";
+import { type IssueNavSelection, navPlace } from "./issue-nav";
 import {
   IssueAgentSection,
   IssueAllRow,

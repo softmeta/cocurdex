@@ -1,7 +1,5 @@
-import {
-  EMPTY_ISSUE_FILTERS,
-  type IssueFilters,
-} from "@cocurdex/mobile/internal/issues/issue-filters";
+import type { IssuePlace } from "@cocurdex/client-runtime";
+import { EMPTY_ISSUE_FILTERS } from "@cocurdex/mobile/internal/issues/issue-filters";
 import { issueSections } from "@cocurdex/mobile/internal/issues/issue-sections";
 import type { IssueFieldOption, IssueRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
@@ -56,13 +54,18 @@ describe("issueSections", () => {
     issue(5, "doing", { sortOrder: 1 }),
     issue(6, "todo", { workspaceId: "docs" }),
   ];
-  const inShop: IssueFilters = {
-    ...EMPTY_ISSUE_FILTERS,
-    workspaceIds: ["shop"],
-  };
+  const inShop: IssuePlace = { kind: "workspace", workspaceId: "shop" };
+  const all: IssuePlace = { kind: "all" };
 
   it("puts work in progress first and drops empty statuses", () => {
-    const sections = issueSections(issues, statuses, inShop, "", () => null);
+    const sections = issueSections(
+      issues,
+      statuses,
+      EMPTY_ISSUE_FILTERS,
+      inShop,
+      "",
+      () => null,
+    );
 
     expect(
       sections.map((section) => [
@@ -83,6 +86,7 @@ describe("issueSections", () => {
         issues,
         statuses,
         EMPTY_ISSUE_FILTERS,
+        all,
         "cents",
         () => null,
       ).flatMap((section) => section.issues.map((entry) => entry.identifier)),
@@ -92,6 +96,7 @@ describe("issueSections", () => {
         issues,
         statuses,
         EMPTY_ISSUE_FILTERS,
+        all,
         "coc-6",
         () => null,
       ).flatMap((section) => section.issues.map((entry) => entry.identifier)),

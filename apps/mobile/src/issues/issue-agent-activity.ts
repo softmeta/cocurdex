@@ -1,7 +1,6 @@
-import { issueAgentActivity } from "@cocurdex/shared";
+import { type IssueActivityLookup, issueAgentActivity } from "@cocurdex/shared";
 import { useMemo } from "react";
 import { useHostSessions } from "@/sessions";
-import type { IssueActivityLookup } from "./issue-filters";
 
 export function useIssueActivityLookup(hostId: string): IssueActivityLookup {
   const { attention } = useHostSessions(hostId);

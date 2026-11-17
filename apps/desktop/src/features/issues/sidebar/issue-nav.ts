@@ -1,6 +1,11 @@
 import {
+  ALL_ISSUE_PLACE,
+  type IssuePlace,
+  matchesIssuePlace,
+} from "@cocurdex/client-runtime";
+import {
   ISSUE_STATUS_CATEGORIES,
-  type IssueAgentActivity,
+  type IssueActivityLookup,
   type IssueRecord,
   type IssueStatusCategory,
   type ViewColumnRecord,
@@ -14,55 +19,18 @@ export function isNavPreset(value: string): value is IssueNavPreset {
   return ISSUE_NAV_PRESETS.some((preset) => preset === value);
 }
 
-export type IssueNavPlace =
-  | { kind: "all" }
-  | { kind: "workspace"; workspaceId: string }
-  | { kind: "agent"; activity: IssueAgentActivity };
-
 export type IssueNavSelection =
-  | { kind: "issues"; preset: IssueNavPreset; place: IssueNavPlace }
+  | { kind: "issues"; preset: IssueNavPreset; place: IssuePlace }
   | { kind: "view"; viewId: string };
-
-export type IssueActivityLookup = (
-  sessionIds: readonly string[],
-) => IssueAgentActivity | null;
-
-const ALL_PLACE: IssueNavPlace = { kind: "all" };
 
 export const DEFAULT_ISSUE_NAV: IssueNavSelection = {
   kind: "issues",
   preset: "all",
-  place: ALL_PLACE,
+  place: ALL_ISSUE_PLACE,
 };
 
-export function navPlace(selection: IssueNavSelection): IssueNavPlace {
-  return selection.kind === "issues" ? selection.place : ALL_PLACE;
-}
-
-export function isSamePlace(a: IssueNavPlace, b: IssueNavPlace): boolean {
-  switch (a.kind) {
-    case "all":
-      return b.kind === "all";
-    case "workspace":
-      return b.kind === "workspace" && b.workspaceId === a.workspaceId;
-    case "agent":
-      return b.kind === "agent" && b.activity === a.activity;
-  }
-}
-
-export function matchesPlace(
-  issue: IssueRecord,
-  place: IssueNavPlace,
-  activityOf: IssueActivityLookup,
-): boolean {
-  switch (place.kind) {
-    case "all":
-      return true;
-    case "workspace":
-      return issue.workspaceId === place.workspaceId;
-    case "agent":
-      return activityOf(issue.sessionIds) === place.activity;
-  }
+export function navPlace(selection: IssueNavSelection): IssuePlace {
+  return selection.kind === "issues" ? selection.place : ALL_ISSUE_PLACE;
 }
 
 const PRESET_CATEGORIES: Record<
@@ -94,7 +62,7 @@ export function selectNavIssues(
   return issues.filter(
     (issue) =>
       matchesPreset(issue, selection.preset) &&
-      matchesPlace(issue, selection.place, activityOf),
+      matchesIssuePlace(issue, selection.place, activityOf),
   );
 }
 
@@ -154,29 +122,19 @@ export function navScopeFilters(selection: IssueNavSelection): ViewFilter[] {
 export function countNavPlace(
   issues: readonly IssueRecord[],
   preset: IssueNavPreset,
-  place: IssueNavPlace,
+  place: IssuePlace,
   activityOf: IssueActivityLookup,
 ): number {
   let count = 0;
   for (const issue of issues) {
     if (
       matchesPreset(issue, preset) &&
-      matchesPlace(issue, place, activityOf)
+      matchesIssuePlace(issue, place, activityOf)
     ) {
       count += 1;
     }
   }
   return count;
-}
-
-export function workspacesWithIssues<T extends { id: string; name: string }>(
-  workspaces: readonly T[],
-  issues: readonly IssueRecord[],
-): T[] {
-  const used = new Set(issues.map((issue) => issue.workspaceId));
-  return workspaces
-    .filter((workspace) => used.has(workspace.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function pinnedViewTabs<T extends { pinnedAt: string | null }>(

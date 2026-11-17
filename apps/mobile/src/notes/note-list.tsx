@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { SectionList, StyleSheet } from "react-native";
 import { useHostSessions } from "@/sessions";
 import {
+  CapsuleTabs,
   ListNotice,
   ListSectionHeader,
   PendingIndicator,
@@ -13,6 +14,12 @@ import {
   useTabBarInset,
 } from "@/ui";
 import { useNoteActions } from "./note-actions";
+import {
+  ALL_NOTES_PLACE,
+  notePlaceKey,
+  setNotePlace,
+  useNotePlace,
+} from "./note-place-store";
 import { useNotes } from "./note-queries";
 import { NoteRowView } from "./note-row";
 import { type NoteRow, noteSections } from "./note-sections";
@@ -26,11 +33,13 @@ export function NoteList({ host, query }: { host: SavedHost; query: string }) {
   const noteActions = useNoteActions(host);
   const pull = usePullToRefresh(() => notes.mutate());
   const { workspaces } = useHostSessions(host.hostId);
+  const place = useNotePlace(host.hostId);
   const sections = useMemo(
     () =>
       noteSections(notes.data ?? [], workspaces, query).map((section) => ({
         title: section.workspace?.name ?? t("noWorkspace"),
-        key: section.workspace?.id ?? "",
+        key: notePlaceKey(section.workspace?.id ?? null),
+        count: section.rows.filter((row) => row.note.kind === "note").length,
         data: section.rows,
       })),
     [notes.data, workspaces, query, t],
@@ -51,8 +60,27 @@ export function NoteList({ host, query }: { host: SavedHost; query: string }) {
   }
 
   const searching = query.trim() !== "";
+  const tabsShown = !searching && sections.length > 1;
+  const focused = tabsShown
+    ? sections.find((section) => section.key === place)
+    : undefined;
   return (
     <>
+      {tabsShown ? (
+        <CapsuleTabs
+          testID="note-place"
+          tabs={[
+            { key: ALL_NOTES_PLACE, label: t("allWorkspaces") },
+            ...sections.map(({ key, title, count }) => ({
+              key,
+              label: title,
+              count,
+            })),
+          ]}
+          selectedKey={focused?.key ?? ALL_NOTES_PLACE}
+          onSelect={(key) => setNotePlace(host.hostId, key)}
+        />
+      ) : null}
       <SectionList<NoteRow>
         {...scrollIndicator}
         contentContainerStyle={{ paddingBottom: tabBarInset }}
@@ -60,7 +88,7 @@ export function NoteList({ host, query }: { host: SavedHost; query: string }) {
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
-        sections={sections}
+        sections={focused ? [focused] : sections}
         keyExtractor={(row) => row.note.id}
         stickySectionHeadersEnabled={false}
         refreshing={pull.refreshing}
@@ -79,9 +107,9 @@ export function NoteList({ host, query }: { host: SavedHost; query: string }) {
             />
           )
         }
-        renderSectionHeader={({ section }) => (
-          <ListSectionHeader title={section.title} />
-        )}
+        renderSectionHeader={({ section }) =>
+          focused ? null : <ListSectionHeader title={section.title} />
+        }
         renderItem={({ item }) => (
           <NoteRowView
             row={item}

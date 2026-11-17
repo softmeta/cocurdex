@@ -352,7 +352,6 @@ export default interface Resources {
       title: "No Issues";
     };
     field: {
-      agent: "Agent";
       labels: "Labels";
       none: "None";
       priority: "Priority";
@@ -360,14 +359,10 @@ export default interface Resources {
       workspace: "Workspace";
     };
     filter: {
-      agentNeedsYou: "Needs you";
-      agentWorking: "Agent working";
       any: "Any";
       clear: "Clear filters";
       close: "Close";
       empty: "No issues match these filters";
-      noWorkspace: "No workspace";
-      remove: "Remove filter {{label}}";
       title: "Filter";
     };
     labels: {
@@ -375,6 +370,13 @@ export default interface Resources {
     };
     missing: "This issue was deleted on the computer.";
     noResults: "No issues match “{{query}}”";
+    place: {
+      agentWorking: "Agent working";
+      all: "All";
+      empty: "No issues here";
+      needsYou: "Needs you";
+      showAll: "Show all";
+    };
     search: "Search issues";
     sessions: "Agent Sessions";
     showFewerSubIssues: "Show less";
@@ -401,6 +403,7 @@ export default interface Resources {
       subpage: "New Subpage";
       title: "Actions";
     };
+    allWorkspaces: "All";
     create: {
       failed: "Couldn't create the note. Check the connection and try again.";
       open: "New Note";

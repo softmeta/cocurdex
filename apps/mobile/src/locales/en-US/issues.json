@@ -26,7 +26,6 @@
     "title": "No Issues"
   },
   "field": {
-    "agent": "Agent",
     "labels": "Labels",
     "none": "None",
     "priority": "Priority",
@@ -34,14 +33,10 @@
     "workspace": "Workspace"
   },
   "filter": {
-    "agentNeedsYou": "Needs you",
-    "agentWorking": "Agent working",
     "any": "Any",
     "clear": "Clear filters",
     "close": "Close",
     "empty": "No issues match these filters",
-    "noWorkspace": "No workspace",
-    "remove": "Remove filter {{label}}",
     "title": "Filter"
   },
   "labels": {
@@ -49,6 +44,13 @@
   },
   "missing": "This issue was deleted on the computer.",
   "noResults": "No issues match “{{query}}”",
+  "place": {
+    "agentWorking": "Agent working",
+    "all": "All",
+    "empty": "No issues here",
+    "needsYou": "Needs you",
+    "showAll": "Show all"
+  },
   "search": "Search issues",
   "sessions": "Agent Sessions",
   "showFewerSubIssues": "Show less",

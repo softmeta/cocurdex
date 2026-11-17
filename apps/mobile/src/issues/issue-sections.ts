@@ -1,13 +1,11 @@
+import { type IssuePlace, matchesIssuePlace } from "@cocurdex/client-runtime";
 import type {
+  IssueActivityLookup,
   IssueFieldOption,
   IssueRecord,
   IssueStatusCategory,
 } from "@cocurdex/shared";
-import {
-  type IssueActivityLookup,
-  type IssueFilters,
-  issueMatchesFilters,
-} from "./issue-filters";
+import { type IssueFilters, issueMatchesFilters } from "./issue-filters";
 
 export interface IssueSection {
   status: IssueFieldOption;
@@ -39,13 +37,16 @@ export function issueSections(
   issues: readonly IssueRecord[],
   statusOptions: readonly IssueFieldOption[],
   filters: IssueFilters,
+  place: IssuePlace,
   query: string,
   activityOf: IssueActivityLookup,
 ): IssueSection[] {
   const needle = query.trim().toLocaleLowerCase();
   const shown = issues.filter(
     (issue) =>
-      issueMatchesFilters(issue, filters, activityOf) && matches(issue, needle),
+      issueMatchesFilters(issue, filters) &&
+      matchesIssuePlace(issue, place, activityOf) &&
+      matches(issue, needle),
   );
   return statusOptions
     .map((status, order) => ({ status, order }))

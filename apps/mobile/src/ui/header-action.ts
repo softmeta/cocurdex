@@ -6,7 +6,7 @@ export interface HeaderAction {
   icon: { ios: SFSymbol; android: AndroidSymbol };
   label: string;
   onPress(): void;
-  badge?: boolean;
+  badge?: boolean | number;
   disabled?: boolean;
 }
 

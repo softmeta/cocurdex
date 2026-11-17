@@ -36,3 +36,7 @@ export function issueAgentActivity(
   }
   return working ? "working" : null;
 }
+
+export type IssueActivityLookup = (
+  sessionIds: readonly string[],
+) => IssueAgentActivity | null;

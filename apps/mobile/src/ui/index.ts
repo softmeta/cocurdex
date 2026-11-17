@@ -9,6 +9,7 @@ export {
   useAnchoredMenu,
 } from "./anchored-menu";
 export { BrandHost } from "./brand-host";
+export { type CapsuleTab, CapsuleTabs } from "./capsule-tabs";
 export { CircleButton } from "./circle-button";
 export { CloseButton } from "./close-button";
 export type { ConfirmRequest } from "./confirm-request";

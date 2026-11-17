@@ -1,5 +1,6 @@
 import {
   deriveSessionAttention,
+  type IssueActivityLookup,
   type IssueAgentActivity,
   issueAgentActivity,
   type SessionPrimaryState,
@@ -11,7 +12,6 @@ import {
   questionsBySessionAtom,
 } from "@/features/agent";
 import { sessionResultAttentionAtom, sessionsAtom } from "@/features/sessions";
-import type { IssueActivityLookup } from "./issue-nav";
 
 function hasPending(requests: readonly { status: string }[] | undefined) {
   return requests?.some((request) => request.status === "pending") ?? false;

@@ -1,24 +1,26 @@
-import type { IssueRecord, WorkspaceRecord } from "@cocurdex/shared";
+import {
+  type IssuePlace,
+  isSameIssuePlace,
+  workspacesWithIssues,
+} from "@cocurdex/client-runtime";
+import type {
+  IssueActivityLookup,
+  IssueRecord,
+  WorkspaceRecord,
+} from "@cocurdex/shared";
 import { Bot, Folder, Hand, Inbox, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarSectionHeader } from "@/components";
 import { SidebarListRow, SidebarListRowLabel } from "@/components/ui";
-import {
-  countNavPlace,
-  type IssueActivityLookup,
-  type IssueNavPlace,
-  type IssueNavPreset,
-  isSamePlace,
-  workspacesWithIssues,
-} from "./issue-nav";
+import { countNavPlace, type IssueNavPreset } from "./issue-nav";
 
 interface PlaceContext {
   issues: readonly IssueRecord[];
   preset: IssueNavPreset;
-  activePlace: IssueNavPlace | null;
+  activePlace: IssuePlace | null;
   activityOf: IssueActivityLookup;
-  onSelectPlace: (place: IssueNavPlace) => void;
+  onSelectPlace: (place: IssuePlace) => void;
 }
 
 function PlaceRow({
@@ -27,13 +29,14 @@ function PlaceRow({
   label,
   context,
 }: {
-  place: IssueNavPlace;
+  place: IssuePlace;
   icon: LucideIcon;
   label: string;
   context: PlaceContext;
 }) {
   const active =
-    context.activePlace !== null && isSamePlace(place, context.activePlace);
+    context.activePlace !== null &&
+    isSameIssuePlace(place, context.activePlace);
   const count = countNavPlace(
     context.issues,
     context.preset,

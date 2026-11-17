@@ -9,6 +9,7 @@
     "subpage": "New Subpage",
     "title": "Actions"
   },
+  "allWorkspaces": "All",
   "create": {
     "failed": "Couldn't create the note. Check the connection and try again.",
     "open": "New Note"

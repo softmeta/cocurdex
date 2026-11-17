@@ -29,6 +29,15 @@ export {
   isConnectionLoss,
   isUnknownDaemonMethodError,
 } from "./host-connection";
+export {
+  ALL_ISSUE_PLACE,
+  countIssuePlace,
+  type IssuePlace,
+  isSameIssuePlace,
+  matchesIssuePlace,
+  normalizeIssuePlace,
+  workspacesWithIssues,
+} from "./issue-places";
 export * from "./list-time-label";
 export * from "./local-session-title";
 export {

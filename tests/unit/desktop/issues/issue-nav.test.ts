@@ -1,3 +1,4 @@
+import type { IssuePlace } from "@cocurdex/client-runtime";
 import {
   type IssueRecord,
   type IssueStatusCategory,
@@ -6,7 +7,6 @@ import {
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
-  type IssueNavPlace,
   type IssueNavPreset,
   type IssueNavSelection,
   navScopeFilters,
@@ -14,12 +14,12 @@ import {
   selectNavIssues,
 } from "@/features/issues/sidebar/issue-nav";
 
-const ALL: IssueNavPlace = { kind: "all" };
+const ALL: IssuePlace = { kind: "all" };
 const noActivity = () => null;
 
 function scope(
   preset: IssueNavPreset,
-  place: IssueNavPlace = ALL,
+  place: IssuePlace = ALL,
 ): IssueNavSelection {
   return { kind: "issues", preset, place };
 }
@@ -178,10 +178,7 @@ describe("navScopeFilters", () => {
       issue("done", "completed"),
       issue("canceled", "canceled"),
     ];
-    const places: IssueNavPlace[] = [
-      ALL,
-      { kind: "workspace", workspaceId: "a" },
-    ];
+    const places: IssuePlace[] = [ALL, { kind: "workspace", workspaceId: "a" }];
     for (const place of places) {
       for (const preset of ["all", "active", "backlog"] as const) {
         const selection = scope(preset, place);
