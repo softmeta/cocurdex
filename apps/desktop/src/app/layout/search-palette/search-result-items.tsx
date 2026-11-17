@@ -1,9 +1,12 @@
 import type { SearchDocumentResult, SessionRecord } from "@cocurdex/shared";
-import { FileText, ListTodo, MessageSquare } from "lucide-react";
+import { FileText, ListTodo } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { FileTypeIcon } from "@/components";
 import { CommandItem } from "@/components/ui";
+import { AgentIcon, AgentRoleAvatar } from "@/features/sessions";
 import { findMatchRange } from "@/features/workspaces";
 import type { WorkspaceFileEntry } from "@/lib";
+import type { SessionOrigin } from "./session-origin";
 
 function HighlightedText({ text, query }: { text: string; query: string }) {
   const range = findMatchRange(text, query);
@@ -22,30 +25,61 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
   );
 }
 
+function SessionOriginIcon({
+  session,
+  origin,
+}: {
+  session: SessionRecord;
+  origin: SessionOrigin;
+}) {
+  return (
+    <span className="flex size-4 shrink-0 items-center justify-center">
+      {origin.kind === "assistant" && origin.role ? (
+        <AgentRoleAvatar role={origin.role} showAgent={false} size="xs" />
+      ) : (
+        <AgentIcon agentId={session.agentType} />
+      )}
+    </span>
+  );
+}
+
+function useSessionOriginLabel(origin: SessionOrigin) {
+  const { t } = useTranslation("search");
+  switch (origin.kind) {
+    case "work":
+      return origin.workspaceName;
+    case "chat":
+      return t("origins.chat");
+    case "assistant":
+      return t("origins.assistant");
+  }
+}
+
 export function SessionResultItem({
   query,
   session,
-  workspaceName,
+  origin,
   onSelect,
 }: {
   query: string;
   session: SessionRecord;
-  workspaceName: string | undefined;
+  origin: SessionOrigin;
   onSelect(): void;
 }) {
+  const originLabel = useSessionOriginLabel(origin);
   return (
     <CommandItem
       className="h-8 gap-2 rounded-control px-2 text-body text-muted-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground"
       value={`session:${session.id}`}
       onSelect={onSelect}
     >
-      <MessageSquare className="size-3.5 shrink-0" />
+      <SessionOriginIcon session={session} origin={origin} />
       <span className="min-w-0 flex-1 truncate font-medium text-foreground">
         <HighlightedText text={session.title} query={query} />
       </span>
-      {workspaceName ? (
+      {originLabel ? (
         <span className="max-w-40 shrink-0 truncate text-muted-foreground">
-          {workspaceName}
+          {originLabel}
         </span>
       ) : null}
     </CommandItem>

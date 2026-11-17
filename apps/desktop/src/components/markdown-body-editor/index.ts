@@ -4,6 +4,7 @@ export {
   MarkdownBodyEditor,
   type MarkdownBodyEditorHandle,
 } from "./markdown-body-editor";
+export { MarkdownFindBar } from "./markdown-find-bar";
 export {
   filterSlashCommandItems,
   SLASH_COMMAND_ITEMS,

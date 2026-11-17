@@ -82,6 +82,7 @@ const updateViewPayloadSchema = z.object({
       showEmptyGroups: z.boolean(),
     })
     .optional(),
+  pinned: z.boolean().optional(),
   expectedRevision: revisionSchema,
 }) satisfies z.ZodType<UpdateViewPayload>;
 

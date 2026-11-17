@@ -2,7 +2,6 @@ export * from "./agent-brand-icons";
 export { type BackoffPolicy, backoffDelay } from "./backoff";
 export * from "./chat-elapsed";
 export * from "./chat-jump-button";
-export * from "./chat-prompt-anchor";
 export * from "./chat-thinking-level";
 export * from "./compact-relative-time";
 export * from "./conversation-time";
@@ -30,6 +29,15 @@ export {
   isConnectionLoss,
   isUnknownDaemonMethodError,
 } from "./host-connection";
+export {
+  ALL_ISSUE_PLACE,
+  countIssuePlace,
+  type IssuePlace,
+  isSameIssuePlace,
+  matchesIssuePlace,
+  normalizeIssuePlace,
+  workspacesWithIssues,
+} from "./issue-places";
 export * from "./list-time-label";
 export * from "./local-session-title";
 export {

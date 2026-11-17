@@ -13,6 +13,16 @@
     "send": "发送",
     "stop": "停止"
   },
+  "find": {
+    "close": "关闭查找",
+    "label": "文档内查找",
+    "matches": "{{current}} / {{total}}",
+    "menu": "查找…",
+    "next": "下一个匹配",
+    "noResults": "无结果",
+    "placeholder": "查找",
+    "previous": "上一个匹配"
+  },
   "git": {
     "turnFiles_other": "{{count}} 个文件"
   },

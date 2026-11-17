@@ -2,6 +2,7 @@ import { DEFAULT_VIEW_ID, type ViewFull } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
 import { activeViewIdAtom, selectViewAtom } from "../issues-store";
+import { useIssueActivityLookup } from "./issue-agent-activity";
 import {
   DEFAULT_ISSUE_NAV,
   type IssueNavSelection,
@@ -22,6 +23,7 @@ function resolveSelection(
 export function useIssueNav({ board }: { board: ViewFull | null }) {
   const activeViewId = useAtomValue(activeViewIdAtom);
   const selectView = useSetAtom(selectViewAtom);
+  const activityOf = useIssueActivityLookup();
   const [selection, setSelection] =
     useState<IssueNavSelection>(DEFAULT_ISSUE_NAV);
 
@@ -39,11 +41,12 @@ export function useIssueNav({ board }: { board: ViewFull | null }) {
     ? {
         ...board,
         columns: selectNavColumns(board.columns, effectiveSelection),
-        issues: selectNavIssues(board.issues, effectiveSelection),
+        issues: selectNavIssues(board.issues, effectiveSelection, activityOf),
       }
     : null;
 
   return {
+    activityOf,
     selection: effectiveSelection,
     select,
     scopedBoard,

@@ -6,7 +6,9 @@ import {
   type MenuItemConstructorOptions,
   shell,
 } from "electron";
+import enCommon from "@/locales/en-US/common.json";
 import enSettings from "@/locales/en-US/settings.json";
+import zhCommon from "@/locales/zh-CN/common.json";
 import zhSettings from "@/locales/zh-CN/settings.json";
 import { exportAppDiagnostics } from "./logging";
 import { describeAppUpdateCheckDialog } from "./updater/app-update-check-dialog";
@@ -22,6 +24,51 @@ function diagnosticsCopy() {
   return locale.startsWith("zh")
     ? zhSettings.diagnostics
     : enSettings.diagnostics;
+}
+
+function findCopy() {
+  const locale = app.getLocale().toLowerCase();
+  return locale.startsWith("zh") ? zhCommon.find : enCommon.find;
+}
+
+function editMenu(
+  platform: NodeJS.Platform,
+  onFind: () => void,
+): MenuItemConstructorOptions {
+  const isMac = platform === "darwin";
+  return {
+    role: "editMenu",
+    submenu: [
+      { role: "undo" },
+      { role: "redo" },
+      { type: "separator" },
+      { role: "cut" },
+      { role: "copy" },
+      { role: "paste" },
+      ...(isMac
+        ? [
+            { role: "pasteAndMatchStyle" as const },
+            { role: "delete" as const },
+            { role: "selectAll" as const },
+          ]
+        : [
+            { role: "delete" as const },
+            { type: "separator" as const },
+            { role: "selectAll" as const },
+          ]),
+      { type: "separator" },
+      {
+        label: findCopy().menu,
+        accelerator: "CmdOrCtrl+F",
+        registerAccelerator: false,
+        click: onFind,
+      },
+    ],
+  };
+}
+
+function requestFindInFocusedWindow() {
+  BrowserWindow.getFocusedWindow()?.webContents.send("app:findRequested");
 }
 
 async function handleExportDiagnostics() {
@@ -103,7 +150,7 @@ export function registerApplicationMenu() {
         ]
       : []),
     { role: "fileMenu" },
-    { role: "editMenu" },
+    editMenu(process.platform, requestFindInFocusedWindow),
     { role: "viewMenu" },
     { role: "windowMenu" },
     {

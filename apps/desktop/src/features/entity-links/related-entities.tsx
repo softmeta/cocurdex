@@ -55,7 +55,7 @@ export function RelatedEntities({ entity, hideLink }: RelatedEntitiesProps) {
   return (
     <section
       aria-label={t("links.title")}
-      className="flex flex-col gap-0.5 border-t border-editor-border/60 py-2.5"
+      className="flex flex-col gap-0.5 py-2.5"
     >
       <div className="flex h-7 items-center justify-between gap-2">
         <Text size="meta" weight="medium" className="text-editor-fg-muted">

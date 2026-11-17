@@ -16,18 +16,30 @@ import { cn } from "@/lib";
 
 const NO_PARENT = "";
 
+export type IssueFieldLayout = "chips" | "adaptive";
+
 export function IssueFieldChip({
   icon,
   label,
+  layout = "chips",
   className,
   ...props
-}: ComponentProps<"button"> & { icon: ReactNode; label: ReactNode }) {
+}: ComponentProps<"button"> & {
+  icon: ReactNode;
+  label: ReactNode;
+  layout?: IssueFieldLayout;
+}) {
   return (
     <button
       type="button"
       {...props}
       className={cn(
         "inline-flex h-7 max-w-48 items-center gap-1.5 rounded-full border border-editor-border/70 bg-editor-chrome px-2.5 text-meta font-medium text-editor-fg-muted transition-colors hover:border-editor-border hover:bg-editor-tab-hover-bg hover:text-editor-fg",
+        {
+          chips: "",
+          adaptive:
+            "@4xl/issue:h-8 @4xl/issue:w-full @4xl/issue:max-w-none @4xl/issue:gap-2 @4xl/issue:rounded-control @4xl/issue:border-transparent @4xl/issue:bg-transparent @4xl/issue:px-2 @4xl/issue:text-body @4xl/issue:font-normal @4xl/issue:text-editor-fg @4xl/issue:hover:border-transparent",
+        }[layout],
         className,
       )}
     >
@@ -44,6 +56,7 @@ export function FieldMenu({
   value,
   onChange,
   ariaLabel,
+  layout,
 }: {
   icon: ReactNode;
   label: string;
@@ -51,11 +64,17 @@ export function FieldMenu({
   value: string;
   onChange: (id: string) => void;
   ariaLabel: string;
+  layout?: IssueFieldLayout;
 }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <IssueFieldChip aria-label={ariaLabel} icon={icon} label={label} />
+        <IssueFieldChip
+          aria-label={ariaLabel}
+          icon={icon}
+          label={label}
+          layout={layout}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-40">
         {options.map((opt) => (
@@ -84,11 +103,13 @@ export function LabelsChip({
   value,
   onChange,
   onCreateLabel,
+  layout,
 }: {
   labels: readonly IssueLabel[];
   value: readonly string[];
   onChange: (ids: string[]) => void;
   onCreateLabel: (name: string) => Promise<IssueLabel | null>;
+  layout?: IssueFieldLayout;
 }) {
   const { t } = useTranslation("issues");
   const [creating, setCreating] = useState(false);
@@ -153,6 +174,7 @@ export function LabelsChip({
           aria-label={t("dialog.labels")}
           icon={<Tag className="size-3.5" />}
           label={chipLabel}
+          layout={layout}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -191,12 +213,14 @@ export function ParentChip({
   knownParent,
   value,
   onChange,
+  layout,
 }: {
   issueId: string | null;
   issues: readonly IssueRecord[];
   knownParent: IssueSummary | null;
   value: string | null;
   onChange: (parentId: string | null) => void;
+  layout?: IssueFieldLayout;
 }) {
   const { t } = useTranslation("issues");
   const parent =
@@ -230,6 +254,7 @@ export function ParentChip({
         <IssueFieldChip
           icon={<GitBranchPlus className="size-3.5" />}
           label={chipLabel}
+          layout={layout}
         />
       }
     />

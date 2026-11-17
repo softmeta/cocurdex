@@ -8,7 +8,12 @@ import {
   usePairingRoutes,
   useScopeGate,
 } from "@/hosts";
-import { createBlankNote, NoteList } from "@/notes";
+import {
+  createBlankNote,
+  NoteList,
+  notePlaceWorkspaceId,
+  useNotePlace,
+} from "@/notes";
 import { ListScreenHeader } from "@/ui";
 
 export default function NotesScreen() {
@@ -19,6 +24,7 @@ export default function NotesScreen() {
   const gate = useScopeGate(host);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+  const place = useNotePlace(host?.hostId ?? "");
   if (!host) {
     return (
       <>
@@ -41,7 +47,8 @@ export default function NotesScreen() {
             disabled: creating,
             onPress: gate("interact", () => {
               setCreating(true);
-              createBlankNote(host.hostId)
+              const workspaceId = notePlaceWorkspaceId(place);
+              createBlankNote(host.hostId, workspaceId ? { workspaceId } : {})
                 .then((note) =>
                   router.push({
                     pathname: "/note/[hostId]/[noteId]",

@@ -20,6 +20,7 @@ import {
   rightPanelDockedAtom,
   rightPanelResolvedActiveViewAtom,
 } from "../right-editor-panel-store";
+import { SearchPaletteButton } from "../search-palette";
 import { LeftSidebar, ResizableSidebarSlot, ResizeSeparator } from "../sidebar";
 import { useChatDockViewportWidth } from "../use-chat-dock-viewport";
 import { MIN_CHAT_WIDTH, PANEL_SEPARATOR_WIDTH } from "./panel-geometry";
@@ -143,7 +144,12 @@ export function AppShellContent({
               overlayInset={editorOverlayInset}
               reserveTrafficLights={isPanelFullWidth}
               viewSwitcherLeading={
-                isPanelFullWidth ? <NavigationButtons /> : null
+                isPanelFullWidth ? (
+                  <>
+                    <NavigationButtons />
+                    <SearchPaletteButton />
+                  </>
+                ) : null
               }
               viewSwitcherTrailing={rightPanelActions}
             />

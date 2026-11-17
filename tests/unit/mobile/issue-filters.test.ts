@@ -2,9 +2,8 @@ import {
   activeIssueFilterCount,
   EMPTY_ISSUE_FILTERS,
   issueMatchesFilters,
-  NO_WORKSPACE_FILTER,
   normalizeIssueFilters,
-  singleWorkspaceFilter,
+  normalizeIssueListState,
   toggledIssueFilter,
 } from "@cocurdex/mobile/internal/issues/issue-filters";
 import type { IssueRecord } from "@cocurdex/shared";
@@ -16,6 +15,7 @@ function issue(extra: Partial<IssueRecord>): IssueRecord {
     priority: "none",
     workspaceId: "shop",
     labelIds: [],
+    sessionIds: [],
     ...extra,
   } as IssueRecord;
 }
@@ -44,19 +44,6 @@ describe("issueMatchesFilters", () => {
     ).toBe(false);
   });
 
-  it("matches issues without a workspace through the none value", () => {
-    const filters = {
-      ...EMPTY_ISSUE_FILTERS,
-      workspaceIds: [NO_WORKSPACE_FILTER],
-    };
-    expect(issueMatchesFilters(issue({ workspaceId: null }), filters)).toBe(
-      true,
-    );
-    expect(issueMatchesFilters(issue({ workspaceId: "shop" }), filters)).toBe(
-      false,
-    );
-  });
-
   it("matches an issue carrying any selected label", () => {
     const filters = { ...EMPTY_ISSUE_FILTERS, labelIds: ["bug"] };
     expect(
@@ -82,14 +69,36 @@ describe("issue filter state", () => {
     ).toEqual({ ...EMPTY_ISSUE_FILTERS, statuses: ["todo"] });
   });
 
-  it("offers a default workspace only for one real workspace", () => {
-    const one = { ...EMPTY_ISSUE_FILTERS, workspaceIds: ["shop"] };
-    expect(singleWorkspaceFilter(one)).toBe("shop");
+  it("moves a single stored workspace or agent filter into the place", () => {
     expect(
-      singleWorkspaceFilter({ ...one, workspaceIds: ["shop", "docs"] }),
-    ).toBeNull();
+      normalizeIssueListState({ statuses: ["todo"], workspaceIds: ["shop"] }),
+    ).toEqual({
+      filters: { ...EMPTY_ISSUE_FILTERS, statuses: ["todo"] },
+      place: { kind: "workspace", workspaceId: "shop" },
+    });
+    expect(normalizeIssueListState({ agent: ["needsYou"] }).place).toEqual({
+      kind: "agent",
+      activity: "needsYou",
+    });
     expect(
-      singleWorkspaceFilter({ ...one, workspaceIds: [NO_WORKSPACE_FILTER] }),
-    ).toBeNull();
+      normalizeIssueListState({ workspaceIds: ["shop", "docs"] }).place,
+    ).toEqual({ kind: "all" });
+    expect(normalizeIssueListState({ workspaceIds: ["none"] }).place).toEqual({
+      kind: "all",
+    });
+  });
+
+  it("reads the current shape and drops unknown places", () => {
+    const stored = {
+      filters: { labelIds: ["bug"] },
+      place: { kind: "workspace", workspaceId: "shop" },
+    };
+    expect(normalizeIssueListState(stored)).toEqual({
+      filters: { ...EMPTY_ISSUE_FILTERS, labelIds: ["bug"] },
+      place: { kind: "workspace", workspaceId: "shop" },
+    });
+    expect(
+      normalizeIssueListState({ ...stored, place: { kind: "agent" } }).place,
+    ).toEqual({ kind: "all" });
   });
 });

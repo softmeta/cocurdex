@@ -41,6 +41,7 @@ export * from "./git";
 export * from "./git-worktree";
 export * from "./host-access";
 export * from "./inbox";
+export * from "./issue-agent-activity";
 export * from "./issues";
 export * from "./locales";
 export * from "./logging";

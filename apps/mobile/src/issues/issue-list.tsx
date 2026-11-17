@@ -1,9 +1,15 @@
-import type { SavedHost } from "@cocurdex/client-runtime";
+import {
+  ALL_ISSUE_PLACE,
+  isSameIssuePlace,
+  matchesIssuePlace,
+  type SavedHost,
+} from "@cocurdex/client-runtime";
 import type { IssueStatusCategory } from "@cocurdex/shared";
 import { useRouter } from "expo-router";
-import { type ReactElement, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SectionList, StyleSheet } from "react-native";
+import { useHostSessions } from "@/sessions";
 import {
   ListNotice,
   ListSectionHeader,
@@ -13,8 +19,19 @@ import {
   useTabBarInset,
 } from "@/ui";
 import { useIssueActions } from "./issue-actions";
-import { setIssueFilters, useIssueFilters } from "./issue-filter-store";
-import { activeIssueFilterCount, EMPTY_ISSUE_FILTERS } from "./issue-filters";
+import { useIssueActivityLookup } from "./issue-agent-activity";
+import {
+  setIssueFilters,
+  setIssuePlace,
+  useIssueFilters,
+  useIssuePlace,
+} from "./issue-filter-store";
+import {
+  activeIssueFilterCount,
+  EMPTY_ISSUE_FILTERS,
+  issueMatchesFilters,
+} from "./issue-filters";
+import { IssuePlaceTabs } from "./issue-place-tabs";
 import { useIssueView } from "./issue-queries";
 import { IssueRowView } from "./issue-row";
 import { issueSections } from "./issue-sections";
@@ -24,15 +41,7 @@ const COLLAPSED_BY_DEFAULT: ReadonlySet<IssueStatusCategory | null> = new Set([
   "canceled",
 ]);
 
-export function IssueList({
-  host,
-  query,
-  header,
-}: {
-  host: SavedHost;
-  query: string;
-  header?: ReactElement;
-}) {
+export function IssueList({ host, query }: { host: SavedHost; query: string }) {
   const scrollIndicator = useScrollIndicatorWhileScrolling();
   const tabBarInset = useTabBarInset();
   const { t } = useTranslation("issues");
@@ -42,28 +51,37 @@ export function IssueList({
   const pull = usePullToRefresh(() => view.mutate());
   const issueActions = useIssueActions(host);
   const filters = useIssueFilters(host.hostId);
+  const storedPlace = useIssuePlace(host.hostId);
+  const { workspaces } = useHostSessions(host.hostId);
+  const activityOf = useIssueActivityLookup(host.hostId);
   const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
   const searching = query.trim() !== "";
+  const place = searching ? ALL_ISSUE_PLACE : storedPlace;
   const sections = useMemo(
     () =>
       data
-        ? issueSections(data.issues, data.statusOptions, filters, query).map(
-            (section) => {
-              const collapsed =
-                !searching &&
-                COLLAPSED_BY_DEFAULT.has(section.status.category) !==
-                  toggled.has(section.status.id);
-              return {
-                key: section.status.id,
-                status: section.status,
-                issues: section.issues,
-                collapsed,
-                data: collapsed ? [] : section.issues,
-              };
-            },
-          )
+        ? issueSections(
+            data.issues,
+            data.statusOptions,
+            filters,
+            place,
+            query,
+            activityOf,
+          ).map((section) => {
+            const collapsed =
+              !searching &&
+              COLLAPSED_BY_DEFAULT.has(section.status.category) !==
+                toggled.has(section.status.id);
+            return {
+              key: section.status.id,
+              status: section.status,
+              issues: section.issues,
+              collapsed,
+              data: collapsed ? [] : section.issues,
+            };
+          })
         : [],
-    [data, filters, query, searching, toggled],
+    [data, filters, place, query, searching, toggled, activityOf],
   );
   const toggle = (statusId: string) =>
     setToggled((current) => {
@@ -99,6 +117,22 @@ export function IssueList({
         />
       );
     }
+    const placed =
+      data?.issues.some((issue) =>
+        matchesIssuePlace(issue, place, activityOf),
+      ) ?? false;
+    if (!placed && !isSameIssuePlace(place, ALL_ISSUE_PLACE)) {
+      return (
+        <ListNotice
+          icon={{ ios: "checklist", android: "checklist" }}
+          title={t("place.empty")}
+          action={{
+            label: t("place.showAll"),
+            onPress: () => setIssuePlace(host.hostId, ALL_ISSUE_PLACE),
+          }}
+        />
+      );
+    }
     if (activeIssueFilterCount(filters) > 0) {
       return (
         <ListNotice
@@ -125,6 +159,18 @@ export function IssueList({
 
   return (
     <>
+      {searching || data.issues.length === 0 ? null : (
+        <IssuePlaceTabs
+          issues={data.issues}
+          filtered={data.issues.filter((issue) =>
+            issueMatchesFilters(issue, filters),
+          )}
+          workspaces={workspaces}
+          place={place}
+          activityOf={activityOf}
+          onSelect={(next) => setIssuePlace(host.hostId, next)}
+        />
+      )}
       <SectionList
         {...scrollIndicator}
         contentContainerStyle={{ paddingBottom: tabBarInset }}
@@ -135,7 +181,6 @@ export function IssueList({
         sections={sections}
         keyExtractor={(issue) => issue.id}
         stickySectionHeadersEnabled={false}
-        ListHeaderComponent={header}
         refreshing={pull.refreshing}
         onRefresh={pull.onRefresh}
         ListEmptyComponent={emptyNotice()}

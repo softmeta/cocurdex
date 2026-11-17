@@ -9,10 +9,10 @@ import {
   useScopeGate,
 } from "@/hosts";
 import {
-  IssueFilterChips,
+  activeIssueFilterCount,
   IssueList,
-  singleWorkspaceFilter,
   useIssueFilters,
+  useIssuePlace,
 } from "@/issues";
 import { ListScreenHeader } from "@/ui";
 
@@ -37,8 +37,9 @@ function HostIssues({ host }: { host: SavedHost }) {
   const gate = useScopeGate(host);
   const [query, setQuery] = useState("");
   const filters = useIssueFilters(host.hostId);
-  const workspaceId = singleWorkspaceFilter(filters);
-  const filtered = Object.values(filters).some((values) => values.length > 0);
+  const place = useIssuePlace(host.hostId);
+  const workspaceId = place.kind === "workspace" ? place.workspaceId : null;
+  const filterCount = activeIssueFilterCount(filters);
 
   return (
     <>
@@ -49,13 +50,14 @@ function HostIssues({ host }: { host: SavedHost }) {
           {
             key: "filter",
             icon: {
-              ios: filtered
-                ? "line.3.horizontal.decrease.circle.fill"
-                : "line.3.horizontal.decrease.circle",
+              ios:
+                filterCount > 0
+                  ? "line.3.horizontal.decrease.circle.fill"
+                  : "line.3.horizontal.decrease.circle",
               android: "filter_list",
             },
             label: t("filter.title"),
-            badge: filtered,
+            badge: filterCount,
             onPress: () => router.push("/issue-filters"),
           },
           {
@@ -73,11 +75,7 @@ function HostIssues({ host }: { host: SavedHost }) {
           },
         ]}
       />
-      <IssueList
-        host={host}
-        query={query}
-        header={<IssueFilterChips host={host} />}
-      />
+      <IssueList host={host} query={query} />
     </>
   );
 }

@@ -779,6 +779,7 @@ export interface HostApi {
   consumePendingOpenFolder(): Promise<{ rootPath: string } | null>;
   consumeEntityOpenRequest(): Promise<EntityRef | null>;
   onEntityOpenRequested(listener: () => void): () => void;
+  onFindRequested(listener: () => void): () => void;
   getPathForFile(file: File): string | null;
   onOpenWorkspaceFromCli(
     listener: (event: { rootPath: string }) => void,

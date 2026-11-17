@@ -6,8 +6,10 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib";
 import { buildMarkdownBodyExtensions } from "./extensions";
+import { MarkdownFindBar } from "./markdown-find-bar";
 import { TableControls } from "./table/table-controls";
 import "./markdown-body-editor.css";
 
@@ -21,6 +23,7 @@ interface MarkdownBodyEditorProps {
   placeholder: string;
   className?: string;
   editorClassName?: string;
+  findHost?: HTMLElement | null;
   onChange?: () => void;
 }
 
@@ -38,7 +41,14 @@ export const MarkdownBodyEditor = forwardRef<
   MarkdownBodyEditorHandle,
   MarkdownBodyEditorProps
 >(function MarkdownBodyEditor(
-  { initialMarkdown, placeholder, className, editorClassName, onChange },
+  {
+    initialMarkdown,
+    placeholder,
+    className,
+    editorClassName,
+    findHost,
+    onChange,
+  },
   ref,
 ): ReactNode {
   const [content] = useState(() => initialMarkdown);
@@ -76,6 +86,15 @@ export const MarkdownBodyEditor = forwardRef<
     <div className="relative">
       <EditorContent editor={editor} className={className} />
       {editor ? <TableControls editor={editor} /> : null}
+      {editor && findHost
+        ? createPortal(
+            <MarkdownFindBar
+              editor={editor}
+              scopeRef={{ current: findHost }}
+            />,
+            findHost,
+          )
+        : null}
     </div>
   );
 });

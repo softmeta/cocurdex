@@ -79,8 +79,8 @@ async function readRequests(session) {
 async function pdfLabels(session, fileName) {
   const keys = {
     goToPage: "editor:pdf.goToPage",
-    search: "editor:pdf.search",
-    searchClose: "editor:pdf.searchClose",
+    search: "common:find.placeholder",
+    searchClose: "common:find.close",
     toggleSearch: "editor:pdf.toggleSearch",
     toggleThumbnails: "editor:pdf.toggleThumbnails",
   };

@@ -37,8 +37,6 @@
     "clear": "清除筛选",
     "close": "关闭",
     "empty": "没有符合筛选的事项",
-    "noWorkspace": "未归属工作区",
-    "remove": "移除筛选：{{label}}",
     "title": "筛选"
   },
   "labels": {
@@ -46,6 +44,13 @@
   },
   "missing": "这个事项已在电脑上删除。",
   "noResults": "没有与“{{query}}”匹配的事项",
+  "place": {
+    "agentWorking": "Agent 在做",
+    "all": "全部",
+    "empty": "这里还没有事项",
+    "needsYou": "需要你",
+    "showAll": "查看全部"
+  },
   "search": "搜索事项",
   "sessions": "Agent 会话",
   "showFewerSubIssues": "收起",

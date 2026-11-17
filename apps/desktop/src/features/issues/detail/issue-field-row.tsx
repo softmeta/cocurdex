@@ -7,9 +7,16 @@ import type {
 } from "@cocurdex/shared";
 import { Flag, FolderKanban } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Text } from "@/components/ui";
+import { cn } from "@/lib";
 import { IssueStatusIcon } from "../issue-status-icon";
 import type { IssueFieldValues } from "./issue-dialog-types";
-import { FieldMenu, LabelsChip, ParentChip } from "./issue-field-chips";
+import {
+  FieldMenu,
+  type IssueFieldLayout,
+  LabelsChip,
+  ParentChip,
+} from "./issue-field-chips";
 
 export type IssueChipValues = Pick<
   IssueFieldValues,
@@ -31,6 +38,7 @@ export function IssueFieldRow({
   options,
   onChange,
   onCreateLabel,
+  layout = "chips",
 }: {
   issueId: string | null;
   knownParent: IssueSummary | null;
@@ -38,6 +46,7 @@ export function IssueFieldRow({
   options: IssueFieldOptions;
   onChange: (changes: Partial<IssueChipValues>) => void;
   onCreateLabel: (name: string) => Promise<IssueLabel | null>;
+  layout?: IssueFieldLayout;
 }) {
   const { t } = useTranslation("issues");
   const { statusOptions, priorityOptions, workspaces } = options;
@@ -60,8 +69,24 @@ export function IssueFieldRow({
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 px-5 py-3">
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-1.5 px-5 py-3",
+        layout === "adaptive" &&
+          "@4xl/issue:col-start-2 @4xl/issue:row-span-2 @4xl/issue:row-start-1 @4xl/issue:flex-col @4xl/issue:items-stretch @4xl/issue:gap-0.5 @4xl/issue:self-start @4xl/issue:px-0 @4xl/issue:pt-9",
+      )}
+    >
+      {layout === "adaptive" ? (
+        <Text
+          size="meta"
+          tone="muted"
+          className="hidden px-2 pb-1 @4xl/issue:block"
+        >
+          {t("detail.properties")}
+        </Text>
+      ) : null}
       <FieldMenu
+        layout={layout}
         icon={
           <IssueStatusIcon
             statusId={values.status}
@@ -75,6 +100,7 @@ export function IssueFieldRow({
         ariaLabel={t("dialog.status")}
       />
       <FieldMenu
+        layout={layout}
         icon={<Flag className="size-3.5" />}
         label={priorityLabel}
         options={priorityOptions}
@@ -83,6 +109,7 @@ export function IssueFieldRow({
         ariaLabel={t("dialog.priority")}
       />
       <FieldMenu
+        layout={layout}
         icon={<FolderKanban className="size-3.5" />}
         label={workspaceLabel}
         options={workspaceOptions}
@@ -91,12 +118,14 @@ export function IssueFieldRow({
         ariaLabel={t("dialog.workspace")}
       />
       <LabelsChip
+        layout={layout}
         labels={options.labels}
         value={values.labelIds}
         onChange={(labelIds) => onChange({ labelIds })}
         onCreateLabel={onCreateLabel}
       />
       <ParentChip
+        layout={layout}
         issueId={issueId}
         issues={options.issues}
         knownParent={knownParent}

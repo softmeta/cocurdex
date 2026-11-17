@@ -11,9 +11,11 @@ import { useTranslation } from "react-i18next";
 import {
   buildMarkdownBodyExtensions,
   focusParagraphAtStart,
+  MarkdownFindBar,
   TableControls,
 } from "@/components/markdown-body-editor";
 import "@/components/markdown-body-editor/markdown-body-editor.css";
+import { FindInDocumentButton } from "@/app/layout/find-in-document-button";
 import {
   DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX,
   DocumentOutlineMenu,
@@ -83,11 +85,7 @@ export function NoteEditor() {
   if (activeNote && activeNote.kind === "folder") {
     return <FolderPlaceholder key={activeNote.id} note={activeNote} />;
   }
-  if (
-    !activeNote ||
-    activeNote.id !== activeNoteId ||
-    activeNoteDoc?.noteId !== activeNote.id
-  ) {
+  if (!activeNote || activeNoteDoc?.noteId !== activeNote.id) {
     return <div className="flex-1" />;
   }
   return (
@@ -236,6 +234,7 @@ function NoteEditorBody({
                   editor={editor}
                 />
                 <SaveIndicator status={saveStatus} />
+                <FindInDocumentButton className="ms-auto" />
               </div>
               <NoteTimestamps
                 createdAt={note.createdAt}
@@ -260,7 +259,9 @@ function NoteEditorBody({
               <EditorContent editor={editor} className="relative flex-1" />
               {editor ? <TableControls editor={editor} /> : null}
             </div>
-            <RelatedEntities entity={{ kind: "note", id: note.id }} />
+            <div className="border-t border-editor-border/60">
+              <RelatedEntities entity={{ kind: "note", id: note.id }} />
+            </div>
           </div>
         </div>
         {isWide ? (
@@ -270,6 +271,9 @@ function NoteEditorBody({
           />
         ) : null}
       </ScrollArea>
+      {editor ? (
+        <MarkdownFindBar editor={editor} scopeRef={containerRef} />
+      ) : null}
       {isWide ? null : (
         <DocumentOutlineMenu
           activeKey={outline.activeKey}

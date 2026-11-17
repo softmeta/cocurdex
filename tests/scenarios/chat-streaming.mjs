@@ -132,6 +132,25 @@ async function stopPromptRecorder() {
   return record.tops;
 }
 
+async function scrollUpInTranscript(session) {
+  const area = await session.run(() => {
+    const rect = document
+      .querySelector("[data-testid=chat-timeline]")
+      .closest("[data-slot=scroll-area-viewport]")
+      .getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  });
+  for (const deltaY of [-600, 120]) {
+    await session.send("Input.dispatchMouseEvent", {
+      type: "mouseWheel",
+      ...area,
+      deltaX: 0,
+      deltaY,
+    });
+    await session.run(waitForJumpToSettle);
+  }
+}
+
 const createdSessionIds = [];
 
 async function configureScenarioSession(session, payload) {
@@ -343,7 +362,7 @@ runScenario("chat-streaming", {
       },
     ],
     [
-      "stream growth preserves reading position before and after a manual jump",
+      "stream growth follows the latest only while the reader stays at the bottom",
       async ({ session, workspaceId, providerSnapshot }) => {
         const reports = [];
         const jumpLabel = await translate(session, "common:jumpToLatest");
@@ -427,6 +446,35 @@ runScenario("chat-streaming", {
             !hasRespondingLabel,
             "streaming text must not have a redundant responding status line",
           );
+          const following = await session
+            .waitUntil(
+              () => {
+                const end = document.querySelector(
+                  "[data-transcript-content-end]",
+                );
+                const viewport = end?.closest(
+                  "[data-slot=scroll-area-viewport]",
+                );
+                return (
+                  viewport &&
+                  viewport.scrollTop > 0 &&
+                  end.getBoundingClientRect().bottom <=
+                    viewport.getBoundingClientRect().bottom + 2
+                );
+              },
+              null,
+              5_000,
+            )
+            .then(
+              () => true,
+              () => false,
+            );
+          check(
+            following,
+            "a reader at the bottom must follow the stream",
+            await session.run(readingState),
+          );
+          await scrollUpInTranscript(session);
           const before = await session.run(readingState);
           measured.resolve();
           await session.waitUntil(
@@ -535,8 +583,9 @@ runScenario("chat-streaming", {
           );
           const afterJump = await session.run(readingState);
           check(
-            Math.abs(afterJump.top - jumped.top) <= 1,
-            "manual jump rearmed automatic following",
+            afterJump.top > jumped.top &&
+              afterJump.top + afterJump.viewport >= afterJump.height - 2,
+            "a manual jump to the latest must resume following",
             { jumped, afterJump },
           );
           await session.waitUntil(
@@ -554,7 +603,7 @@ runScenario("chat-streaming", {
             const button = [...document.querySelectorAll("button")].find(
               (node) => node.getAttribute("aria-label") === label,
             );
-            return button?.querySelector("[data-stream-indicator]") !== null;
+            return Boolean(button?.querySelector("[data-stream-indicator]"));
           }, jumpLabel);
           check(
             stopped === false,
@@ -586,6 +635,7 @@ runScenario("chat-streaming", {
               (width) => window.innerWidth === width,
               width,
             );
+            await scrollUpInTranscript(session);
             await clickByRole(session, { role: "button", name: jumpLabel });
             await session.run(waitForJumpToSettle);
             const controlsAtLatest = await session.run(
@@ -674,9 +724,9 @@ runScenario("chat-streaming", {
       },
     ],
     [
-      "a prompt sent from the composer keeps its place when the reply finishes",
+      "a prompt sent from the composer flows naturally without reserved space",
       async ({ session, workspaceId, providerSnapshot }) => {
-        const title = "Anchored send";
+        const title = "Natural send";
         const prompt = "how are you today";
         const configured = await configureScenarioSession(session, {
           id: crypto.randomUUID(),
@@ -697,9 +747,29 @@ runScenario("chat-streaming", {
           role: "button",
           name: await translate(session, "common:actions.stop"),
         };
+        const composer = {
+          role: "textbox",
+          name: await translate(
+            session,
+            "sessions:composer.sendFollowUpCompact",
+          ),
+          exact: false,
+        };
+        const sendFromComposer = async (text) => {
+          await clickByRole(session, composer);
+          await session.send("Input.insertText", { text });
+          for (const type of ["keyDown", "keyUp"]) {
+            await session.send("Input.dispatchKeyEvent", {
+              type,
+              key: "Enter",
+              code: "Enter",
+              windowsVirtualKeyCode: 13,
+            });
+          }
+        };
         stub.plan = {
           kind: "script",
-          turns: [{ text: ["Earlier answer. ".repeat(120)] }],
+          turns: [{ text: ["Earlier answer."] }],
         };
         await daemonRequest(session, "session.send", {
           sessionId: configured.id,
@@ -719,24 +789,8 @@ runScenario("chat-streaming", {
           kind: "script",
           turns: [{ text: [reply.promise, "Doing well, thanks."] }],
         };
-        const requests = stub.requests.length;
-        await clickByRole(session, {
-          role: "textbox",
-          name: await translate(
-            session,
-            "sessions:composer.sendFollowUpCompact",
-          ),
-          exact: false,
-        });
-        await session.send("Input.insertText", { text: prompt });
-        for (const type of ["keyDown", "keyUp"]) {
-          await session.send("Input.dispatchKeyEvent", {
-            type,
-            key: "Enter",
-            code: "Enter",
-            windowsVirtualKeyCode: 13,
-          });
-        }
+        let requests = stub.requests.length;
+        await sendFromComposer(prompt);
         while (stub.requests.length <= requests) await stub.nextRequest();
         await session.run(waitForJumpToSettle);
         await session.run(startPromptRecorder, prompt);
@@ -751,10 +805,42 @@ runScenario("chat-streaming", {
         const drift = Math.max(...tops.map((top) => Math.abs(top - tops[0])));
         check(
           tops.length > 10 && drift <= 1,
-          "the sent prompt moved when the reply finished",
+          "the sent prompt moved in a transcript shorter than the viewport",
           { drift, first: tops[0], last: tops.at(-1), frames: tops.length },
         );
-        return { drift, frames: tops.length };
+        const short = await session.run(readingState);
+        check(
+          short.top === 0 && short.height <= short.viewport + 1,
+          "a transcript shorter than the viewport must not scroll",
+          short,
+        );
+
+        stub.plan = {
+          kind: "stream",
+          chunks: Array.from(
+            { length: 60 },
+            (_, index) => `Long reply paragraph ${index + 1}.\n\n`,
+          ),
+          intervalMs: 16,
+        };
+        requests = stub.requests.length;
+        await sendFromComposer("tell me more");
+        while (stub.requests.length <= requests) await stub.nextRequest();
+        await session.waitUntil(
+          () => document.body.textContent.includes("Long reply paragraph 60."),
+          null,
+          30_000,
+        );
+        await waitForNoRole(session, stop, 30_000);
+        await session.run(waitForJumpToSettle);
+        const long = await session.run(readingState);
+        check(
+          long.height > long.viewport * 1.5 &&
+            long.top + long.viewport >= long.height - 2,
+          "a reply sent from the bottom must stay followed to its end",
+          long,
+        );
+        return { drift, frames: tops.length, short, long };
       },
     ],
     [

@@ -12,6 +12,7 @@ export {
   AppDropdownRadioList,
   type AppDropdownRadioSection,
 } from "./dropdown-radio";
+export { requestFind, useFindRequest, useFindTrigger } from "./find-request";
 export { AppGitBranchLabel } from "./git-branch-label";
 export { AppInlineRenameInput } from "./inline-rename-input";
 export { AppPanelTab } from "./panel-tab";

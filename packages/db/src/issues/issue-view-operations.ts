@@ -85,6 +85,15 @@ function syncCompletedAt(
     .run(statusId);
 }
 
+function nextPinnedAt(
+  current: string | null,
+  pinned: boolean | undefined,
+  now: string,
+): string | null {
+  if (pinned === undefined) return current;
+  return pinned ? (current ?? now) : null;
+}
+
 export function createIssueViewOperations(
   database: DatabaseSync,
 ): IssueViewOperations {
@@ -115,11 +124,12 @@ export function createIssueViewOperations(
         payload.expectedRevision,
         new IssueViewConflictError(),
       );
+      const now = new Date().toISOString();
       const result = database
         .prepare(
           `UPDATE issue_views
            SET title = ?, icon = ?, group_by = ?, layout = ?,
-               filters_json = ?, display_json = ?,
+               filters_json = ?, display_json = ?, pinned_at = ?,
                revision = revision + 1, updated_at = ?
            WHERE id = ? AND revision = ?`,
         )
@@ -134,7 +144,8 @@ export function createIssueViewOperations(
           payload.display !== undefined
             ? JSON.stringify(normalizeViewDisplay(payload.display))
             : current.display_json,
-          new Date().toISOString(),
+          nextPinnedAt(current.pinned_at, payload.pinned, now),
+          now,
           current.id,
           current.revision,
         );

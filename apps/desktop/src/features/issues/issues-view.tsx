@@ -2,6 +2,7 @@ import {
   DEFAULT_VIEW_ID,
   type IssueRecord,
   isIssueColumnField,
+  UNGROUPED_COLUMN_ID,
   type ViewDisplay,
   type ViewFilter,
   type ViewFull,
@@ -61,7 +62,8 @@ import { IssuesList } from "./list";
 import {
   DeleteViewDialog,
   IssuesSidebar,
-  presetScopeFilters,
+  navScopeFilters,
+  pinnedViewTabs,
   useIssueNav,
   useIssueNavScopeLabel,
   useIssueNavTitle,
@@ -209,7 +211,8 @@ export function IssuesView() {
   const nav = useIssueNav({ board: loadedBoard });
   const viewBoard = nav.scopedBoard;
   const customViews = boards.filter((view) => view.id !== DEFAULT_VIEW_ID);
-  const viewTitle = useIssueNavTitle(nav.selection, boards);
+  const pinnedViews = pinnedViewTabs(customViews);
+  const viewTitle = useIssueNavTitle(nav.selection, boards, workspaces);
 
   const handleGroupBy = useCallback(
     (next: ViewGroupBy) => {
@@ -244,13 +247,10 @@ export function IssuesView() {
     [layout, updateView],
   );
 
-  const scopeLabel = useIssueNavScopeLabel(nav.selection);
+  const scopeLabel = useIssueNavScopeLabel(nav.selection, viewTitle);
 
   const handleSaveView = async (title: string) => {
-    const scope =
-      nav.selection.kind === "issues"
-        ? presetScopeFilters(nav.selection.preset)
-        : [];
+    const scope = navScopeFilters(nav.selection);
     const created = await saveFiltersAsView({
       title,
       filters: mergeFilters(viewFilters, scope),
@@ -302,16 +302,22 @@ export function IssuesView() {
               closeIssueDetail();
               nav.select(selection);
             }}
+            issues={loadedBoard?.issues ?? []}
+            workspaces={workspaces}
+            activityOf={nav.activityOf}
             views={customViews}
             onDeleteView={setPendingDeleteBoardId}
             onRenameView={(title) => {
               void updateView({ title });
             }}
+            onTogglePin={(pinned) => {
+              void updateView({ pinned });
+            }}
             onCollapse={() => setSidebarCollapsed(true)}
           />
         </ResizableSidebar>
       )}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-editor-canvas/80">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
         {issueDetail && viewBoard && fieldOptions ? (
           <IssueDetailPage
             state={issueDetail}
@@ -332,6 +338,7 @@ export function IssuesView() {
           {boards.length > 0 || sidebarCollapsed ? (
             <IssuesToolbar
               selection={nav.selection}
+              pinnedViews={pinnedViews}
               viewTitle={viewTitle}
               scopeLabel={scopeLabel}
               leading={sidebarToggle}
@@ -351,6 +358,9 @@ export function IssuesView() {
               onSaveView={(title) => {
                 void handleSaveView(title);
               }}
+              onNewIssue={
+                viewBoard ? () => handleAddCard(UNGROUPED_COLUMN_ID) : null
+              }
             />
           ) : null}
           {viewBoard ? (

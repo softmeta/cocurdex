@@ -287,6 +287,71 @@ describe("cocurdex CLI against a running daemon", () => {
     ).toContain(issue.id);
   });
 
+  it("lists issues by workspace and pins a view as a tab", async () => {
+    const options = { userDataPath: daemon.userDataPath };
+    const rootPath = tempDirs.createSync("cli-issue-scope-");
+    const now = new Date().toISOString();
+    await requestDaemon(
+      "workspace.save",
+      {
+        workspace: {
+          id: "scope-ws",
+          name: "Scope",
+          rootPaths: [rootPath],
+          createdAt: now,
+          updatedAt: now,
+          lastOpenedAt: now,
+          sortOrder: 0,
+        },
+      },
+      daemon.options,
+    );
+    const create = async (args: string[]) => {
+      const result = await runCli(
+        ["issue", "create", ...args, "--json"],
+        options,
+      );
+      expect(result.code).toBe(0);
+      return (JSON.parse(result.stdout) as { id: string }).id;
+    };
+    const scoped = await create([
+      "--title",
+      "Scoped",
+      "--workspace",
+      "scope-ws",
+    ]);
+    const loose = await create(["--title", "Loose"]);
+
+    const listed = await runCli(
+      ["issue", "list", "--workspace", rootPath, "--json"],
+      options,
+    );
+    expect(listed.code).toBe(0);
+    const ids = (JSON.parse(listed.stdout) as { id: string }[]).map(
+      (entry) => entry.id,
+    );
+    expect(ids).toContain(scoped);
+    expect(ids).not.toContain(loose);
+
+    const rejected = await runCli(
+      ["issue", "list", "--agent", "sleeping", "--json"],
+      options,
+    );
+    expect(rejected.code).not.toBe(0);
+
+    const pin = async (value: string) => {
+      const result = await runCli(
+        ["issue", "view", "update", "project", "--pinned", value, "--json"],
+        options,
+      );
+      expect(result.code).toBe(0);
+      return (JSON.parse(result.stdout) as { pinnedAt: string | null })
+        .pinnedAt;
+    };
+    expect(await pin("true")).toEqual(expect.any(String));
+    expect(await pin("false")).toBeNull();
+  });
+
   it("reads issue bodies from a file or stdin and rejects unknown flags", async () => {
     const options = { userDataPath: daemon.userDataPath };
     const bodyFile = path.join(await tempDirs.create("issue-body-"), "body.md");

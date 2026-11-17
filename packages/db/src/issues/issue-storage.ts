@@ -52,6 +52,7 @@ export interface ViewRow extends SqliteRow {
   layout: ViewLayout;
   filters_json: string;
   display_json: string | null;
+  pinned_at: string | null;
   revision: number;
   created_at: string;
   updated_at: string;
@@ -90,6 +91,7 @@ export function mapViewSummary(row: ViewRow): ViewSummary {
     display: normalizeViewDisplay(
       row.display_json ? JSON.parse(row.display_json) : null,
     ),
+    pinnedAt: row.pinned_at,
     revision: row.revision,
   };
 }

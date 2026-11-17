@@ -5,17 +5,26 @@ import type {
   ViewFilter,
   ViewGroupBy,
   ViewLayout,
+  ViewSummary,
   WorkspaceRecord,
 } from "@cocurdex/shared";
+import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { PanelToolbar } from "@/app/layout/panel-toolbar";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { Text } from "@/components/ui";
 import { cn } from "@/lib";
 import { ViewDisplayMenu, ViewFilterBar, ViewFilterMenu } from "./board";
-import { type IssueNavSelection, IssueScopeTabs } from "./sidebar";
+import {
+  canSaveNavScope,
+  type IssueNavSelection,
+  IssueScopeTabs,
+} from "./sidebar";
 
 export function IssuesToolbar({
   selection,
+  pinnedViews,
   viewTitle,
   scopeLabel,
   leading,
@@ -33,9 +42,11 @@ export function IssuesToolbar({
   display,
   onDisplayChange,
   onSaveView,
+  onNewIssue,
 }: {
   selection: IssueNavSelection;
-  viewTitle: string | null;
+  pinnedViews: readonly ViewSummary[];
+  viewTitle: string;
   scopeLabel: string | null;
   leading: ReactNode;
   showViewControls: boolean;
@@ -52,28 +63,40 @@ export function IssuesToolbar({
   display: ViewDisplay | undefined;
   onDisplayChange: (display: ViewDisplay) => void;
   onSaveView: (title: string) => void;
+  onNewIssue: (() => void) | null;
 }) {
+  const { t } = useTranslation("issues");
   return (
     <>
-      <PanelToolbar
-        className="gap-1"
-        data-testid="issues-view-display-bar"
-        divided={false}
-      >
+      <PanelToolbar className="gap-1" divided={false}>
         {leading}
-        <div
-          className={cn(
-            "scrollbar-hide me-auto flex min-w-0 items-center gap-2 overflow-x-auto",
-            leading && "ps-0.5",
-            !leading && "ps-1",
-          )}
+        <Text
+          size="body"
+          weight="medium"
+          truncate
+          className={cn("me-auto", leading && "ps-0.5", !leading && "ps-1")}
         >
-          <IssueScopeTabs selection={selection} onSelect={onSelect} />
-          {viewTitle ? (
-            <Text size="body" weight="medium" className="shrink-0">
-              {viewTitle}
-            </Text>
-          ) : null}
+          {viewTitle}
+        </Text>
+        {onNewIssue ? (
+          <TitlebarIconButton
+            aria-label={t("dialog.newIssue")}
+            onClick={onNewIssue}
+          >
+            <Plus className="size-3.5" />
+          </TitlebarIconButton>
+        ) : null}
+      </PanelToolbar>
+      <div
+        className="flex h-8 shrink-0 items-center gap-1 ps-5 pe-3 py-2 box-content"
+        data-testid="issues-view-display-bar"
+      >
+        <div className="scrollbar-hide me-auto flex min-w-0 items-center overflow-x-auto">
+          <IssueScopeTabs
+            selection={selection}
+            pinnedViews={pinnedViews}
+            onSelect={onSelect}
+          />
         </div>
         {showViewControls ? (
           <>
@@ -94,7 +117,7 @@ export function IssuesToolbar({
             />
           </>
         ) : null}
-      </PanelToolbar>
+      </div>
       {showViewControls ? (
         <ViewFilterBar
           filters={filters}
@@ -102,7 +125,7 @@ export function IssuesToolbar({
           labels={labels}
           statuses={statuses}
           scopeLabel={scopeLabel}
-          canSave={selection.kind === "issues"}
+          canSave={canSaveNavScope(selection)}
           onFiltersChange={onFiltersChange}
           onSave={onSaveView}
         />

@@ -52,7 +52,6 @@ import { useChatScrollState } from "./use-chat-scroll-state";
 import { useChatViewPerfMarkers } from "./use-chat-view-perf-markers";
 import { useOlderTranscriptLoader } from "./use-older-transcript";
 import { useResponseStall } from "./use-response-stall";
-import { useSentPromptAnchor } from "./use-sent-prompt-anchor";
 import {
   type ChatTimelineScrollHandle,
   ChatVirtualTimeline,
@@ -287,11 +286,6 @@ export function ChatView({
       return timelineScrollRef.current.restorePosition(position);
     },
   );
-  const { anchoredPromptId, anchorNextPrompt } = useSentPromptAnchor({
-    awaitingReplyOnMount: isRunning && latestMessage?.role === "user",
-    latestPromptId: stickyUserMessages.at(-1)?.id ?? null,
-    scrollToUserMessage,
-  });
   const stableOnSend = useCallback(
     (
       message: string,
@@ -304,10 +298,9 @@ export function ChatView({
         useOppositeFollowUpBehavior,
       );
       scrollToLatest();
-      anchorNextPrompt();
       return "sent";
     },
-    [anchorNextPrompt, scrollToLatest],
+    [scrollToLatest],
   );
   const activeUserNavigationMessageId =
     activeUserMessageId ?? stickyUserMessages.at(-1)?.id ?? null;
@@ -444,7 +437,6 @@ export function ChatView({
                       <>
                         <ChatVirtualTimeline
                           activity={activity}
-                          anchoredPromptId={anchoredPromptId}
                           groups={conversationGroups}
                           isRunning={isRunning}
                           latestMessageId={latestMessage?.id ?? null}

@@ -37,6 +37,7 @@ const summary: ViewSummary = {
   layout: "board",
   filters: [],
   display: DEFAULT_VIEW_DISPLAY,
+  pinnedAt: null,
   revision: 1,
 };
 const full: ViewFull = {

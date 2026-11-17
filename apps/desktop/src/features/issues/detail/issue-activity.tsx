@@ -3,10 +3,17 @@ import type {
   IssueEvent,
   IssueFieldChange,
 } from "@cocurdex/shared";
+import { ArrowUp, Bot, SquareTerminal, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Text, Textarea } from "@/components/ui";
-import { i18n } from "@/i18n";
+import {
+  IconButton,
+  Text,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui";
+import { useActivityTimeLabel } from "@/lib/relative-time";
 
 interface FieldOptions {
   statusOptions: ReadonlyArray<{ id: string; title: string }>;
@@ -24,6 +31,38 @@ function useActorLabel() {
     }
     return t("activity.actor.user");
   };
+}
+
+function EventTime({ timestamp }: { timestamp: string }) {
+  const time = useActivityTimeLabel(timestamp);
+  if (!time) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Text
+          size="meta"
+          tone="muted"
+          className="ms-auto shrink-0 tabular-nums"
+        >
+          {time.relative}
+        </Text>
+      </TooltipTrigger>
+      <TooltipContent>{time.absolute}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function ActorIcon({ actor }: { actor: IssueActor }) {
+  const Icon = {
+    cli: SquareTerminal,
+    session: Bot,
+    user: UserRound,
+  }[actor.kind];
+  return (
+    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-settings-surface text-editor-fg-muted">
+      <Icon className="size-3" aria-hidden />
+    </span>
+  );
 }
 
 function optionTitle(
@@ -101,10 +140,6 @@ export function IssueActivity({
   const eventText = useEventText({ statusOptions, priorityOptions });
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const dateFormat = new Intl.DateTimeFormat(i18n.language, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 
   const submit = async () => {
     const body = draft.trim();
@@ -120,14 +155,15 @@ export function IssueActivity({
   };
 
   return (
-    <section className="flex flex-col gap-2 border-t border-editor-border/60 px-5 py-2.5">
-      <Text size="meta" weight="medium" className="text-editor-fg-muted">
+    <section className="flex flex-col gap-3 px-5 pt-10">
+      <Text size="body" weight="medium" className="text-editor-fg">
         {t("activity.title")}
       </Text>
-      <ol className="flex flex-col gap-2">
+      <ol className="flex flex-col gap-3">
         {events.map((event) => (
-          <li key={event.id} className="flex flex-col gap-0.5">
-            <div className="flex min-w-0 items-baseline gap-1.5">
+          <li key={event.id} className="flex flex-col gap-1">
+            <div className="flex h-5 min-w-0 items-center gap-2">
+              <ActorIcon actor={event.actor} />
               <Text
                 size="meta"
                 weight="medium"
@@ -140,23 +176,21 @@ export function IssueActivity({
                   ? t("activity.commented")
                   : eventText(event)}
               </Text>
-              <Text
-                size="meta"
-                className="ms-auto shrink-0 text-editor-fg-subtle"
-              >
-                {dateFormat.format(new Date(event.createdAt))}
-              </Text>
+              <EventTime timestamp={event.createdAt} />
             </div>
             {event.body ? (
-              <Text size="body" className="whitespace-pre-wrap text-editor-fg">
+              <Text
+                size="body"
+                className="ms-7 whitespace-pre-wrap rounded-card bg-settings-surface px-3 py-2 text-editor-fg"
+              >
                 {event.body}
               </Text>
             ) : null}
           </li>
         ))}
       </ol>
-      <div className="flex flex-col gap-1.5">
-        <Textarea
+      <div className="flex flex-col rounded-card bg-settings-surface">
+        <textarea
           value={draft}
           rows={2}
           placeholder={t("activity.commentPlaceholder")}
@@ -169,18 +203,19 @@ export function IssueActivity({
               void submit();
             }
           }}
+          className="field-sizing-content max-h-60 min-h-16 resize-none bg-transparent px-3 pt-3 text-body text-editor-fg outline-none placeholder:text-editor-fg-subtle"
         />
-        <div className="flex justify-end">
-          <Button
+        <div className="flex justify-end px-2 pb-2">
+          <IconButton
             size="sm"
-            variant="secondary"
+            aria-label={t("activity.comment")}
             disabled={!draft.trim() || sending}
             onClick={() => {
               void submit();
             }}
           >
-            {t("activity.comment")}
-          </Button>
+            <ArrowUp className="size-4" />
+          </IconButton>
         </div>
       </div>
     </section>

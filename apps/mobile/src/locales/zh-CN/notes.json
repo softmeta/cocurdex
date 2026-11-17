@@ -9,6 +9,7 @@
     "subpage": "新建子页面",
     "title": "操作"
   },
+  "allWorkspaces": "全部",
   "create": {
     "failed": "无法创建笔记，请检查连接后重试。",
     "open": "新建笔记"

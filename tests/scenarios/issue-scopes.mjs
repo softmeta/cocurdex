@@ -51,6 +51,33 @@ async function hoverMenuItem(session, name) {
   }
 }
 
+async function clickNavRow(session, label) {
+  const navName = await translate(session, "issues:sidebar.nav.title");
+  const findRow = ({ navName, label }) => {
+    const row = [
+      ...document.querySelectorAll(`nav[aria-label="${navName}"] button`),
+    ].find((button) => button.textContent.trim().startsWith(label));
+    if (!row) return false;
+    const rect = row.getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  };
+  await session.waitUntil(findRow, { navName, label }, UI_TIMEOUT_MS);
+  await clickPoint(session, await session.run(findRow, { navName, label }));
+}
+
+async function waitForCardIds(session, expected) {
+  const want = [...expected].sort().join("|");
+  await session.waitUntil(
+    (want) =>
+      [...document.querySelectorAll("[data-issue-id]")]
+        .map((card) => card.dataset.issueId)
+        .sort()
+        .join("|") === want,
+    want,
+    UI_TIMEOUT_MS,
+  );
+}
+
 async function openedIssueId(session) {
   return session.run(
     () => document.querySelector("article[data-issue-id]")?.dataset.issueId,
@@ -69,6 +96,7 @@ runScenario("issue-scopes", {
       (column) => column.field === "status",
     );
     const viewsBefore = await daemonRequest(session, "issue.listViews");
+    const workspaces = await daemonRequest(session, "workspace.list");
     await showPanelView(session, "issues");
     await waitForRole(
       session,
@@ -82,16 +110,18 @@ runScenario("issue-scopes", {
       sourceViewId: board.view.id,
       statusColumns,
       usedStatuses: new Set(board.issues.map((issue) => issue.status)),
+      issues: board.issues,
+      workspaces,
       viewsBefore,
     };
   },
   steps: [
     [
-      "the scope tabs hold every quick filter and the sidebar lists only views",
+      "the scope tabs hold the status filters and the sidebar holds places",
       async ({ session }) => {
         const tabs = await queryAllByRole(session, { role: "tab" });
         const names = await Promise.all(
-          ["all", "active", "backlog"].map((key) =>
+          ["anyStatus", "active", "backlog"].map((key) =>
             translate(session, `issues:sidebar.nav.${key}`),
           ),
         );
@@ -100,17 +130,52 @@ runScenario("issue-scopes", {
           "scope tabs missing",
           { tabs, names },
         );
-        const sidebarRows = await Promise.all(
-          [names[0], names[1]].map((name) =>
-            queryAllByRole(session, { role: "button", name }),
+        const places = await Promise.all(
+          ["nav.all", "agent.working", "agent.needsYou"].map((key) =>
+            translate(session, `issues:sidebar.${key}`),
           ),
         );
-        check(
-          sidebarRows.every((rows) => rows.length === 0),
-          "sidebar still lists a quick filter",
-          { sidebarRows },
+        const navName = await translate(session, "issues:sidebar.nav.title");
+        const rows = await session.run(
+          (navName) =>
+            [
+              ...document.querySelectorAll(
+                `nav[aria-label="${navName}"] button`,
+              ),
+            ].map((button) => button.textContent.trim()),
+          navName,
         );
-        return { tabs: tabs.map((tab) => tab.name) };
+        check(
+          places.every((place) => rows.some((row) => row.startsWith(place))),
+          "sidebar misses a place",
+          { rows, places },
+        );
+        return { tabs: tabs.map((tab) => tab.name), rows };
+      },
+    ],
+    [
+      "a sidebar workspace scopes the board to its issues and back",
+      async ({ session, issues, workspaces }) => {
+        const workspace = workspaces.find((candidate) =>
+          issues.some((issue) => issue.workspaceId === candidate.id),
+        );
+        check(Boolean(workspace), "fixture has no workspace with issues");
+        await clickNavRow(session, workspace.name);
+        await waitForCardIds(
+          session,
+          issues
+            .filter((issue) => issue.workspaceId === workspace.id)
+            .map((issue) => issue.id),
+        );
+        await clickNavRow(
+          session,
+          await translate(session, "issues:sidebar.nav.all"),
+        );
+        await waitForCardIds(
+          session,
+          issues.map((issue) => issue.id),
+        );
+        return { workspace: workspace.name };
       },
     ],
     [
@@ -228,6 +293,24 @@ runScenario("issue-scopes", {
           scopeName,
           UI_TIMEOUT_MS,
         );
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "issues:sidebar.pinView"),
+        });
+        await session.waitUntil(
+          ({ name, title }) =>
+            [
+              ...document.querySelectorAll(
+                `[role="tablist"][aria-label="${name}"] [aria-selected="true"]`,
+              ),
+            ].some((tab) => tab.textContent.trim() === title),
+          { name: scopeName, title: created.title },
+          UI_TIMEOUT_MS,
+        );
+        const pinned = (await daemonRequest(session, "issue.listViews")).find(
+          (view) => view.id === created.id,
+        );
+        check(Boolean(pinned?.pinnedAt), "view not pinned", pinned);
         return { title: created.title, filters: created.filters };
       },
     ],
@@ -240,7 +323,7 @@ runScenario("issue-scopes", {
         check(Boolean(status), "fixture has no started status", statusColumns);
         await clickByRole(session, {
           role: "tab",
-          name: await translate(session, "issues:sidebar.nav.all"),
+          name: await translate(session, "issues:sidebar.nav.anyStatus"),
         });
         const [menu] = await waitForRole(
           session,
@@ -343,7 +426,7 @@ runScenario("issue-scopes", {
       async ({ session, sourceViewId }) => {
         await clickByRole(session, {
           role: "tab",
-          name: await translate(session, "issues:sidebar.nav.all"),
+          name: await translate(session, "issues:sidebar.nav.anyStatus"),
         });
         await clickByRole(session, {
           role: "button",

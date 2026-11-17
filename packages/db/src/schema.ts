@@ -428,7 +428,8 @@ export function createSchemaSql() {
       display_json TEXT,
       revision INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      pinned_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS issue_columns (

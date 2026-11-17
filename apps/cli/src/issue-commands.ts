@@ -5,9 +5,12 @@ import {
   ISSUE_RELATION_KINDS,
   ISSUE_STATUS_CATEGORIES,
   type IssueActor,
+  type IssueAgentActivity,
   type IssueRelationKind,
   type IssueStatusCategory,
   isClosedStatusCategory,
+  isIssueAgentActivity,
+  issueAgentActivity,
   sortOrderForColumnPosition,
   type UpdateViewPayload,
   VIEW_GROUP_BY_FIELDS,
@@ -23,6 +26,7 @@ import {
   stringFlag,
 } from "./parse-args";
 import { readBodyFlag } from "./read-body";
+import { resolveWorkspaceId } from "./workspace-lookup";
 
 const CLI_ACTOR: IssueActor = { kind: "cli" };
 
@@ -42,7 +46,7 @@ const FIELD_FLAGS = [
 ];
 
 const ISSUE_FLAGS: Record<string, readonly string[]> = {
-  list: ["view", "status", "label", "parent", "open"],
+  list: ["view", "status", "label", "parent", "open", "workspace", "agent"],
   show: ["view", "detail"],
   create: ["view", ...FIELD_FLAGS],
   update: ["view", ...FIELD_FLAGS],
@@ -56,7 +60,7 @@ const ISSUE_FLAGS: Record<string, readonly string[]> = {
   statuses: [],
   status: ["name", "category", "color", "position"],
   views: [],
-  view: ["title", "group-by", "layout", "show-empty", "properties"],
+  view: ["title", "group-by", "layout", "show-empty", "properties", "pinned"],
 };
 
 type IssueAction = (
@@ -118,7 +122,7 @@ function booleanFlag(parsed: ParsedArgs, name: string): boolean | undefined {
 }
 
 const VIEW_UPDATE_USAGE =
-  "Usage: cocurdex issue view update <id> [--title <title>] [--group-by <field>] [--layout board|list] [--show-empty true|false] [--properties <a,b,...>]";
+  "Usage: cocurdex issue view update <id> [--title <title>] [--group-by <field>] [--layout board|list] [--show-empty true|false] [--properties <a,b,...>] [--pinned true|false]";
 
 async function updateViewFromFlags(viewId: string, parsed: ParsedArgs) {
   const current = await withDaemon(() =>
@@ -152,6 +156,7 @@ async function updateViewFromFlags(viewId: string, parsed: ParsedArgs) {
     groupBy: enumFlag(parsed, "group-by", VIEW_GROUP_BY_FIELDS),
     layout: enumFlag(parsed, "layout", VIEW_LAYOUTS),
     display,
+    pinned: booleanFlag(parsed, "pinned"),
   };
   const updated = await withDaemon(() =>
     requestDaemon("issue.updateView", payload),
@@ -293,6 +298,32 @@ const STATUS_ACTIONS: Record<
   },
 };
 
+const AGENT_FLAG_VALUES: Record<string, IssueAgentActivity> = {
+  working: "working",
+  "needs-you": "needsYou",
+};
+
+function agentFlag(parsed: ParsedArgs): IssueAgentActivity | null {
+  const value = stringFlag(parsed, "agent");
+  if (value === undefined) return null;
+  const activity = AGENT_FLAG_VALUES[value];
+  if (!isIssueAgentActivity(activity)) {
+    throw new Error(
+      `--agent must be one of: ${Object.keys(AGENT_FLAG_VALUES).join(", ")}`,
+    );
+  }
+  return activity;
+}
+
+async function loadAgentActivity() {
+  const snapshots = await withDaemon(() => requestDaemon("attention.list"));
+  const states = new Map(
+    snapshots.map((snapshot) => [snapshot.sessionId, snapshot.primaryState]),
+  );
+  return (sessionIds: readonly string[]) =>
+    issueAgentActivity(sessionIds, (id) => states.get(id));
+}
+
 const ISSUE_ACTIONS: Record<string, IssueAction> = {
   async list(_args, parsed, viewId) {
     const view = await withDaemon(() =>
@@ -306,12 +337,20 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
     const parentRef = stringFlag(parsed, "parent");
     const parent = parentRef ? await requireIssue(parentRef, viewId) : null;
     const openOnly = parsed.flags.has("open");
+    const workspaceRef = stringFlag(parsed, "workspace");
+    const workspaceId = workspaceRef
+      ? await resolveWorkspaceId(workspaceRef)
+      : null;
+    const agent = agentFlag(parsed);
+    const activityOf = agent ? await loadAgentActivity() : null;
     const issues = (view?.issues ?? []).filter(
       (issue) =>
         (!status || issue.status === status) &&
         (!labelRef || (label && issue.labelIds.includes(label.id))) &&
         (!parent || issue.parentId === parent.id) &&
-        (!openOnly || !isClosedStatusCategory(issue.statusCategory)),
+        (!openOnly || !isClosedStatusCategory(issue.statusCategory)) &&
+        (!workspaceId || issue.workspaceId === workspaceId) &&
+        (!activityOf || activityOf(issue.sessionIds) === agent),
     );
     printRows(
       issues,
@@ -488,7 +527,7 @@ const ISSUE_ACTIONS: Record<string, IssueAction> = {
   },
   async views(_args, parsed) {
     const views = await withDaemon(() => requestDaemon("issue.listViews"));
-    printRows(views, ["id", "title", "groupBy", "layout"], parsed);
+    printRows(views, ["id", "title", "groupBy", "layout", "pinnedAt"], parsed);
   },
   async view(args, parsed) {
     const [operation, ref] = args;

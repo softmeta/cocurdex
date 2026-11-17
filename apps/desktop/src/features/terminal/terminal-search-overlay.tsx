@@ -1,9 +1,4 @@
-import { ArrowDown, ArrowUp, X } from "lucide-react";
-import { useCallback } from "react";
-import { useTranslation } from "react-i18next";
-import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
-import { Input } from "@/components/ui";
-import { cn } from "@/lib";
+import { AppFindBar } from "@/components/app/find-bar";
 import { clearTerminalSearch, searchInTerminal } from "./terminal-registry";
 
 interface TerminalSearchOverlayProps {
@@ -19,63 +14,16 @@ export function TerminalSearchOverlay({
   onQueryChange,
   onClose,
 }: TerminalSearchOverlayProps) {
-  const { t } = useTranslation("editor");
-  const focusInput = useCallback((node: HTMLInputElement | null) => {
-    node?.focus();
-    node?.select();
-  }, []);
-
-  const runSearch = (direction: "next" | "previous") => {
-    searchInTerminal(terminalId, query, direction);
-  };
-
-  const handleClose = () => {
-    clearTerminalSearch(terminalId);
-    onClose();
-  };
-
   return (
-    <div
-      className={cn(
-        "absolute top-3 right-3 z-10 flex items-center gap-1 rounded-control border border-editor-border bg-editor-pane px-2 py-1 shadow-sm",
-      )}
-      data-testid="terminal-search-overlay"
-    >
-      <Input
-        aria-label={t("terminal.searchPlaceholder")}
-        className="h-7 w-48"
-        onChange={(e) => onQueryChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            runSearch(e.shiftKey ? "previous" : "next");
-          } else if (e.key === "Escape") {
-            e.preventDefault();
-            handleClose();
-          }
-        }}
-        placeholder={t("terminal.searchPlaceholder")}
-        ref={focusInput}
-        value={query}
-      />
-      <TitlebarIconButton
-        aria-label={t("terminal.searchPrevious")}
-        onClick={() => runSearch("previous")}
-      >
-        <ArrowUp className="size-3.5" />
-      </TitlebarIconButton>
-      <TitlebarIconButton
-        aria-label={t("terminal.searchNext")}
-        onClick={() => runSearch("next")}
-      >
-        <ArrowDown className="size-3.5" />
-      </TitlebarIconButton>
-      <TitlebarIconButton
-        aria-label={t("terminal.searchClose")}
-        onClick={handleClose}
-      >
-        <X className="size-3.5" />
-      </TitlebarIconButton>
-    </div>
+    <AppFindBar
+      query={query}
+      onQueryChange={onQueryChange}
+      onNext={() => searchInTerminal(terminalId, query, "next")}
+      onPrevious={() => searchInTerminal(terminalId, query, "previous")}
+      onClose={() => {
+        clearTerminalSearch(terminalId);
+        onClose();
+      }}
+    />
   );
 }

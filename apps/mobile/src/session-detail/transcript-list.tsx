@@ -1,4 +1,3 @@
-import { sentPromptPeek } from "@cocurdex/client-runtime";
 import {
   type ComponentRef,
   type ReactElement,
@@ -26,6 +25,7 @@ import {
   isFarFromOldest,
   nextJumpState,
   type ScrollMetrics,
+  transcriptEdges,
 } from "./transcript-jump";
 import { type TranscriptTurn, transcriptTurns } from "./transcript-turns";
 
@@ -59,30 +59,23 @@ export function TranscriptList({
   const listHeight = useRef(0);
   const latestView = useRef<ComponentRef<typeof View>>(null);
   const indexFailed = useRef(false);
-  const latestContent = useRef<{ id: string; height: number } | null>(null);
-  const latestLayout = useRef<{ id: string; height: number } | null>(null);
-  const navigation = useRef({
-    sentMessageId,
-    target: sentMessageId,
-    initialPosition: !sentMessageId,
-    retries: 0,
-  });
+  const latestLayoutId = useRef<string | null>(null);
+  const following = useRef(true);
+  const navigation = useRef<{
+    sentMessageId?: string;
+    target?: string;
+    initialPosition: boolean;
+    retries: number;
+  }>({ sentMessageId, initialPosition: true, retries: 0 });
   if (navigation.current.sentMessageId !== sentMessageId) {
     navigation.current = {
       sentMessageId,
-      target: sentMessageId,
-      initialPosition: false,
+      initialPosition: true,
       retries: 0,
     };
+    following.current = true;
   }
   const latestJump = useRef<{ animated: boolean } | null>(null);
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const visibleHeight = Math.max(
-    0,
-    viewportHeight - headerOverlap - bottomInset,
-  );
-  const peek = sentPromptPeek(visibleHeight);
-  const viewportWidth = useRef(0);
   const [jump, setJump] = useState(INITIAL_JUMP_STATE);
   const [placed, setPlaced] = useState(false);
   const turns = useMemo(() => transcriptTurns(items), [items]);
@@ -94,28 +87,9 @@ export function TranscriptList({
       (item.kind === "assistant" && item.streaming),
   );
   const directionOffset = useRef(0);
-  const readingMetrics = (current: ScrollMetrics): ScrollMetrics => {
-    const outer = latestLayout.current;
-    const inner = latestContent.current;
-    if (!latest || outer?.id !== latest.id || inner?.id !== latest.id) {
-      return {
-        ...current,
-        contentHeight: current.offset + current.viewportHeight,
-      };
-    }
-    return {
-      ...current,
-      contentHeight: Math.max(
-        0,
-        current.contentHeight -
-          Math.max(0, outer.height - inner.height) -
-          space.md,
-      ),
-    };
-  };
   const refreshJump = () => {
-    if (!metrics.current) return;
-    const current = readingMetrics(metrics.current);
+    const current = metrics.current;
+    if (!current) return;
     setJump((state) =>
       nextJumpState(state, current, current.offset, items.length, streaming),
     );
@@ -123,7 +97,7 @@ export function TranscriptList({
   const currentJump = metrics.current
     ? nextJumpState(
         jump,
-        readingMetrics(metrics.current),
+        metrics.current,
         metrics.current.offset,
         items.length,
         streaming,
@@ -141,21 +115,15 @@ export function TranscriptList({
         turn.items.some((item) => item.id === state.target),
       );
       if (index === turns.length - 1 && metrics.current) {
-        if (!latest || latestLayout.current?.id !== latest.id) return;
+        if (!latest || latestLayoutId.current !== latest.id) return;
         const content = list.current?.getNativeScrollRef()?.getInnerViewRef();
         if (!content) return;
         const target = state.target;
-        const inset =
-          target === state.sentMessageId
-            ? sentPromptPeek(
-                metrics.current.viewportHeight - headerOverlap - bottomInset,
-              )
-            : 0;
         latestView.current?.measureLayout(
           content,
           (_x, y) => {
             if (navigation.current.target !== target) return;
-            scrollInstantly(Math.max(0, y - space.md - headerOverlap - inset));
+            scrollInstantly(Math.max(0, y - space.md - headerOverlap));
             setPlaced(true);
           },
           () => {},
@@ -179,7 +147,7 @@ export function TranscriptList({
       state.initialPosition &&
       metrics.current &&
       latest &&
-      latestLayout.current?.id === latest.id
+      latestLayoutId.current === latest.id
     ) {
       state.initialPosition = false;
       scrollInstantly(
@@ -192,8 +160,8 @@ export function TranscriptList({
     }
   };
   const scrollToLatest = (animated: boolean) => {
-    if (!metrics.current) return;
-    const current = readingMetrics(metrics.current);
+    const current = metrics.current;
+    if (!current) return;
     const offset = Math.max(0, current.contentHeight - current.viewportHeight);
     if (current.offset >= offset - 1) {
       latestJump.current = null;
@@ -208,6 +176,7 @@ export function TranscriptList({
   useImperativeHandle(ref, () => ({
     jumpToItem(id) {
       latestJump.current = null;
+      following.current = false;
       navigation.current.target = id;
       navigation.current.initialPosition = false;
       navigation.current.retries = 0;
@@ -219,17 +188,17 @@ export function TranscriptList({
     const next = {
       offset: contentOffset.y,
       contentHeight: contentSize.height,
-      viewportHeight: layoutMeasurement.height,
+      viewportHeight: listHeight.current || layoutMeasurement.height,
     };
     const previous = directionOffset.current;
     if (Math.abs(next.offset - previous) >= 12)
       directionOffset.current = next.offset;
     metrics.current = next;
-    const reading = readingMetrics(next);
-    if (next.offset >= reading.contentHeight - reading.viewportHeight - 1)
-      latestJump.current = null;
+    const atLatest = transcriptEdges(next).nearLatest;
+    if (atLatest) latestJump.current = null;
+    if (!latestJump.current) following.current = atLatest;
     setJump((current) =>
-      nextJumpState(current, reading, previous, items.length, streaming),
+      nextJumpState(current, next, previous, items.length, streaming),
     );
   };
   const jumpToLatest = () => {
@@ -239,6 +208,7 @@ export function TranscriptList({
   };
   const jumpToOldest = () => {
     latestJump.current = null;
+    following.current = false;
     navigation.current.target = undefined;
     navigation.current.initialPosition = false;
     list.current?.scrollToOffset({
@@ -254,7 +224,7 @@ export function TranscriptList({
         style={!placed && latest ? styles.placing : undefined}
         data={history}
         keyExtractor={(turn) => turn.id}
-        extraData={[viewportHeight, renderRow, footer]}
+        extraData={[renderRow, footer]}
         scrollsChildToFocus={false}
         keyboardDismissMode="interactive"
         contentInsetAdjustmentBehavior="never"
@@ -276,6 +246,7 @@ export function TranscriptList({
         }}
         onScrollBeginDrag={() => {
           latestJump.current = null;
+          following.current = false;
           navigation.current.target = undefined;
           navigation.current.initialPosition = false;
           setPlaced(true);
@@ -283,15 +254,14 @@ export function TranscriptList({
           setJump((current) => ({ ...current, userScrolled: true }));
         }}
         onLayout={(event) => {
-          const { width, height } = event.nativeEvent.layout;
-          const resized = viewportWidth.current !== width;
-          viewportWidth.current = width;
-          setViewportHeight((previous) =>
-            resized ? height : Math.max(previous, height),
-          );
+          const { height } = event.nativeEvent.layout;
           listHeight.current = height;
           if (metrics.current) metrics.current.viewportHeight = height;
           refreshJump();
+          if (following.current && placed && !latestJump.current)
+            requestAnimationFrame(() => {
+              if (following.current) scrollToLatest(false);
+            });
         }}
         onContentSizeChange={(_width, height) => {
           const previous = metrics.current;
@@ -302,16 +272,11 @@ export function TranscriptList({
           };
           metrics.current = next;
           setJump((current) =>
-            nextJumpState(
-              current,
-              readingMetrics(next),
-              next.offset,
-              items.length,
-              streaming,
-            ),
+            nextJumpState(current, next, next.offset, items.length, streaming),
           );
           align();
           if (latestJump.current) scrollToLatest(latestJump.current.animated);
+          else if (following.current && placed) scrollToLatest(false);
         }}
         onScrollToIndexFailed={({ index, averageItemLength }) => {
           indexFailed.current = true;
@@ -337,34 +302,15 @@ export function TranscriptList({
               key={latest.id}
               ref={latestView}
               testID={`transcript-turn-${latest.id}`}
-              style={[
-                styles.turn,
-                {
-                  minHeight: Math.max(0, visibleHeight - space.md * 2 - peek),
-                },
-              ]}
-              onLayout={(event) => {
-                latestLayout.current = {
-                  id: latest.id,
-                  height: event.nativeEvent.layout.height,
-                };
+              style={styles.turn}
+              onLayout={() => {
+                latestLayoutId.current = latest.id;
                 refreshJump();
                 align();
               }}
             >
-              <View
-                style={styles.turn}
-                onLayout={(event) => {
-                  latestContent.current = {
-                    id: latest.id,
-                    height: event.nativeEvent.layout.height,
-                  };
-                  refreshJump();
-                }}
-              >
-                {latest.items.map(renderRow)}
-                {footer}
-              </View>
+              {latest.items.map(renderRow)}
+              {footer}
             </View>
           ) : (
             footer

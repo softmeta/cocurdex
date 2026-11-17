@@ -47,6 +47,7 @@ export async function connectRemoteHostWindow() {
     consumePendingOpenFolder: async () => null,
     consumeEntityOpenRequest: async () => null,
     onEntityOpenRequested: () => () => {},
+    onFindRequested: () => () => {},
     onOpenWorkspaceFromCli: () => () => {},
     openRemoteHostWindow: offlineHostApi.openRemoteHostWindow,
   });

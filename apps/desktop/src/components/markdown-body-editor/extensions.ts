@@ -4,6 +4,7 @@ import {
 } from "@cocurdex/note-doc";
 import { Placeholder } from "@tiptap/extensions";
 import { type Extensions, ReactNodeViewRenderer } from "@tiptap/react";
+import { BodyFind } from "./body-find";
 import { BoundaryParagraph } from "./boundary-paragraph";
 import { CodeBlockView } from "./code-block/code-block-view";
 import { CodeHighlight } from "./code-block/code-highlight";
@@ -34,6 +35,7 @@ export function buildMarkdownBodyExtensions(
     TableEditing,
     DocImageUpload,
     MarkdownPaste,
+    BodyFind,
     createSlashCommand(),
   ];
 }

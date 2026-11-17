@@ -78,6 +78,7 @@
     "nextIssue": "下一个事项",
     "notFound": "该事项已不存在。",
     "previousIssue": "上一个事项",
+    "properties": "属性",
     "relation": {
       "blockedBy": "被阻塞于",
       "blocks": "阻塞",
@@ -166,6 +167,11 @@
     "workspaceFallback": "工作区"
   },
   "sidebar": {
+    "agent": {
+      "needsYou": "需要你",
+      "title": "Agent",
+      "working": "Agent 在做"
+    },
     "collapse": "折叠侧栏",
     "deleteView": "删除视图",
     "deleteViewConfirm": {
@@ -179,16 +185,20 @@
     "nav": {
       "active": "进行中",
       "all": "全部事项",
+      "anyStatus": "全部",
       "backlog": "Backlog",
       "scope": "事项范围",
       "title": "事项"
     },
+    "pinView": "固定为标签",
     "renameBoard": "重命名视图",
     "resize": "调整侧栏宽度",
     "title": "视图",
+    "unpinView": "取消固定",
     "untitledBoard": "无标题视图",
     "views": "视图",
-    "viewsEmpty": "筛选事项后可保存为视图。"
+    "viewsEmpty": "筛选或分组看板后，可在这里保存为视图。",
+    "workspaces": "工作区"
   },
   "statuses": {
     "actions": "「{{status}}」的操作",

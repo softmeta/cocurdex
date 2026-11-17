@@ -53,7 +53,7 @@ export function IssueDetailSections({
 }: IssueDetailSectionsProps) {
   const { t } = useTranslation("issues");
   return (
-    <>
+    <div className="mx-5 mt-2 flex flex-col divide-y divide-border/40 rounded-card bg-settings-surface px-3">
       <DetailSection
         title={t("detail.subIssues")}
         action={
@@ -124,13 +124,11 @@ export function IssueDetailSections({
           ))}
         </DetailSection>
       ) : null}
-      <div className="px-5">
-        <RelatedEntities
-          entity={{ kind: "issue", id: detail.issue.id }}
-          hideLink={isShownAsIssueStructure}
-        />
-      </div>
-    </>
+      <RelatedEntities
+        entity={{ kind: "issue", id: detail.issue.id }}
+        hideLink={isShownAsIssueStructure}
+      />
+    </div>
   );
 }
 
@@ -149,7 +147,7 @@ function DetailSection({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-0.5 border-t border-editor-border/60 px-5 py-2.5">
+    <section className="flex flex-col gap-0.5 py-2.5">
       <div className="flex h-7 items-center justify-between gap-2">
         <Text size="meta" weight="medium" className="text-editor-fg-muted">
           {title}

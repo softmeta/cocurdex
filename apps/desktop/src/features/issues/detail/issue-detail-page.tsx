@@ -3,6 +3,7 @@ import { useSetAtom } from "jotai";
 import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FindInDocumentButton } from "@/app/layout/find-in-document-button";
 import { PanelToolbar } from "@/app/layout/panel-toolbar";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import {
@@ -49,12 +50,14 @@ export function IssueDetailPage({
   const saveDetail = useSetAtom(saveIssueDetailAtom);
   const { card, detail, bodyEpoch, bodyStatus } = state;
   useIssueStepShortcuts(stepper?.onPrevious ?? null, stepper?.onNext ?? null);
+  const [findHost, setFindHost] = useState<HTMLElement | null>(null);
 
   return (
     <article
+      ref={setFindHost}
       data-issue-id={card.id}
       aria-label={`${card.identifier} ${card.title}`}
-      className="flex min-h-0 min-w-0 flex-1 flex-col"
+      className="relative flex min-h-0 min-w-0 flex-1 flex-col"
     >
       <PanelToolbar className="gap-1" divided={false}>
         {leading}
@@ -79,46 +82,53 @@ export function IssueDetailPage({
             {card.identifier}
           </Text>
         </div>
-        {stepper ? <IssueStepControls stepper={stepper} /> : null}
+        <div className="ms-auto flex shrink-0 items-center gap-0.5">
+          <FindInDocumentButton />
+          {stepper ? <IssueStepControls stepper={stepper} /> : null}
+        </div>
       </PanelToolbar>
       <ScrollArea className="min-h-0 flex-1">
-        <div className="mx-auto flex w-full max-w-3xl flex-col pb-10">
-          <IssueTextFields
-            key={`${card.id}-${bodyEpoch}`}
-            card={card}
-            bodyStatus={bodyStatus}
-            onSave={(changes) => {
-              void saveDetail({ id: card.id, changes });
-            }}
-          />
-          <IssueFieldRow
-            issueId={card.id}
-            knownParent={detail?.parent ?? null}
-            values={card}
-            options={options}
-            onChange={(changes) => {
-              void saveDetail({ id: card.id, changes });
-            }}
-            onCreateLabel={actions.onCreateLabel}
-          />
-          {detail ? (
-            <>
-              <IssueDetailSections
-                detail={detail}
-                issues={options.issues}
-                onOpenIssue={actions.onOpenIssue}
-                onAddSubIssue={() => actions.onAddSubIssue(card)}
-                onAddRelation={actions.onAddRelation}
-                onRemoveRelation={actions.onRemoveRelation}
-              />
-              <IssueActivity
-                events={detail.events}
-                statusOptions={options.statusOptions}
-                priorityOptions={options.priorityOptions}
-                onComment={actions.onComment}
-              />
-            </>
-          ) : null}
+        <div className="@container/issue">
+          <div className="mx-auto grid w-full max-w-3xl grid-cols-1 pb-10 @4xl/issue:max-w-5xl @4xl/issue:grid-cols-[minmax(0,1fr)_15rem] @4xl/issue:grid-rows-[auto_1fr] @4xl/issue:gap-x-4 @4xl/issue:pe-5">
+            <IssueTextFields
+              key={`${card.id}-${bodyEpoch}`}
+              card={card}
+              bodyStatus={bodyStatus}
+              findHost={findHost}
+              onSave={(changes) => {
+                void saveDetail({ id: card.id, changes });
+              }}
+            />
+            <IssueFieldRow
+              issueId={card.id}
+              knownParent={detail?.parent ?? null}
+              values={card}
+              options={options}
+              onChange={(changes) => {
+                void saveDetail({ id: card.id, changes });
+              }}
+              onCreateLabel={actions.onCreateLabel}
+              layout="adaptive"
+            />
+            {detail ? (
+              <div className="flex min-w-0 flex-col">
+                <IssueDetailSections
+                  detail={detail}
+                  issues={options.issues}
+                  onOpenIssue={actions.onOpenIssue}
+                  onAddSubIssue={() => actions.onAddSubIssue(card)}
+                  onAddRelation={actions.onAddRelation}
+                  onRemoveRelation={actions.onRemoveRelation}
+                />
+                <IssueActivity
+                  events={detail.events}
+                  statusOptions={options.statusOptions}
+                  priorityOptions={options.priorityOptions}
+                  onComment={actions.onComment}
+                />
+              </div>
+            ) : null}
+          </div>
         </div>
       </ScrollArea>
     </article>
@@ -128,8 +138,11 @@ export function IssueDetailPage({
 function IssueStepControls({ stepper }: { stepper: IssueDetailStepper }) {
   const { t } = useTranslation("issues");
   return (
-    <div className="ms-auto flex shrink-0 items-center gap-0.5">
-      <Text size="meta" className="me-1 tabular-nums text-editor-fg-subtle">
+    <div className="flex shrink-0 items-center gap-0.5">
+      <Text
+        size="meta"
+        className="ms-1 me-1 tabular-nums text-editor-fg-subtle"
+      >
         {stepper.position} / {stepper.total}
       </Text>
       <TitlebarIconButton
@@ -161,10 +174,12 @@ function IssueStepControls({ stepper }: { stepper: IssueDetailStepper }) {
 function IssueTextFields({
   card,
   bodyStatus,
+  findHost,
   onSave,
 }: {
   card: IssueRecord;
   bodyStatus: IssueDetailState["bodyStatus"];
+  findHost: HTMLElement | null;
   onSave: (changes: { title?: string; description?: string | null }) => void;
 }) {
   const { t } = useTranslation("issues");
@@ -177,7 +192,7 @@ function IssueTextFields({
   });
 
   return (
-    <div className="flex flex-col gap-1 px-5 pt-5 pb-2">
+    <div className="flex min-w-0 flex-col gap-2 px-5 pt-8 pb-2">
       <input
         value={title}
         aria-label={t("dialog.titlePlaceholder")}
@@ -193,18 +208,19 @@ function IssueTextFields({
             e.currentTarget.blur();
           }
         }}
-        className="w-full border-0 bg-transparent text-display font-medium text-editor-fg outline-none placeholder:text-editor-fg-subtle"
+        className="w-full border-0 bg-transparent text-title font-semibold text-editor-fg outline-none placeholder:text-editor-fg-subtle"
       />
       {bodyStatus === "ready" ? (
         <MarkdownBodyEditor
           ref={descriptionRef}
           initialMarkdown={card.description ?? ""}
           placeholder={t("dialog.descriptionPlaceholder")}
-          className="min-h-28"
+          className="min-h-16"
+          findHost={findHost}
           onChange={() => autosave.scheduleDescription(descriptionRef.current)}
         />
       ) : (
-        <div className="min-h-28">
+        <div className="min-h-16">
           {bodyStatus === "error" ? (
             <Text size="meta" tone="destructive">
               {t("detail.loadFailed")}
