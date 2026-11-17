@@ -51,8 +51,10 @@ export function buildComposeDraft({
   return {
     columnId,
     status:
-      groupBy === "status" ? columnId : (board.statusOptions[0]?.id ?? ""),
-    priority: groupBy === "priority" ? columnId : defaultPriority,
+      groupBy === "status" && group
+        ? group
+        : (board.statusOptions[0]?.id ?? ""),
+    priority: groupBy === "priority" && group ? group : defaultPriority,
     workspaceId: draftWorkspaceId(),
     parentId: parent?.id ?? (groupBy === "parent" ? group : null),
     labelIds: groupBy === "label" && group ? [group] : [],

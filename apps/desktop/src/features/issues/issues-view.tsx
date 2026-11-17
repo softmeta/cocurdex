@@ -2,6 +2,7 @@ import {
   DEFAULT_VIEW_ID,
   type IssueRecord,
   isIssueColumnField,
+  UNGROUPED_COLUMN_ID,
   type ViewDisplay,
   type ViewFilter,
   type ViewFull,
@@ -351,6 +352,9 @@ export function IssuesView() {
               onSaveView={(title) => {
                 void handleSaveView(title);
               }}
+              onNewIssue={
+                viewBoard ? () => handleAddCard(UNGROUPED_COLUMN_ID) : null
+              }
             />
           ) : null}
           {viewBoard ? (

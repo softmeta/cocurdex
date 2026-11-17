@@ -58,7 +58,7 @@ export function IssuesList({
 
   return (
     <ScrollArea className="min-h-0 flex-1">
-      <div className="flex flex-col gap-3 px-4 py-3">
+      <div className="flex flex-col gap-3 px-4 pb-3">
         {visible.map((column) => {
           const issues = issuesByColumn.get(column.id) ?? [];
           const open = !collapsed[column.id];
