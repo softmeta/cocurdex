@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import {
   buildMarkdownBodyExtensions,
   focusParagraphAtStart,
+  MarkdownFindBar,
   TableControls,
 } from "@/components/markdown-body-editor";
 import "@/components/markdown-body-editor/markdown-body-editor.css";
@@ -272,6 +273,9 @@ function NoteEditorBody({
           />
         ) : null}
       </ScrollArea>
+      {editor ? (
+        <MarkdownFindBar editor={editor} scopeRef={containerRef} />
+      ) : null}
       {isWide ? null : (
         <DocumentOutlineMenu
           activeKey={outline.activeKey}

@@ -3,6 +3,7 @@ import { FileWarning } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { AppFindBar } from "@/components/app";
 import { EmptyState } from "@/components/ui";
 import { insertMarkdownIntoActiveNoteAtom } from "@/features/notes/note-body-insert";
 import { lazyComponent, useDocumentEvent, useMountEffect } from "@/lib";
@@ -31,7 +32,6 @@ import {
 } from "./pdf-reader-store";
 import type { PdfReadingPosition } from "./pdf-reading-position";
 import { MAX_SCALE, MIN_SCALE } from "./pdf-scale";
-import { PdfSearchBar } from "./pdf-search-bar";
 import { PdfSelectionAnchor } from "./pdf-selection-anchor";
 import { PdfSelectionToolbar } from "./pdf-selection-toolbar";
 import { PdfSidePanels } from "./pdf-side-panels";
@@ -454,7 +454,7 @@ function PdfViewerContent({
           ) : null}
 
           {isSearchOpen ? (
-            <PdfSearchBar
+            <AppFindBar
               query={searchQuery}
               matches={findMatches}
               onQueryChange={handleQueryChange}

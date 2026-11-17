@@ -78,6 +78,7 @@
     "nextIssue": "Next issue",
     "notFound": "This issue no longer exists.",
     "previousIssue": "Previous issue",
+    "properties": "Properties",
     "relation": {
       "blockedBy": "Blocked by",
       "blocks": "Blocks",

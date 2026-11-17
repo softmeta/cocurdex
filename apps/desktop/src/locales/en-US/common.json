@@ -13,6 +13,15 @@
     "send": "Send",
     "stop": "Stop"
   },
+  "find": {
+    "close": "Close find",
+    "label": "Find in document",
+    "matches": "{{current}} / {{total}}",
+    "next": "Next match",
+    "noResults": "No results",
+    "placeholder": "Find",
+    "previous": "Previous match"
+  },
   "git": {
     "turnFiles_one": "{{count}} file",
     "turnFiles_other": "{{count}} files"

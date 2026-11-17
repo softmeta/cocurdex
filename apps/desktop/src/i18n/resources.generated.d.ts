@@ -432,6 +432,15 @@ export default interface Resources {
       send: "Send";
       stop: "Stop";
     };
+    find: {
+      close: "Close find";
+      label: "Find in document";
+      matches: "{{current}} / {{total}}";
+      next: "Next match";
+      noResults: "No results";
+      placeholder: "Find";
+      previous: "Previous match";
+    };
     git: {
       turnFiles_one: "{{count}} file";
       turnFiles_other: "{{count}} files";
@@ -905,12 +914,6 @@ export default interface Resources {
       removePageBookmark: "Unbookmark";
       resetZoom: "Actual size";
       resizeSidePanel: "Resize PDF side panel";
-      search: "Search document";
-      searchClose: "Close search";
-      searchMatches: "{{current}} / {{total}}";
-      searchNext: "Next match";
-      searchNoResults: "No results";
-      searchPrevious: "Previous match";
       thumbnailError: "—";
       thumbnailLoading: "…";
       thumbnailPage: "Go to page {{page}}";
@@ -962,10 +965,6 @@ export default interface Resources {
       failedToStart: "Failed to start terminal";
       newTab: "New terminal";
       restart: "Restart";
-      searchClose: "Close search";
-      searchNext: "Next match";
-      searchPlaceholder: "Find in terminal";
-      searchPrevious: "Previous match";
       selectTab: "Show terminal {{index}}";
       starting: "Starting terminal…";
       tabLabel: "Terminal {{index}}";
@@ -1051,6 +1050,7 @@ export default interface Resources {
       nextIssue: "Next issue";
       notFound: "This issue no longer exists.";
       previousIssue: "Previous issue";
+      properties: "Properties";
       relation: {
         blockedBy: "Blocked by";
         blocks: "Blocks";

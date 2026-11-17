@@ -78,6 +78,7 @@
     "nextIssue": "下一个事项",
     "notFound": "该事项已不存在。",
     "previousIssue": "上一个事项",
+    "properties": "属性",
     "relation": {
       "blockedBy": "被阻塞于",
       "blocks": "阻塞",
