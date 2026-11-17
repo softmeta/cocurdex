@@ -162,6 +162,7 @@ export const updateViewAtom = atom(
       layout?: ViewLayout;
       filters?: ViewFilter[];
       display?: ViewDisplay;
+      pinned?: boolean;
     },
   ) => {
     const current = get(activeViewAtom);

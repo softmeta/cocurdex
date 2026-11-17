@@ -62,6 +62,10 @@ export function useIssueFilterOptions(
       label: label.name,
       leading: <LabelDot color={label.color} />,
     })),
+    agent: [
+      { value: "working", label: t("filter.agentWorking") },
+      { value: "needsYou", label: t("filter.agentNeedsYou") },
+    ],
   };
 }
 
@@ -72,6 +76,7 @@ export function useIssueFilterTitles(): Record<IssueFilterField, string> {
     priorities: t("field.priority"),
     workspaceIds: t("field.workspace"),
     labelIds: t("field.labels"),
+    agent: t("field.agent"),
   };
 }
 

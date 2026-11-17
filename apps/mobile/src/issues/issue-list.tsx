@@ -13,6 +13,7 @@ import {
   useTabBarInset,
 } from "@/ui";
 import { useIssueActions } from "./issue-actions";
+import { useIssueActivityLookup } from "./issue-agent-activity";
 import { setIssueFilters, useIssueFilters } from "./issue-filter-store";
 import { activeIssueFilterCount, EMPTY_ISSUE_FILTERS } from "./issue-filters";
 import { useIssueView } from "./issue-queries";
@@ -42,28 +43,33 @@ export function IssueList({
   const pull = usePullToRefresh(() => view.mutate());
   const issueActions = useIssueActions(host);
   const filters = useIssueFilters(host.hostId);
+  const activityOf = useIssueActivityLookup(host.hostId);
   const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
   const searching = query.trim() !== "";
   const sections = useMemo(
     () =>
       data
-        ? issueSections(data.issues, data.statusOptions, filters, query).map(
-            (section) => {
-              const collapsed =
-                !searching &&
-                COLLAPSED_BY_DEFAULT.has(section.status.category) !==
-                  toggled.has(section.status.id);
-              return {
-                key: section.status.id,
-                status: section.status,
-                issues: section.issues,
-                collapsed,
-                data: collapsed ? [] : section.issues,
-              };
-            },
-          )
+        ? issueSections(
+            data.issues,
+            data.statusOptions,
+            filters,
+            query,
+            activityOf,
+          ).map((section) => {
+            const collapsed =
+              !searching &&
+              COLLAPSED_BY_DEFAULT.has(section.status.category) !==
+                toggled.has(section.status.id);
+            return {
+              key: section.status.id,
+              status: section.status,
+              issues: section.issues,
+              collapsed,
+              data: collapsed ? [] : section.issues,
+            };
+          })
         : [],
-    [data, filters, query, searching, toggled],
+    [data, filters, query, searching, toggled, activityOf],
   );
   const toggle = (statusId: string) =>
     setToggled((current) => {

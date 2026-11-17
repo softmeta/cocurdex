@@ -9,7 +9,7 @@ export interface IssueNavPresetItem {
 export function usePresetItems(): IssueNavPresetItem[] {
   const { t } = useTranslation("issues");
   return [
-    { preset: "all", label: t("sidebar.nav.all") },
+    { preset: "all", label: t("sidebar.nav.anyStatus") },
     { preset: "active", label: t("sidebar.nav.active") },
     { preset: "backlog", label: t("sidebar.nav.backlog") },
   ];

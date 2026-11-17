@@ -1,5 +1,5 @@
 import type { ViewSummary } from "@cocurdex/shared";
-import { Layers, Pencil, Trash2 } from "lucide-react";
+import { Layers, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarSectionHeader } from "@/components";
@@ -18,12 +18,14 @@ export function IssueViewsSection({
   onSelectView,
   onDeleteView,
   onRenameView,
+  onTogglePin,
 }: {
   views: ViewSummary[];
   activeViewId: string | null;
   onSelectView: (viewId: string) => void;
   onDeleteView: (viewId: string) => void;
   onRenameView: (title: string) => void;
+  onTogglePin: (pinned: boolean) => void;
 }) {
   const { t } = useTranslation("issues");
   const [collapsed, setCollapsed] = useState(false);
@@ -78,8 +80,27 @@ export function IssueViewsSection({
                 </div>
                 <SidebarListRowActions
                   visibility="active-hover"
-                  className="h-6 w-12 justify-end"
+                  className="h-6 w-18 justify-end"
                 >
+                  <IconButton
+                    size="xs"
+                    variant="ghost"
+                    tabIndex={active ? 0 : -1}
+                    onClick={() => {
+                      if (active) onTogglePin(view.pinnedAt === null);
+                    }}
+                    aria-label={
+                      view.pinnedAt === null
+                        ? t("sidebar.pinView")
+                        : t("sidebar.unpinView")
+                    }
+                  >
+                    {view.pinnedAt === null ? (
+                      <Pin className="size-3.5" />
+                    ) : (
+                      <PinOff className="size-3.5" />
+                    )}
+                  </IconButton>
                   <IconButton
                     size="xs"
                     variant="ghost"

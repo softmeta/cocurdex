@@ -10,37 +10,61 @@ import {
 import type { IssueRecord } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 
+const quiet = () => null;
+
 function issue(extra: Partial<IssueRecord>): IssueRecord {
   return {
     status: "todo",
     priority: "none",
     workspaceId: "shop",
     labelIds: [],
+    sessionIds: [],
     ...extra,
   } as IssueRecord;
 }
 
 describe("issueMatchesFilters", () => {
+  it("filters by the linked agent sessions' activity", () => {
+    const filters = { ...EMPTY_ISSUE_FILTERS, agent: ["needsYou"] };
+    const activityOf = (sessionIds: readonly string[]) =>
+      sessionIds.includes("asking") ? ("needsYou" as const) : null;
+    expect(
+      issueMatchesFilters(
+        issue({ sessionIds: ["asking"] }),
+        filters,
+        activityOf,
+      ),
+    ).toBe(true);
+    expect(
+      issueMatchesFilters(issue({ sessionIds: ["idle"] }), filters, activityOf),
+    ).toBe(false);
+  });
+
   it("matches any selected value within a field and every field together", () => {
     const filters = {
       ...EMPTY_ISSUE_FILTERS,
       statuses: ["todo", "doing"],
       priorities: ["high"],
     };
-    expect(issueMatchesFilters(issue({ priority: "high" }), filters)).toBe(
-      true,
-    );
+    expect(
+      issueMatchesFilters(issue({ priority: "high" }), filters, quiet),
+    ).toBe(true);
     expect(
       issueMatchesFilters(
         issue({ status: "doing", priority: "high" }),
         filters,
+        quiet,
       ),
     ).toBe(true);
-    expect(issueMatchesFilters(issue({ priority: "low" }), filters)).toBe(
-      false,
-    );
     expect(
-      issueMatchesFilters(issue({ status: "done", priority: "high" }), filters),
+      issueMatchesFilters(issue({ priority: "low" }), filters, quiet),
+    ).toBe(false);
+    expect(
+      issueMatchesFilters(
+        issue({ status: "done", priority: "high" }),
+        filters,
+        quiet,
+      ),
     ).toBe(false);
   });
 
@@ -49,20 +73,26 @@ describe("issueMatchesFilters", () => {
       ...EMPTY_ISSUE_FILTERS,
       workspaceIds: [NO_WORKSPACE_FILTER],
     };
-    expect(issueMatchesFilters(issue({ workspaceId: null }), filters)).toBe(
-      true,
-    );
-    expect(issueMatchesFilters(issue({ workspaceId: "shop" }), filters)).toBe(
-      false,
-    );
+    expect(
+      issueMatchesFilters(issue({ workspaceId: null }), filters, quiet),
+    ).toBe(true);
+    expect(
+      issueMatchesFilters(issue({ workspaceId: "shop" }), filters, quiet),
+    ).toBe(false);
   });
 
   it("matches an issue carrying any selected label", () => {
     const filters = { ...EMPTY_ISSUE_FILTERS, labelIds: ["bug"] };
     expect(
-      issueMatchesFilters(issue({ labelIds: ["feature", "bug"] }), filters),
+      issueMatchesFilters(
+        issue({ labelIds: ["feature", "bug"] }),
+        filters,
+        quiet,
+      ),
     ).toBe(true);
-    expect(issueMatchesFilters(issue({ labelIds: [] }), filters)).toBe(false);
+    expect(issueMatchesFilters(issue({ labelIds: [] }), filters, quiet)).toBe(
+      false,
+    );
   });
 });
 

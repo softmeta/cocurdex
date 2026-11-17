@@ -1141,6 +1141,11 @@ export default interface Resources {
       workspaceFallback: "Workspace";
     };
     sidebar: {
+      agent: {
+        needsYou: "Needs you";
+        title: "Agent";
+        working: "Agent working";
+      };
       collapse: "Collapse sidebar";
       deleteView: "Delete view";
       deleteViewConfirm: {
@@ -1154,16 +1159,20 @@ export default interface Resources {
       nav: {
         active: "Active";
         all: "All issues";
+        anyStatus: "All";
         backlog: "Backlog";
         scope: "Issue scope";
         title: "Issues";
       };
+      pinView: "Pin as tab";
       renameBoard: "Rename view";
       resize: "Resize sidebar";
       title: "View";
+      unpinView: "Unpin tab";
       untitledBoard: "Untitled view";
       views: "Views";
-      viewsEmpty: "Filter issues, then save them as a view.";
+      viewsEmpty: "Filter or group the board, then save it here as a view.";
+      workspaces: "Workspaces";
     };
     statuses: {
       actions: "{{status}} actions";

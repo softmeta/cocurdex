@@ -347,6 +347,7 @@ export interface ViewRecord {
   layout: ViewLayout;
   filters: ViewFilter[];
   display: ViewDisplay;
+  pinnedAt: string | null;
   revision: number;
   createdAt: string;
   updatedAt: string;
@@ -360,6 +361,7 @@ export interface ViewSummary {
   layout: ViewLayout;
   filters: ViewFilter[];
   display: ViewDisplay;
+  pinnedAt: string | null;
   revision: number;
 }
 
@@ -504,6 +506,7 @@ export interface UpdateViewPayload {
   layout?: ViewLayout;
   filters?: ViewFilter[];
   display?: ViewDisplay;
+  pinned?: boolean;
   expectedRevision?: number;
 }
 

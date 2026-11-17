@@ -1291,6 +1291,36 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("adds issue view pins from version 50 and keeps views and issues", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    database.exec("ALTER TABLE issue_views DROP COLUMN pinned_at");
+    const now = "2026-11-17T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO issue_views (id, title, group_by, layout, filters_json, created_at, updated_at)
+      VALUES ('v1', 'Mine', 'priority', 'list', '[{"field":"priority","op":"eq","value":"high"}]', '${now}', '${now}');
+      PRAGMA user_version = 50;
+    `);
+
+    initializeDatabase(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, title, group_by, filters_json, pinned_at FROM issue_views WHERE id = 'v1'",
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: "v1",
+        title: "Mine",
+        group_by: "priority",
+        filters_json: '[{"field":"priority","op":"eq","value":"high"}]',
+        pinned_at: null,
+      },
+    ]);
+  });
+
   it("adds script run call keys from version 49 and keeps script runs", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

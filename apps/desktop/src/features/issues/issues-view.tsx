@@ -62,7 +62,8 @@ import { IssuesList } from "./list";
 import {
   DeleteViewDialog,
   IssuesSidebar,
-  presetScopeFilters,
+  navScopeFilters,
+  pinnedViewTabs,
   useIssueNav,
   useIssueNavScopeLabel,
   useIssueNavTitle,
@@ -210,7 +211,8 @@ export function IssuesView() {
   const nav = useIssueNav({ board: loadedBoard });
   const viewBoard = nav.scopedBoard;
   const customViews = boards.filter((view) => view.id !== DEFAULT_VIEW_ID);
-  const viewTitle = useIssueNavTitle(nav.selection, boards);
+  const pinnedViews = pinnedViewTabs(customViews);
+  const viewTitle = useIssueNavTitle(nav.selection, boards, workspaces);
 
   const handleGroupBy = useCallback(
     (next: ViewGroupBy) => {
@@ -245,13 +247,10 @@ export function IssuesView() {
     [layout, updateView],
   );
 
-  const scopeLabel = useIssueNavScopeLabel(nav.selection);
+  const scopeLabel = useIssueNavScopeLabel(nav.selection, viewTitle);
 
   const handleSaveView = async (title: string) => {
-    const scope =
-      nav.selection.kind === "issues"
-        ? presetScopeFilters(nav.selection.preset)
-        : [];
+    const scope = navScopeFilters(nav.selection);
     const created = await saveFiltersAsView({
       title,
       filters: mergeFilters(viewFilters, scope),
@@ -303,10 +302,16 @@ export function IssuesView() {
               closeIssueDetail();
               nav.select(selection);
             }}
+            issues={loadedBoard?.issues ?? []}
+            workspaces={workspaces}
+            activityOf={nav.activityOf}
             views={customViews}
             onDeleteView={setPendingDeleteBoardId}
             onRenameView={(title) => {
               void updateView({ title });
+            }}
+            onTogglePin={(pinned) => {
+              void updateView({ pinned });
             }}
             onCollapse={() => setSidebarCollapsed(true)}
           />
@@ -333,6 +338,7 @@ export function IssuesView() {
           {boards.length > 0 || sidebarCollapsed ? (
             <IssuesToolbar
               selection={nav.selection}
+              pinnedViews={pinnedViews}
               viewTitle={viewTitle}
               scopeLabel={scopeLabel}
               leading={sidebarToggle}

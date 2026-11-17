@@ -16,6 +16,7 @@ function boardWithFilters(filters: ViewFilter[]): ViewFull {
       layout: "board",
       filters,
       display: DEFAULT_VIEW_DISPLAY,
+      pinnedAt: null,
       revision: 1,
       createdAt: "2026-10-08T00:00:00.000Z",
       updatedAt: "2026-10-08T00:00:00.000Z",

@@ -1,10 +1,15 @@
-import type { IssueRecord } from "@cocurdex/shared";
+import {
+  type IssueAgentActivity,
+  type IssueRecord,
+  isIssueAgentActivity,
+} from "@cocurdex/shared";
 
 export const ISSUE_FILTER_FIELDS = [
   "statuses",
   "priorities",
   "workspaceIds",
   "labelIds",
+  "agent",
 ] as const;
 
 export type IssueFilterField = (typeof ISSUE_FILTER_FIELDS)[number];
@@ -17,7 +22,14 @@ export const EMPTY_ISSUE_FILTERS: IssueFilters = {
   priorities: [],
   workspaceIds: [],
   labelIds: [],
+  agent: [],
 };
+
+export type IssueActivityLookup = (
+  sessionIds: readonly string[],
+) => IssueAgentActivity | null;
+
+const NO_AGENT_ACTIVITY = "none";
 
 export function isIssueFilterField(value: unknown): value is IssueFilterField {
   return ISSUE_FILTER_FIELDS.some((field) => field === value);
@@ -38,10 +50,15 @@ export function normalizeIssueFilters(value: unknown): IssueFilters {
     priorities: stringList(record.priorities),
     workspaceIds: stringList(record.workspaceIds),
     labelIds: stringList(record.labelIds),
+    agent: stringList(record.agent).filter(isIssueAgentActivity),
   };
 }
 
-function issueValues(issue: IssueRecord, field: IssueFilterField) {
+function issueValues(
+  issue: IssueRecord,
+  field: IssueFilterField,
+  activityOf: IssueActivityLookup,
+) {
   switch (field) {
     case "statuses":
       return [issue.status];
@@ -51,14 +68,22 @@ function issueValues(issue: IssueRecord, field: IssueFilterField) {
       return [issue.workspaceId ?? NO_WORKSPACE_FILTER];
     case "labelIds":
       return issue.labelIds;
+    case "agent":
+      return [activityOf(issue.sessionIds) ?? NO_AGENT_ACTIVITY];
   }
 }
 
-export function issueMatchesFilters(issue: IssueRecord, filters: IssueFilters) {
+export function issueMatchesFilters(
+  issue: IssueRecord,
+  filters: IssueFilters,
+  activityOf: IssueActivityLookup,
+) {
   return ISSUE_FILTER_FIELDS.every((field) => {
     const selected = filters[field];
     if (selected.length === 0) return true;
-    return issueValues(issue, field).some((value) => selected.includes(value));
+    return issueValues(issue, field, activityOf).some((value) =>
+      selected.includes(value),
+    );
   });
 }
 

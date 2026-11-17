@@ -352,6 +352,7 @@ export default interface Resources {
       title: "No Issues";
     };
     field: {
+      agent: "Agent";
       labels: "Labels";
       none: "None";
       priority: "Priority";
@@ -359,6 +360,8 @@ export default interface Resources {
       workspace: "Workspace";
     };
     filter: {
+      agentNeedsYou: "Needs you";
+      agentWorking: "Agent working";
       any: "Any";
       clear: "Clear filters";
       close: "Close";

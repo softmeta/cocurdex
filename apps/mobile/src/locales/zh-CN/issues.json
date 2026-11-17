@@ -26,6 +26,7 @@
     "title": "没有事项"
   },
   "field": {
+    "agent": "Agent",
     "labels": "标签",
     "none": "无",
     "priority": "优先级",
@@ -33,6 +34,8 @@
     "workspace": "工作区"
   },
   "filter": {
+    "agentNeedsYou": "需要你",
+    "agentWorking": "Agent 在做",
     "any": "全部",
     "clear": "清除筛选",
     "close": "关闭",

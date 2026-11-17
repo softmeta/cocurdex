@@ -11,7 +11,7 @@ or write `.cocurdex/issues` files.
 Use only these structural commands:
 
 ```bash
-cocurdex issue list [--status <column>] [--label <name>] [--parent <id>] [--open] --json
+cocurdex issue list [--status <column>] [--label <name>] [--parent <id>] [--open] [--workspace <id|path>] [--agent working|needs-you] --json
 cocurdex issue show <id> [--detail] --json
 cocurdex issue create --title <title> [--status <column>] [--priority <id>] [--body <markdown>|--body-file <path>] [--parent <id>] [--labels <a,b>] --json
 cocurdex issue update <id> [--title <title>] [--body <markdown>|--body-file <path>] [--status <column>] [--priority <id>] [--parent <id>|none] [--labels <a,b>] --json
@@ -28,7 +28,7 @@ cocurdex issue status move <id|name> --position <n> --json
 cocurdex issue status delete <id|name> --json
 cocurdex issue delete <id> --json
 cocurdex issue views --json
-cocurdex issue view update <view-id> [--title <title>] [--group-by status|priority|label|workspace|parent] [--layout board|list] [--show-empty true|false] [--properties <a,b>] --json
+cocurdex issue view update <view-id> [--title <title>] [--group-by status|priority|label|workspace|parent] [--layout board|list] [--show-empty true|false] [--properties <a,b>] [--pinned true|false] --json
 ```
 
 Pass long or multi-line Markdown with `--body-file <path>` or pipe it with
@@ -38,6 +38,10 @@ Every `<id>` accepts the issue's stable id or its short identifier such as
 `COC-12`. Prefer the identifier when you mention an issue to the user.
 `--labels` replaces the issue's label set and accepts label ids or names;
 create a missing label first. `--parent none` detaches a sub-issue.
+`--agent working` lists issues whose linked agent session is running;
+`--agent needs-you` lists issues whose linked session waits on a person
+(approval, question, plan, failure, or an unread result), matching the
+issues panel's Agent sections.
 Issue records include `sessionIds`, the agent sessions linked to the issue.
 `show --detail` adds the parent, sub-issues, relations, linked sessions, and
 the activity log. Relate an issue to a note, deck, or session with
@@ -71,6 +75,10 @@ board order, `status move --position` places a status within its category
 Deleting a status moves its issues to another status of the same category,
 or to the first status when none is left. Change statuses only when the user
 asks; the user manages them in the issues panel under Manage statuses.
+
+`view update --pinned true` pins a saved view as a tab next to the issues
+panel's All / Active / Backlog tabs (`pinnedAt` in `issue views`); `false`
+unpins it.
 
 A view groups its issues by `status` (default), `priority`, `label`,
 `workspace`, or `parent`. `move` targets a column of the view's grouping: a

@@ -3,7 +3,11 @@ import type {
   IssueRecord,
   IssueStatusCategory,
 } from "@cocurdex/shared";
-import { type IssueFilters, issueMatchesFilters } from "./issue-filters";
+import {
+  type IssueActivityLookup,
+  type IssueFilters,
+  issueMatchesFilters,
+} from "./issue-filters";
 
 export interface IssueSection {
   status: IssueFieldOption;
@@ -36,10 +40,12 @@ export function issueSections(
   statusOptions: readonly IssueFieldOption[],
   filters: IssueFilters,
   query: string,
+  activityOf: IssueActivityLookup,
 ): IssueSection[] {
   const needle = query.trim().toLocaleLowerCase();
   const shown = issues.filter(
-    (issue) => issueMatchesFilters(issue, filters) && matches(issue, needle),
+    (issue) =>
+      issueMatchesFilters(issue, filters, activityOf) && matches(issue, needle),
   );
   return statusOptions
     .map((status, order) => ({ status, order }))

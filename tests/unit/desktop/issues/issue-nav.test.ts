@@ -6,10 +6,23 @@ import {
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 import {
-  presetScopeFilters,
+  type IssueNavPlace,
+  type IssueNavPreset,
+  type IssueNavSelection,
+  navScopeFilters,
   selectNavColumns,
   selectNavIssues,
 } from "@/features/issues/sidebar/issue-nav";
+
+const ALL: IssueNavPlace = { kind: "all" };
+const noActivity = () => null;
+
+function scope(
+  preset: IssueNavPreset,
+  place: IssueNavPlace = ALL,
+): IssueNavSelection {
+  return { kind: "issues", preset, place };
+}
 
 function issue(
   id: string,
@@ -54,21 +67,54 @@ describe("selectNavIssues", () => {
   ];
 
   it("scopes issues by status preset", () => {
-    expect(
-      ids(selectNavIssues(issues, { kind: "issues", preset: "all" })),
-    ).toEqual(["backlog-a", "started-a", "todo-b", "done-a", "loose"]);
-    expect(
-      ids(selectNavIssues(issues, { kind: "issues", preset: "active" })),
-    ).toEqual(["started-a", "todo-b", "loose"]);
-    expect(
-      ids(selectNavIssues(issues, { kind: "issues", preset: "backlog" })),
-    ).toEqual(["backlog-a"]);
+    expect(ids(selectNavIssues(issues, scope("all"), noActivity))).toEqual([
+      "backlog-a",
+      "started-a",
+      "todo-b",
+      "done-a",
+      "loose",
+    ]);
+    expect(ids(selectNavIssues(issues, scope("active"), noActivity))).toEqual([
+      "started-a",
+      "todo-b",
+      "loose",
+    ]);
+    expect(ids(selectNavIssues(issues, scope("backlog"), noActivity))).toEqual([
+      "backlog-a",
+    ]);
   });
 
   it("leaves a saved view's issues untouched", () => {
-    expect(selectNavIssues(issues, { kind: "view", viewId: "custom" })).toBe(
-      issues,
-    );
+    expect(
+      selectNavIssues(issues, { kind: "view", viewId: "custom" }, noActivity),
+    ).toBe(issues);
+  });
+
+  it("narrows a status preset to a workspace or an agent state", () => {
+    expect(
+      ids(
+        selectNavIssues(
+          issues,
+          scope("active", { kind: "workspace", workspaceId: "a" }),
+          noActivity,
+        ),
+      ),
+    ).toEqual(["started-a"]);
+    const working = (sessionIds: readonly string[]) =>
+      sessionIds.includes("run") ? ("working" as const) : null;
+    const linked = [
+      issue("busy", "started", { sessionIds: ["run"] }),
+      issue("idle", "started", { sessionIds: ["done"] }),
+    ];
+    expect(
+      ids(
+        selectNavIssues(
+          linked,
+          scope("all", { kind: "agent", activity: "working" }),
+          working,
+        ),
+      ),
+    ).toEqual(["busy"]);
   });
 });
 
@@ -102,46 +148,48 @@ describe("selectNavColumns", () => {
     columns.map((entry) => entry.id);
 
   it("shows only the status columns a preset can hold", () => {
+    expect(columnIds(selectNavColumns(statusColumns, scope("active")))).toEqual(
+      ["todo", "doing", "custom"],
+    );
     expect(
-      columnIds(
-        selectNavColumns(statusColumns, { kind: "issues", preset: "active" }),
-      ),
-    ).toEqual(["todo", "doing", "custom"]);
-    expect(
-      columnIds(
-        selectNavColumns(statusColumns, { kind: "issues", preset: "backlog" }),
-      ),
+      columnIds(selectNavColumns(statusColumns, scope("backlog"))),
     ).toEqual(["backlog", "custom"]);
   });
 
   it("keeps every column for all issues, saved views, and priority groups", () => {
-    expect(
-      selectNavColumns(statusColumns, { kind: "issues", preset: "all" }),
-    ).toBe(statusColumns);
+    expect(selectNavColumns(statusColumns, scope("all"))).toBe(statusColumns);
     expect(
       selectNavColumns(statusColumns, { kind: "view", viewId: "custom" }),
     ).toBe(statusColumns);
     const priorityColumns = [column("urgent", null, "priority")];
-    expect(
-      selectNavColumns(priorityColumns, { kind: "issues", preset: "active" }),
-    ).toEqual(priorityColumns);
+    expect(selectNavColumns(priorityColumns, scope("active"))).toEqual(
+      priorityColumns,
+    );
   });
 });
 
-describe("presetScopeFilters", () => {
-  it("turns a preset into saved-view filters that select the same issues", () => {
+describe("navScopeFilters", () => {
+  it("turns a preset and workspace into saved-view filters that select the same issues", () => {
     const issues = [
-      issue("backlog-a", "backlog"),
+      issue("backlog-a", "backlog", { workspaceId: "a" }),
       issue("todo", "unstarted"),
-      issue("started", "started"),
+      issue("started-a", "started", { workspaceId: "a" }),
+      issue("started-b", "started", { workspaceId: "b" }),
       issue("done", "completed"),
       issue("canceled", "canceled"),
     ];
-    for (const preset of ["all", "active", "backlog"] as const) {
-      const filters = presetScopeFilters(preset);
-      expect(
-        ids(issues.filter((entry) => issueMatchesFilters(entry, filters))),
-      ).toEqual(ids(selectNavIssues(issues, { kind: "issues", preset })));
+    const places: IssueNavPlace[] = [
+      ALL,
+      { kind: "workspace", workspaceId: "a" },
+    ];
+    for (const place of places) {
+      for (const preset of ["all", "active", "backlog"] as const) {
+        const selection = scope(preset, place);
+        const filters = navScopeFilters(selection);
+        expect(
+          ids(issues.filter((entry) => issueMatchesFilters(entry, filters))),
+        ).toEqual(ids(selectNavIssues(issues, selection, noActivity)));
+      }
     }
   });
 });

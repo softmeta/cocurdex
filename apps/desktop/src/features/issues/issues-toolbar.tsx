@@ -5,6 +5,7 @@ import type {
   ViewFilter,
   ViewGroupBy,
   ViewLayout,
+  ViewSummary,
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import { Plus } from "lucide-react";
@@ -15,10 +16,15 @@ import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { Text } from "@/components/ui";
 import { cn } from "@/lib";
 import { ViewDisplayMenu, ViewFilterBar, ViewFilterMenu } from "./board";
-import { type IssueNavSelection, IssueScopeTabs } from "./sidebar";
+import {
+  canSaveNavScope,
+  type IssueNavSelection,
+  IssueScopeTabs,
+} from "./sidebar";
 
 export function IssuesToolbar({
   selection,
+  pinnedViews,
   viewTitle,
   scopeLabel,
   leading,
@@ -39,7 +45,8 @@ export function IssuesToolbar({
   onNewIssue,
 }: {
   selection: IssueNavSelection;
-  viewTitle: string | null;
+  pinnedViews: readonly ViewSummary[];
+  viewTitle: string;
   scopeLabel: string | null;
   leading: ReactNode;
   showViewControls: boolean;
@@ -69,7 +76,7 @@ export function IssuesToolbar({
           truncate
           className={cn("me-auto", leading && "ps-0.5", !leading && "ps-1")}
         >
-          {viewTitle ?? t("sidebar.nav.title")}
+          {viewTitle}
         </Text>
         {onNewIssue ? (
           <TitlebarIconButton
@@ -85,7 +92,11 @@ export function IssuesToolbar({
         data-testid="issues-view-display-bar"
       >
         <div className="scrollbar-hide me-auto flex min-w-0 items-center overflow-x-auto">
-          <IssueScopeTabs selection={selection} onSelect={onSelect} />
+          <IssueScopeTabs
+            selection={selection}
+            pinnedViews={pinnedViews}
+            onSelect={onSelect}
+          />
         </div>
         {showViewControls ? (
           <>
@@ -114,7 +125,7 @@ export function IssuesToolbar({
           labels={labels}
           statuses={statuses}
           scopeLabel={scopeLabel}
-          canSave={selection.kind === "issues"}
+          canSave={canSaveNavScope(selection)}
           onFiltersChange={onFiltersChange}
           onSave={onSaveView}
         />

@@ -42,7 +42,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 50;
+export const CURRENT_SCHEMA_VERSION = 51;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -658,6 +658,12 @@ function addScriptRunAgentCallKeys(database: DatabaseSync) {
   }
 }
 
+function addIssueViewPins(database: DatabaseSync) {
+  if (!hasColumn(database, "issue_views", "pinned_at")) {
+    database.exec("ALTER TABLE issue_views ADD COLUMN pinned_at TEXT");
+  }
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
@@ -704,6 +710,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [47, createFollowUpsTable],
   [48, createMemoryEntriesTables],
   [49, addScriptRunAgentCallKeys],
+  [50, addIssueViewPins],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

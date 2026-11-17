@@ -62,7 +62,7 @@ describe("issueSections", () => {
   };
 
   it("puts work in progress first and drops empty statuses", () => {
-    const sections = issueSections(issues, statuses, inShop, "");
+    const sections = issueSections(issues, statuses, inShop, "", () => null);
 
     expect(
       sections.map((section) => [
@@ -79,14 +79,22 @@ describe("issueSections", () => {
 
   it("searches titles and identifiers across every workspace", () => {
     expect(
-      issueSections(issues, statuses, EMPTY_ISSUE_FILTERS, "cents").flatMap(
-        (section) => section.issues.map((entry) => entry.identifier),
-      ),
+      issueSections(
+        issues,
+        statuses,
+        EMPTY_ISSUE_FILTERS,
+        "cents",
+        () => null,
+      ).flatMap((section) => section.issues.map((entry) => entry.identifier)),
     ).toEqual(["COC-3"]);
     expect(
-      issueSections(issues, statuses, EMPTY_ISSUE_FILTERS, "coc-6").flatMap(
-        (section) => section.issues.map((entry) => entry.identifier),
-      ),
+      issueSections(
+        issues,
+        statuses,
+        EMPTY_ISSUE_FILTERS,
+        "coc-6",
+        () => null,
+      ).flatMap((section) => section.issues.map((entry) => entry.identifier)),
     ).toEqual(["COC-6"]);
   });
 });
