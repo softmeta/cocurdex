@@ -78,7 +78,7 @@ import type {
   MentionEditorHandle,
 } from "./mention-editor";
 import { sendShortcutAtom } from "./send-shortcut";
-import { SessionRoleName } from "./session-role-name";
+import { SessionAgentName, SessionRoleName } from "./session-role-name";
 import {
   type ComposerSendOutcome,
   useComposerSubmission,
@@ -522,9 +522,14 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const showsAgentMenu =
       isAgentMode && !sessionId && !(sessionRole && !onSelectAgent);
     const defaultAgentControls = showsAgentMenu ? agentMenu : null;
-    const modelLeading = sessionRole ? (
-      <SessionRoleName role={sessionRole} />
-    ) : null;
+    let modelLeading: ReactNode = null;
+    if (sessionRole) {
+      modelLeading = <SessionRoleName role={sessionRole} />;
+    } else if (isAgentMode && sessionId) {
+      modelLeading = (
+        <SessionAgentName agentId={selectedAgent} label={agentLabel} />
+      );
+    }
     const resolvedControls = runtimeControls
       ? (controls ?? defaultAgentControls)
       : null;
