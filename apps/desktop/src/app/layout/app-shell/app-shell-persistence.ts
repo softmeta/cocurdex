@@ -1,5 +1,6 @@
 import { useSetAtom, useStore } from "jotai";
 import { useEffectEvent } from "react";
+import { requestFind } from "@/components/app";
 import { bootstrapQueuedInputsAtom } from "@/features/agent";
 import { bootstrapSessionUsageAtom } from "@/features/composer";
 import { bootstrapEditorViewsAtom } from "@/features/editor";
@@ -117,6 +118,8 @@ export function useAppPersistence() {
       void openRequestedEntity();
     }),
   );
+
+  useMountEffect(() => desktopApi.onFindRequested(() => requestFind()));
 
   useMountEffect(() =>
     desktopApi.onRemoteHostSession(() => {

@@ -3,6 +3,7 @@ import { useSetAtom } from "jotai";
 import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FindInDocumentButton } from "@/app/layout/find-in-document-button";
 import { PanelToolbar } from "@/app/layout/panel-toolbar";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import {
@@ -81,7 +82,10 @@ export function IssueDetailPage({
             {card.identifier}
           </Text>
         </div>
-        {stepper ? <IssueStepControls stepper={stepper} /> : null}
+        <div className="ms-auto flex shrink-0 items-center gap-0.5">
+          <FindInDocumentButton />
+          {stepper ? <IssueStepControls stepper={stepper} /> : null}
+        </div>
       </PanelToolbar>
       <ScrollArea className="min-h-0 flex-1">
         <div className="@container/issue">
@@ -134,8 +138,11 @@ export function IssueDetailPage({
 function IssueStepControls({ stepper }: { stepper: IssueDetailStepper }) {
   const { t } = useTranslation("issues");
   return (
-    <div className="ms-auto flex shrink-0 items-center gap-0.5">
-      <Text size="meta" className="me-1 tabular-nums text-editor-fg-subtle">
+    <div className="flex shrink-0 items-center gap-0.5">
+      <Text
+        size="meta"
+        className="ms-1 me-1 tabular-nums text-editor-fg-subtle"
+      >
         {stepper.position} / {stepper.total}
       </Text>
       <TitlebarIconButton

@@ -3,7 +3,7 @@ import { FileWarning } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { AppFindBar } from "@/components/app";
+import { AppFindBar, useFindRequest } from "@/components/app";
 import { EmptyState } from "@/components/ui";
 import { insertMarkdownIntoActiveNoteAtom } from "@/features/notes/note-body-insert";
 import { lazyComponent, useDocumentEvent, useMountEffect } from "@/lib";
@@ -283,6 +283,9 @@ function PdfViewerContent({
     [isActive, status, selection, clearSelection],
   );
   useDocumentEvent("keydown", handleViewerKeydown);
+  useFindRequest(() => {
+    if (isActive && status === "ready") setIsSearchOpen(true);
+  });
 
   const handleAddSelection = useCallback(() => {
     if (selection?.kind !== "text") {

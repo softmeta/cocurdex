@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PanelToolbar } from "@/app/layout/panel-toolbar";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
+import { useFindRequest } from "@/components/app";
 import { Button, EmptyState } from "@/components/ui";
 import {
   useActiveTerminalStatus,
@@ -60,6 +61,9 @@ export function TerminalPanel({
   const handleOpenSearch = useCallback(() => {
     setSearchOpen(true);
   }, []);
+  useFindRequest(() => {
+    if (isActive && activeTabId) setSearchOpen(true);
+  });
   const slotRef = useTerminalSlot({
     terminalId: activeTabId,
     workspaceId,

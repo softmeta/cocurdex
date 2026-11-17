@@ -65,6 +65,7 @@ export const offlineHostApi: HostApi = {
   consumePendingOpenFolder: async () => null,
   consumeEntityOpenRequest: async () => null,
   onEntityOpenRequested: () => () => {},
+  onFindRequested: () => () => {},
   getPathForFile: () => null,
   onOpenWorkspaceFromCli: () => () => {},
   setWindowSurfaceColor: async () => {},

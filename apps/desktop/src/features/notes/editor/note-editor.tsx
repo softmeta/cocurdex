@@ -15,6 +15,7 @@ import {
   TableControls,
 } from "@/components/markdown-body-editor";
 import "@/components/markdown-body-editor/markdown-body-editor.css";
+import { FindInDocumentButton } from "@/app/layout/find-in-document-button";
 import {
   DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX,
   DocumentOutlineMenu,
@@ -237,6 +238,7 @@ function NoteEditorBody({
                   editor={editor}
                 />
                 <SaveIndicator status={saveStatus} />
+                <FindInDocumentButton className="ms-auto" />
               </div>
               <NoteTimestamps
                 createdAt={note.createdAt}

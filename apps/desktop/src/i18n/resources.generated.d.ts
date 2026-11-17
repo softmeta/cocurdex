@@ -436,6 +436,7 @@ export default interface Resources {
       close: "Close find";
       label: "Find in document";
       matches: "{{current}} / {{total}}";
+      menu: "Find…";
       next: "Next match";
       noResults: "No results";
       placeholder: "Find";

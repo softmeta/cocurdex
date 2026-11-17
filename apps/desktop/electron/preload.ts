@@ -61,6 +61,13 @@ const hostBridge: HostBridge = {
       ipcRenderer.removeListener("entity:openRequested", handler);
     };
   },
+  onFindRequested: (listener: () => void) => {
+    const handler = () => listener();
+    ipcRenderer.on("app:findRequested", handler);
+    return () => {
+      ipcRenderer.removeListener("app:findRequested", handler);
+    };
+  },
   getPathForFile: (file: File) => {
     try {
       return webUtils.getPathForFile(file);
