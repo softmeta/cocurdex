@@ -1,4 +1,3 @@
-import { sentPromptPeek } from "@cocurdex/client-runtime";
 import { defaultRangeExtractor, type Range } from "@tanstack/react-virtual";
 import type { ConversationGroup } from "../chat-timeline";
 
@@ -62,16 +61,5 @@ export function getMessageScrollTop(
       scrollTop + relativeTop - MESSAGE_SCROLL_INSET,
       scrollHeight - viewportHeight,
     ),
-  );
-}
-
-const TIMELINE_BOTTOM_PADDING = 24;
-export function getAnchoredConversationMinHeight(viewportHeight: number) {
-  return Math.max(
-    0,
-    viewportHeight -
-      MESSAGE_SCROLL_INSET -
-      TIMELINE_BOTTOM_PADDING -
-      sentPromptPeek(viewportHeight),
   );
 }

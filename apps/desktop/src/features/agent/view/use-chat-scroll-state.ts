@@ -81,6 +81,7 @@ export function useChatScrollState({
   const initialPositionPendingRef = useRef(true);
   const userScrollIntentTsRef = useRef(0);
   const latestJumpRef = useRef<{ smooth: boolean } | null>(null);
+  const observedScrollTopRef = useRef(0);
   const setNearBottomState = useCallback((nextIsNearBottom: boolean) => {
     if (isNearBottomRef.current === nextIsNearBottom) {
       return;
@@ -96,6 +97,33 @@ export function useChatScrollState({
     );
   }, []);
 
+  const isUserScrolling = useCallback(
+    () =>
+      performance.now() - userScrollIntentTsRef.current <
+      USER_SCROLL_INTENT_WINDOW_MS,
+    [],
+  );
+
+  const followLatest = useCallback(
+    (viewport: HTMLDivElement) => {
+      const contentGrewUnderReader =
+        Math.abs(viewport.scrollTop - observedScrollTopRef.current) <= 1;
+      if (
+        contentGrewUnderReader &&
+        isNearBottomRef.current &&
+        !initialPositionPendingRef.current &&
+        !latestJumpRef.current &&
+        !isUserScrolling() &&
+        !isViewportAtBottom(viewport)
+      ) {
+        scrollViewportToLatest(viewport, false);
+        timelineScrollRef?.current?.syncScrollOffset();
+      }
+      observedScrollTopRef.current = viewport.scrollTop;
+    },
+    [isUserScrolling, timelineScrollRef],
+  );
+
   const clearPendingUserMessage = useCallback(() => {
     pendingUserMessageIdRef.current = null;
     setPendingUserMessageId(null);
@@ -109,6 +137,7 @@ export function useChatScrollState({
         return;
       }
 
+      followLatest(viewport);
       const nextIsNearBottom = isViewportAtBottom(viewport);
       const nextIsNearTop = isViewportNearTop(viewport);
       setIsNearTop(nextIsNearTop);
@@ -177,6 +206,7 @@ export function useChatScrollState({
       setStickyUserMessageState(selection.id);
     },
     [
+      followLatest,
       setNearBottomState,
       setStickyUserMessageState,
       timelineScrollRef,
@@ -220,6 +250,7 @@ export function useChatScrollState({
 
       scrollViewportToLatest(viewport, smooth);
       timelineScrollRef?.current?.syncScrollOffset();
+      observedScrollTopRef.current = viewport.scrollTop;
       initialPositionPendingRef.current = false;
       const atBottom = isViewportAtBottom(viewport);
       latestJumpRef.current = atBottom ? null : { smooth };
@@ -267,6 +298,7 @@ export function useChatScrollState({
       initialPositionPendingRef.current = false;
       latestJumpRef.current = null;
       userScrollIntentTsRef.current = 0;
+      setNearBottomState(false);
       pendingUserMessageIdRef.current = messageId;
       setPendingUserMessageId(messageId);
       setStickyUserMessageState(messageId);
@@ -285,6 +317,7 @@ export function useChatScrollState({
       }
     },
     [
+      setNearBottomState,
       setStickyUserMessageState,
       timelineScrollRef,
       userMessageRefs,
@@ -310,10 +343,19 @@ export function useChatScrollState({
     } else if (latestJumpRef.current && !isViewportAtBottom(viewport)) {
       scrollViewportToLatest(viewport, latestJumpRef.current.smooth);
       timelineScrollRef?.current?.syncScrollOffset();
+    } else {
+      followLatest(viewport);
     }
-    setNearBottomState(isViewportAtBottom(viewport));
+    observedScrollTopRef.current = viewport.scrollTop;
+    if (!isUserScrolling()) setNearBottomState(isViewportAtBottom(viewport));
     setIsNearTop(isViewportNearTop(viewport));
-  }, [setNearBottomState, timelineScrollRef, viewportRef]);
+  }, [
+    followLatest,
+    isUserScrolling,
+    setNearBottomState,
+    timelineScrollRef,
+    viewportRef,
+  ]);
 
   return {
     finishInitialPositioning,

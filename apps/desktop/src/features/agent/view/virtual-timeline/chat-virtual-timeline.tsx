@@ -6,18 +6,15 @@ import { ChatConversationItem } from "../chat-conversation-item";
 import type { ConversationGroup } from "../chat-timeline";
 import { separatorTimeBefore } from "../conversation-time";
 import { ConversationTimeSeparator } from "../conversation-time-separator";
-import { useElementHeight } from "./use-element-height";
 import {
   type ChatTimelineScrollHandle,
   useVirtualTimeline,
 } from "./use-virtual-timeline";
-import { getAnchoredConversationMinHeight } from "./virtual-timeline-model";
 
 type ChatVirtualTimelineProps = Omit<
   ComponentProps<typeof ChatConversationItem>,
   "conversationGroup" | "isLatestConversation"
 > & {
-  anchoredPromptId?: string | null;
   groups: ConversationGroup[];
   scrollRef: RefObject<ChatTimelineScrollHandle | null>;
   userMessageRefs: RefObject<Record<string, HTMLDivElement | null>>;
@@ -26,7 +23,6 @@ type ChatVirtualTimelineProps = Omit<
 
 export function ChatVirtualTimeline({
   activity,
-  anchoredPromptId = null,
   groups,
   scrollRef,
   userMessageRefs,
@@ -40,7 +36,6 @@ export function ChatVirtualTimeline({
       userMessageRefs,
       viewportElement,
     });
-  const viewportHeight = useElementHeight(viewportElement);
   const showsTimeSeparators = useChatPresentation() === "assistant";
   return (
     <TranscriptStateProvider>
@@ -55,10 +50,6 @@ export function ChatVirtualTimeline({
         {items.map(({ index }) => {
           const group = groups[index];
           const isLatestConversation = index === groups.length - 1;
-          const isAnchored =
-            isLatestConversation &&
-            anchoredPromptId !== null &&
-            group.prompt?.id === anchoredPromptId;
           const separatorTime = showsTimeSeparators
             ? separatorTimeBefore(groups[index - 1], group)
             : null;
@@ -69,11 +60,6 @@ export function ChatVirtualTimeline({
               data-index={index}
               key={group.id}
               ref={virtualizer.measureElement}
-              style={{
-                minHeight: isAnchored
-                  ? getAnchoredConversationMinHeight(viewportHeight)
-                  : undefined,
-              }}
             >
               {separatorTime === null ? null : (
                 <ConversationTimeSeparator time={separatorTime} />
