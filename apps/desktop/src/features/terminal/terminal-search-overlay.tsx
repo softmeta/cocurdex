@@ -1,4 +1,4 @@
-import { AppFindBar } from "@/components/app";
+import { AppFindBar } from "@/components/app/find-bar";
 import { clearTerminalSearch, searchInTerminal } from "./terminal-registry";
 
 interface TerminalSearchOverlayProps {
