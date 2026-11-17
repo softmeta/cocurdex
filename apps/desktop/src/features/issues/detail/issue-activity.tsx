@@ -120,8 +120,8 @@ export function IssueActivity({
   };
 
   return (
-    <section className="flex flex-col gap-2 border-t border-editor-border/60 px-5 py-2.5">
-      <Text size="meta" weight="medium" className="text-editor-fg-muted">
+    <section className="flex flex-col gap-3 px-5 pt-8">
+      <Text size="body" weight="medium" className="text-editor-fg">
         {t("activity.title")}
       </Text>
       <ol className="flex flex-col gap-2">

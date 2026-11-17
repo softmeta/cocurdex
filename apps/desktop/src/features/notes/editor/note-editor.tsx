@@ -260,7 +260,9 @@ function NoteEditorBody({
               <EditorContent editor={editor} className="relative flex-1" />
               {editor ? <TableControls editor={editor} /> : null}
             </div>
-            <RelatedEntities entity={{ kind: "note", id: note.id }} />
+            <div className="border-t border-editor-border/60">
+              <RelatedEntities entity={{ kind: "note", id: note.id }} />
+            </div>
           </div>
         </div>
         {isWide ? (
