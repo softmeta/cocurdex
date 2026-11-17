@@ -19,6 +19,7 @@ import { ConversationRow } from "./conversation-rows";
 import { DelegationReportLine } from "./delegation-line";
 import { imageAttachmentRequest } from "./image-attachments";
 import type { SessionPresentation } from "./live-run";
+import { useMessageActions } from "./message-actions-menu";
 import { PostedSourceLine } from "./posted-source-line";
 import { TimeSeparator } from "./time-separator";
 import { TurnActions } from "./turn-actions";
@@ -450,6 +451,8 @@ export function TranscriptView({
 }) {
   const colors = useThemeColors();
   const rowActions = useStableActions(actions);
+  const messageActions = useMessageActions();
+  const openMessageActions = messageActions.open;
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const toggle = useCallback((id: string) => {
     setExpanded((current) => {
@@ -471,6 +474,7 @@ export function TranscriptView({
           hostId={rowActions.hostId}
           fileRoot={rowActions.fileRoot}
           role={rowActions.assistantRole ?? null}
+          onActions={openMessageActions}
         />
       ) : (
         <TranscriptRow
@@ -483,18 +487,29 @@ export function TranscriptView({
           userBubble={userBubble}
         />
       ),
-    [presentation, userBubble, colors, rowActions, expanded, toggle],
+    [
+      presentation,
+      userBubble,
+      colors,
+      rowActions,
+      expanded,
+      toggle,
+      openMessageActions,
+    ],
   );
   return (
-    <TranscriptList
-      ref={ref}
-      items={items}
-      footer={footer}
-      sentMessageId={sentMessageId}
-      bottomInset={bottomInset}
-      onReachOldest={onReachOldest}
-      renderRow={renderRow}
-    />
+    <>
+      <TranscriptList
+        ref={ref}
+        items={items}
+        footer={footer}
+        sentMessageId={sentMessageId}
+        bottomInset={bottomInset}
+        onReachOldest={onReachOldest}
+        renderRow={renderRow}
+      />
+      {messageActions.menu}
+    </>
   );
 }
 

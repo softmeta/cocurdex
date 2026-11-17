@@ -1,15 +1,15 @@
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { RoleAvatar, type RoleAvatarSource } from "@/agents";
 import { MarkdownText } from "@/markdown";
 import { layout, space, type ThemeColors } from "@/theme";
-import { ShimmerText } from "@/ui";
+import { type MenuAnchor, menuAnchor, ShimmerText } from "@/ui";
 import type { SessionPresentation } from "./live-run";
 import { PostedSourceLine } from "./posted-source-line";
 import { TimeSeparator } from "./time-separator";
 import type { CondensedItem } from "./transcript-activity";
-import { TurnActions } from "./turn-actions";
+import { TurnMeta } from "./turn-actions";
 import { liveLabel } from "./use-activity-label";
 import { useElapsedMs } from "./use-elapsed-label";
 import { useSettledLabel } from "./use-settled-label";
@@ -74,6 +74,7 @@ export function ConversationRow({
   hostId,
   fileRoot,
   role,
+  onActions,
 }: {
   item: ConversationItem;
   presentation: Exclude<SessionPresentation, "work">;
@@ -81,6 +82,7 @@ export function ConversationRow({
   hostId: string;
   fileRoot: string | null | undefined;
   role: RoleAvatarSource | null;
+  onActions(text: string, anchor: MenuAnchor): void;
 }) {
   if (item.kind === "activity") {
     return (
@@ -104,8 +106,12 @@ export function ConversationRow({
           hostId={hostId}
         />
       ) : null}
-      <View
+      <Pressable
+        accessible={false}
+        disabled={item.streaming}
+        onLongPress={(event) => onActions(item.text, menuAnchor(event))}
         style={[styles.bubble, { backgroundColor: colors.chatSurfaceBubble }]}
+        testID={`conversation-bubble-${item.id}`}
       >
         <MarkdownText
           markdown={item.text}
@@ -114,10 +120,10 @@ export function ConversationRow({
           fileRoot={fileRoot}
           testID={`transcript-assistant-${item.id}`}
         />
-      </View>
-      {item.turnEnd ? (
-        <View style={styles.actions}>
-          <TurnActions text={item.text} turn={item.turn} onFork={null} />
+      </Pressable>
+      {item.turnEnd && item.turn ? (
+        <View style={styles.meta}>
+          <TurnMeta turn={item.turn} />
         </View>
       ) : null}
     </View>
@@ -132,7 +138,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
   },
-  actions: { paddingLeft: space.sm, paddingTop: space.xs },
+  meta: { paddingLeft: space.sm, paddingTop: space.xs },
   working: {
     minHeight: 32,
     flexDirection: "row",
