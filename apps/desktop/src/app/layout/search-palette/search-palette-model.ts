@@ -1,4 +1,4 @@
-import { isPersonalSession, type SessionRecord } from "@cocurdex/shared";
+import type { SessionRecord } from "@cocurdex/shared";
 
 export const SEARCH_CATEGORIES = [
   "all",
@@ -9,26 +9,6 @@ export const SEARCH_CATEGORIES = [
 ] as const;
 
 export type SearchCategory = (typeof SEARCH_CATEGORIES)[number];
-
-export type SearchScope = "everything" | "assistants";
-
-const ASSISTANT_CATEGORIES: readonly SearchCategory[] = [
-  "all",
-  "sessions",
-  "notes",
-  "issues",
-];
-
-export function searchCategories(scope: SearchScope) {
-  return scope === "assistants" ? ASSISTANT_CATEGORIES : SEARCH_CATEGORIES;
-}
-
-export function sessionsInScope(
-  sessions: readonly SessionRecord[],
-  scope: SearchScope,
-) {
-  return scope === "assistants" ? sessions.filter(isPersonalSession) : sessions;
-}
 
 export function cycleSearchCategory(
   categories: readonly SearchCategory[],

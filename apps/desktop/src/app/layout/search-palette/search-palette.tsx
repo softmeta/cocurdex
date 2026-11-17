@@ -24,19 +24,18 @@ import {
   workspacesAtom,
 } from "@/features/workspaces";
 import { cn, formatShortcutLabel, type WorkspaceFileEntry } from "@/lib";
-import { sidebarTabAtom } from "../sidebar";
 import {
   cycleSearchCategory,
   rankSessions,
+  SEARCH_CATEGORIES,
   type SearchCategory,
-  searchCategories,
-  sessionsInScope,
 } from "./search-palette-model";
 import {
   DocumentResultItem,
   FileResultItem,
   SessionResultItem,
 } from "./search-result-items";
+import { sessionOrigin, usePersonaRoles } from "./session-origin";
 import { useDocumentSearch } from "./use-document-search";
 import { useSearchPaletteActions } from "./use-search-palette-actions";
 
@@ -141,10 +140,9 @@ function SearchPaletteContent({
   const { t } = useTranslation(["common", "search"]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<SearchCategory>("all");
-  const scope =
-    useAtomValue(sidebarTabAtom) === "personal" ? "assistants" : "everything";
-  const categories = searchCategories(scope);
-  const sessions = sessionsInScope(useAtomValue(sessionsAtom), scope);
+  const categories = SEARCH_CATEGORIES;
+  const sessions = useAtomValue(sessionsAtom);
+  const personaRoles = usePersonaRoles();
   const workspaces = useAtomValue(workspacesAtom);
   const documents = useDocumentSearch();
   const actions = useSearchPaletteActions(onClose);
@@ -158,7 +156,7 @@ function SearchPaletteContent({
   const normalizedQuery = query.trim();
   const limit = resultLimit(category);
   const files = useFileResults(
-    categories.includes("files") ? activeWorkspaceRootPaths : [],
+    activeWorkspaceRootPaths,
     normalizedQuery,
     limit,
   );
@@ -194,7 +192,7 @@ function SearchPaletteContent({
           key={session.id}
           query={normalizedQuery}
           session={session}
-          workspaceName={workspaceNames.get(session.workspaceId)}
+          origin={sessionOrigin(session, workspaceNames, personaRoles)}
           onSelect={() => actions.openSession(session)}
         />
       )),

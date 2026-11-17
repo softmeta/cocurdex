@@ -79,6 +79,10 @@
   },
   "more": "更多",
   "openSearch": "打开搜索",
+  "origins": {
+    "assistant": "助手",
+    "chat": "对话"
+  },
   "placeholder": "搜索会话、文件、笔记、事项...",
   "searchFiles": "搜索文件",
   "title": "搜索"

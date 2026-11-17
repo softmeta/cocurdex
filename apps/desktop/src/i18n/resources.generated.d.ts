@@ -1875,6 +1875,10 @@ export default interface Resources {
     };
     more: "More";
     openSearch: "Open search";
+    origins: {
+      assistant: "Assistant";
+      chat: "Chat";
+    };
     placeholder: "Search sessions, files, notes, issues...";
     searchFiles: "Search files";
     title: "Search";
