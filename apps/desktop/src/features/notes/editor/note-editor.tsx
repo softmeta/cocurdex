@@ -85,11 +85,7 @@ export function NoteEditor() {
   if (activeNote && activeNote.kind === "folder") {
     return <FolderPlaceholder key={activeNote.id} note={activeNote} />;
   }
-  if (
-    !activeNote ||
-    activeNote.id !== activeNoteId ||
-    activeNoteDoc?.noteId !== activeNote.id
-  ) {
+  if (!activeNote || activeNoteDoc?.noteId !== activeNote.id) {
     return <div className="flex-1" />;
   }
   return (
