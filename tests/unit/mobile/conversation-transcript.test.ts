@@ -27,7 +27,6 @@ const tool = (id: string): TranscriptItem => ({
 const options = (running: boolean, times = new Map<string, string>()) => ({
   live: { running, phase: "thinking" as const },
   times,
-  separators: true,
 });
 
 const shape = (items: ReturnType<typeof conversationTranscript>) =>

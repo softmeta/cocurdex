@@ -464,12 +464,11 @@ export function TranscriptView({
   }, []);
   const renderRow = useCallback(
     (item: CondensedItem) =>
-      presentation !== "work" &&
+      presentation === "assistant" &&
       (item.kind === "assistant" || item.kind === "activity") ? (
         <ConversationRow
           key={`${item.kind}:${item.id}`}
           item={item}
-          presentation={presentation}
           colors={colors}
           hostId={rowActions.hostId}
           fileRoot={rowActions.fileRoot}

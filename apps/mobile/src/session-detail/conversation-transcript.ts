@@ -10,7 +10,6 @@ type Said = Extract<CondensedItem, { kind: "user" } | { kind: "assistant" }>;
 export interface ConversationOptions {
   live: LiveRun;
   times: ReadonlyMap<string, string>;
-  separators: boolean;
 }
 
 function startsExchange(item: Said, index: number) {
@@ -44,15 +43,17 @@ function markTurnEnds(said: readonly Said[], running: boolean): Said[] {
 
 export function conversationTranscript(
   items: readonly TranscriptItem[],
-  { live, times, separators }: ConversationOptions,
+  { live, times }: ConversationOptions,
 ): CondensedItem[] {
   const spoken = items.flatMap((item): Said[] => {
     if (item.kind === "user") return [item];
     if (item.kind === "assistant") return [{ ...item, turnEnd: false }];
     return [];
   });
-  const timed = separators ? withSeparators(spoken, times) : spoken;
-  const said: CondensedItem[] = markTurnEnds(timed, live.running);
+  const said: CondensedItem[] = markTurnEnds(
+    withSeparators(spoken, times),
+    live.running,
+  );
   const last = said.at(-1);
   const replying = last?.kind === "assistant" && last.streaming;
   if (!live.running || replying) return said;

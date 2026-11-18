@@ -168,17 +168,16 @@ export function SessionDetailScreen({
       startedAt: runStartedAt,
     };
     const condensed =
-      presentation === "work"
-        ? condenseTranscript(
+      presentation === "assistant"
+        ? conversationTranscript(transcriptItems, {
+            live,
+            times: messageTimes(observation),
+          })
+        : condenseTranscript(
             transcriptItems,
             observation?.toolCalls ?? [],
             live,
-          )
-        : conversationTranscript(transcriptItems, {
-            live,
-            times: messageTimes(observation),
-            separators: presentation === "assistant",
-          });
+          );
     return withTurnEnds(
       condensed,
       observation?.turnStats ?? {},
