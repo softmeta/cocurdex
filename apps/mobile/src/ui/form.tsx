@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGroupedColors, useSurface } from "@/theme";
 import { formMetrics } from "./form-metrics";
 import type { FormProps } from "./form-props";
+import { useScrollIndicatorWhileScrolling } from "./scroll-indicator-while-scrolling";
 import { useTabBarInset } from "./tab-bar-inset";
 
 function useBottomClearance() {
@@ -43,8 +44,10 @@ export function Form({ children, adjustsForKeyboard = false }: FormProps) {
   const grouped = useGroupedColors();
   const bottomClearance = useBottomClearance();
   const dragFloor = useSheetDragFloor();
+  const scrollIndicator = useScrollIndicatorWhileScrolling();
   return (
     <ScrollView
+      {...scrollIndicator}
       style={[styles.fill, { backgroundColor: grouped.page }]}
       contentContainerStyle={[
         styles.content,
