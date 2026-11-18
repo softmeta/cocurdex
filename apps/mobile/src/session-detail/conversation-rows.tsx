@@ -5,12 +5,10 @@ import { RoleAvatar, type RoleAvatarSource } from "@/agents";
 import { MarkdownText } from "@/markdown";
 import { layout, space, type ThemeColors } from "@/theme";
 import { type MenuAnchor, menuAnchor, ShimmerText } from "@/ui";
-import type { SessionPresentation } from "./live-run";
 import { PostedSourceLine } from "./posted-source-line";
 import { TimeSeparator } from "./time-separator";
 import type { CondensedItem } from "./transcript-activity";
 import { TurnMeta } from "./turn-actions";
-import { liveLabel } from "./use-activity-label";
 import { useElapsedMs } from "./use-elapsed-label";
 import { useSettledLabel } from "./use-settled-label";
 
@@ -29,29 +27,23 @@ function assistantWaitLabel(elapsedMs: number, t: TFunction<"sessions">) {
   return t("live.thinking");
 }
 
-function useWaitingLabel(
-  item: ActivityItem,
-  presentation: Exclude<SessionPresentation, "work">,
-) {
+function useWaitingLabel(item: ActivityItem) {
   const { t } = useTranslation("sessions");
   const elapsedMs = useElapsedMs(item.startedAt);
-  if (presentation === "chat") return liveLabel(item.phase, t);
   if (item.items.length > 0) return t("live.handling");
   return assistantWaitLabel(elapsedMs, t);
 }
 
 export function WorkingLine({
   item,
-  presentation,
   colors,
   role,
 }: {
   item: ActivityItem;
-  presentation: Exclude<SessionPresentation, "work">;
   colors: ThemeColors;
   role: RoleAvatarSource | null;
 }) {
-  const wanted = useWaitingLabel(item, presentation);
+  const wanted = useWaitingLabel(item);
   const label = useSettledLabel(wanted, wanted);
   return (
     <View style={styles.working} accessibilityLiveRegion="polite">
@@ -69,7 +61,6 @@ export function WorkingLine({
 
 export function ConversationRow({
   item,
-  presentation,
   colors,
   hostId,
   fileRoot,
@@ -77,7 +68,6 @@ export function ConversationRow({
   onActions,
 }: {
   item: ConversationItem;
-  presentation: Exclude<SessionPresentation, "work">;
   colors: ThemeColors;
   hostId: string;
   fileRoot: string | null | undefined;
@@ -85,14 +75,7 @@ export function ConversationRow({
   onActions(text: string, anchor: MenuAnchor): void;
 }) {
   if (item.kind === "activity") {
-    return (
-      <WorkingLine
-        item={item}
-        presentation={presentation}
-        colors={colors}
-        role={role}
-      />
-    );
+    return <WorkingLine item={item} colors={colors} role={role} />;
   }
   return (
     <View style={styles.reply}>
