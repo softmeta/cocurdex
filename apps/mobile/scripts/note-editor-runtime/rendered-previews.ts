@@ -51,7 +51,6 @@ export function createRenderedPreviews({
   const repaints = new Set<() => void>();
   const waitingInline = new Map<HTMLElement, string>();
   let nextId = 1;
-  let timer: ReturnType<typeof setTimeout> | null = null;
   let mathRequested = false;
 
   function needMath() {
@@ -79,7 +78,6 @@ export function createRenderedPreviews({
   });
 
   function flush() {
-    timer = null;
     if (queue.length > 0) requestDiagrams(queue.splice(0));
   }
 
@@ -90,7 +88,7 @@ export function createRenderedPreviews({
     nextId += 1;
     requested.set(id, source);
     queue.push({ id, source });
-    timer ??= setTimeout(flush, REQUEST_DELAY_MS);
+    if (queue.length === 1) setTimeout(flush, REQUEST_DELAY_MS);
   }
 
   function receiveDiagram(id: number, diagram: NoteDiagram | null) {
