@@ -1421,6 +1421,8 @@ export default interface Resources {
     codeBlock: {
       copied: "Copied";
       copy: "Copy code";
+      editDiagram: "Edit diagram";
+      editFormula: "Edit formula";
       language: "Code language";
       noLanguage: "No matching language";
       plainText: "Plain text";
@@ -1495,7 +1497,9 @@ export default interface Resources {
         blockquote: "Quote";
         bulletList: "Bulleted list";
         codeBlock: "Code block";
+        diagram: "Diagram";
         divider: "Divider";
+        formula: "Formula";
         heading1: "Heading 1";
         heading2: "Heading 2";
         heading3: "Heading 3";

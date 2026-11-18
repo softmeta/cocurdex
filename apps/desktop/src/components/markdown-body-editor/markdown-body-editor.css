@@ -142,6 +142,41 @@
   white-space: pre !important;
 }
 
+.md-body-prose
+  .md-code-block[data-rendered]:not([data-editing]):not([data-empty]) {
+  background: transparent;
+}
+
+.md-body-prose
+  .md-code-block[data-rendered]:not([data-editing]):not([data-empty])
+  pre {
+  display: none;
+}
+
+.md-body-prose
+  .md-code-block[data-rendered]:not([data-editing]):not([data-empty]):not(
+    :hover,
+    :focus-within
+  )
+  .md-code-block-header {
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.md-body-prose
+  .md-code-block[data-rendered][data-editing]
+  .md-rendered-preview {
+  border-top: 1px solid var(--border);
+}
+
+.md-body-prose .note-math-source {
+  display: none;
+}
+
+.md-body-prose .note-math {
+  cursor: text;
+}
+
 .md-body-prose .md-code-block pre code span[style] {
   color: var(--shiki-light);
   font-style: var(--shiki-light-font-style);

@@ -1,5 +1,7 @@
 import {
   buildNoteDocExtensions,
+  MATH_LANGUAGE,
+  MERMAID_LANGUAGE,
   NOTE_DOC_FIELD,
   parseNoteMarkdown,
   serializeNoteMarkdown,
@@ -25,6 +27,7 @@ import type {
   NoteOutline,
 } from "../../src/notes/editor/note-editor-protocol";
 import { createCodeHighlight } from "./code-highlight";
+import { createRenderedPreviews } from "./rendered-previews";
 
 declare global {
   interface Window {
@@ -66,6 +69,10 @@ let outlineFrame: number | null = null;
 const codeHighlight = createCodeHighlight((requests) =>
   post({ type: "highlight", requests }),
 );
+const previews = createRenderedPreviews({
+  requestDiagrams: (requests) => post({ type: "diagram", requests }),
+  requestMath: () => post({ type: "math" }),
+});
 
 function applyTheme({ colors, fontScale }: NoteEditorTheme) {
   const root = document.documentElement.style;
@@ -186,6 +193,12 @@ function insert(current: EditorType, kind: NoteInsertKind) {
   if (kind === "orderedList") return chain.toggleOrderedList().run();
   if (kind === "taskList") return chain.toggleTaskList().run();
   if (kind === "horizontalRule") return chain.setHorizontalRule().run();
+  if (kind === "diagram") {
+    return chain.setCodeBlock({ language: MERMAID_LANGUAGE }).run();
+  }
+  if (kind === "formula") {
+    return chain.setCodeBlock({ language: MATH_LANGUAGE }).run();
+  }
   return chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
 }
 
@@ -334,7 +347,11 @@ function start(message: Extract<NoteEditorInbound, { type: "init" }>) {
     editable: message.editable,
     content: initial,
     extensions: [
-      ...buildNoteDocExtensions({ collaborative, imageView }),
+      ...buildNoteDocExtensions({
+        collaborative,
+        imageView,
+        codeBlockView: previews.codeBlockView,
+      }),
       Placeholder.configure({
         placeholder: ({ node }) =>
           node.type.name === "paragraph" ? message.bodyPlaceholder : "",
@@ -342,6 +359,7 @@ function start(message: Extract<NoteEditorInbound, { type: "init" }>) {
       ...collaboration,
       SlashTrigger,
       codeHighlight.extension,
+      previews.inlineMath,
     ],
     editorProps: {
       attributes: { class: "prose", autocapitalize: "sentences" },
@@ -453,6 +471,9 @@ window.noteEditor = {
     } else if (message.type === "theme") {
       applyTheme(message.theme);
       codeHighlight.reset();
+      previews.reset();
+    } else if (message.type === "diagramRendered") {
+      previews.receiveDiagram(message.id, message.diagram);
     } else if (message.type === "highlighted") {
       codeHighlight.receive(message.id, message.tokens);
     } else {

@@ -1,5 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
+import { restoreInlineMath } from "./math";
 import { buildNoteDocExtensions } from "./schema";
 
 const CODE_OR_ESCAPED_WIKILINK =
@@ -23,7 +24,9 @@ export function lexNoteMarkdownBlocks(markdown: string): string[] {
 }
 
 export function serializeNoteMarkdown(json: JSONContent): string {
-  return unescapeWikilinks(markdownManager().serialize(json));
+  return restoreInlineMath(
+    unescapeWikilinks(markdownManager().serialize(json)),
+  );
 }
 
 function unescapeWikilinks(markdown: string): string {

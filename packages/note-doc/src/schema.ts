@@ -10,6 +10,7 @@ import { TableKit } from "@tiptap/extension-table";
 import { Markdown } from "@tiptap/markdown";
 import type { Schema } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
+import { InlineMathMarkdown, MathMarkdown } from "./math";
 import { NoteTable } from "./table";
 
 export const NOTE_DOC_FIELD = "default";
@@ -57,6 +58,8 @@ export function buildNoteDocExtensions({
     TableKit.configure({ table: false }),
     NoteTable,
     buildImage(imageView),
+    MathMarkdown,
+    InlineMathMarkdown,
     Markdown,
   ];
 }

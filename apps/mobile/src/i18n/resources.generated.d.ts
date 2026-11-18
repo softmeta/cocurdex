@@ -430,6 +430,8 @@ export default interface Resources {
       };
       insert: {
         bulletList: "Bulleted List";
+        diagram: "Diagram";
+        formula: "Formula";
         horizontalRule: "Divider";
         orderedList: "Numbered List";
         table: "Table";

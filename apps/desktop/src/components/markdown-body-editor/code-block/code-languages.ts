@@ -23,6 +23,8 @@ export const CODE_LANGUAGE_OPTIONS: readonly CodeLanguageOption[] = [
   { id: "lua", label: "Lua", aliases: [] },
   { id: "makefile", label: "Makefile", aliases: ["make"] },
   { id: "markdown", label: "Markdown", aliases: ["md"] },
+  { id: "math", label: "Math (TeX)", aliases: [] },
+  { id: "mermaid", label: "Mermaid", aliases: [] },
   { id: "objective-c", label: "Objective-C", aliases: ["objc"] },
   { id: "php", label: "PHP", aliases: [] },
   { id: "powershell", label: "PowerShell", aliases: ["ps", "ps1", "pwsh"] },

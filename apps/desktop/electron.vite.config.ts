@@ -61,6 +61,10 @@ const alias = {
     __dirname,
     "../../packages/note-doc/src/bytes.ts",
   ),
+  "@cocurdex/note-doc/preview": path.resolve(
+    __dirname,
+    "../../packages/note-doc/src/preview.ts",
+  ),
   "@cocurdex/note-doc": path.resolve(
     __dirname,
     "../../packages/note-doc/src/index.ts",

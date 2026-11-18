@@ -1,4 +1,8 @@
 import {
+  hasEditingDecoration,
+  renderedLanguage,
+} from "@cocurdex/note-doc/preview";
+import {
   NodeViewContent,
   type NodeViewProps,
   NodeViewWrapper,
@@ -17,6 +21,7 @@ import {
   findCodeLanguageOption,
   normalizeCodeLanguage,
 } from "./code-languages";
+import { RenderedPreview } from "./rendered-preview-lazy";
 
 const PLAIN_TEXT_VALUE = "";
 const COPIED_RESET_MS = 1200;
@@ -68,6 +73,8 @@ export function CodeBlockView({
   node,
   updateAttributes,
   editor,
+  getPos,
+  decorations,
 }: NodeViewProps) {
   const { t } = useTranslation("notes");
   const language = selectedLanguage(node.attrs.language);
@@ -75,9 +82,21 @@ export function CodeBlockView({
   const label = language
     ? codeLanguageLabel(language)
     : t("codeBlock.plainText");
+  const rendered = renderedLanguage(language);
+  const editSource = () => {
+    const pos = getPos();
+    if (!editor.isEditable || pos === undefined) return;
+    editor.commands.focus(pos + 1 + node.content.size);
+  };
 
   return (
-    <NodeViewWrapper className="md-code-block" data-code-language={language}>
+    <NodeViewWrapper
+      className="md-code-block"
+      data-code-language={language}
+      data-rendered={rendered ? "true" : undefined}
+      data-editing={hasEditingDecoration(decorations) ? "true" : undefined}
+      data-empty={node.content.size === 0 ? "true" : undefined}
+    >
       <div
         className="md-code-block-header flex h-7 items-center justify-between gap-2 px-1"
         contentEditable={false}
@@ -100,6 +119,15 @@ export function CodeBlockView({
       <pre>
         <NodeViewContent<"code"> as="code" />
       </pre>
+      {rendered ? (
+        <div contentEditable={false}>
+          <RenderedPreview
+            language={rendered}
+            onEdit={editSource}
+            source={node.textContent}
+          />
+        </div>
+      ) : null}
     </NodeViewWrapper>
   );
 }
