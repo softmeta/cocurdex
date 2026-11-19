@@ -206,6 +206,7 @@ export function createConnectionSupervisor(
       try {
         await options.ensure?.();
         if (attemptGeneration !== generation) return;
+        let sentSessions = watchedSessions;
         const connected = await options.subscribe(
           (event, meta) => {
             if (attemptGeneration !== generation) return;
@@ -215,7 +216,7 @@ export function createConnectionSupervisor(
           {
             afterSeq: state.lastSeq ?? undefined,
             epoch: state.epoch ?? undefined,
-            sessions: watchedSessions,
+            sessions: sentSessions,
             signal: attemptController.signal,
             onDisconnect: (error) =>
               fail(
@@ -224,6 +225,13 @@ export function createConnectionSupervisor(
               ),
           },
         );
+        while (
+          attemptGeneration === generation &&
+          sentSessions !== watchedSessions
+        ) {
+          sentSessions = watchedSessions;
+          await connected.watchSessions(sentSessions);
+        }
         if (attemptGeneration !== generation) {
           connected.close();
           return;
@@ -291,7 +299,8 @@ export function createConnectionSupervisor(
     getState: () => state,
     watchSessions(sessions: readonly string[] | null): Promise<void> {
       watchedSessions = sessions;
-      return subscription?.watchSessions(sessions) ?? Promise.resolve();
+      if (subscription) return subscription.watchSessions(sessions);
+      return pending ?? Promise.resolve();
     },
     subscribeState(listener: (state: ConnectionState) => void) {
       listeners.add(listener);

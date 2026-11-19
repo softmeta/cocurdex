@@ -158,6 +158,25 @@ describe("connection supervisor generations", () => {
   });
 });
 
+describe("connection supervisor session watch", () => {
+  it("sends sessions watched while the subscription was opening", async () => {
+    const opened = deferred<DaemonEventSubscription>();
+    const watchSessions = vi.fn().mockResolvedValue(undefined);
+    const { supervisor } = fixture({ watchedSessions: [] });
+    subscribe.mockReturnValue(opened.promise);
+
+    const connecting = supervisor.connect();
+    await vi.waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
+    const watching = supervisor.watchSessions(["s1"]);
+    opened.resolve(subscription({ watchSessions }));
+    await connecting;
+    await watching;
+
+    expect(subscribe.mock.calls[0]?.[1].sessions).toEqual([]);
+    expect(watchSessions).toHaveBeenLastCalledWith(["s1"]);
+  });
+});
+
 describe("connection supervisor retries", () => {
   it("schedules one retry for duplicate error and close notifications", async () => {
     vi.useFakeTimers();

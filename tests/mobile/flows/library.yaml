@@ -23,7 +23,14 @@ appId: dev.cocurdex.mobile
           visible:
             id: "UIKeyboardLayoutStar.*"
           timeout: 10000
-- inputText: ${NEW_ISSUE_TITLE}
+- retry:
+    maxRetries: 2
+    commands:
+      - eraseText: 60
+      - inputText: ${NEW_ISSUE_TITLE}
+      - extendedWaitUntil:
+          visible: ${NEW_ISSUE_TITLE}
+          timeout: 3000
 - waitForAnimationToEnd
 - takeScreenshot: new-issue
 - tapOn: ${NEW_ISSUE_SUBMIT}
@@ -152,7 +159,14 @@ appId: dev.cocurdex.mobile
     visible:
       id: note-format-bold
     timeout: 30000
-- inputText: ${NEW_NOTE_TITLE}
+- retry:
+    maxRetries: 2
+    commands:
+      - eraseText: 60
+      - inputText: ${NEW_NOTE_TITLE}
+      - extendedWaitUntil:
+          visible: ${NEW_NOTE_TITLE}
+          timeout: 3000
 - runFlow:
     when:
       platform: iOS
@@ -163,7 +177,14 @@ appId: dev.cocurdex.mobile
       platform: Android
     commands:
       - pressKey: Enter
-- inputText: ${NEW_NOTE_BODY}
+- retry:
+    maxRetries: 2
+    commands:
+      - eraseText: 60
+      - inputText: ${NEW_NOTE_BODY}
+      - extendedWaitUntil:
+          visible: ${NEW_NOTE_BODY}
+          timeout: 3000
 - waitForAnimationToEnd
 - tapOn:
     id: note-format-bold
