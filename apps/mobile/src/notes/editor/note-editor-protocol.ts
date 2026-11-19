@@ -11,7 +11,9 @@ export type NoteInsertKind =
   | "orderedList"
   | "taskList"
   | "horizontalRule"
-  | "table";
+  | "table"
+  | "diagram"
+  | "formula";
 
 export type NoteMark = "bold" | "italic" | "strike" | "code";
 
@@ -40,6 +42,17 @@ export interface NoteCodeRequest {
   id: number;
   language: string;
   code: string;
+}
+
+export interface NoteDiagramRequest {
+  id: number;
+  source: string;
+}
+
+export interface NoteDiagram {
+  svg: string;
+  width: number;
+  height: number;
 }
 
 export interface NoteEditorFormatState {
@@ -85,6 +98,7 @@ export type NoteEditorInbound =
   | { type: "links"; links: string | null }
   | { type: "theme"; theme: NoteEditorTheme }
   | { type: "highlighted"; id: number; tokens: NoteCodeToken[] }
+  | { type: "diagramRendered"; id: number; diagram: NoteDiagram | null }
   | { type: "command"; command: NoteEditorCommand };
 
 export type NoteEditorOutbound =
@@ -100,6 +114,8 @@ export type NoteEditorOutbound =
   | { type: "openLink"; href: string }
   | { type: "openImage"; src: string; alt: string }
   | { type: "highlight"; requests: NoteCodeRequest[] }
+  | { type: "diagram"; requests: NoteDiagramRequest[] }
+  | { type: "math" }
   | { type: "outline"; outline: NoteOutline };
 
 const OUTBOUND_TYPES = new Set<NoteEditorOutbound["type"]>([
@@ -115,6 +131,8 @@ const OUTBOUND_TYPES = new Set<NoteEditorOutbound["type"]>([
   "openLink",
   "openImage",
   "highlight",
+  "diagram",
+  "math",
   "outline",
 ]);
 

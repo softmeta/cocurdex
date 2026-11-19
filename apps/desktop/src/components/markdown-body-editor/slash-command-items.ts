@@ -1,3 +1,4 @@
+import { MATH_LANGUAGE, MERMAID_LANGUAGE } from "@cocurdex/note-doc";
 import type { Editor, Range } from "@tiptap/core";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -10,8 +11,10 @@ import {
   ListOrdered,
   Minus,
   Quote,
+  Sigma,
   Table,
   Type,
+  Workflow,
 } from "lucide-react";
 
 export type SlashCommandKey =
@@ -24,6 +27,8 @@ export type SlashCommandKey =
   | "taskList"
   | "blockquote"
   | "codeBlock"
+  | "diagram"
+  | "formula"
   | "table"
   | "divider";
 
@@ -112,6 +117,30 @@ export const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     keywords: ["code", "codeblock", "snippet"],
     run: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
+  },
+  {
+    key: "diagram",
+    icon: Workflow,
+    keywords: ["diagram", "mermaid", "flowchart", "chart", "graph"],
+    run: (editor, range) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setCodeBlock({ language: MERMAID_LANGUAGE })
+        .run(),
+  },
+  {
+    key: "formula",
+    icon: Sigma,
+    keywords: ["formula", "math", "equation", "latex", "katex"],
+    run: (editor, range) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setCodeBlock({ language: MATH_LANGUAGE })
+        .run(),
   },
   {
     key: "table",

@@ -6,6 +6,9 @@ import esbuild from "esbuild";
 const ENTRY = fileURLToPath(
   new URL("./note-editor-runtime/entry.ts", import.meta.url),
 );
+const MATH_ENTRY = fileURLToPath(
+  new URL("./note-editor-runtime/math.ts", import.meta.url),
+);
 const OUTPUT = fileURLToPath(
   new URL(
     "../src/notes/editor/note-editor-runtime.generated.ts",
@@ -69,25 +72,43 @@ main{padding:4px 16px 120px}
 .prose p.is-editor-empty:first-child::before{content:attr(data-placeholder);color:var(--muted-foreground);float:left;height:0;pointer-events:none}
 .doc-image{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--muted);color:var(--foreground);font:inherit;font-size:0.85em}
 .ProseMirror-selectednode{outline:2px solid var(--tint);outline-offset:2px}
+.prose .code-block{margin:0 0 10px}
+.prose .code-block>pre{margin:0}
+.prose .code-block[data-rendered]:not([data-editing]):not([data-empty]):not([data-failed])>pre{display:none}
+.code-preview{overflow-x:auto;text-align:center;white-space:normal}
+.code-preview:empty{display:none}
+.code-block[data-editing] .code-preview{margin-top:8px}
+.code-preview svg{max-width:100%;height:auto}
+.code-preview math{font-size:1.15em}
+.code-preview-error{margin:0;padding:4px 0;font-family:ui-monospace,Menlo,monospace;font-size:0.8em;text-align:left;color:var(--destructive)}
+.note-math-source{display:none}
 `;
 
-const result = await esbuild.build({
-  entryPoints: [ENTRY],
-  bundle: true,
-  write: false,
-  format: "iife",
-  platform: "browser",
-  target: ["ios15", "chrome100"],
-  minify: true,
-  legalComments: "none",
-  logLevel: "warning",
-});
+async function bundle(entry) {
+  const result = await esbuild.build({
+    entryPoints: [entry],
+    bundle: true,
+    write: false,
+    format: "iife",
+    platform: "browser",
+    target: ["ios15", "chrome100"],
+    minify: true,
+    legalComments: "none",
+    logLevel: "warning",
+  });
+  return result.outputFiles[0].text;
+}
 
-const script = result.outputFiles[0].text.replace(/<\/script/gi, "<\\/script");
+const script = (await bundle(ENTRY)).replace(/<\/script/gi, "<\\/script");
+const mathScript = await bundle(MATH_ENTRY);
 const style = STYLE.replace(/\n/g, "");
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><style>${style}</style></head><body><main><textarea id="title" rows="1" enterkeyhint="next"></textarea><div id="meta-row"><button id="meta" type="button"></button><button id="links" type="button" hidden></button></div><div id="body"></div></main><script>${script}</script></body></html>`;
-const version = createHash("sha256").update(html).digest("hex").slice(0, 16);
-const output = `export const NOTE_EDITOR_RUNTIME_VERSION = "${version}";\nexport const NOTE_EDITOR_RUNTIME_HTML = ${JSON.stringify(html)};\n`;
+const version = createHash("sha256")
+  .update(html)
+  .update(mathScript)
+  .digest("hex")
+  .slice(0, 16);
+const output = `export const NOTE_EDITOR_RUNTIME_VERSION = "${version}";\nexport const NOTE_EDITOR_RUNTIME_HTML = ${JSON.stringify(html)};\nexport const NOTE_MATH_RUNTIME_SCRIPT = ${JSON.stringify(mathScript)};\n`;
 
 function current() {
   try {

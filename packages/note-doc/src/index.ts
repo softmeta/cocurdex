@@ -1,6 +1,12 @@
 export { decodeNoteDocBytes, encodeNoteDocBytes } from "./bytes";
 export { parseNoteMarkdown, serializeNoteMarkdown } from "./markdown";
 export {
+  findInlineMath,
+  type InlineMath,
+  MATH_LANGUAGE,
+  MERMAID_LANGUAGE,
+} from "./math";
+export {
   applyMarkdownToNoteDoc,
   applyNoteDocUpdate,
   createNoteDocState,

@@ -23,6 +23,7 @@ const packageEntries: Record<string, string> = {
   "@cocurdex/agent-adapters": "agent-adapters/src/index.ts",
   "@cocurdex/db": "db/src/index.ts",
   "@cocurdex/note-doc/bytes": "note-doc/src/bytes.ts",
+  "@cocurdex/note-doc/preview": "note-doc/src/preview.ts",
   "@cocurdex/note-doc": "note-doc/src/index.ts",
 };
 

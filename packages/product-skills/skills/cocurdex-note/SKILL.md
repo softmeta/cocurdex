@@ -43,7 +43,14 @@ returned by the command as the current text. Supported blocks: headings,
 lists, task lists, tables, images, quotes, and code. Unsupported syntax such
 as raw HTML is kept as plain text.
 
-To put a screenshot, diagram, or other image in a body, import the file and
+For architecture, flow, sequence, or state diagrams, write a fenced
+`mermaid` block; the app renders it and shows the source while someone edits
+it. Write math as TeX: `$…$` inline (no space after the opening or before the
+closing `$`, so prices such as `$5` stay text) and a `math` fence or a `$$…$$`
+paragraph for display formulas, which is stored as a `math` fence. Prefer a
+Mermaid block over an image for any diagram you author, so people can edit it.
+
+To put a screenshot or other image in a body, import the file and
 paste the returned `markdown` (`![name](cocurdex://image/<file>)`) where it
 belongs. Images live in the app, not the workspace, so they work on every
 device. To look at an image a body already contains, `image locate` prints

@@ -10,13 +10,13 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { PixelRatio, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { highlightCode } from "@/files";
-import { useOpenLink } from "@/markdown";
+import { createDiagramBridge, useOpenLink } from "@/markdown";
 import { useTextScale } from "@/preferences";
-import { type ThemeColors, useThemeColors, useThemeName } from "@/theme";
+import { useThemeColors, useThemeName } from "@/theme";
 import {
   KeyboardDock,
   useHeaderOverlap,
@@ -24,6 +24,13 @@ import {
   useOptionSheet,
 } from "@/ui";
 import type { NoteDocSession } from "./note-doc-session";
+import {
+  BLOCK_STYLES,
+  editorTheme,
+  INSERT_CHOICES,
+  type InsertChoice,
+  insertKey,
+} from "./note-editor-options";
 import {
   type NoteBlockStyle,
   type NoteCodeRequest,
@@ -36,7 +43,10 @@ import {
   noteEditorScript,
   parseNoteEditorMessage,
 } from "./note-editor-protocol";
-import { NOTE_EDITOR_RUNTIME_HTML } from "./note-editor-runtime.generated";
+import {
+  NOTE_EDITOR_RUNTIME_HTML,
+  NOTE_MATH_RUNTIME_SCRIPT,
+} from "./note-editor-runtime.generated";
 import { NoteFormatBar } from "./note-format-bar";
 
 type EditorWebView = ComponentRef<typeof WebView>;
@@ -59,52 +69,6 @@ function initialContent(body: NoteEditorBody): NoteEditorContent {
 // until the keyboard reports in, and show it anyway after this long so a
 // hardware keyboard, which sends no keyboard events, still gets it.
 const FORMAT_BAR_KEYBOARD_WAIT_MS = 500;
-
-const BLOCK_STYLES: readonly NoteBlockStyle[] = [
-  "paragraph",
-  "heading1",
-  "heading2",
-  "heading3",
-  "blockquote",
-  "codeBlock",
-];
-
-type InsertChoice =
-  | { name: "block"; style: NoteBlockStyle }
-  | { name: "insert"; kind: NoteInsertKind };
-
-const INSERT_CHOICES: readonly InsertChoice[] = [
-  { name: "block", style: "heading1" },
-  { name: "block", style: "heading2" },
-  { name: "block", style: "heading3" },
-  { name: "insert", kind: "bulletList" },
-  { name: "insert", kind: "orderedList" },
-  { name: "insert", kind: "taskList" },
-  { name: "block", style: "blockquote" },
-  { name: "block", style: "codeBlock" },
-  { name: "insert", kind: "horizontalRule" },
-  { name: "insert", kind: "table" },
-];
-
-function editorTheme(colors: ThemeColors, textScale: number) {
-  return {
-    colors: {
-      background: colors.background,
-      foreground: colors.foreground,
-      "reading-text": colors.readingText,
-      "muted-foreground": colors.mutedForeground,
-      muted: colors.muted,
-      border: colors.border,
-      tint: colors.tint,
-      "brand-mark": colors.brandMark,
-    },
-    fontScale: PixelRatio.getFontScale() * textScale,
-  };
-}
-
-function insertKey(choice: InsertChoice) {
-  return choice.name === "block" ? choice.style : choice.kind;
-}
 
 export function NoteEditor({
   hostId,
@@ -169,6 +133,13 @@ export function NoteEditor({
 
   const send = (message: NoteEditorInbound) =>
     webView.current?.injectJavaScript(noteEditorScript(message));
+  const [diagramBridge] = useState(() =>
+    createDiagramBridge((id, diagram) =>
+      webView.current?.injectJavaScript(
+        noteEditorScript({ type: "diagramRendered", id, diagram }),
+      ),
+    ),
+  );
   const run = (command: NoteEditorCommand) =>
     send({ type: "command", command });
   useImperativeHandle(ref, () => ({
@@ -218,6 +189,8 @@ export function NoteEditor({
     taskList: t("editor.insert.taskList"),
     horizontalRule: t("editor.insert.horizontalRule"),
     table: t("editor.insert.table"),
+    diagram: t("editor.insert.diagram"),
+    formula: t("editor.insert.formula"),
   };
   const insertLabel = (choice: InsertChoice) =>
     choice.name === "block"
@@ -307,6 +280,12 @@ export function NoteEditor({
         return;
       case "highlight":
         highlight(message.requests);
+        return;
+      case "diagram":
+        diagramBridge.request(message.requests, scheme);
+        return;
+      case "math":
+        webView.current?.injectJavaScript(`${NOTE_MATH_RUNTIME_SCRIPT};true;`);
         return;
       case "outline":
         onOutline?.(message.outline);

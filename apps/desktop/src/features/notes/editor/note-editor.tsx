@@ -17,11 +17,11 @@ import {
 import "@/components/markdown-body-editor/markdown-body-editor.css";
 import { FindInDocumentButton } from "@/app/layout/find-in-document-button";
 import {
-  DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX,
+  DOCUMENT_OUTLINE_CONTAINER_CLASS,
+  DOCUMENT_OUTLINE_MENU_PADDING_CLASS,
   DocumentOutlineMenu,
   DocumentOutlineRail,
   useDocumentOutline,
-  useIsWiderThan,
 } from "@/components/document-outline";
 import { EmptyState, ScrollArea, Text } from "@/components/ui";
 import { RelatedEntities } from "@/features/entity-links";
@@ -204,14 +204,16 @@ function NoteEditorBody({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const outline = useDocumentOutline(scrollerRef, bodyRef);
-  const isWide = useIsWiderThan(
-    containerRef,
-    DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX,
-  );
-  const hasMenu = outline.headings.length > 0 && !isWide;
+  const hasOutline = outline.headings.length > 0;
 
   return (
-    <div ref={containerRef} className="relative flex min-h-0 flex-1">
+    <div
+      ref={containerRef}
+      className={cn(
+        "relative flex min-h-0 flex-1",
+        DOCUMENT_OUTLINE_CONTAINER_CLASS,
+      )}
+    >
       <ScrollArea
         ref={editorChromeRef}
         className="min-h-0 min-w-0 flex-1"
@@ -222,7 +224,7 @@ function NoteEditorBody({
           <div
             className={cn(
               "mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pt-4 pb-8",
-              hasMenu && "pe-14",
+              hasOutline && DOCUMENT_OUTLINE_MENU_PADDING_CLASS,
             )}
           >
             <div className="mb-4 flex flex-col gap-1">
@@ -264,22 +266,18 @@ function NoteEditorBody({
             </div>
           </div>
         </div>
-        {isWide ? (
-          <DocumentOutlineRail
-            activeKey={outline.activeKey}
-            headings={outline.headings}
-          />
-        ) : null}
+        <DocumentOutlineRail
+          activeKey={outline.activeKey}
+          headings={outline.headings}
+        />
       </ScrollArea>
       {editor ? (
         <MarkdownFindBar editor={editor} scopeRef={containerRef} />
       ) : null}
-      {isWide ? null : (
-        <DocumentOutlineMenu
-          activeKey={outline.activeKey}
-          headings={outline.headings}
-        />
-      )}
+      <DocumentOutlineMenu
+        activeKey={outline.activeKey}
+        headings={outline.headings}
+      />
     </div>
   );
 }

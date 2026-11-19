@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./bytes": "./src/bytes.ts",
+    "./preview": "./src/preview.ts",
     "./internal/*": "./src/*.ts"
   },
   "scripts": {

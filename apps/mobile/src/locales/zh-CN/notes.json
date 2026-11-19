@@ -36,6 +36,8 @@
     },
     "insert": {
       "bulletList": "项目符号列表",
+      "diagram": "图表",
+      "formula": "公式",
       "horizontalRule": "分割线",
       "orderedList": "编号列表",
       "table": "表格",

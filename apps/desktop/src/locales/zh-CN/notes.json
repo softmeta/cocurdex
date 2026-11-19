@@ -2,6 +2,8 @@
   "codeBlock": {
     "copied": "已复制",
     "copy": "复制代码",
+    "editDiagram": "编辑图表",
+    "editFormula": "编辑公式",
     "language": "代码语言",
     "noLanguage": "没有匹配的语言",
     "plainText": "纯文本",
@@ -76,7 +78,9 @@
       "blockquote": "引用",
       "bulletList": "无序列表",
       "codeBlock": "代码块",
+      "diagram": "图表",
       "divider": "分隔线",
+      "formula": "公式",
       "heading1": "标题 1",
       "heading2": "标题 2",
       "heading3": "标题 3",

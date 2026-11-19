@@ -1,3 +1,4 @@
+export { type BridgedDiagram, createDiagramBridge } from "./diagram-bridge";
 export { entityLinkHref } from "./entity-link";
 export { MarkdownText, useOpenLink } from "./markdown-text";
 export { MermaidRendererHost } from "./mermaid-renderer-host";
