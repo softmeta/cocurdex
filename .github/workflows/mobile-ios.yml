@@ -131,6 +131,7 @@ jobs:
           (cd "${maestro_dir}" && shasum -a 256 -c checksums_sha256.txt && unzip -q maestro.zip)
           echo "${maestro_dir}/maestro/bin" >> "${GITHUB_PATH}"
           brew tap wix/brew
+          brew trust --formula wix/brew/applesimutils
           brew install applesimutils
       - name: Run mobile flows
         env:
