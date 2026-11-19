@@ -123,10 +123,18 @@ export async function openNote(session, title) {
     NAVIGATION_TIMEOUT_MS,
   );
   await session.waitUntil(
-    (text) =>
-      [...document.querySelectorAll("[data-note-id][data-active]")].some(
-        (row) => row.textContent.trim() === text,
-      ) && Boolean(document.querySelector(".md-body-prose")),
+    (text) => {
+      const row = [
+        ...document.querySelectorAll("[data-note-id][data-active]"),
+      ].find((candidate) => candidate.textContent.trim() === text);
+      const noteId = row?.getAttribute("data-note-id");
+      return Boolean(
+        noteId &&
+          document.querySelector(
+            `[data-open-note-id="${CSS.escape(noteId)}"] .md-body-prose`,
+          ),
+      );
+    },
     title,
     NAVIGATION_TIMEOUT_MS,
   );
