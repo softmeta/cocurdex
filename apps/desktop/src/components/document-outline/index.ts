@@ -1,6 +1,6 @@
 export { DocumentOutlineMenu, DocumentOutlineRail } from "./document-outline";
 export {
-  DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX,
+  DOCUMENT_OUTLINE_CONTAINER_CLASS,
+  DOCUMENT_OUTLINE_MENU_PADDING_CLASS,
   useDocumentOutline,
-  useIsWiderThan,
 } from "./use-document-outline";

@@ -1,4 +1,5 @@
 import { type RefObject, useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 
 export interface DocumentHeading {
   element: HTMLElement;
@@ -11,7 +12,12 @@ const HEADING_SELECTOR = "h1, h2, h3, h4";
 const ACTIVE_HEADING_OFFSET_PX = 80;
 const MIN_OUTLINE_HEADINGS = 3;
 
-export const DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX = 896;
+/**
+ * The rail shows from 896px of container width and the menu below it. The
+ * classes are literal so Tailwind can generate them.
+ */
+export const DOCUMENT_OUTLINE_CONTAINER_CLASS = "@container/outline";
+export const DOCUMENT_OUTLINE_MENU_PADDING_CLASS = "@max-[896px]/outline:pe-14";
 
 function collectHeadings(root: HTMLElement): DocumentHeading[] {
   return Array.from(root.querySelectorAll<HTMLElement>(HEADING_SELECTOR))
@@ -72,63 +78,40 @@ export function useDocumentOutline(
     }
     let current: DocumentHeading[] = [];
     let activeFrame = 0;
-    let collectFrame = 0;
     const syncActive = () => {
       cancelAnimationFrame(activeFrame);
       activeFrame = requestAnimationFrame(() =>
         setActiveKey(findActiveKey(scroller, current)),
       );
     };
-    const syncHeadings = () => {
+    const syncHeadings = (commit: (update: () => void) => void) => {
       const next = collectHeadings(content);
       if (sameHeadings(current, next)) {
         return;
       }
       current = next;
-      setHeadings(next);
-      syncActive();
+      commit(() => {
+        setHeadings(next);
+        setActiveKey(findActiveKey(scroller, next));
+      });
     };
-    const scheduleHeadings = () => {
-      cancelAnimationFrame(collectFrame);
-      collectFrame = requestAnimationFrame(syncHeadings);
-    };
-    const observer = new MutationObserver(scheduleHeadings);
+    // Mutation callbacks run before the next paint, so committing there keeps
+    // a newly mounted document and its outline in the same frame.
+    const observer = new MutationObserver(() => syncHeadings(flushSync));
     observer.observe(content, {
       characterData: true,
       childList: true,
       subtree: true,
     });
     scroller.addEventListener("scroll", syncActive, { passive: true });
-    syncHeadings();
+    syncHeadings((update) => update());
     return () => {
       observer.disconnect();
       scroller.removeEventListener("scroll", syncActive);
       cancelAnimationFrame(activeFrame);
-      cancelAnimationFrame(collectFrame);
     };
   }, [contentRef, scrollerRef]);
 
   const visible = headings.length >= MIN_OUTLINE_HEADINGS;
   return { activeKey, headings: visible ? headings : [] };
-}
-
-export function useIsWiderThan(
-  elementRef: RefObject<HTMLElement | null>,
-  minWidthPx: number,
-) {
-  const [isWider, setIsWider] = useState(false);
-
-  useEffect(() => {
-    const element = elementRef.current;
-    if (!element) {
-      return;
-    }
-    const observer = new ResizeObserver(([entry]) =>
-      setIsWider((entry?.contentRect.width ?? 0) >= minWidthPx),
-    );
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [elementRef, minWidthPx]);
-
-  return isWider;
 }

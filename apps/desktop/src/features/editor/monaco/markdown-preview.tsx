@@ -1,11 +1,10 @@
 import { useRef } from "react";
 import { MarkdownRenderer } from "@/components";
 import {
-  DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX,
+  DOCUMENT_OUTLINE_CONTAINER_CLASS,
   DocumentOutlineMenu,
   DocumentOutlineRail,
   useDocumentOutline,
-  useIsWiderThan,
 } from "@/components/document-outline";
 import { ScrollArea } from "@/components/ui";
 import { cn } from "@/lib";
@@ -13,23 +12,23 @@ import { cn } from "@/lib";
 export function MarkdownPreview({ content }: { content: string }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const outline = useDocumentOutline(scrollerRef, contentRef);
-  const isWide = useIsWiderThan(
-    containerRef,
-    DOCUMENT_OUTLINE_WIDE_MIN_WIDTH_PX,
-  );
-  const hasMenu = outline.headings.length > 0 && !isWide;
+  const hasOutline = outline.headings.length > 0;
 
   return (
-    <div className="relative flex h-full" ref={containerRef}>
+    <div
+      className={cn("relative flex h-full", DOCUMENT_OUTLINE_CONTAINER_CLASS)}
+    >
       <ScrollArea
         className="h-full min-w-0 flex-1"
         viewportProps={{ className: "flex" }}
         viewportRef={scrollerRef}
       >
         <div
-          className={cn("min-w-0 flex-1 p-6", hasMenu && "pe-12")}
+          className={cn(
+            "min-w-0 flex-1 p-6",
+            hasOutline && "@max-[896px]/outline:pe-12",
+          )}
           ref={contentRef}
         >
           <MarkdownRenderer
@@ -38,19 +37,15 @@ export function MarkdownPreview({ content }: { content: string }) {
             className="space-y-4"
           />
         </div>
-        {isWide ? (
-          <DocumentOutlineRail
-            activeKey={outline.activeKey}
-            headings={outline.headings}
-          />
-        ) : null}
-      </ScrollArea>
-      {isWide ? null : (
-        <DocumentOutlineMenu
+        <DocumentOutlineRail
           activeKey={outline.activeKey}
           headings={outline.headings}
         />
-      )}
+      </ScrollArea>
+      <DocumentOutlineMenu
+        activeKey={outline.activeKey}
+        headings={outline.headings}
+      />
     </div>
   );
 }

@@ -87,7 +87,7 @@ export function DocumentOutlineRail({ activeKey, headings }: OutlineProps) {
   return (
     <nav
       aria-label={t("outline")}
-      className="sticky top-6 mt-6 flex max-h-[60vh] w-56 shrink-0 flex-col self-start pe-4"
+      className="sticky top-6 mt-6 hidden max-h-[60vh] w-56 shrink-0 flex-col self-start pe-4 @min-[896px]/outline:flex"
     >
       <Text
         as="div"
@@ -137,7 +137,7 @@ export function DocumentOutlineMenu({ activeKey, headings }: OutlineProps) {
         render={
           <Button
             aria-label={t("outline")}
-            className="absolute end-4 top-4 bg-background/80 text-muted-foreground"
+            className="absolute end-4 top-4 bg-background/80 text-muted-foreground @min-[896px]/outline:hidden"
             size="icon-sm"
             title={t("outline")}
             variant="ghost"
