@@ -75,9 +75,9 @@ main{padding:4px 16px 120px}
 .prose .code-block{margin:0 0 10px}
 .prose .code-block>pre{margin:0}
 .prose .code-block[data-rendered]:not([data-editing]):not([data-source]):not([data-empty]):not([data-failed])>pre{display:none}
-.code-tools{display:none;justify-content:flex-end;margin:0 0 2px}
+.code-tools{display:none;justify-content:flex-end;margin:-6px -6px -4px 0}
 .code-block[data-rendered]:not([data-empty]) .code-tools{display:flex}
-.code-tools button{display:grid;place-content:center;width:32px;height:32px;margin:0;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted-foreground)}
+.code-tools button{display:grid;place-content:center;width:44px;height:44px;margin:0;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted-foreground)}
 .code-tools svg{width:16px;height:16px}
 .code-preview{overflow-x:auto;text-align:center;white-space:normal}
 .code-preview:empty{display:none}

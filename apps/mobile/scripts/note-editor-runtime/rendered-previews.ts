@@ -210,9 +210,11 @@ export function createRenderedPreviews({
       if (diagram && !dom.hasAttribute("data-failed")) {
         preview.setAttribute("role", "button");
         preview.setAttribute("aria-label", labels.openDiagram);
+        preview.tabIndex = 0;
       } else {
         preview.removeAttribute("role");
         preview.removeAttribute("aria-label");
+        preview.removeAttribute("tabindex");
       }
     };
 
@@ -256,11 +258,19 @@ export function createRenderedPreviews({
       if (!editor.isEditable || typeof pos !== "number") return;
       editor.commands.focus(pos + 1 + current.content.size);
     });
-    preview.addEventListener("click", (event) => {
-      event.preventDefault();
+    const openShownDiagram = () => {
       if (preview.getAttribute("role") === "button" && shown) {
         openDiagram(shown.source);
       }
+    };
+    preview.addEventListener("click", (event) => {
+      event.preventDefault();
+      openShownDiagram();
+    });
+    preview.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openShownDiagram();
     });
 
     repaints.add(repaint);
