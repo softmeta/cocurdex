@@ -4,12 +4,19 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clearColorScheme, emulateColorScheme } from "./lib/appearance.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
-import { clickByRole, waitForRole } from "./lib/locate.mjs";
+import {
+  centerOf,
+  clickByRole,
+  clickPoint,
+  waitForRole,
+} from "./lib/locate.mjs";
 import { openNote, showPanelView, translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
 const NOTE_TITLE = "Checkout architecture";
 const BODY = `Totals use $\\sum_i p_i q_i$ before tax.
+
+Rate $r$ applies first, then rate $r$ applies second.
 
 \`\`\`mermaid
 graph LR
@@ -141,6 +148,38 @@ runScenario("note-diagrams", {
           UI_TIMEOUT_MS,
         );
         return {};
+      },
+    ],
+    [
+      "clicking a repeated formula opens that occurrence",
+      async ({ session }) => {
+        const formulas = await waitForRole(
+          session,
+          { role: "math", name: "r" },
+          UI_TIMEOUT_MS,
+        );
+        check(formulas.length === 2, "repeated formulas", formulas);
+        await clickPoint(
+          session,
+          await centerOf(session, formulas[1].backendNodeId),
+        );
+        await session.waitUntil(
+          () =>
+            document.querySelectorAll(
+              '.md-body-prose .note-math[aria-label="r"]',
+            ).length === 1,
+          null,
+          UI_TIMEOUT_MS,
+        );
+        const opened = await session.run(() => ({
+          caret: getSelection()?.anchorNode?.textContent ?? "",
+        }));
+        check(
+          opened.caret.includes("second"),
+          "caret in second formula",
+          opened,
+        );
+        return opened;
       },
     ],
     [

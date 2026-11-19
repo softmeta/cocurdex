@@ -34,7 +34,7 @@ export interface NotePreviewOptions {
   renderInlineMath(tex: string, target: HTMLElement): void;
 }
 
-type MathRange = { from: number; to: number; tex: string };
+type MathRange = { from: number; to: number; tex: string; key: string };
 
 interface PreviewState {
   focused: boolean;
@@ -56,12 +56,16 @@ function blockText(block: PMNode) {
 
 function mathRanges(doc: PMNode): MathRange[] {
   const ranges: MathRange[] = [];
+  const occurrences = new Map<string, number>();
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
     if (node.type.spec.code) return false;
     const start = pos + 1;
     for (const { from, to, tex } of findInlineMath(blockText(node))) {
-      ranges.push({ from: start + from, to: start + to, tex });
+      const occurrence = occurrences.get(tex) ?? 0;
+      occurrences.set(tex, occurrence + 1);
+      const key = `math:${occurrence}:${tex}`;
+      ranges.push({ from: start + from, to: start + to, tex, key });
     }
     return false;
   });
@@ -106,14 +110,14 @@ function mathWidget(
         event.preventDefault();
         const current = previewKey.getState(view.state);
         const match = current?.ranges.find(
-          (candidate) => candidate.tex === range.tex,
+          (candidate) => candidate.key === range.key,
         );
         placeCaret(view, (match ?? range).from + 1);
       });
       render(range.tex, element);
       return element;
     },
-    { key: `math:${range.tex}`, side: -1, ignoreSelection: true },
+    { key: range.key, side: -1, ignoreSelection: true },
   );
 }
 

@@ -73,7 +73,8 @@ export function findInlineMath(text: string): InlineMath[] {
   return found;
 }
 
-const CODE = /(^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\2[^\n]*$|`[^`\n]*`)/gmu;
+const CODE =
+  /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$|(?<!`)(`+)(?!`)[^\n]*?(?<!`)\2(?!`)/gmu;
 const MARKDOWN_ESCAPE = /\\([\\`*_[\]~])/g;
 const HTML_ENTITY = /&(amp|lt|gt);/g;
 const ENTITY_TEXT: Record<string, string> = { amp: "&", lt: "<", gt: ">" };

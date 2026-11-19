@@ -39,6 +39,12 @@ describe("math markdown", () => {
     expect(roundTrip(roundTrip(markdown))).toBe(markdown);
   });
 
+  it("keeps dollar text inside code spans of any backtick length literal", () => {
+    const markdown = "Run ``$x`&amp;y\\_z$`` and `$a&amp;b$` now.";
+
+    expect(roundTrip(markdown)).toBe(markdown);
+  });
+
   it("stores a display formula as a math code block", () => {
     const doc = parseNoteMarkdown(
       "Before\n\n$$\n\\int_0^1 x\\,dx\n$$\n\nAfter",
