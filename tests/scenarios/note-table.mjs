@@ -352,16 +352,20 @@ runScenario("note-table", {
           { role: "listbox", name: menuLabel },
           UI_TIMEOUT_MS,
         );
-        const options = (await queryAllByRole(session, { role: "option" })).map(
-          (option) => option.name,
-        );
-        check(
-          options.length === 2 &&
-            options.some((name) => name.includes(tableLabel)) &&
-            options.some((name) => name.includes(taskLabel)),
-          "unexpected slash options",
-          options,
-        );
+        const filtered = (names) =>
+          names.length === 2 &&
+          names.some((name) => name.includes(tableLabel)) &&
+          names.some((name) => name.includes(taskLabel));
+        const deadline = Date.now() + UI_TIMEOUT_MS;
+        let options = [];
+        while (Date.now() < deadline) {
+          options = (await queryAllByRole(session, { role: "option" })).map(
+            (option) => option.name,
+          );
+          if (filtered(options)) break;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        check(filtered(options), "unexpected slash options", options);
         const results = {};
         for (const theme of ["light", "dark"]) {
           await emulateColorScheme(session, theme);
