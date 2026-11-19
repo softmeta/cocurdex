@@ -60,10 +60,14 @@ export function entityUri(ref: EntityRef): string {
   return `${ENTITY_URI_PREFIX}${ref.kind}/${encodeURIComponent(ref.id)}`;
 }
 
+const TRAILING_SENTENCE_PUNCTUATION = /[.,;:!?)\]。，、；：！？）」』】》]+$/u;
+
 function decodeId(raw: string): string | null {
   if (raw.includes("/")) return null;
   try {
-    const id = decodeURIComponent(raw).trim();
+    const id = decodeURIComponent(raw)
+      .trim()
+      .replace(TRAILING_SENTENCE_PUNCTUATION, "");
     return id || null;
   } catch {
     return null;
