@@ -1,0 +1,155 @@
+name: Mobile iOS flows
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit, branch, or tag to test (defaults to the dispatched ref)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ios-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAESTRO_VERSION: 2.11.0
+
+jobs:
+  prepare:
+    name: Build iOS app
+    runs-on: macos-26
+    timeout-minutes: 90
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - name: Restore pnpm store
+        uses: ./.github/actions/restore-pnpm-store
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Fingerprint native app
+        id: fingerprint
+        working-directory: tests/mobile
+        run: echo "hash=$(node --import tsx app.ts fingerprint --platform ios)" >> "${GITHUB_OUTPUT}"
+      - name: Restore native app
+        id: native
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .mobile-native/ios
+          key: mobile-native-v3-ios-${{ steps.fingerprint.outputs.hash }}
+      - name: Build native app
+        if: steps.native.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pnpm --filter @cocurdex/mobile-e2e app -- build --platform ios \
+            --out "${PWD}/.mobile-native/ios"
+      - name: Save native app
+        if: steps.native.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .mobile-native/ios
+          key: mobile-native-v3-ios-${{ steps.fingerprint.outputs.hash }}
+      - name: Repack app and bundle daemon
+        run: |
+          upload="${RUNNER_TEMP}/mobile-upload"
+          mkdir -p "${upload}"
+          pnpm --filter @cocurdex/desktop prepare:cli
+          tar -czf "${upload}/mobile-cli.tgz" -C apps/desktop/resources cli skills
+          (cd tests/harness && node --import tsx fixture-db/cli.ts --out "${RUNNER_TEMP}/fixture-db")
+          tar -czf "${upload}/fixture-db.tgz" -C "${RUNNER_TEMP}/fixture-db" .
+          native="${PWD}/.mobile-native/ios"
+          out="${RUNNER_TEMP}/mobile-app"
+          pnpm --filter @cocurdex/mobile-e2e app -- repack --platform ios \
+            --source "${native}/$(ls "${native}")" --out "${out}"
+          tar -czf "${upload}/mobile-app.tgz" -C "${out}" .
+      - name: Upload mobile app
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: mobile-app-ios
+          path: ${{ runner.temp }}/mobile-upload
+          compression-level: 0
+          retention-days: 1
+
+  flows:
+    name: iOS flows (${{ matrix.shard }})
+    needs: prepare
+    runs-on: macos-26
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [pairing, transcript, compose, library]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - name: Setup Java
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Restore pnpm store
+        uses: ./.github/actions/restore-pnpm-store
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Download mobile app
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: mobile-app-ios
+          path: ${{ runner.temp }}/mobile-download
+      - name: Unpack app and daemon
+        run: |
+          download="${RUNNER_TEMP}/mobile-download"
+          tar -xzf "${download}/mobile-cli.tgz" -C apps/desktop/resources
+          mkdir -p "${RUNNER_TEMP}/fixture-db" "${RUNNER_TEMP}/mobile-app"
+          tar -xzf "${download}/fixture-db.tgz" -C "${RUNNER_TEMP}/fixture-db"
+          tar -xzf "${download}/mobile-app.tgz" -C "${RUNNER_TEMP}/mobile-app"
+      - name: Install Maestro and applesimutils
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          maestro_dir="$(mktemp -d "${RUNNER_TEMP}/maestro.XXXXXX")"
+          gh release download "cli-${MAESTRO_VERSION}" --repo mobile-dev-inc/maestro \
+            --pattern maestro.zip --pattern checksums_sha256.txt --dir "${maestro_dir}"
+          (cd "${maestro_dir}" && shasum -a 256 -c checksums_sha256.txt && unzip -q maestro.zip)
+          echo "${maestro_dir}/maestro/bin" >> "${GITHUB_PATH}"
+          brew tap wix/brew
+          brew install applesimutils
+      - name: Run mobile flows
+        env:
+          COCURDEX_TEST_ARTIFACTS_DIR: ${{ runner.temp }}/mobile-tests
+        run: |
+          app_dir="${RUNNER_TEMP}/mobile-app"
+          pnpm --filter @cocurdex/mobile-e2e flows -- --platform ios \
+            --app "${app_dir}/$(ls "${app_dir}")" --flow ${{ matrix.shard }} \
+            --fixture-db "${RUNNER_TEMP}/fixture-db"
+      - name: Upload mobile test artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: mobile-tests-ios-${{ matrix.shard }}
+          path: ${{ runner.temp }}/mobile-tests
+          if-no-files-found: ignore
+          retention-days: 7
