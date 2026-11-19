@@ -87,7 +87,6 @@ function RelatedEntityRow({
   onRemove: () => void;
 }) {
   const { t } = useTranslation("common");
-  const Icon = ENTITY_KIND_ICONS[link.target.kind];
   return (
     <div
       className="group flex h-7 min-w-0 items-center gap-1 rounded-control hover:bg-editor-tab-hover-bg"
@@ -98,7 +97,6 @@ function RelatedEntityRow({
         onClick={() => openEntity(link.target)}
         className="flex h-full min-w-0 flex-1 items-center gap-2 px-1.5 text-start"
       >
-        <Icon className="size-3.5 shrink-0 text-editor-fg-subtle" />
         {link.detail ? (
           <Text
             size="meta"
