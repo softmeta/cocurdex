@@ -257,7 +257,10 @@ runScenario("issue-scopes", {
           created = views.find(
             (view) => !beforeIds.has(view.id) && view.filters.length > 0,
           );
-          if (created) break;
+          const sourceCleared = views.some(
+            (view) => view.id === sourceViewId && view.filters.length === 0,
+          );
+          if (created && sourceCleared) break;
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
         check(Boolean(created), "no view saved", views);
