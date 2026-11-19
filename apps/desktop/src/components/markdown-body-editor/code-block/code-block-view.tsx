@@ -1,3 +1,4 @@
+import { MERMAID_LANGUAGE } from "@cocurdex/note-doc";
 import {
   hasEditingDecoration,
   renderedLanguage,
@@ -7,8 +8,8 @@ import {
   type NodeViewProps,
   NodeViewWrapper,
 } from "@tiptap/react";
-import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { Check, Code, Copy } from "lucide-react";
+import { type MouseEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppSearchableSelect,
@@ -21,7 +22,7 @@ import {
   findCodeLanguageOption,
   normalizeCodeLanguage,
 } from "./code-languages";
-import { RenderedPreview } from "./rendered-preview-lazy";
+import { DiagramActions, RenderedPreview } from "./rendered-preview-lazy";
 
 const PLAIN_TEXT_VALUE = "";
 const COPIED_RESET_MS = 1200;
@@ -69,6 +70,10 @@ function CopyCodeButton({ code }: { code: string }) {
   );
 }
 
+function keepSelection(event: MouseEvent) {
+  event.preventDefault();
+}
+
 export function CodeBlockView({
   node,
   updateAttributes,
@@ -83,7 +88,16 @@ export function CodeBlockView({
     ? codeLanguageLabel(language)
     : t("codeBlock.plainText");
   const rendered = renderedLanguage(language);
-  const editSource = () => {
+  const editing = hasEditingDecoration(decorations);
+  const [sourcePinned, setSourcePinned] = useState(false);
+  const sourceShown = sourcePinned || editing;
+  const toggleSource = () => {
+    if (sourceShown) {
+      setSourcePinned(false);
+      if (editing) editor.commands.blur();
+      return;
+    }
+    setSourcePinned(true);
     const pos = getPos();
     if (!editor.isEditable || pos === undefined) return;
     editor.commands.focus(pos + 1 + node.content.size);
@@ -94,7 +108,8 @@ export function CodeBlockView({
       className="md-code-block"
       data-code-language={language}
       data-rendered={rendered ? "true" : undefined}
-      data-editing={hasEditingDecoration(decorations) ? "true" : undefined}
+      data-editing={editing ? "true" : undefined}
+      data-source={rendered && sourcePinned ? "true" : undefined}
       data-empty={node.content.size === 0 ? "true" : undefined}
     >
       <div
@@ -114,18 +129,33 @@ export function CodeBlockView({
           triggerLabel={label}
           value={language}
         />
-        <CopyCodeButton code={node.textContent} />
+        <div className="flex items-center gap-0.5">
+          {rendered ? (
+            <IconButton
+              aria-label={t("codeBlock.showSource")}
+              aria-pressed={sourceShown}
+              data-state={sourceShown ? "on" : "off"}
+              className="data-[state=on]:bg-muted data-[state=on]:text-foreground"
+              onClick={toggleSource}
+              onMouseDown={keepSelection}
+              size="xs"
+            >
+              <Code className="size-3.5" />
+            </IconButton>
+          ) : null}
+          <CopyCodeButton code={node.textContent} />
+          {rendered === MERMAID_LANGUAGE ? (
+            <DiagramActions source={node.textContent} />
+          ) : null}
+        </div>
       </div>
       <pre>
         <NodeViewContent<"code"> as="code" />
       </pre>
       {rendered ? (
-        <div contentEditable={false}>
-          <RenderedPreview
-            language={rendered}
-            onEdit={editSource}
-            source={node.textContent}
-          />
+        // biome-ignore lint/a11y/noStaticElementInteractions: keeps ProseMirror from moving the caret into the hidden source when the preview is pressed.
+        <div contentEditable={false} onMouseDown={keepSelection}>
+          <RenderedPreview language={rendered} source={node.textContent} />
         </div>
       ) : null}
     </NodeViewWrapper>

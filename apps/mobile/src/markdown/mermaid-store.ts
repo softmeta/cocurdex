@@ -34,6 +34,11 @@ export function useDiagram(source: string, appearance: MermaidAppearance) {
   );
 }
 
+export function diagramIdOf(source: string, appearance: MermaidAppearance) {
+  const entry = diagrams.get(source, appearance);
+  return entry?.kind === "rendered" ? entry.id : null;
+}
+
 export function diagramSource(id: string) {
   return diagrams.sourceOf(id);
 }

@@ -8,6 +8,7 @@ import {
   centerOf,
   clickByRole,
   clickPoint,
+  clickSelector,
   waitForRole,
 } from "./lib/locate.mjs";
 import { openNote, showPanelView, translate } from "./lib/navigate.mjs";
@@ -127,27 +128,78 @@ runScenario("note-diagrams", {
       },
     ],
     [
-      "clicking a diagram opens its source for editing",
+      "the source toggle shows and hides a diagram's source",
       async ({ session }) => {
-        await clickByRole(session, {
-          role: "button",
-          name: await translate(session, "notes:codeBlock.editDiagram"),
-        });
+        const mermaidSource = () => {
+          const block = document.querySelector(
+            '.md-body-prose .md-code-block[data-code-language="mermaid"]',
+          );
+          return {
+            source: getComputedStyle(block.querySelector("pre")).display,
+            preview: Boolean(block.querySelector(".md-rendered-preview svg")),
+          };
+        };
+        const toggle = '[data-code-language="mermaid"] button[aria-pressed]';
+        await clickSelector(session, toggle);
         await session.waitUntil(
-          () => {
-            const block = document.querySelector(
-              '.md-body-prose .md-code-block[data-code-language="mermaid"]',
-            );
-            return (
-              block?.hasAttribute("data-editing") &&
-              getComputedStyle(block.querySelector("pre")).display !== "none" &&
-              Boolean(block.querySelector(".md-rendered-preview svg"))
-            );
-          },
+          () =>
+            getComputedStyle(
+              document.querySelector(
+                '.md-body-prose .md-code-block[data-code-language="mermaid"] pre',
+              ),
+            ).display !== "none",
           null,
           UI_TIMEOUT_MS,
         );
-        return {};
+        const shown = await session.run(mermaidSource);
+        check(shown.preview, "preview stays below the source", shown);
+        await clickSelector(session, toggle);
+        await session.waitUntil(
+          () =>
+            getComputedStyle(
+              document.querySelector(
+                '.md-body-prose .md-code-block[data-code-language="mermaid"] pre',
+              ),
+            ).display === "none",
+          null,
+          UI_TIMEOUT_MS,
+        );
+        return { shown, hidden: await session.run(mermaidSource) };
+      },
+    ],
+    [
+      "a diagram opens full screen",
+      async ({ session }) => {
+        await clickByRole(session, {
+          role: "button",
+          name: await translate(session, "common:mermaid.openPreview"),
+        });
+        const [dialog] = await waitForRole(
+          session,
+          {
+            role: "dialog",
+            name: await translate(session, "common:mermaid.title"),
+          },
+          UI_TIMEOUT_MS,
+        );
+        await session.send("Input.dispatchKeyEvent", {
+          type: "keyDown",
+          key: "Escape",
+          code: "Escape",
+          windowsVirtualKeyCode: 27,
+        });
+        await session.send("Input.dispatchKeyEvent", {
+          type: "keyUp",
+          key: "Escape",
+          code: "Escape",
+          windowsVirtualKeyCode: 27,
+        });
+        await session.waitUntil(
+          () => !document.querySelector('[role="dialog"]'),
+          null,
+          UI_TIMEOUT_MS,
+        );
+        return { dialog: dialog.name };
       },
     ],
     [

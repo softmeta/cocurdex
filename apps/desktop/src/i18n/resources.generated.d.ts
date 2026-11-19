@@ -1421,12 +1421,14 @@ export default interface Resources {
     codeBlock: {
       copied: "Copied";
       copy: "Copy code";
-      editDiagram: "Edit diagram";
-      editFormula: "Edit formula";
+      diagram: "Diagram";
+      formula: "Formula";
+      hideSource: "Show preview";
       language: "Code language";
       noLanguage: "No matching language";
       plainText: "Plain text";
       searchLanguage: "Search languages…";
+      showSource: "Show source";
     };
     editor: {
       empty: {

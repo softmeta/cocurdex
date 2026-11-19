@@ -142,7 +142,7 @@ function NoteEditorBody({
       }),
       Collaboration.configure({ document: doc, field: NOTE_DOC_FIELD }),
     ],
-    immediatelyRender: false,
+    immediatelyRender: true,
     onCreate: ({ editor: created }) => {
       const insertMarkdown = (markdown: string) =>
         appendMarkdownToEditor(created, markdown);

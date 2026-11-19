@@ -1,34 +1,29 @@
 import { MATH_LANGUAGE } from "@cocurdex/note-doc";
 import type { RenderedLanguage } from "@cocurdex/note-doc/preview";
 import katex from "katex";
-import { type CSSProperties, useDeferredValue } from "react";
+import { Download, Maximize2 } from "lucide-react";
+import { type CSSProperties, useDeferredValue, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMermaidRender } from "@/components/markdown-mermaid";
+import {
+  downloadMermaidSvg,
+  MermaidPreviewDialog,
+  useMermaidRender,
+} from "@/components/markdown-mermaid";
+import { IconButton } from "@/components/ui";
 import { Text } from "@/components/ui/text";
 
 export interface RenderedPreviewProps {
   language: RenderedLanguage;
   source: string;
-  onEdit?: () => void;
 }
 
-function PreviewError({
-  message,
-  onEdit,
-}: {
-  message: string;
-  onEdit?: () => void;
-}) {
+function PreviewError({ message }: { message: string }) {
   return (
-    <button
-      type="button"
-      className="md-rendered-preview block w-full cursor-text px-3 py-2 text-left"
-      onClick={onEdit}
-    >
+    <div className="md-rendered-preview px-3 py-2 text-left">
       <Text className="font-mono text-destructive" size="meta">
         {message}
       </Text>
-    </button>
+    </div>
   );
 }
 
@@ -46,56 +41,81 @@ function renderTex(source: string) {
   }
 }
 
-function MathPreview({
-  source,
-  onEdit,
-}: Omit<RenderedPreviewProps, "language">) {
+function MathPreview({ source }: { source: string }) {
   const { t } = useTranslation("notes");
   const { html, error } = renderTex(source);
-  if (error) return <PreviewError message={error} onEdit={onEdit} />;
+  if (error) return <PreviewError message={error} />;
   return (
-    <button
-      type="button"
-      aria-label={t("codeBlock.editFormula")}
-      className="md-rendered-preview block w-full cursor-text overflow-x-auto px-3 py-2 text-center"
+    <div
+      aria-label={t("codeBlock.formula")}
+      className="md-rendered-preview overflow-x-auto px-3 py-2 text-center"
       // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX builds this markup from TeX with trust disabled, which rejects \href, \url, and raw HTML.
       dangerouslySetInnerHTML={{ __html: html ?? "" }}
-      onClick={onEdit}
+      role="img"
     />
   );
 }
 
-function MermaidPreview({
-  source,
-  onEdit,
-}: Omit<RenderedPreviewProps, "language">) {
+function useDiagram(source: string) {
+  return useMermaidRender(source, source.trim() !== "");
+}
+
+function MermaidPreview({ source }: { source: string }) {
   const { t } = useTranslation("notes");
-  const { diagram, error } = useMermaidRender(source, source.trim() !== "");
-  if (error) return <PreviewError message={error} onEdit={onEdit} />;
+  const { diagram, error } = useDiagram(source);
+  if (error) return <PreviewError message={error} />;
   if (!diagram) return null;
   return (
-    <button
-      type="button"
-      aria-label={t("codeBlock.editDiagram")}
-      className="md-rendered-preview flex w-full cursor-text items-center justify-center px-3 py-2 [&>svg]:block [&>svg]:h-auto [&>svg]:max-h-[max(min(60vh,30rem),calc(var(--mermaid-height)*0.75))] [&>svg]:max-w-full"
+    <div
+      aria-label={t("codeBlock.diagram")}
+      className="md-rendered-preview flex items-center justify-center px-3 py-2 [&>svg]:block [&>svg]:h-auto [&>svg]:max-h-[max(min(60vh,30rem),calc(var(--mermaid-height)*0.75))] [&>svg]:max-w-full"
       // biome-ignore lint/security/noDangerouslySetInnerHtml: Mermaid renders with securityLevel "strict", which sanitizes labels and disables scripts and click handlers.
       dangerouslySetInnerHTML={{ __html: diagram.svg }}
-      onClick={onEdit}
+      role="img"
       style={{ "--mermaid-height": `${diagram.height}px` } as CSSProperties}
     />
   );
 }
 
-export function RenderedPreview({
-  language,
-  source,
-  onEdit,
-}: RenderedPreviewProps) {
+export function RenderedPreview({ language, source }: RenderedPreviewProps) {
   const deferred = useDeferredValue(source);
   if (deferred.trim() === "") return null;
   return language === MATH_LANGUAGE ? (
-    <MathPreview onEdit={onEdit} source={deferred} />
+    <MathPreview source={deferred} />
   ) : (
-    <MermaidPreview onEdit={onEdit} source={deferred} />
+    <MermaidPreview source={deferred} />
+  );
+}
+
+export function DiagramActions({ source }: { source: string }) {
+  const { t } = useTranslation("common");
+  const { diagram } = useDiagram(source);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  return (
+    <>
+      <IconButton
+        aria-label={t("mermaid.download")}
+        disabled={!diagram}
+        onClick={() => diagram && downloadMermaidSvg(diagram.svg)}
+        size="xs"
+      >
+        <Download className="size-3.5" />
+      </IconButton>
+      <IconButton
+        aria-label={t("mermaid.openPreview")}
+        disabled={!diagram}
+        onClick={() => setPreviewOpen(true)}
+        size="xs"
+      >
+        <Maximize2 className="size-3.5" />
+      </IconButton>
+      {previewOpen && diagram ? (
+        <MermaidPreviewDialog
+          code={source}
+          diagram={diagram}
+          onClose={() => setPreviewOpen(false)}
+        />
+      ) : null}
+    </>
   );
 }

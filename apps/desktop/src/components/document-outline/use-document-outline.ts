@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useState } from "react";
+import { type RefObject, useLayoutEffect, useState } from "react";
 import { flushSync } from "react-dom";
 
 export interface DocumentHeading {
@@ -70,7 +70,7 @@ export function useDocumentOutline(
   const [headings, setHeadings] = useState<DocumentHeading[]>([]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     const content = contentRef.current;
     if (!scroller || !content) {

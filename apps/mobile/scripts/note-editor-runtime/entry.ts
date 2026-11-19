@@ -72,6 +72,7 @@ const codeHighlight = createCodeHighlight((requests) =>
 const previews = createRenderedPreviews({
   requestDiagrams: (requests) => post({ type: "diagram", requests }),
   requestMath: () => post({ type: "math" }),
+  openDiagram: (source) => post({ type: "openDiagram", source }),
 });
 
 function applyTheme({ colors, fontScale }: NoteEditorTheme) {
@@ -329,6 +330,7 @@ function start(message: Extract<NoteEditorInbound, { type: "init" }>) {
   applyTheme(message.theme);
   titleField.value = message.title;
   titleField.placeholder = message.titlePlaceholder;
+  previews.setLabels(message.previewLabels);
   metaButton.hidden = message.meta === null;
   metaButton.textContent = message.meta;
   titleField.readOnly = !message.editable;

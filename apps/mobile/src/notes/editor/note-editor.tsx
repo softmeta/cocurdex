@@ -14,7 +14,7 @@ import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { highlightCode } from "@/files";
-import { createDiagramBridge, useOpenLink } from "@/markdown";
+import { createDiagramBridge, diagramIdOf, useOpenLink } from "@/markdown";
 import { useTextScale } from "@/preferences";
 import { useThemeColors, useThemeName } from "@/theme";
 import {
@@ -235,6 +235,10 @@ export function NoteEditor({
           links: sentLinks.current,
           titlePlaceholder: titlePlaceholder ?? t("editor.titlePlaceholder"),
           bodyPlaceholder: bodyPlaceholder ?? t("editor.bodyPlaceholder"),
+          previewLabels: {
+            showSource: t("editor.showSource"),
+            openDiagram: t("markdown.openDiagram", { ns: "common" }),
+          },
           theme,
           focusTitle,
           editable: sentEditable.current,
@@ -284,6 +288,15 @@ export function NoteEditor({
       case "diagram":
         diagramBridge.request(message.requests, scheme);
         return;
+      case "openDiagram": {
+        const diagramId = diagramIdOf(message.source, scheme);
+        if (!diagramId) return;
+        router.push({
+          pathname: "/diagram/[diagramId]",
+          params: { diagramId },
+        });
+        return;
+      }
       case "math":
         webView.current?.injectJavaScript(`${NOTE_MATH_RUNTIME_SCRIPT};true;`);
         return;

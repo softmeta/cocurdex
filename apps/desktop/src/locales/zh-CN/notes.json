@@ -2,12 +2,14 @@
   "codeBlock": {
     "copied": "已复制",
     "copy": "复制代码",
-    "editDiagram": "编辑图表",
-    "editFormula": "编辑公式",
+    "diagram": "图表",
+    "formula": "公式",
+    "hideSource": "显示预览",
     "language": "代码语言",
     "noLanguage": "没有匹配的语言",
     "plainText": "纯文本",
-    "searchLanguage": "搜索语言…"
+    "searchLanguage": "搜索语言…",
+    "showSource": "显示源码"
   },
   "editor": {
     "empty": {
