@@ -79,7 +79,10 @@ export default function RootLayout() {
               statusBarStyle: systemBarStyle,
             }}
           >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="(tabs)"
+              options={{ headerShown: false, title: t("actions.back") }}
+            />
             <Stack.Screen
               name="session/[hostId]/[sessionId]"
               options={{
