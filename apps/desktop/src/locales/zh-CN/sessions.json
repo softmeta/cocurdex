@@ -179,6 +179,7 @@
     "speed": "速度",
     "triggerLabel": "模型"
   },
+  "notFound": "这台设备上没有这个会话，或它已归档。",
   "permissionMode": {
     "changedForModel": "{{model}} 不支持自动模式，已切换到默认权限。",
     "claude-accept-edits": "自动接受编辑",
