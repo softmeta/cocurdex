@@ -53,6 +53,7 @@
     "title-only": "Title only",
     "two-content": "Two columns"
   },
+  "notFound": "This deck isn't on this device.",
   "present": {
     "audience": "Audience view",
     "label": "Presentation",

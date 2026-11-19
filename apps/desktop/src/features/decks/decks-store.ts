@@ -5,6 +5,8 @@ import {
   isDeckConflictError,
 } from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
+import { toast } from "sonner";
+import { i18n } from "@/i18n";
 import { decksApi } from "./decks-api";
 
 export const deckSummariesAtom = atom<DeckSummary[]>([]);
@@ -41,12 +43,17 @@ export const loadDecksAtom = atom(null, async (get, set) => {
 
 export const openDeckAtom = atom(null, async (get, set, id: string) => {
   if (get(activeDeckIdAtom) === id) return;
+  const previousDeckId = get(activeDeckIdAtom);
   set(activeDeckIdAtom, id);
   const deck = await decksApi.get({ id });
   if (get(activeDeckIdAtom) !== id) return;
+  if (!deck) {
+    toast.error(i18n.t("decks:notFound"));
+    set(activeDeckIdAtom, previousDeckId);
+    return;
+  }
   set(activeSlideIndexAtom, 0);
   set(activeDeckAtom, deck);
-  if (!deck) set(activeDeckIdAtom, null);
 });
 
 export const selectSlideAtom = atom(null, (get, set, index: number) => {

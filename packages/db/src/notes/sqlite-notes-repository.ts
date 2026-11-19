@@ -398,8 +398,8 @@ export function createSqliteNotesRepository(
     },
     async getDoc(id, stateVector) {
       return withNoteMutation(database, (): NoteDocRecord | null => {
-        const note = requireNote(database, id);
-        if (note.kind !== "note") {
+        const note = getNote(database, id);
+        if (note?.kind !== "note") {
           return null;
         }
         const state = requireDocState(database, note);

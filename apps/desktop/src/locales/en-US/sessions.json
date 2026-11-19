@@ -190,6 +190,7 @@
     "speed": "Speed",
     "triggerLabel": "Model"
   },
+  "notFound": "This session isn't on this device, or it was archived.",
   "permissionMode": {
     "changedForModel": "{{model}} does not support Auto mode. Switched to Default permissions.",
     "claude-accept-edits": "Accept edits",

@@ -619,6 +619,7 @@ export default interface Resources {
       "title-only": "Title only";
       "two-content": "Two columns";
     };
+    notFound: "This deck isn't on this device.";
     present: {
       audience: "Audience view";
       label: "Presentation";
@@ -1460,6 +1461,7 @@ export default interface Resources {
       unsupported: "Only PNG, JPEG, GIF, or WebP images are supported.";
       uploadFailed: "Couldn't add the image";
     };
+    notFound: "This note isn't on this device.";
     scope: {
       private: "Private";
       workspace: "{{name}}";
@@ -2082,6 +2084,7 @@ export default interface Resources {
       speed: "Speed";
       triggerLabel: "Model";
     };
+    notFound: "This session isn't on this device, or it was archived.";
     permissionMode: {
       changedForModel: "{{model}} does not support Auto mode. Switched to Default permissions.";
       "claude-accept-edits": "Accept edits";

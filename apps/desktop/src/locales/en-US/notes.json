@@ -41,6 +41,7 @@
     "unsupported": "Only PNG, JPEG, GIF, or WebP images are supported.",
     "uploadFailed": "Couldn't add the image"
   },
+  "notFound": "This note isn't on this device.",
   "scope": {
     "private": "Private",
     "workspace": "{{name}}",

@@ -1,6 +1,8 @@
 import { decodeNoteDocBytes } from "@cocurdex/note-doc/bytes";
 import type { NoteKind, NoteRecord } from "@cocurdex/shared";
 import { atom, type Getter, type Setter } from "jotai";
+import { toast } from "sonner";
+import { i18n } from "@/i18n";
 import { pullNoteDoc } from "./note-doc-registry";
 import {
   applySavedNoteRecord,
@@ -65,6 +67,7 @@ export const openNoteAtom = atom(null, async (get, set, noteId: string) => {
     return;
   }
 
+  const previousNoteId = get(activeNoteIdAtom);
   set(activeNoteIdAtom, noteId);
   set(noteSaveStatusAtom, "idle");
   await waitForNoteSaves(noteId);
@@ -72,9 +75,13 @@ export const openNoteAtom = atom(null, async (get, set, noteId: string) => {
     notesApi.get({ id: noteId }),
     fetchNoteDoc(noteId),
   ]);
-  if (get(activeNoteIdAtom) === noteId) {
-    showNote(set, note, doc);
+  if (get(activeNoteIdAtom) !== noteId) return;
+  if (!note) {
+    toast.error(i18n.t("notes:notFound"));
+    set(activeNoteIdAtom, previousNoteId);
+    return;
   }
+  showNote(set, note, doc);
 });
 
 export type CreateNoteInput =

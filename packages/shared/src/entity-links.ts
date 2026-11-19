@@ -60,10 +60,18 @@ export function entityUri(ref: EntityRef): string {
   return `${ENTITY_URI_PREFIX}${ref.kind}/${encodeURIComponent(ref.id)}`;
 }
 
+const SENTENCE_PUNCTUATION = new Set(".,;:!?)]。，、；：！？）」』】》");
+
+function trimTrailingPunctuation(value: string): string {
+  let end = value.length;
+  while (end > 0 && SENTENCE_PUNCTUATION.has(value[end - 1] ?? "")) end -= 1;
+  return value.slice(0, end);
+}
+
 function decodeId(raw: string): string | null {
   if (raw.includes("/")) return null;
   try {
-    const id = decodeURIComponent(raw).trim();
+    const id = trimTrailingPunctuation(decodeURIComponent(raw).trim());
     return id || null;
   } catch {
     return null;

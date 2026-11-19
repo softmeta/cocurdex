@@ -1,7 +1,9 @@
 import type { EntityRef } from "@cocurdex/shared";
 import { useStore } from "jotai";
 import { useEffectEvent } from "react";
+import { toast } from "sonner";
 import { sessionsAtom } from "@/features/sessions";
+import { i18n } from "@/i18n";
 import { onOpenEntity } from "@/lib/entity-events";
 import { useMountEffect } from "@/lib/react-hooks";
 import { useSearchPaletteActions } from "./use-search-palette-actions";
@@ -18,6 +20,7 @@ export function useOpenEntityBridge() {
         .get(sessionsAtom)
         .find((candidate) => candidate.id === ref.id);
       if (session) actions.openSession(session);
+      else toast.error(i18n.t("sessions:notFound"));
     }
   });
   useMountEffect(() => onOpenEntity(open));

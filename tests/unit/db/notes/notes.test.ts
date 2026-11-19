@@ -318,6 +318,13 @@ describe("CocurdexDatabase.notes", () => {
     database.close();
   });
 
+  it("has no collaborative doc for a note that does not exist", async () => {
+    const database = createTestDatabase();
+
+    expect(await database.notes.getDoc("missing-note")).toBeNull();
+    database.close();
+  });
+
   it("applies editor updates without revision checks and projects markdown", async () => {
     const database = createTestDatabase();
     const note = await database.notes.create({ bodyMarkdown: "Draft" });
