@@ -3,7 +3,6 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
   ChevronRight,
   FilePlus,
-  FileText,
   Folder,
   FolderInput,
   FolderOpen,
@@ -79,7 +78,6 @@ export function NoteTreeItem({
   const scrollRef = useScrollIntoViewWhenActive<HTMLDivElement>(isActive);
   const isFolder = note.kind === "folder";
   const FolderIcon = isExpanded ? FolderOpen : Folder;
-  const Icon = isFolder ? FolderIcon : FileText;
 
   const {
     attributes,
@@ -122,7 +120,7 @@ export function NoteTreeItem({
           )}
           style={
             depth > 0
-              ? { paddingInlineStart: `${8 + depth * 12}px` }
+              ? { paddingInlineStart: `${8 + depth * 20}px` }
               : undefined
           }
           data-testid="note-tree-item"
@@ -142,20 +140,24 @@ export function NoteTreeItem({
                 onToggleExpand(note.id);
               }}
             >
-              <Icon className="size-3.5 group-hover/note:hidden" />
+              {isFolder ? (
+                <FolderIcon className="size-3.5 group-hover/note:hidden" />
+              ) : null}
               <ChevronRight
                 className={cn(
-                  "hidden size-3.5 transition-transform group-hover/note:block rtl:rotate-180",
+                  "size-3.5 transition-transform rtl:rotate-180",
+                  isFolder && "hidden group-hover/note:block",
                   isExpanded && "rotate-90 rtl:rotate-90",
                 )}
               />
             </SidebarListRowDisclosure>
-          ) : (
-            <Icon
+          ) : null}
+          {!hasChildren && isFolder ? (
+            <FolderIcon
               className="size-3.5 shrink-0 text-sidebar-fg-muted"
               aria-hidden
             />
-          )}
+          ) : null}
           {isRenaming ? (
             <AppInlineRenameInput
               initialTitle={note.title}
@@ -247,10 +249,11 @@ export function NoteTreeItem({
 
 export function NoteTreeDragPreview({ note }: { note: NoteSummary }) {
   const { t } = useTranslation("notes");
-  const Icon = note.kind === "folder" ? Folder : FileText;
   return (
     <div className="flex h-7 max-w-56 items-center gap-1.5 rounded-control bg-popover px-2 shadow-menu ring-1 ring-menu-ring">
-      <Icon className="size-3.5 shrink-0 text-sidebar-fg-muted" />
+      {note.kind === "folder" ? (
+        <Folder className="size-3.5 shrink-0 text-sidebar-fg-muted" />
+      ) : null}
       <SidebarListRowLabel className="text-sidebar-fg">
         {note.title || t("sidebar.untitled")}
       </SidebarListRowLabel>
