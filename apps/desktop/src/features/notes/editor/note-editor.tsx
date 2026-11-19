@@ -209,6 +209,7 @@ function NoteEditorBody({
   return (
     <div
       ref={containerRef}
+      data-open-note-id={note.id}
       className={cn(
         "relative flex min-h-0 flex-1",
         DOCUMENT_OUTLINE_CONTAINER_CLASS,
