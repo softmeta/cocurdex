@@ -86,7 +86,11 @@ export type NoteEditorInbound =
       links: string | null;
       titlePlaceholder: string;
       bodyPlaceholder: string;
-      previewLabels: { showSource: string; openDiagram: string };
+      previewLabels: {
+        showSource: string;
+        showPreview: string;
+        openDiagram: string;
+      };
       theme: NoteEditorTheme;
       focusTitle: boolean;
       editable: boolean;

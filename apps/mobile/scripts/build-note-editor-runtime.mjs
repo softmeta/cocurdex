@@ -78,7 +78,6 @@ main{padding:4px 16px 120px}
 .code-tools{display:none;justify-content:flex-end;margin:0 0 2px}
 .code-block[data-rendered]:not([data-empty]) .code-tools{display:flex}
 .code-tools button{display:grid;place-content:center;width:32px;height:32px;margin:0;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted-foreground)}
-.code-tools button[aria-pressed=true]{background:var(--muted);color:var(--foreground)}
 .code-tools svg{width:16px;height:16px}
 .code-preview{overflow-x:auto;text-align:center;white-space:normal}
 .code-preview:empty{display:none}

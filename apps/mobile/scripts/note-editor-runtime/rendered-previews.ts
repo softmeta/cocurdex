@@ -19,8 +19,12 @@ const DIAGRAM_CACHE_LIMIT = 32;
 const SOURCE_ICON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>';
 
+const PREVIEW_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>';
+
 export interface PreviewLabels {
   showSource: string;
+  showPreview: string;
   openDiagram: string;
 }
 
@@ -55,7 +59,11 @@ export function createRenderedPreviews({
   requestMath,
   openDiagram,
 }: PreviewHost) {
-  let labels: PreviewLabels = { showSource: "", openDiagram: "" };
+  let labels: PreviewLabels = {
+    showSource: "",
+    showPreview: "",
+    openDiagram: "",
+  };
   const diagrams = new Map<string, NoteDiagram | null>();
   const requested = new Map<number, string>();
   const asked = new Set<string>();
@@ -171,7 +179,6 @@ export function createRenderedPreviews({
     tools.contentEditable = "false";
     const sourceToggle = document.createElement("button");
     sourceToggle.type = "button";
-    sourceToggle.innerHTML = SOURCE_ICON;
     tools.append(sourceToggle);
     const pre = document.createElement("pre");
     const code = document.createElement("code");
@@ -184,11 +191,20 @@ export function createRenderedPreviews({
     let shown: { language: RenderedLanguage; source: string } | null = null;
     let editing = hasEditingDecoration(decorations as readonly Decoration[]);
     let pinned = false;
+    let toggleIcon = "";
 
     const syncSource = () => {
       const sourceShown = pinned || editing;
       dom.toggleAttribute("data-source", pinned);
-      sourceToggle.setAttribute("aria-label", labels.showSource);
+      const icon = sourceShown ? PREVIEW_ICON : SOURCE_ICON;
+      if (toggleIcon !== icon) {
+        toggleIcon = icon;
+        sourceToggle.innerHTML = icon;
+      }
+      sourceToggle.setAttribute(
+        "aria-label",
+        sourceShown ? labels.showPreview : labels.showSource,
+      );
       sourceToggle.setAttribute("aria-pressed", String(sourceShown));
       const diagram = shown?.language !== MATH_LANGUAGE && shown !== null;
       if (diagram && !dom.hasAttribute("data-failed")) {

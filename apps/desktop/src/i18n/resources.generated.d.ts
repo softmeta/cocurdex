@@ -1428,6 +1428,7 @@ export default interface Resources {
       noLanguage: "No matching language";
       plainText: "Plain text";
       searchLanguage: "Search languages…";
+      showPreview: "Show preview";
       showSource: "Show source";
     };
     editor: {

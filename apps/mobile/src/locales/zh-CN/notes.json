@@ -44,6 +44,7 @@
       "taskList": "待办清单"
     },
     "outline": "目录",
+    "showPreview": "显示预览",
     "showSource": "显示源码",
     "status": {
       "error": "未保存",

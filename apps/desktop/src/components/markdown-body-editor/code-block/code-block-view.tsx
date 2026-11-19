@@ -8,7 +8,7 @@ import {
   type NodeViewProps,
   NodeViewWrapper,
 } from "@tiptap/react";
-import { Check, Code, Copy } from "lucide-react";
+import { Check, Code, Copy, Eye } from "lucide-react";
 import { type MouseEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -91,6 +91,9 @@ export function CodeBlockView({
   const editing = hasEditingDecoration(decorations);
   const [sourcePinned, setSourcePinned] = useState(false);
   const sourceShown = sourcePinned || editing;
+  const sourceLabel = sourceShown
+    ? t("codeBlock.showPreview")
+    : t("codeBlock.showSource");
   const toggleSource = () => {
     if (sourceShown) {
       setSourcePinned(false);
@@ -132,15 +135,17 @@ export function CodeBlockView({
         <div className="flex items-center gap-0.5">
           {rendered ? (
             <IconButton
-              aria-label={t("codeBlock.showSource")}
+              aria-label={sourceLabel}
               aria-pressed={sourceShown}
-              data-state={sourceShown ? "on" : "off"}
-              className="data-[state=on]:bg-muted data-[state=on]:text-foreground"
               onClick={toggleSource}
               onMouseDown={keepSelection}
               size="xs"
             >
-              <Code className="size-3.5" />
+              {sourceShown ? (
+                <Eye className="size-3.5" />
+              ) : (
+                <Code className="size-3.5" />
+              )}
             </IconButton>
           ) : null}
           <CopyCodeButton code={node.textContent} />

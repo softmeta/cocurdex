@@ -237,6 +237,7 @@ export function NoteEditor({
           bodyPlaceholder: bodyPlaceholder ?? t("editor.bodyPlaceholder"),
           previewLabels: {
             showSource: t("editor.showSource"),
+            showPreview: t("editor.showPreview"),
             openDiagram: t("markdown.openDiagram", { ns: "common" }),
           },
           theme,
