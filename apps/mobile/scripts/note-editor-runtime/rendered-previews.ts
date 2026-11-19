@@ -1,11 +1,13 @@
 import { MATH_LANGUAGE } from "@cocurdex/note-doc";
 import {
   createNotePreviews,
+  hasEditingDecoration,
   type RenderedLanguage,
   renderedLanguage,
 } from "@cocurdex/note-doc/preview";
 import type { NodeViewRendererProps } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { Decoration } from "@tiptap/pm/view";
 import type {
   NoteDiagram,
   NoteDiagramRequest,
@@ -14,10 +16,22 @@ import { NOTE_MATH_READY_EVENT } from "./math-contract";
 
 const REQUEST_DELAY_MS = 150;
 const DIAGRAM_CACHE_LIMIT = 32;
+const SOURCE_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>';
+
+const PREVIEW_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>';
+
+export interface PreviewLabels {
+  showSource: string;
+  showPreview: string;
+  openDiagram: string;
+}
 
 interface PreviewHost {
   requestDiagrams(requests: NoteDiagramRequest[]): void;
   requestMath(): void;
+  openDiagram(source: string): void;
 }
 
 function sanitizedSvg(svg: string) {
@@ -43,7 +57,13 @@ function sanitizedSvg(svg: string) {
 export function createRenderedPreviews({
   requestDiagrams,
   requestMath,
+  openDiagram,
 }: PreviewHost) {
+  let labels: PreviewLabels = {
+    showSource: "",
+    showPreview: "",
+    openDiagram: "",
+  };
   const diagrams = new Map<string, NoteDiagram | null>();
   const requested = new Map<number, string>();
   const asked = new Set<string>();
@@ -146,18 +166,57 @@ export function createRenderedPreviews({
     return true;
   }
 
-  function codeBlockView({ node, editor, getPos }: NodeViewRendererProps) {
+  function codeBlockView({
+    node,
+    editor,
+    getPos,
+    decorations,
+  }: NodeViewRendererProps) {
     const dom = document.createElement("div");
     dom.className = "code-block";
+    const tools = document.createElement("div");
+    tools.className = "code-tools";
+    tools.contentEditable = "false";
+    const sourceToggle = document.createElement("button");
+    sourceToggle.type = "button";
+    tools.append(sourceToggle);
     const pre = document.createElement("pre");
     const code = document.createElement("code");
     pre.append(code);
     const preview = document.createElement("div");
     preview.className = "code-preview";
     preview.contentEditable = "false";
-    dom.append(pre, preview);
+    dom.append(tools, pre, preview);
     let current: ProseMirrorNode = node;
     let shown: { language: RenderedLanguage; source: string } | null = null;
+    let editing = hasEditingDecoration(decorations as readonly Decoration[]);
+    let pinned = false;
+    let toggleIcon = "";
+
+    const syncSource = () => {
+      const sourceShown = pinned || editing;
+      dom.toggleAttribute("data-source", pinned);
+      const icon = sourceShown ? PREVIEW_ICON : SOURCE_ICON;
+      if (toggleIcon !== icon) {
+        toggleIcon = icon;
+        sourceToggle.innerHTML = icon;
+      }
+      sourceToggle.setAttribute(
+        "aria-label",
+        sourceShown ? labels.showPreview : labels.showSource,
+      );
+      sourceToggle.setAttribute("aria-pressed", String(sourceShown));
+      const diagram = shown?.language !== MATH_LANGUAGE && shown !== null;
+      if (diagram && !dom.hasAttribute("data-failed")) {
+        preview.setAttribute("role", "button");
+        preview.setAttribute("aria-label", labels.openDiagram);
+        preview.tabIndex = 0;
+      } else {
+        preview.removeAttribute("role");
+        preview.removeAttribute("aria-label");
+        preview.removeAttribute("tabindex");
+      }
+    };
 
     const paint = () => {
       const language = renderedLanguage(current.attrs.language);
@@ -177,27 +236,58 @@ export function createRenderedPreviews({
       dom.toggleAttribute("data-failed", !painted);
       shown = { language, source };
     };
+    const repaint = () => {
+      paint();
+      syncSource();
+    };
 
-    preview.addEventListener("click", (event) => {
+    for (const target of [tools, preview]) {
+      target.addEventListener("mousedown", (event) => event.preventDefault());
+    }
+    sourceToggle.addEventListener("click", (event) => {
       event.preventDefault();
+      if (pinned || editing) {
+        pinned = false;
+        if (editing) editor.commands.blur();
+        syncSource();
+        return;
+      }
+      pinned = true;
+      syncSource();
       const pos = getPos();
       if (!editor.isEditable || typeof pos !== "number") return;
       editor.commands.focus(pos + 1 + current.content.size);
     });
+    const openShownDiagram = () => {
+      if (preview.getAttribute("role") === "button" && shown) {
+        openDiagram(shown.source);
+      }
+    };
+    preview.addEventListener("click", (event) => {
+      event.preventDefault();
+      openShownDiagram();
+    });
+    preview.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openShownDiagram();
+    });
 
-    repaints.add(paint);
-    paint();
+    repaints.add(repaint);
+    repaint();
 
     return {
       dom,
       contentDOM: code,
-      update(next: ProseMirrorNode) {
+      update(next: ProseMirrorNode, nextDecorations: readonly Decoration[]) {
         if (next.type !== current.type) return false;
         const changed =
           next.textContent !== shown?.source ||
           renderedLanguage(next.attrs.language) !== shown?.language;
         current = next;
+        editing = hasEditingDecoration(nextDecorations);
         if (changed) paint();
+        syncSource();
         return true;
       },
       ignoreMutation(mutation: MutationRecord | { type: "selection" }) {
@@ -205,11 +295,12 @@ export function createRenderedPreviews({
         const { target } = mutation as MutationRecord;
         return (
           preview.contains(target) ||
+          tools.contains(target) ||
           (target === dom && mutation.type === "attributes")
         );
       },
       destroy() {
-        repaints.delete(paint);
+        repaints.delete(repaint);
       },
     };
   }
@@ -226,5 +317,10 @@ export function createRenderedPreviews({
     },
   });
 
-  return { codeBlockView, inlineMath, receiveDiagram, reset };
+  function setLabels(next: PreviewLabels) {
+    labels = next;
+    repaintAll();
+  }
+
+  return { codeBlockView, inlineMath, receiveDiagram, reset, setLabels };
 }

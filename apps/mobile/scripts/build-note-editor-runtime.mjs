@@ -74,10 +74,14 @@ main{padding:4px 16px 120px}
 .ProseMirror-selectednode{outline:2px solid var(--tint);outline-offset:2px}
 .prose .code-block{margin:0 0 10px}
 .prose .code-block>pre{margin:0}
-.prose .code-block[data-rendered]:not([data-editing]):not([data-empty]):not([data-failed])>pre{display:none}
+.prose .code-block[data-rendered]:not([data-editing]):not([data-source]):not([data-empty]):not([data-failed])>pre{display:none}
+.code-tools{display:none;justify-content:flex-end;margin:-6px -6px -4px 0}
+.code-block[data-rendered]:not([data-empty]) .code-tools{display:flex}
+.code-tools button{display:grid;place-content:center;width:44px;height:44px;margin:0;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted-foreground)}
+.code-tools svg{width:16px;height:16px}
 .code-preview{overflow-x:auto;text-align:center;white-space:normal}
 .code-preview:empty{display:none}
-.code-block[data-editing] .code-preview{margin-top:8px}
+.code-block:is([data-editing],[data-source]) .code-preview{margin-top:8px}
 .code-preview svg{max-width:100%;height:auto}
 .code-preview math{font-size:1.15em}
 .code-preview-error{margin:0;padding:4px 0;font-family:ui-monospace,Menlo,monospace;font-size:0.8em;text-align:left;color:var(--destructive)}

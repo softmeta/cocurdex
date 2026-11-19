@@ -143,28 +143,31 @@
 }
 
 .md-body-prose
-  .md-code-block[data-rendered]:not([data-editing]):not([data-empty]) {
+  .md-code-block[data-rendered]:not([data-editing]):not([data-source]):not(
+    [data-empty]
+  ) {
   background: transparent;
 }
 
 .md-body-prose
-  .md-code-block[data-rendered]:not([data-editing]):not([data-empty])
+  .md-code-block[data-rendered]:not([data-editing]):not([data-source]):not(
+    [data-empty]
+  )
   pre {
   display: none;
 }
 
 .md-body-prose
-  .md-code-block[data-rendered]:not([data-editing]):not([data-empty]):not(
-    :hover,
-    :focus-within
-  )
+  .md-code-block[data-rendered]:not([data-editing]):not([data-source]):not(
+    [data-empty]
+  ):not(:hover, :focus-within)
   .md-code-block-header {
   opacity: 0;
   transition: opacity 150ms;
 }
 
 .md-body-prose
-  .md-code-block[data-rendered][data-editing]
+  .md-code-block[data-rendered]:is([data-editing], [data-source])
   .md-rendered-preview {
   border-top: 1px solid var(--border);
 }

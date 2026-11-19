@@ -438,6 +438,8 @@ export default interface Resources {
         taskList: "Checklist";
       };
       outline: "Table of contents";
+      showPreview: "Show preview";
+      showSource: "Show source";
       status: {
         error: "Not saved";
         saved: "Saved";

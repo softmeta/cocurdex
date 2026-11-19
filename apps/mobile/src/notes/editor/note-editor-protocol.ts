@@ -86,6 +86,11 @@ export type NoteEditorInbound =
       links: string | null;
       titlePlaceholder: string;
       bodyPlaceholder: string;
+      previewLabels: {
+        showSource: string;
+        showPreview: string;
+        openDiagram: string;
+      };
       theme: NoteEditorTheme;
       focusTitle: boolean;
       editable: boolean;
@@ -116,6 +121,7 @@ export type NoteEditorOutbound =
   | { type: "highlight"; requests: NoteCodeRequest[] }
   | { type: "diagram"; requests: NoteDiagramRequest[] }
   | { type: "math" }
+  | { type: "openDiagram"; source: string }
   | { type: "outline"; outline: NoteOutline };
 
 const OUTBOUND_TYPES = new Set<NoteEditorOutbound["type"]>([
@@ -133,6 +139,7 @@ const OUTBOUND_TYPES = new Set<NoteEditorOutbound["type"]>([
   "highlight",
   "diagram",
   "math",
+  "openDiagram",
   "outline",
 ]);
 
