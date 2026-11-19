@@ -10,46 +10,26 @@ appId: dev.cocurdex.mobile
           timeout: 10000
 - waitForAnimationToEnd
 - takeScreenshot: issues
-- tapOn: ${NEW_ISSUE_ACTION}
-- extendedWaitUntil:
-    visible:
-      id: note-format-bold
-    timeout: 30000
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - extendedWaitUntil:
-          visible:
-            id: "UIKeyboardLayoutStar.*"
-          timeout: 10000
-- retry:
-    maxRetries: 2
-    commands:
-      - eraseText: 60
-      - inputText: ${NEW_ISSUE_TITLE}
-      - extendedWaitUntil:
-          visible: ${NEW_ISSUE_TITLE}
-          timeout: 3000
-- waitForAnimationToEnd
-- takeScreenshot: new-issue
-- tapOn: ${NEW_ISSUE_SUBMIT}
-- extendedWaitUntil:
-    visible: ${NEW_ISSUE_TITLE}
-    timeout: 10000
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - tapOn: "${TAB_ISSUES}|${SYSTEM_BACK}"
 - runFlow:
     when:
       platform: Android
     commands:
+      - tapOn: ${NEW_ISSUE_ACTION}
+      - extendedWaitUntil:
+          visible:
+            id: note-format-bold
+          timeout: 30000
+      - inputText: ${NEW_ISSUE_TITLE}
+      - waitForAnimationToEnd
+      - takeScreenshot: new-issue
+      - tapOn: ${NEW_ISSUE_SUBMIT}
+      - extendedWaitUntil:
+          visible: ${NEW_ISSUE_TITLE}
+          timeout: 10000
       - back
-- extendedWaitUntil:
-    visible: ${NEW_ISSUE_TITLE}
-    timeout: 10000
+      - extendedWaitUntil:
+          visible: ${NEW_ISSUE_TITLE}
+          timeout: 10000
 - tapOn: ${ISSUE_TITLE}
 - extendedWaitUntil:
     visible: ${ISSUE_DESCRIPTION}
@@ -154,79 +134,42 @@ appId: dev.cocurdex.mobile
           timeout: 10000
 - waitForAnimationToEnd
 - takeScreenshot: notes
-- tapOn: ${NEW_NOTE_ACTION}
-- extendedWaitUntil:
-    visible:
-      id: note-format-bold
-    timeout: 30000
-- retry:
-    maxRetries: 2
-    commands:
-      - eraseText: 60
-      - inputText: ${NEW_NOTE_TITLE}
-      - extendedWaitUntil:
-          visible: ${NEW_NOTE_TITLE}
-          timeout: 3000
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - tapOn: ${NOTE_BODY_PLACEHOLDER}
 - runFlow:
     when:
       platform: Android
     commands:
+      - tapOn: ${NEW_NOTE_ACTION}
+      - extendedWaitUntil:
+          visible:
+            id: note-format-bold
+          timeout: 30000
+      - inputText: ${NEW_NOTE_TITLE}
       - pressKey: Enter
-- retry:
-    maxRetries: 2
-    commands:
-      - eraseText: 60
       - inputText: ${NEW_NOTE_BODY}
+      - waitForAnimationToEnd
+      - tapOn:
+          id: note-format-bold
+      - waitForAnimationToEnd
+      - takeScreenshot: new-note
+      - tapOn:
+          id: note-format-hide-keyboard
+      - extendedWaitUntil:
+          notVisible:
+            id: note-format-bold
+          timeout: 5000
       - extendedWaitUntil:
           visible: ${NEW_NOTE_BODY}
-          timeout: 3000
-- waitForAnimationToEnd
-- tapOn:
-    id: note-format-bold
-- waitForAnimationToEnd
-- takeScreenshot: new-note
-- tapOn:
-    id: note-format-hide-keyboard
-- extendedWaitUntil:
-    notVisible:
-      id: note-format-bold
-    timeout: 5000
-- extendedWaitUntil:
-    visible: ${NEW_NOTE_BODY}
-    timeout: 10000
-- takeScreenshot: new-note-saved
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - tapOn: "${TAB_NOTES}|${SYSTEM_BACK}"
-- runFlow:
-    when:
-      platform: Android
-    commands:
+          timeout: 10000
+      - takeScreenshot: new-note-saved
       - back
-- extendedWaitUntil:
-    visible: ${NEW_NOTE_TITLE}
-    timeout: 10000
-- tapOn: ${NEW_NOTE_ACTION}
-- extendedWaitUntil:
-    visible:
-      id: note-format-bold
-    timeout: 30000
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - tapOn: "${TAB_NOTES}|${SYSTEM_BACK}"
-- runFlow:
-    when:
-      platform: Android
-    commands:
+      - extendedWaitUntil:
+          visible: ${NEW_NOTE_TITLE}
+          timeout: 10000
+      - tapOn: ${NEW_NOTE_ACTION}
+      - extendedWaitUntil:
+          visible:
+            id: note-format-bold
+          timeout: 30000
       - retry:
           maxRetries: 2
           commands:
@@ -234,12 +177,12 @@ appId: dev.cocurdex.mobile
             - extendedWaitUntil:
                 visible: ${NEW_NOTE_TITLE}
                 timeout: 3000
-- extendedWaitUntil:
-    visible: ${NEW_NOTE_TITLE}
-    timeout: 10000
-- extendedWaitUntil:
-    notVisible: ${DEFAULT_NOTE_TITLE}
-    timeout: 10000
+      - extendedWaitUntil:
+          visible: ${NEW_NOTE_TITLE}
+          timeout: 10000
+      - extendedWaitUntil:
+          notVisible: ${DEFAULT_NOTE_TITLE}
+          timeout: 10000
 - tapOn: ${NOTE_TITLE}
 - extendedWaitUntil:
     visible: ${NOTE_BODY_TEXT}
