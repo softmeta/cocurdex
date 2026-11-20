@@ -143,13 +143,12 @@ export function NoteTreeItem({
                 <NoteRowIcon
                   note={note}
                   isExpanded={isExpanded}
-                  className="group-hover/note:hidden"
+                  className="group-hover/note:hidden group-has-focus-visible/note:hidden"
                 />
               ) : null}
               <ChevronRight
                 className={cn(
-                  "size-3.5 transition-transform rtl:rotate-180",
-                  hasLeadingIcon && "hidden group-hover/note:block",
+                  "hidden size-3.5 transition-transform group-hover/note:block group-has-focus-visible/note:block rtl:rotate-180",
                   isExpanded && "rotate-90 rtl:rotate-90",
                 )}
               />

@@ -67,16 +67,22 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
+  const workspaceIds = new Set(workspaces.map((workspace) => workspace.id));
+  const activeNote = summaries.find((note) => note.id === activeNoteId);
+  const activeSectionKey = activeNote
+    ? sectionKey(noteSectionId(activeNote, summaries, workspaceIds))
+    : null;
+
   const expansion = useNoteTreeExpansion({
     summaries,
     activeNoteId,
+    activeSectionKey,
     initiallyCollapsedSections: () =>
       workspaces
         .map((workspace) => workspace.id)
         .filter((id) => id !== activeWorkspaceId),
   });
 
-  const workspaceIds = new Set(workspaces.map((workspace) => workspace.id));
   const workspaceName = new Map(
     workspaces.map((workspace) => [workspace.id, workspace.name]),
   );
@@ -91,10 +97,6 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
     })),
     { workspaceId: null, title: t("sidebar.sections.personal") },
   ];
-  const activeNote = summaries.find((note) => note.id === activeNoteId);
-  const activeSectionKey = activeNote
-    ? sectionKey(noteSectionId(activeNote, summaries, workspaceIds))
-    : null;
   const preferredSection =
     activeWorkspaceId && workspaceIds.has(activeWorkspaceId)
       ? activeWorkspaceId
@@ -169,8 +171,7 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
 
   const renderSection = (section: (typeof sections)[number]) => {
     const key = sectionKey(section.workspaceId);
-    const collapsed =
-      expansion.isSectionCollapsed(key) && key !== activeSectionKey;
+    const collapsed = expansion.isSectionCollapsed(key);
     const title = sectionTitle(section.workspaceId);
     const nodes = collapsed
       ? []
