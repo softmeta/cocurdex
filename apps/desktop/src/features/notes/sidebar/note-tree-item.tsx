@@ -3,7 +3,6 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
   ChevronRight,
   FilePlus,
-  FileText,
   Folder,
   FolderInput,
   FolderOpen,
@@ -77,6 +76,7 @@ export function NoteTreeItem({
 }: NoteTreeItemProps) {
   const { t } = useTranslation("notes");
   const scrollRef = useScrollIntoViewWhenActive<HTMLDivElement>(isActive);
+  const hasLeadingIcon = note.kind === "folder" || Boolean(note.icon);
 
   const {
     attributes,
@@ -139,14 +139,17 @@ export function NoteTreeItem({
                 onToggleExpand(note.id);
               }}
             >
-              <NoteRowIcon
-                note={note}
-                isExpanded={isExpanded}
-                className="group-hover/note:hidden"
-              />
+              {hasLeadingIcon ? (
+                <NoteRowIcon
+                  note={note}
+                  isExpanded={isExpanded}
+                  className="group-hover/note:hidden"
+                />
+              ) : null}
               <ChevronRight
                 className={cn(
-                  "hidden size-3.5 transition-transform group-hover/note:block rtl:rotate-180",
+                  "size-3.5 transition-transform rtl:rotate-180",
+                  hasLeadingIcon && "hidden group-hover/note:block",
                   isExpanded && "rotate-90 rtl:rotate-90",
                 )}
               />
@@ -283,9 +286,9 @@ function NoteRowIcon({
       </span>
     );
   }
-  let Icon = FileText;
-  if (note.kind === "folder") {
-    Icon = isExpanded ? FolderOpen : Folder;
+  if (note.kind !== "folder") {
+    return <span aria-hidden className="size-3.5 shrink-0" />;
   }
+  const Icon = isExpanded ? FolderOpen : Folder;
   return <Icon aria-hidden className={cn("size-3.5 shrink-0", className)} />;
 }
