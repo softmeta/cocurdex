@@ -1,6 +1,5 @@
 import type { NoteRecord, NoteSummary } from "@cocurdex/shared";
 import { atom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
 
 export type NoteSaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -17,9 +16,4 @@ export const notesLoadingAtom = atom(false);
 export const noteSaveStatusAtom = atom<NoteSaveStatus>("idle");
 export const notesRevealNonceAtom = atom(0);
 export const noteTitleEpochAtom = atom(0);
-export const noteReadOnlyAtom = atomWithStorage(
-  "cocurdex.notes.readOnly",
-  false,
-  undefined,
-  { getOnInit: true },
-);
+export const noteReadOnlyAtom = atom(true);

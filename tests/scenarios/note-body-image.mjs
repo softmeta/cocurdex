@@ -83,7 +83,7 @@ runScenario("note-body-image", {
       { role: "button", name: NOTE_TITLE },
       UI_TIMEOUT_MS,
     );
-    await openNote(session, NOTE_TITLE);
+    await openNote(session, NOTE_TITLE, { editable: true });
     return { noteId: note.id };
   },
   steps: [
@@ -137,7 +137,7 @@ runScenario("note-body-image", {
           { role: "button", name: NOTE_TITLE },
           UI_TIMEOUT_MS,
         );
-        await openNote(session, NOTE_TITLE);
+        await openNote(session, NOTE_TITLE, { editable: true });
         await waitForImage(session);
         return {};
       },

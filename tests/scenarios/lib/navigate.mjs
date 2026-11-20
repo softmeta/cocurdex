@@ -116,7 +116,7 @@ export async function showPanelView(session, view) {
   return panel;
 }
 
-export async function openNote(session, title) {
+export async function openNote(session, title, { editable = false } = {}) {
   await clickByRole(
     session,
     { role: "button", name: title },
@@ -138,6 +138,19 @@ export async function openNote(session, title) {
     title,
     NAVIGATION_TIMEOUT_MS,
   );
+  if (editable) await makeNoteEditable(session);
+}
+
+async function makeNoteEditable(session) {
+  const name = await translate(session, "notes:editor.readOnly");
+  const editable = () =>
+    document
+      .querySelector(".md-body-prose")
+      ?.getAttribute("contenteditable") === "true";
+  if (!(await session.run(editable))) {
+    await clickByRole(session, { role: "button", name }, NAVIGATION_TIMEOUT_MS);
+  }
+  await session.waitUntil(editable, null, NAVIGATION_TIMEOUT_MS);
 }
 
 export async function openNewIssueDialog(session) {

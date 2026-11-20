@@ -229,7 +229,7 @@ runScenario("note-table", {
     [
       "body does not repeat the note title as a heading",
       async ({ session }) => {
-        await openNote(session, "Acme Shop roadmap");
+        await openNote(session, "Acme Shop roadmap", { editable: true });
         await session.waitUntil(
           () => Boolean(document.querySelector(".md-body-prose h2")),
           null,
@@ -253,7 +253,7 @@ runScenario("note-table", {
     [
       "table renders with borders, start-aligned headers, and compact rows",
       async ({ session }) => {
-        await openNote(session, "Checkout spec");
+        await openNote(session, "Checkout spec", { editable: true });
         await session.waitUntil(
           () => Boolean(document.querySelector(".md-body-prose table td p")),
           null,
@@ -287,7 +287,7 @@ runScenario("note-table", {
     [
       "pasted Markdown text renders as rich content",
       async ({ session }) => {
-        await openNote(session, "Scratchpad");
+        await openNote(session, "Scratchpad", { editable: true });
         await session.waitUntil(
           () =>
             document
@@ -333,7 +333,7 @@ runScenario("note-table", {
     [
       "slash menu filters to table and inserts one",
       async ({ session }) => {
-        await openNote(session, "Acme Shop roadmap");
+        await openNote(session, "Acme Shop roadmap", { editable: true });
         const [menuLabel, tableLabel, taskLabel] = await Promise.all(
           [
             "notes:slash.label",
@@ -388,7 +388,7 @@ runScenario("note-table", {
     [
       "slice handles follow the pointer and hide while typing",
       async ({ session }) => {
-        await openNote(session, "Checkout spec");
+        await openNote(session, "Checkout spec", { editable: true });
         await waitForGrid(session, CHECKOUT_GRID);
         const handleCount = () =>
           session.run(
@@ -441,7 +441,7 @@ runScenario("note-table", {
     [
       "hovering a cell shows handles centered on its row and column",
       async ({ session }) => {
-        await openNote(session, "Checkout spec");
+        await openNote(session, "Checkout spec", { editable: true });
         await waitForGrid(session, CHECKOUT_GRID);
         await hoverCell(session, 1, 1);
         const [rowHandle] = await waitForRole(
@@ -599,7 +599,7 @@ runScenario("note-table", {
     [
       "pasting spreadsheet cells creates a table",
       async ({ session }) => {
-        await openNote(session, "Scratchpad");
+        await openNote(session, "Scratchpad", { editable: true });
         await session.waitUntil(
           () =>
             document
