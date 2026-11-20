@@ -25,10 +25,12 @@ function withoutIds(
 export function useNoteTreeExpansion({
   summaries,
   activeNoteId,
+  activeSectionKey,
   initiallyCollapsedSections,
 }: {
   summaries: readonly NoteSummary[];
   activeNoteId: string | null;
+  activeSectionKey: string | null;
   initiallyCollapsedSections: () => Iterable<string>;
 }) {
   const [collapsedNoteIds, setCollapsedNoteIds] = useState<ReadonlySet<string>>(
@@ -36,15 +38,24 @@ export function useNoteTreeExpansion({
   );
   const [collapsedSections, setCollapsedSections] = useState<
     ReadonlySet<string>
-  >(() => new Set(initiallyCollapsedSections()));
+  >(() =>
+    withoutIds(
+      new Set(initiallyCollapsedSections()),
+      activeSectionKey ? [activeSectionKey] : [],
+    ),
+  );
 
-  const [revealedNoteId, setRevealedNoteId] = useState(activeNoteId);
-  if (activeNoteId !== revealedNoteId) {
-    setRevealedNoteId(activeNoteId);
+  const revealKey = `${activeNoteId ?? ""}\u0000${activeSectionKey ?? ""}`;
+  const [revealedKey, setRevealedKey] = useState(revealKey);
+  if (revealKey !== revealedKey) {
+    setRevealedKey(revealKey);
     if (activeNoteId) {
       setCollapsedNoteIds((prev) =>
         withoutIds(prev, ancestorIds(activeNoteId, summaries)),
       );
+    }
+    if (activeSectionKey) {
+      setCollapsedSections((prev) => withoutIds(prev, [activeSectionKey]));
     }
   }
 

@@ -10,6 +10,7 @@ export function NoteSectionHeader({
   workspaceId,
   title,
   collapsed,
+  first,
   isDropTarget,
   onToggle,
   onCreate,
@@ -17,6 +18,7 @@ export function NoteSectionHeader({
   workspaceId: string | null;
   title: string;
   collapsed: boolean;
+  first: boolean;
   isDropTarget: boolean;
   onToggle: () => void;
   onCreate: () => void;
@@ -33,6 +35,8 @@ export function NoteSectionHeader({
     >
       <SidebarSectionHeader
         title={title}
+        inset="toggle"
+        flush={first}
         collapsed={collapsed}
         onToggle={onToggle}
         action={

@@ -15,7 +15,7 @@ export function SidebarPanelHeader({
 }) {
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-1 pe-0.5">
-      <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-1">
         <SidebarToggleButton label={collapseLabel} open onToggle={onCollapse} />
         <Text
           size="meta"
