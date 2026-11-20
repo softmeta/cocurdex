@@ -6,7 +6,7 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 export const sidebarListRowVariants = cva(
-  "peer/menu-button group/list-row group/menu-button relative flex w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-control text-start outline-hidden transition-colors disabled:pointer-events-none disabled:opacity-50 [&>svg]:shrink-0 [&>span:last-child]:truncate",
+  "peer/menu-button group/list-row group/menu-button relative flex w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-control text-start outline-hidden disabled:pointer-events-none disabled:opacity-50 [&>svg]:shrink-0 [&>span:last-child]:truncate",
   {
     variants: {
       variant: {
