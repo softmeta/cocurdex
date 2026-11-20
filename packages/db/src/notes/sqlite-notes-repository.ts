@@ -9,6 +9,7 @@ import {
 } from "@cocurdex/note-doc";
 import {
   type CreateNotePayload,
+  compareNoteSiblings,
   type MoveNotePayload,
   NOTE_EXCERPT_SOURCE_LENGTH,
   type NoteKind,
@@ -154,6 +155,7 @@ const SORT_ORDER_STEP = 1000;
 
 interface SiblingOrder extends SqliteRow {
   id: string;
+  title: string;
   sort_order: number;
 }
 
@@ -165,16 +167,20 @@ function readSiblingOrder(
 ): SiblingOrder[] {
   const scope = parentId
     ? database.prepare(
-        `SELECT id, sort_order FROM notes
-         WHERE parent_id = ? AND id != ?
-         ORDER BY sort_order, title, id`,
+        `SELECT id, title, sort_order FROM notes
+         WHERE parent_id = ? AND id != ?`,
       )
     : database.prepare(
-        `SELECT id, sort_order FROM notes
-         WHERE parent_id IS NULL AND workspace_id IS ? AND id != ?
-         ORDER BY sort_order, title, id`,
+        `SELECT id, title, sort_order FROM notes
+         WHERE parent_id IS NULL AND workspace_id IS ? AND id != ?`,
       );
-  return scope.all(parentId ?? workspaceId, excludeId) as SiblingOrder[];
+  const rows = scope.all(parentId ?? workspaceId, excludeId) as SiblingOrder[];
+  return rows.toSorted((left, right) =>
+    compareNoteSiblings(
+      { id: left.id, title: left.title, sortOrder: left.sort_order },
+      { id: right.id, title: right.title, sortOrder: right.sort_order },
+    ),
+  );
 }
 
 function renumberSiblings(
@@ -187,7 +193,7 @@ function renumberSiblings(
   return siblings.map((sibling, index) => {
     const sortOrder = (index + 1) * SORT_ORDER_STEP;
     update.run(sortOrder, sibling.id);
-    return { id: sibling.id, sort_order: sortOrder };
+    return { ...sibling, sort_order: sortOrder };
   });
 }
 

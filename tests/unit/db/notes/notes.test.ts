@@ -6,6 +6,7 @@ import {
   noteDocStateVector,
   noteDocToMarkdown,
 } from "@cocurdex/note-doc";
+import { compareNoteSiblings } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
@@ -258,6 +259,31 @@ describe("CocurdexDatabase.notes", () => {
       });
     }
     expect(await childTitles()).toEqual(["A", "C", "B", "Loose"]);
+    database.close();
+  });
+
+  it("keeps tied siblings in their displayed order when a move renumbers them", async () => {
+    const database = createTestDatabase();
+    const parent = await database.notes.create({ title: "Roadmap" });
+    for (const title of ["a", "B"]) {
+      await database.notes.create({ title, parentId: parent.id, sortOrder: 0 });
+    }
+    const [lower] = (await database.notes.list()).filter(
+      (note) => note.title === "a",
+    );
+    const mover = await database.notes.create({ title: "Mover" });
+
+    await database.notes.move({
+      id: mover.id,
+      parentId: parent.id,
+      afterId: lower.id,
+    });
+
+    const displayed = (await database.notes.list())
+      .filter((note) => note.parentId === parent.id)
+      .toSorted(compareNoteSiblings)
+      .map((note) => note.title);
+    expect(displayed).toEqual(["a", "Mover", "B"]);
     database.close();
   });
 

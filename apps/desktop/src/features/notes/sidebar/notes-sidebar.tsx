@@ -49,18 +49,23 @@ const PERSONAL_SECTION_KEY = "__personal__";
 
 const collisionDetection: CollisionDetection = (args) => {
   const underPointer = pointerWithin(args);
-  return underPointer.length > 0 ? underPointer : rectIntersection(args);
+  const collisions =
+    underPointer.length > 0 ? underPointer : rectIntersection(args);
+  const pointer = args.pointerCoordinates;
+  return collisions.map((collision) => {
+    const rect = args.droppableRects.get(collision.id);
+    const zone: NoteDropZone =
+      pointer && rect ? dropZoneAt(pointer.y, rect) : "inside";
+    return { ...collision, data: { ...collision.data, zone } };
+  });
 };
 
-function pointerY(event: DragMoveEvent | DragEndEvent): number | null {
-  const start = event.activatorEvent;
-  return start instanceof PointerEvent ? start.clientY + event.delta.y : null;
-}
-
 function zoneOf(event: DragMoveEvent | DragEndEvent): NoteDropZone {
-  const y = pointerY(event);
-  const rect = event.over?.rect;
-  return y === null || !rect ? "inside" : dropZoneAt(y, rect);
+  const top = event.collisions?.find(
+    (collision) => collision.id === event.over?.id,
+  );
+  const zone: unknown = top?.data?.zone;
+  return zone === "before" || zone === "after" ? zone : "inside";
 }
 
 function sectionKey(workspaceId: string | null): string {
