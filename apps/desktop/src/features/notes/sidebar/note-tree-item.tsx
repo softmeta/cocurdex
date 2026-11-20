@@ -147,7 +147,9 @@ export function NoteTreeItem({
                 ) : null}
                 <ChevronRight
                   className={cn(
-                    "hidden size-3 transition-transform group-hover/note:block group-has-focus-visible/note:block rtl:rotate-180",
+                    "size-3 transition-transform rtl:rotate-180",
+                    hasLeadingIcon &&
+                      "hidden group-hover/note:block group-has-focus-visible/note:block",
                     isExpanded && "rotate-90 rtl:rotate-90",
                   )}
                 />
