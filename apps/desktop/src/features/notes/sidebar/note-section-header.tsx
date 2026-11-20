@@ -33,6 +33,7 @@ export function NoteSectionHeader({
     >
       <SidebarSectionHeader
         title={title}
+        inset="nested"
         collapsed={collapsed}
         onToggle={onToggle}
         action={

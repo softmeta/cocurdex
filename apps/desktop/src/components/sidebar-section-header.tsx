@@ -8,8 +8,10 @@ export function SidebarSectionHeader({
   collapsed,
   onToggle,
   action,
+  inset = "edge",
 }: {
   title: string;
+  inset?: "edge" | "nested";
   collapsed?: boolean;
   onToggle?: () => void;
   action?: ReactNode;
@@ -25,7 +27,12 @@ export function SidebarSectionHeader({
   );
 
   return (
-    <div className="group/section flex h-6 items-center justify-between gap-1 ps-2 pe-0.5 pt-2">
+    <div
+      className={cn(
+        "group/section flex h-6 items-center justify-between gap-1 pe-0.5 pt-2",
+        { edge: "ps-2", nested: "ps-4" }[inset],
+      )}
+    >
       {onToggle ? (
         <button
           type="button"
