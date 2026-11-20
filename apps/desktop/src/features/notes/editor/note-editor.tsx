@@ -4,8 +4,8 @@ import { offset } from "@floating-ui/dom";
 import Collaboration from "@tiptap/extension-collaboration";
 import DragHandle from "@tiptap/extension-drag-handle-react";
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
-import { useAtomValue, useSetAtom, useStore } from "jotai";
-import { Folder, GripVertical } from "lucide-react";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
+import { GripVertical, Lock } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/markdown-body-editor";
 import "@/components/markdown-body-editor/markdown-body-editor.css";
 import { FindInDocumentButton } from "@/app/layout/find-in-document-button";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import {
   DOCUMENT_OUTLINE_CONTAINER_CLASS,
   DOCUMENT_OUTLINE_MENU_PADDING_CLASS,
@@ -23,7 +24,7 @@ import {
   DocumentOutlineRail,
   useDocumentOutline,
 } from "@/components/document-outline";
-import { EmptyState, ScrollArea, Text } from "@/components/ui";
+import { ScrollArea, Text } from "@/components/ui";
 import { RelatedEntities } from "@/features/entity-links";
 import { parsePdfNoteCitationHref } from "@/features/pdf-reader/pdf-note-citation";
 import { openPdfAtPageAtom } from "@/features/pdf-reader/pdf-reader-store";
@@ -42,14 +43,13 @@ import {
   activeNoteIdAtom,
   applyNoteDocSaveAtom,
   type NoteSaveStatus,
+  noteReadOnlyAtom,
   noteSaveStatusAtom,
   noteTitleEpochAtom,
   openNoteAtom,
 } from "../notes-store";
-import {
-  useCommitFolderRename,
-  useDebouncedNoteRename,
-} from "./note-editor-sync";
+import { FolderPlaceholder } from "./folder-placeholder";
+import { useDebouncedNoteRename } from "./note-editor-sync";
 import { NoteTimestamps } from "./note-timestamps";
 import { useHideDragHandleOnLayoutShift } from "./use-hide-drag-handle-on-layout-shift";
 
@@ -134,8 +134,10 @@ function NoteEditorBody({
   const setInsertHandler = useSetAtom(noteBodyInsertHandlerAtom);
   const store = useStore();
   const doc = useNoteDocSession(note.id, initialDoc);
+  const [readOnly, setReadOnly] = useAtom(noteReadOnlyAtom);
 
   const editor = useEditor({
+    editable: !store.get(noteReadOnlyAtom),
     extensions: [
       ...buildMarkdownBodyExtensions(t("editor.placeholder"), {
         collaborative: true,
@@ -198,6 +200,12 @@ function NoteEditorBody({
     },
   });
 
+  useMountEffect(() =>
+    store.sub(noteReadOnlyAtom, () => {
+      editor?.setEditable(!store.get(noteReadOnlyAtom));
+    }),
+  );
+
   const editorChromeRef = useHideDragHandleOnLayoutShift(editor);
   const [dragHandlePosition] = useState(createDragHandlePosition);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -235,16 +243,26 @@ function NoteEditorBody({
                   noteId={note.id}
                   initialTitle={note.title}
                   editor={editor}
+                  readOnly={readOnly}
                 />
                 <SaveIndicator status={saveStatus} />
-                <FindInDocumentButton className="ms-auto" />
+                <div className="ms-auto flex items-center gap-1">
+                  <TitlebarIconButton
+                    aria-label={t("editor.readOnly")}
+                    active={readOnly}
+                    onClick={() => setReadOnly(!readOnly)}
+                  >
+                    <Lock className="size-3.5" />
+                  </TitlebarIconButton>
+                  <FindInDocumentButton />
+                </div>
               </div>
               <NoteTimestamps
                 createdAt={note.createdAt}
                 updatedAt={note.updatedAt}
               />
             </div>
-            {editor ? (
+            {editor && !readOnly ? (
               <DragHandle
                 editor={editor}
                 computePositionConfig={dragHandlePosition.config}
@@ -260,7 +278,7 @@ function NoteEditorBody({
             ) : null}
             <div ref={bodyRef} className="relative flex flex-1 flex-col">
               <EditorContent editor={editor} className="relative flex-1" />
-              {editor ? <TableControls editor={editor} /> : null}
+              {editor && !readOnly ? <TableControls editor={editor} /> : null}
             </div>
             <div className="border-t border-editor-border/60">
               <RelatedEntities entity={{ kind: "note", id: note.id }} />
@@ -287,9 +305,15 @@ interface NoteTitleInputProps {
   noteId: string;
   initialTitle: string;
   editor: Editor | null;
+  readOnly: boolean;
 }
 
-function NoteTitleInput({ noteId, initialTitle, editor }: NoteTitleInputProps) {
+function NoteTitleInput({
+  noteId,
+  initialTitle,
+  editor,
+  readOnly,
+}: NoteTitleInputProps) {
   const { t } = useTranslation("notes");
   const [value, setValue] = useState(initialTitle);
   const rename = useDebouncedNoteRename({ noteId });
@@ -300,6 +324,7 @@ function NoteTitleInput({ noteId, initialTitle, editor }: NoteTitleInputProps) {
       value={value}
       placeholder={t("editor.untitledPlaceholder")}
       aria-label={t("editor.titleLabel")}
+      readOnly={readOnly}
       className={cn(
         "min-w-0 flex-1 bg-transparent text-title font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none",
       )}
@@ -309,7 +334,7 @@ function NoteTitleInput({ noteId, initialTitle, editor }: NoteTitleInputProps) {
         rename(next);
       }}
       onKeyDown={(event) => {
-        if (!editor || event.nativeEvent.isComposing) return;
+        if (!editor || readOnly || event.nativeEvent.isComposing) return;
         if (event.key === "Enter") {
           event.preventDefault();
           focusParagraphAtStart(editor.state, editor.view.dispatch);
@@ -320,64 +345,6 @@ function NoteTitleInput({ noteId, initialTitle, editor }: NoteTitleInputProps) {
         }
       }}
     />
-  );
-}
-
-function FolderPlaceholder({ note }: { note: NoteRecord }) {
-  const { t } = useTranslation("notes");
-  const [value, setValue] = useState(note.title);
-  const commitRename = useCommitFolderRename(note.id);
-  const skipCommitRef = useRef(false);
-
-  const commit = async () => {
-    if (skipCommitRef.current) {
-      skipCommitRef.current = false;
-      return;
-    }
-    const nextTitle = await commitRename(value, note.title);
-    setValue(nextTitle);
-  };
-
-  return (
-    <ScrollArea
-      className="min-h-0 flex-1"
-      viewportProps={{ className: "flex flex-col" }}
-    >
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pt-4 pb-8">
-        <input
-          type="text"
-          value={value}
-          placeholder={t("editor.untitledPlaceholder")}
-          aria-label={t("editor.folder.renameLabel")}
-          className={cn(
-            "w-full bg-transparent text-title font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none",
-          )}
-          onChange={(event) => setValue(event.target.value)}
-          onBlur={() => {
-            void commit();
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              (event.target as HTMLInputElement).blur();
-            }
-            if (event.key === "Escape") {
-              event.preventDefault();
-              skipCommitRef.current = true;
-              setValue(note.title);
-              (event.target as HTMLInputElement).blur();
-            }
-          }}
-        />
-        <div className="mt-8 flex flex-1 items-start justify-center">
-          <EmptyState
-            icon={<Folder />}
-            title={t("editor.folder.emptyTitle")}
-            description={t("editor.folder.description")}
-          />
-        </div>
-      </div>
-    </ScrollArea>
   );
 }
 

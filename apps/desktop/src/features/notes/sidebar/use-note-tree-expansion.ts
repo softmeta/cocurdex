@@ -12,6 +12,16 @@ function toggled(set: ReadonlySet<string>, id: string): Set<string> {
   return next;
 }
 
+function withoutIds(
+  set: ReadonlySet<string>,
+  ids: readonly string[],
+): ReadonlySet<string> {
+  if (!ids.some((id) => set.has(id))) {
+    return set;
+  }
+  return new Set([...set].filter((id) => !ids.includes(id)));
+}
+
 export function useNoteTreeExpansion({
   summaries,
   activeNoteId,
@@ -28,13 +38,18 @@ export function useNoteTreeExpansion({
     ReadonlySet<string>
   >(() => new Set(initiallyCollapsedSections()));
 
-  const forcedOpen = activeNoteId ? ancestorIds(activeNoteId, summaries) : [];
-  const effectiveCollapsedNoteIds = new Set(
-    [...collapsedNoteIds].filter((id) => !forcedOpen.includes(id)),
-  );
+  const [revealedNoteId, setRevealedNoteId] = useState(activeNoteId);
+  if (activeNoteId !== revealedNoteId) {
+    setRevealedNoteId(activeNoteId);
+    if (activeNoteId) {
+      setCollapsedNoteIds((prev) =>
+        withoutIds(prev, ancestorIds(activeNoteId, summaries)),
+      );
+    }
+  }
 
   return {
-    collapsedNoteIds: effectiveCollapsedNoteIds,
+    collapsedNoteIds,
     isSectionCollapsed: (key: string) => collapsedSections.has(key),
     toggleNote: (id: string) =>
       setCollapsedNoteIds((prev) => toggled(prev, id)),

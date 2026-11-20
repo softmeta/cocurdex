@@ -82,7 +82,7 @@
     "esbuild": "^0.28.2",
     "i18next-cli": "^1.82.5",
     "katex": "^0.19.1",
-    "mermaid": "12.3.0",
+    "mermaid": "11.16.1",
     "typescript": "7.0.2"
   },
   "enriched-markdown": {

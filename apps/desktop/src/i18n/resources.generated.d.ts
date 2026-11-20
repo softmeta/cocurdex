@@ -1443,6 +1443,7 @@ export default interface Resources {
         renameLabel: "Folder name";
       };
       placeholder: 'Start writing, or press "/" for commands…';
+      readOnly: "Read-only";
       save: {
         error: "Save failed";
         saved: "Saved";

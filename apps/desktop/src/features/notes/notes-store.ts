@@ -17,6 +17,7 @@ import {
   activeNoteAtom,
   activeNoteDocAtom,
   activeNoteIdAtom,
+  noteReadOnlyAtom,
   noteSaveStatusAtom,
   noteSummariesAtom,
   notesLoadingAtom,
@@ -30,6 +31,7 @@ export {
   activeNoteDocAtom,
   activeNoteIdAtom,
   type NoteSaveStatus,
+  noteReadOnlyAtom,
   noteSaveStatusAtom,
   noteSummariesAtom,
   notesLoadingAtom,
@@ -123,6 +125,9 @@ export const createNoteAtom = atom(
       ...get(noteSummariesAtom).filter((item) => item.id !== note.id),
       toNoteSummary(note),
     ]);
+    if (note.kind === "note") {
+      set(noteReadOnlyAtom, false);
+    }
     set(activeNoteIdAtom, note.id);
     showNote(set, note, doc);
     set(noteSaveStatusAtom, "idle");

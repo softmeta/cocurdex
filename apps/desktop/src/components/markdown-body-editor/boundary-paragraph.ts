@@ -51,6 +51,7 @@ export const BoundaryParagraph = Extension.create({
         key: new PluginKey("boundaryParagraph"),
         props: {
           handleClick: (view, _pos, event) => {
+            if (!view.editable) return false;
             const { doc } = view.state;
             const last = doc.lastChild;
             if (!last || last.isTextblock) return false;

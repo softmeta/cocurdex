@@ -7,6 +7,7 @@ import {
   NodeViewContent,
   type NodeViewProps,
   NodeViewWrapper,
+  useEditorState,
 } from "@tiptap/react";
 import { Check, Code, Copy, Eye } from "lucide-react";
 import { type MouseEvent, useState } from "react";
@@ -82,6 +83,10 @@ export function CodeBlockView({
   decorations,
 }: NodeViewProps) {
   const { t } = useTranslation("notes");
+  const editable = useEditorState({
+    editor,
+    selector: ({ editor: current }) => current.isEditable,
+  });
   const language = selectedLanguage(node.attrs.language);
   const options = useLanguageOptions(language);
   const label = language
@@ -121,7 +126,7 @@ export function CodeBlockView({
       >
         <AppSearchableSelect
           appearance="ghost"
-          disabled={!editor.isEditable}
+          disabled={!editable}
           emptyText={t("codeBlock.noLanguage")}
           onValueChange={(value) =>
             updateAttributes({ language: value || null })
