@@ -3,6 +3,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
   ChevronRight,
   FilePlus,
+  FileText,
   Folder,
   FolderInput,
   FolderOpen,
@@ -76,8 +77,6 @@ export function NoteTreeItem({
 }: NoteTreeItemProps) {
   const { t } = useTranslation("notes");
   const scrollRef = useScrollIntoViewWhenActive<HTMLDivElement>(isActive);
-  const isFolder = note.kind === "folder";
-  const FolderIcon = isExpanded ? FolderOpen : Folder;
 
   const {
     attributes,
@@ -140,24 +139,25 @@ export function NoteTreeItem({
                 onToggleExpand(note.id);
               }}
             >
-              {isFolder ? (
-                <FolderIcon className="size-3.5 group-hover/note:hidden" />
-              ) : null}
+              <NoteRowIcon
+                note={note}
+                isExpanded={isExpanded}
+                className="group-hover/note:hidden"
+              />
               <ChevronRight
                 className={cn(
-                  "size-3.5 transition-transform rtl:rotate-180",
-                  isFolder && "hidden group-hover/note:block",
+                  "hidden size-3.5 transition-transform group-hover/note:block rtl:rotate-180",
                   isExpanded && "rotate-90 rtl:rotate-90",
                 )}
               />
             </SidebarListRowDisclosure>
-          ) : null}
-          {!hasChildren && isFolder ? (
-            <FolderIcon
-              className="size-3.5 shrink-0 text-sidebar-fg-muted"
-              aria-hidden
+          ) : (
+            <NoteRowIcon
+              note={note}
+              isExpanded={false}
+              className="text-sidebar-fg-muted"
             />
-          ) : null}
+          )}
           {isRenaming ? (
             <AppInlineRenameInput
               initialTitle={note.title}
@@ -259,4 +259,33 @@ export function NoteTreeDragPreview({ note }: { note: NoteSummary }) {
       </SidebarListRowLabel>
     </div>
   );
+}
+
+function NoteRowIcon({
+  note,
+  isExpanded,
+  className,
+}: {
+  note: NoteSummary;
+  isExpanded: boolean;
+  className?: string;
+}) {
+  if (note.icon) {
+    return (
+      <span
+        aria-hidden
+        className={cn(
+          "flex size-3.5 shrink-0 items-center justify-center text-meta leading-none",
+          className,
+        )}
+      >
+        {note.icon}
+      </span>
+    );
+  }
+  let Icon = FileText;
+  if (note.kind === "folder") {
+    Icon = isExpanded ? FolderOpen : Folder;
+  }
+  return <Icon aria-hidden className={cn("size-3.5 shrink-0", className)} />;
 }

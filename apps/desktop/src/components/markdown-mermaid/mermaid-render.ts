@@ -1,4 +1,4 @@
-import { createMermaidPlugin } from "@streamdown/mermaid";
+import mermaid from "mermaid";
 import { type SizedMermaidSvg, sizeMermaidSvg } from "./mermaid-svg";
 import { type MermaidAppearance, mermaidThemeConfig } from "./mermaid-theme";
 
@@ -9,7 +9,6 @@ export type MermaidRenderResult =
 const MAX_CACHED_RENDERS = 64;
 const UNSIZED_OUTPUT_ERROR = "Mermaid returned a diagram without a viewBox";
 
-const mermaidPlugin = createMermaidPlugin();
 const results = new Map<string, MermaidRenderResult>();
 const pending = new Set<string>();
 const listeners = new Set<() => void>();
@@ -69,7 +68,7 @@ async function renderChart(
 ): Promise<MermaidRenderResult> {
   renderCount += 1;
   try {
-    const mermaid = mermaidPlugin.getMermaid(
+    mermaid.initialize(
       mermaidThemeConfig(
         appearance,
         getComputedStyle(document.body).fontFamily,

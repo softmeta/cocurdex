@@ -3,7 +3,7 @@ import {
   MERMAID_THEME_VARIABLES,
   type MermaidAppearance,
 } from "@cocurdex/client-runtime";
-import type { MermaidConfig } from "@streamdown/mermaid";
+import type { MermaidConfig } from "mermaid";
 
 export type { MermaidAppearance };
 
@@ -12,6 +12,9 @@ export function mermaidThemeConfig(
   fontFamily: string,
 ): MermaidConfig {
   return {
+    startOnLoad: false,
+    securityLevel: "strict",
+    suppressErrorRendering: true,
     fontFamily,
     theme: "base",
     themeCSS: MERMAID_THEME_CSS,
