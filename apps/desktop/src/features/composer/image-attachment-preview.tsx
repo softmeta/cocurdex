@@ -6,13 +6,11 @@ import { useTranslation } from "react-i18next";
 import {
   MediaPreviewDialog,
   PreviewToolbarButton,
+  useTemporaryCopyStatus,
 } from "@/components/media-preview";
 import { Text } from "@/components/ui";
 import { cn } from "@/lib";
-import {
-  useImageDataUrl,
-  useTemporaryImageCopyStatus,
-} from "./image-attachment-hooks";
+import { useImageDataUrl } from "./image-attachment-hooks";
 import {
   imagePreviewNeighbor,
   resolveImagePreviewGallery,
@@ -77,7 +75,7 @@ export function ImageAttachmentPreview({
   const { t } = useTranslation("agent");
   const dataUrl = useImageDataUrl(attachment);
   const [loadedSize, setLoadedSize] = useState<LoadedImageSize | null>(null);
-  const [copyStatus, showCopyStatus] = useTemporaryImageCopyStatus(1800);
+  const [copyStatus, showCopyStatus] = useTemporaryCopyStatus(1800);
   const { canNavigate, index, next, previous, total } =
     resolveImagePreviewGallery(attachment, gallery);
   const showNav = canNavigate && Boolean(onSelect);

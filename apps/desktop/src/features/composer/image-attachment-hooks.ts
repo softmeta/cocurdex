@@ -1,8 +1,5 @@
 import { type ImageAttachment, storedImageFileName } from "@cocurdex/shared";
-import { useCallback, useRef, useState } from "react";
-import { createDaemonBlobUrlStore, useMountEffect } from "@/lib";
-
-export type ImageCopyStatus = "copied" | "failed";
+import { createDaemonBlobUrlStore } from "@/lib";
 
 const useImageAttachmentBlobUrl = createDaemonBlobUrlStore({
   request: (filePath) => ({
@@ -19,31 +16,4 @@ export function useImageDataUrl(attachment: ImageAttachment) {
     inlineDataUrl || filePath.length === 0 ? null : filePath,
   );
   return inlineDataUrl ?? storedUrl;
-}
-
-export function useTemporaryImageCopyStatus(durationMs: number) {
-  const [copyStatus, setCopyStatus] = useState<ImageCopyStatus | null>(null);
-  const timeoutRef = useRef<number | null>(null);
-
-  const showCopyStatus = useCallback(
-    (nextStatus: ImageCopyStatus) => {
-      if (timeoutRef.current !== null) {
-        window.clearTimeout(timeoutRef.current);
-      }
-      setCopyStatus(nextStatus);
-      timeoutRef.current = window.setTimeout(() => {
-        timeoutRef.current = null;
-        setCopyStatus(null);
-      }, durationMs);
-    },
-    [durationMs],
-  );
-
-  useMountEffect(() => () => {
-    if (timeoutRef.current !== null) {
-      window.clearTimeout(timeoutRef.current);
-    }
-  });
-
-  return [copyStatus, showCopyStatus] as const;
 }

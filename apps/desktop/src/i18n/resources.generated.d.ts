@@ -487,6 +487,10 @@ export default interface Resources {
       untitled: "Untitled";
     };
     mermaid: {
+      copied: "Copied";
+      copyCode: "Copy code";
+      copyFailed: "Copy failed";
+      copyImage: "Copy image";
       download: "Download SVG";
       openPreview: "Open preview";
       title: "Mermaid diagram";

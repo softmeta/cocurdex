@@ -1,14 +1,18 @@
-import { Download } from "lucide-react";
+import { CodeXml, Copy, Download } from "lucide-react";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { CodeBlockCopyButton } from "streamdown";
 import {
   MediaPreviewDialog,
   PreviewToolbarButton,
+  useTemporaryCopyStatus,
 } from "@/components/media-preview";
+import { Text } from "@/components/ui";
 import { downloadMermaidSvg } from "./mermaid-download";
+import { mermaidPngBlob, opaqueBackgroundOf } from "./mermaid-image";
 import type { SizedMermaidSvg } from "./mermaid-svg";
 
 const MERMAID_SCALE_LIMITS = { max: 2, min: 0.75 };
+const COPY_STATUS_MS = 1800;
 
 export function MermaidPreviewDialog({
   code,
@@ -20,15 +24,51 @@ export function MermaidPreviewDialog({
   onClose(): void;
 }) {
   const { t } = useTranslation("common");
+  const diagramRef = useRef<HTMLDivElement>(null);
+  const [copyStatus, showCopyStatus] = useTemporaryCopyStatus(COPY_STATUS_MS);
+
+  const copyImage = async () => {
+    try {
+      const png = mermaidPngBlob(
+        diagram,
+        opaqueBackgroundOf(diagramRef.current),
+      );
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": png }),
+      ]);
+      showCopyStatus("copied");
+    } catch {
+      showCopyStatus("failed");
+    }
+  };
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      showCopyStatus("copied");
+    } catch {
+      showCopyStatus("failed");
+    }
+  };
 
   return (
     <MediaPreviewDialog
       actions={
         <>
-          <CodeBlockCopyButton
-            className="flex size-6 items-center justify-center rounded-control text-chat-fg-muted hover:bg-muted hover:text-chat-fg dark:hover:bg-muted/50"
-            code={code}
-          />
+          <PreviewToolbarButton
+            label={t("mermaid.copyImage")}
+            onClick={() => void copyImage()}
+            tooltipSide="bottom"
+          >
+            <Copy className="size-3.5" />
+          </PreviewToolbarButton>
+          <PreviewToolbarButton
+            label={t("mermaid.copyCode")}
+            onClick={() => void copyCode()}
+            tooltipSide="bottom"
+          >
+            <CodeXml className="size-3.5" />
+          </PreviewToolbarButton>
           <PreviewToolbarButton
             label={t("mermaid.download")}
             onClick={() => downloadMermaidSvg(diagram.svg)}
@@ -41,6 +81,17 @@ export function MermaidPreviewDialog({
       contentSize={diagram}
       onClose={onClose}
       scaleLimits={MERMAID_SCALE_LIMITS}
+      status={
+        copyStatus ? (
+          <output className="me-1">
+            <Text className="text-chat-fg-muted" size="meta">
+              {copyStatus === "copied"
+                ? t("mermaid.copied")
+                : t("mermaid.copyFailed")}
+            </Text>
+          </output>
+        ) : null
+      }
       title={t("mermaid.title")}
     >
       <div
@@ -48,6 +99,7 @@ export function MermaidPreviewDialog({
         className="size-full [&>svg]:block [&>svg]:size-full"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: Mermaid renders with securityLevel "strict", which sanitizes labels and disables scripts and click handlers.
         dangerouslySetInnerHTML={{ __html: diagram.svg }}
+        ref={diagramRef}
         role="img"
       />
     </MediaPreviewDialog>
