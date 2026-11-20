@@ -119,7 +119,7 @@ export function NoteTreeItem({
           )}
           style={
             depth > 0
-              ? { paddingInlineStart: `${8 + depth * 20}px` }
+              ? { paddingInlineStart: `${8 + depth * 12}px` }
               : undefined
           }
           data-testid="note-tree-item"
