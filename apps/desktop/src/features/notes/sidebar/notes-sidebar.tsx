@@ -169,7 +169,7 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
     }
   };
 
-  const renderSection = (section: (typeof sections)[number]) => {
+  const renderSection = (section: (typeof sections)[number], index: number) => {
     const key = sectionKey(section.workspaceId);
     const collapsed = expansion.isSectionCollapsed(key);
     const title = sectionTitle(section.workspaceId);
@@ -182,6 +182,7 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
           workspaceId={section.workspaceId}
           title={title}
           collapsed={collapsed}
+          first={index === 0}
           isDropTarget={
             dropTarget !== undefined &&
             overId === sectionDropId(section.workspaceId)

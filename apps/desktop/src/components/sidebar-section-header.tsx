@@ -9,9 +9,11 @@ export function SidebarSectionHeader({
   onToggle,
   action,
   inset = "edge",
+  flush = false,
 }: {
   title: string;
   inset?: "edge" | "nested";
+  flush?: boolean;
   collapsed?: boolean;
   onToggle?: () => void;
   action?: ReactNode;
@@ -29,8 +31,10 @@ export function SidebarSectionHeader({
   return (
     <div
       className={cn(
-        "group/section flex h-6 items-center justify-between gap-1 pe-0.5 pt-2",
+        "group/section flex items-center justify-between gap-1 pe-0.5",
         { edge: "ps-2", nested: "ps-4" }[inset],
+        flush && "h-4",
+        !flush && "h-6 pt-2",
       )}
     >
       {onToggle ? (
@@ -43,8 +47,9 @@ export function SidebarSectionHeader({
           {label}
           <ChevronRight
             className={cn(
-              "size-3 shrink-0 opacity-0 transition-transform group-hover/section:opacity-100 rtl:rotate-180",
-              !collapsed && "rotate-90 rtl:rotate-90",
+              "size-3 shrink-0 transition-transform rtl:rotate-180",
+              !collapsed &&
+                "rotate-90 opacity-0 group-hover/section:opacity-100 group-has-focus-visible/section:opacity-100 rtl:rotate-90",
             )}
           />
         </button>
