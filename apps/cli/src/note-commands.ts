@@ -64,23 +64,50 @@ export async function handleNoteCommand(
 
   if (action === "move") {
     const id = requiredId(args, "move");
-    const parentId = parsed.flags.has("root")
+    const beforeId = stringFlag(parsed, "before");
+    const afterId = stringFlag(parsed, "after");
+    const anchorId = beforeId ?? afterId;
+    const explicitParent = parsed.flags.has("root")
       ? null
       : stringFlag(parsed, "parent");
-    if (parentId === undefined) {
+    if (
+      (beforeId !== undefined && afterId !== undefined) ||
+      (explicitParent === undefined && anchorId === undefined)
+    ) {
       throw new Error(
-        "Usage: cocurdex note move <id> --parent <note-id> | --root",
+        "Usage: cocurdex note move <id> (--parent <note-id> | --root) [--before <note-id> | --after <note-id>]\n       cocurdex note move <id> --before <note-id> | --after <note-id>",
       );
     }
-    const current = await withDaemon(() => requestDaemon("note.get", { id }));
+    const [current, anchor] = await withDaemon(() =>
+      Promise.all([
+        requestDaemon("note.get", { id }),
+        anchorId === undefined
+          ? Promise.resolve(null)
+          : requestDaemon("note.get", { id: anchorId }),
+      ]),
+    );
     if (!current) {
       throw new Error(`Note not found: ${id}`);
     }
+    if (anchorId !== undefined && !anchor) {
+      throw new Error(`Note not found: ${anchorId}`);
+    }
+    const parentId =
+      explicitParent !== undefined
+        ? explicitParent
+        : (anchor?.parentId ?? null);
+    const workspaceId =
+      parentId === null && anchor && explicitParent === undefined
+        ? { workspaceId: anchor.workspaceId }
+        : {};
     printResult(
       await withDaemon(() =>
         requestDaemon("note.move", {
           id,
           parentId,
+          ...workspaceId,
+          ...(beforeId !== undefined ? { beforeId } : {}),
+          ...(afterId !== undefined ? { afterId } : {}),
           expectedRevision: current.revision,
         }),
       ),

@@ -67,6 +67,10 @@
     "untitled": "未命名"
   },
   "mermaid": {
+    "copied": "已复制",
+    "copyCode": "复制代码",
+    "copyFailed": "复制失败",
+    "copyImage": "复制图片",
     "download": "下载 SVG",
     "openPreview": "打开预览",
     "title": "Mermaid 图表"

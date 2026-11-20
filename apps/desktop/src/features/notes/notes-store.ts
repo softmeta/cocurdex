@@ -71,6 +71,7 @@ export const openNoteAtom = atom(null, async (get, set, noteId: string) => {
 
   const previousNoteId = get(activeNoteIdAtom);
   set(activeNoteIdAtom, noteId);
+  set(noteReadOnlyAtom, true);
   set(noteSaveStatusAtom, "idle");
   await waitForNoteSaves(noteId);
   const [note, doc] = await Promise.all([
@@ -145,6 +146,8 @@ export const moveNoteAtom = atom(
       id: string;
       parentId: string | null;
       workspaceId?: string | null;
+      beforeId?: string;
+      afterId?: string;
     },
   ): Promise<NoteRecord> => {
     await waitForNoteSaves(payload.id);

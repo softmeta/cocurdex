@@ -6,7 +6,10 @@ import { type CSSProperties, useDeferredValue, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   downloadMermaidSvg,
+  MermaidCopyImageIcon,
   MermaidPreviewDialog,
+  mermaidCopyImageLabel,
+  useMermaidImageCopy,
   useMermaidRender,
 } from "@/components/markdown-mermaid";
 import { IconButton } from "@/components/ui";
@@ -91,8 +94,23 @@ export function DiagramActions({ source }: { source: string }) {
   const { t } = useTranslation("common");
   const { diagram } = useDiagram(source);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const imageCopy = useMermaidImageCopy();
   return (
     <>
+      <IconButton
+        aria-label={mermaidCopyImageLabel(t, imageCopy.status)}
+        disabled={!diagram}
+        onClick={(event) => {
+          if (!diagram) return;
+          const preview = event.currentTarget
+            .closest("[data-code-language]")
+            ?.querySelector("[role='img']");
+          void imageCopy.copy(diagram, preview ?? null);
+        }}
+        size="xs"
+      >
+        <MermaidCopyImageIcon status={imageCopy.status} />
+      </IconButton>
       <IconButton
         aria-label={t("mermaid.download")}
         disabled={!diagram}

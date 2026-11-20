@@ -6,6 +6,7 @@ import {
   noteDocStateVector,
   noteDocToMarkdown,
 } from "@cocurdex/note-doc";
+import { compareNoteSiblings } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
@@ -200,6 +201,135 @@ describe("CocurdexDatabase.notes", () => {
     await expect(
       database.notes.move({ id: child.id, parentId: grandchild.id }),
     ).rejects.toMatchObject({ reason: "note.cycle" });
+    database.close();
+  });
+
+  it("places a moved note before or after a sibling and keeps the list in that order", async () => {
+    const database = createTestDatabase();
+    const parent = await database.notes.create({ title: "Roadmap" });
+    const first = await database.notes.create({
+      title: "A",
+      parentId: parent.id,
+    });
+    const second = await database.notes.create({
+      title: "B",
+      parentId: parent.id,
+    });
+    const third = await database.notes.create({
+      title: "C",
+      parentId: parent.id,
+    });
+    const loose = await database.notes.create({ title: "Loose" });
+    const childTitles = async () =>
+      (await database.notes.list())
+        .filter((note) => note.parentId === parent.id)
+        .map((note) => note.title);
+
+    await database.notes.move({
+      id: third.id,
+      parentId: parent.id,
+      beforeId: first.id,
+    });
+    expect(await childTitles()).toEqual(["C", "A", "B"]);
+
+    await database.notes.move({
+      id: third.id,
+      parentId: parent.id,
+      afterId: first.id,
+    });
+    expect(await childTitles()).toEqual(["A", "C", "B"]);
+
+    await database.notes.move({
+      id: loose.id,
+      parentId: parent.id,
+      afterId: second.id,
+    });
+    expect(await childTitles()).toEqual(["A", "C", "B", "Loose"]);
+
+    for (let round = 0; round < 60; round++) {
+      await database.notes.move({
+        id: second.id,
+        parentId: parent.id,
+        beforeId: third.id,
+      });
+      await database.notes.move({
+        id: third.id,
+        parentId: parent.id,
+        beforeId: second.id,
+      });
+    }
+    expect(await childTitles()).toEqual(["A", "C", "B", "Loose"]);
+    database.close();
+  });
+
+  it("keeps tied siblings in their displayed order when a move renumbers them", async () => {
+    const database = createTestDatabase();
+    const parent = await database.notes.create({ title: "Roadmap" });
+    for (const title of ["a", "B"]) {
+      await database.notes.create({ title, parentId: parent.id, sortOrder: 0 });
+    }
+    const [lower] = (await database.notes.list()).filter(
+      (note) => note.title === "a",
+    );
+    const mover = await database.notes.create({ title: "Mover" });
+
+    await database.notes.move({
+      id: mover.id,
+      parentId: parent.id,
+      afterId: lower.id,
+    });
+
+    const displayed = (await database.notes.list())
+      .filter((note) => note.parentId === parent.id)
+      .toSorted(compareNoteSiblings)
+      .map((note) => note.title);
+    expect(displayed).toEqual(["a", "Mover", "B"]);
+    database.close();
+  });
+
+  it("refuses an anchor that is not a sibling at the destination", async () => {
+    const database = createTestDatabase();
+    const now = "2026-11-20T00:00:00.000Z";
+    for (const id of ["workspace-a", "workspace-b"]) {
+      await database.workspaces.upsert({
+        id,
+        name: id,
+        rootPaths: [path.join(tmpdir(), id)],
+        createdAt: now,
+        updatedAt: now,
+        lastOpenedAt: now,
+        sortOrder: 1000,
+      });
+    }
+    const parent = await database.notes.create({ title: "Roadmap" });
+    const child = await database.notes.create({
+      title: "Spec",
+      parentId: parent.id,
+    });
+    const top = await database.notes.create({
+      title: "Loose",
+      workspaceId: "workspace-a",
+    });
+    const otherSection = await database.notes.create({
+      title: "Elsewhere",
+      workspaceId: "workspace-b",
+    });
+
+    await expect(
+      database.notes.move({ id: top.id, parentId: null, beforeId: child.id }),
+    ).rejects.toMatchObject({ reason: "note.invalidAnchor" });
+    await expect(
+      database.notes.move({
+        id: top.id,
+        parentId: null,
+        workspaceId: "workspace-a",
+        beforeId: otherSection.id,
+      }),
+    ).rejects.toMatchObject({ reason: "note.invalidAnchor" });
+    await expect(
+      database.notes.move({ id: top.id, parentId: null, beforeId: top.id }),
+    ).rejects.toMatchObject({ reason: "note.invalidAnchor" });
+    expect((await database.notes.get(top.id))?.revision).toBe(top.revision);
     database.close();
   });
 

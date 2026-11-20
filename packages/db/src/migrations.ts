@@ -42,7 +42,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 51;
+export const CURRENT_SCHEMA_VERSION = 52;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -664,6 +664,39 @@ function addIssueViewPins(database: DatabaseSync) {
   }
 }
 
+function orderNoteSiblingsByTitle(database: DatabaseSync) {
+  const notes = database
+    .prepare("SELECT id, parent_id, workspace_id, title FROM notes")
+    .all() as {
+    id: string;
+    parent_id: string | null;
+    workspace_id: string | null;
+    title: string;
+  }[];
+  const groups = new Map<string, typeof notes>();
+  for (const note of notes) {
+    const key =
+      note.parent_id === null
+        ? `workspace:${note.workspace_id ?? ""}`
+        : `parent:${note.parent_id}`;
+    groups.set(key, [...(groups.get(key) ?? []), note]);
+  }
+  const update = database.prepare(
+    "UPDATE notes SET sort_order = ? WHERE id = ?",
+  );
+  for (const siblings of groups.values()) {
+    siblings
+      .toSorted(
+        (left, right) =>
+          (left.title || left.id).localeCompare(right.title || right.id) ||
+          left.id.localeCompare(right.id),
+      )
+      .forEach((note, index) => {
+        update.run((index + 1) * 1000, note.id);
+      });
+  }
+}
+
 const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [5, migrateWorkspacesToRootPaths],
   [6, migrateCollaborationModeToSessionModeId],
@@ -711,6 +744,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [48, createMemoryEntriesTables],
   [49, addScriptRunAgentCallKeys],
   [50, addIssueViewPins],
+  [51, orderNoteSiblingsByTitle],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

@@ -64,6 +64,10 @@ export function useNoteTreeExpansion({
     isSectionCollapsed: (key: string) => collapsedSections.has(key),
     toggleNote: (id: string) =>
       setCollapsedNoteIds((prev) => toggled(prev, id)),
+    setNotesCollapsed: (ids: readonly string[], collapsed: boolean) =>
+      setCollapsedNoteIds((prev) =>
+        collapsed ? new Set([...prev, ...ids]) : withoutIds(prev, ids),
+      ),
     toggleSection: (key: string) =>
       setCollapsedSections((prev) => toggled(prev, key)),
     expandNote: (id: string) =>

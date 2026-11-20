@@ -1,4 +1,8 @@
-import type { NoteSummary, WorkspaceRecord } from "@cocurdex/shared";
+import {
+  compareNoteSiblings,
+  type NoteSummary,
+  type WorkspaceRecord,
+} from "@cocurdex/shared";
 
 export interface NoteRow {
   note: NoteSummary;
@@ -8,12 +12,6 @@ export interface NoteRow {
 export interface NoteSection {
   workspace: WorkspaceRecord | null;
   rows: NoteRow[];
-}
-
-function bySortOrder(left: NoteSummary, right: NoteSummary) {
-  return (
-    left.sortOrder - right.sortOrder || left.title.localeCompare(right.title)
-  );
 }
 
 function treeRows(notes: readonly NoteSummary[]): NoteRow[] {
@@ -26,7 +24,9 @@ function treeRows(notes: readonly NoteSummary[]): NoteRow[] {
   }
   const rows: NoteRow[] = [];
   const visit = (parent: string | null, depth: number) => {
-    for (const note of [...(children.get(parent) ?? [])].sort(bySortOrder)) {
+    for (const note of [...(children.get(parent) ?? [])].sort(
+      compareNoteSiblings,
+    )) {
       rows.push({ note, depth });
       visit(note.id, depth + 1);
     }

@@ -1,5 +1,5 @@
 import { useDroppable } from "@dnd-kit/core";
-import { Plus } from "lucide-react";
+import { ChevronsDownUp, ChevronsUpDown, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { SidebarSectionHeader } from "@/components";
@@ -12,6 +12,7 @@ export function NoteSectionHeader({
   collapsed,
   first,
   isDropTarget,
+  pages,
   onToggle,
   onCreate,
 }: {
@@ -20,6 +21,7 @@ export function NoteSectionHeader({
   collapsed: boolean;
   first: boolean;
   isDropTarget: boolean;
+  pages: { allCollapsed: boolean; onToggle: () => void } | null;
   onToggle: () => void;
   onCreate: () => void;
 }) {
@@ -40,12 +42,30 @@ export function NoteSectionHeader({
         collapsed={collapsed}
         onToggle={onToggle}
         action={
-          <TitlebarIconButton
-            aria-label={t("sidebar.newPageInSection", { section: title })}
-            onClick={onCreate}
-          >
-            <Plus className="size-3.5" />
-          </TitlebarIconButton>
+          <>
+            {pages ? (
+              <TitlebarIconButton
+                aria-label={
+                  pages.allCollapsed
+                    ? t("sidebar.expandAllPages")
+                    : t("sidebar.collapseAllPages")
+                }
+                onClick={pages.onToggle}
+              >
+                {pages.allCollapsed ? (
+                  <ChevronsUpDown className="size-3.5" />
+                ) : (
+                  <ChevronsDownUp className="size-3.5" />
+                )}
+              </TitlebarIconButton>
+            ) : null}
+            <TitlebarIconButton
+              aria-label={t("sidebar.newPageInSection", { section: title })}
+              onClick={onCreate}
+            >
+              <Plus className="size-3.5" />
+            </TitlebarIconButton>
+          </>
         }
       />
     </div>

@@ -1,11 +1,14 @@
 import type { NoteSummary } from "@cocurdex/shared";
 import {
+  type CollisionDetection,
   DndContext,
   type DragEndEvent,
-  type DragOverEvent,
+  type DragMoveEvent,
   DragOverlay,
   type DragStartEvent,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -30,7 +33,9 @@ import {
 import { buildVisibleNoteTree } from "./build-note-tree";
 import { NoteDeleteDialog } from "./note-delete-dialog";
 import {
+  dropZoneAt,
   listMoveDestinations,
+  type NoteDropZone,
   type NoteMoveTarget,
   resolveDropTarget,
   sectionDropId,
@@ -41,6 +46,27 @@ import { NoteTreeDragPreview, NoteTreeItem } from "./note-tree-item";
 import { useNoteTreeExpansion } from "./use-note-tree-expansion";
 
 const PERSONAL_SECTION_KEY = "__personal__";
+
+const collisionDetection: CollisionDetection = (args) => {
+  const underPointer = pointerWithin(args);
+  const collisions =
+    underPointer.length > 0 ? underPointer : rectIntersection(args);
+  const pointer = args.pointerCoordinates;
+  return collisions.map((collision) => {
+    const rect = args.droppableRects.get(collision.id);
+    const zone: NoteDropZone =
+      pointer && rect ? dropZoneAt(pointer.y, rect) : "inside";
+    return { ...collision, data: { ...collision.data, zone } };
+  });
+};
+
+function zoneOf(event: DragMoveEvent | DragEndEvent): NoteDropZone {
+  const top = event.collisions?.find(
+    (collision) => collision.id === event.over?.id,
+  );
+  const zone: unknown = top?.data?.zone;
+  return zone === "before" || zone === "after" ? zone : "inside";
+}
 
 function sectionKey(workspaceId: string | null): string {
   return workspaceId ?? PERSONAL_SECTION_KEY;
@@ -62,6 +88,7 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [overZone, setOverZone] = useState<NoteDropZone>("inside");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -104,7 +131,13 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
 
   const dropTarget =
     activeDragId && overId
-      ? resolveDropTarget(summaries, activeDragId, overId)
+      ? resolveDropTarget(
+          summaries,
+          activeDragId,
+          overId,
+          overZone,
+          expansion.collapsedNoteIds,
+        )
       : undefined;
   const activeDragNote = activeDragId
     ? (summaries.find((note) => note.id === activeDragId) ?? null)
@@ -145,6 +178,7 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
   const clearDragState = () => {
     setActiveDragId(null);
     setOverId(null);
+    setOverZone("inside");
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -153,8 +187,9 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
     setOverId(null);
   };
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragMove = (event: DragMoveEvent) => {
     setOverId(event.over ? String(event.over.id) : null);
+    setOverZone(zoneOf(event));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -162,6 +197,8 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
       summaries,
       String(event.active.id),
       event.over ? String(event.over.id) : null,
+      zoneOf(event),
+      expansion.collapsedNoteIds,
     );
     clearDragState();
     if (target) {
@@ -176,6 +213,14 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
     const nodes = collapsed
       ? []
       : buildVisibleNoteTree(section.notes, expansion.collapsedNoteIds);
+    const parentIds = section.notes
+      .filter((note) =>
+        section.notes.some((child) => child.parentId === note.id),
+      )
+      .map((note) => note.id);
+    const allPagesCollapsed = parentIds.every((id) =>
+      expansion.collapsedNoteIds.has(id),
+    );
     return (
       <div key={key} className="flex flex-col gap-0.5">
         <NoteSectionHeader
@@ -186,6 +231,15 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
           isDropTarget={
             dropTarget !== undefined &&
             overId === sectionDropId(section.workspaceId)
+          }
+          pages={
+            collapsed || parentIds.length === 0
+              ? null
+              : {
+                  allCollapsed: allPagesCollapsed,
+                  onToggle: () =>
+                    expansion.setNotesCollapsed(parentIds, !allPagesCollapsed),
+                }
           }
           onToggle={() => expansion.toggleSection(key)}
           onCreate={() => handleCreateInSection(section.workspaceId)}
@@ -199,7 +253,7 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
             isExpanded={!expansion.collapsedNoteIds.has(note.id)}
             hasChildren={hasChildren}
             isRenaming={note.id === renamingId}
-            isDropTarget={dropTarget !== undefined && overId === note.id}
+            drop={overId === note.id ? dropTarget : undefined}
             moveDestinations={listMoveDestinations(
               summaries,
               note.id,
@@ -252,7 +306,8 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
+          collisionDetection={collisionDetection}
+          onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
           onDragCancel={clearDragState}
         >

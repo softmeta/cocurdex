@@ -22,6 +22,17 @@ export interface NoteSummary {
   excerpt?: string;
 }
 
+export function compareNoteSiblings(
+  left: Pick<NoteSummary, "id" | "title" | "sortOrder">,
+  right: Pick<NoteSummary, "id" | "title" | "sortOrder">,
+): number {
+  return (
+    left.sortOrder - right.sortOrder ||
+    (left.title || left.id).localeCompare(right.title || right.id) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
 export interface NoteRecord extends NoteSummary {
   bodyMarkdown: string;
 }
@@ -50,6 +61,8 @@ export interface MoveNotePayload {
   parentId: string | null;
   workspaceId?: string | null;
   sortOrder?: number;
+  beforeId?: string;
+  afterId?: string;
   expectedRevision?: number;
 }
 

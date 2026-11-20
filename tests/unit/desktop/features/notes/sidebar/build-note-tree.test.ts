@@ -123,6 +123,38 @@ describe("note moves", () => {
     expect(resolveDropTarget(notes, "plan", null)).toBeUndefined();
   });
 
+  it("drops above or below a page to place it beside that page", () => {
+    const tree = [
+      summary({ id: "a", parentId: null, sortOrder: 1000 }),
+      summary({ id: "b", parentId: null, sortOrder: 2000 }),
+      summary({ id: "b1", parentId: "b", sortOrder: 1000 }),
+      summary({ id: "b2", parentId: "b", sortOrder: 2000 }),
+      summary({ id: "c", parentId: null, sortOrder: 3000 }),
+    ];
+    const personal = { parentId: null, workspaceId: null };
+    expect(resolveDropTarget(tree, "c", "a", "before")).toEqual({
+      ...personal,
+      beforeId: "a",
+    });
+    expect(resolveDropTarget(tree, "b2", "a", "after")).toEqual({
+      ...personal,
+      afterId: "a",
+    });
+    expect(resolveDropTarget(tree, "c", "b", "after")).toEqual({
+      parentId: "b",
+      beforeId: "b1",
+    });
+    expect(resolveDropTarget(tree, "a", "b", "after", new Set(["b"]))).toEqual({
+      ...personal,
+      afterId: "b",
+    });
+    expect(resolveDropTarget(tree, "b", "a", "after")).toBeUndefined();
+    expect(resolveDropTarget(tree, "a", "b", "before")).toBeUndefined();
+    expect(resolveDropTarget(tree, "b1", "b", "after")).toBeUndefined();
+    expect(resolveDropTarget(tree, "b", "b1", "before")).toBeUndefined();
+    expect(resolveDropTarget(tree, "b", "b", "after")).toBeUndefined();
+  });
+
   it("lists sections and non-descendant pages as destinations", () => {
     const destinations = listMoveDestinations(notes, "milestones", [
       { workspaceId: "ws-a", title: "A" },

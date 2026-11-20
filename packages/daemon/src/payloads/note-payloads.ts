@@ -52,13 +52,23 @@ const updateNote = z.object({
   expectedRevision: revisionSchema,
 }) satisfies z.ZodType<UpdateNotePayload>;
 
-const moveNote = z.object({
-  id: idSchema,
-  parentId: idSchema.nullable(),
-  workspaceId: idSchema.nullable().optional(),
-  sortOrder: z.number().finite().optional(),
-  expectedRevision: revisionSchema,
-}) satisfies z.ZodType<MoveNotePayload>;
+const moveNote = z
+  .object({
+    id: idSchema,
+    parentId: idSchema.nullable(),
+    workspaceId: idSchema.nullable().optional(),
+    sortOrder: z.number().finite().optional(),
+    beforeId: idSchema.optional(),
+    afterId: idSchema.optional(),
+    expectedRevision: revisionSchema,
+  })
+  .refine(
+    (payload) =>
+      [payload.sortOrder, payload.beforeId, payload.afterId].filter(
+        (value) => value !== undefined,
+      ).length <= 1,
+    { message: "Pass at most one of sortOrder, beforeId, and afterId" },
+  ) satisfies z.ZodType<MoveNotePayload>;
 
 const deleteNote = z.object({
   id: idSchema,

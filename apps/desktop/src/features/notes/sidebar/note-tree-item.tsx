@@ -32,6 +32,25 @@ import { cn } from "@/lib";
 import { useScrollIntoViewWhenActive } from "@/lib/react-hooks";
 import type { MoveDestination, NoteMoveTarget } from "./note-moves";
 
+type DropLine = { edge: "top" | "bottom"; depth: number };
+
+function dropLineFor(
+  drop: NoteMoveTarget,
+  note: NoteSummary,
+  depth: number,
+): DropLine | null {
+  if (drop.beforeId === note.id) {
+    return { edge: "top", depth };
+  }
+  if (drop.afterId === note.id) {
+    return { edge: "bottom", depth };
+  }
+  if (drop.parentId === note.id && drop.beforeId !== undefined) {
+    return { edge: "bottom", depth: depth + 1 };
+  }
+  return null;
+}
+
 export type NoteTreeDragData = {
   type: "note-item";
   note: NoteSummary;
@@ -44,7 +63,7 @@ interface NoteTreeItemProps {
   isExpanded: boolean;
   hasChildren: boolean;
   isRenaming: boolean;
-  isDropTarget: boolean;
+  drop: NoteMoveTarget | undefined;
   moveDestinations: MoveDestination[];
   onOpen: (id: string) => void;
   onToggleExpand: (id: string) => void;
@@ -63,7 +82,7 @@ export function NoteTreeItem({
   isExpanded,
   hasChildren,
   isRenaming,
-  isDropTarget,
+  drop,
   moveDestinations,
   onOpen,
   onToggleExpand,
@@ -77,6 +96,8 @@ export function NoteTreeItem({
   const { t } = useTranslation("notes");
   const scrollRef = useScrollIntoViewWhenActive<HTMLDivElement>(isActive);
   const hasLeadingIcon = note.kind === "folder" || Boolean(note.icon);
+  const dropLine = drop ? dropLineFor(drop, note, depth) : null;
+  const isDropTarget = drop !== undefined && dropLine === null;
 
   const {
     attributes,
@@ -115,15 +136,27 @@ export function NoteTreeItem({
             isDragging && "opacity-40",
             isDropTarget &&
               "bg-accent/40 ring-1 ring-ring ring-inset hover:bg-accent/40 data-active:hover:bg-accent/40",
-            !isRenaming && "cursor-grab active:cursor-grabbing",
+            !isRenaming && "cursor-default active:cursor-grabbing",
           )}
-          style={{ paddingInlineStart: `${6 + depth * 12}px` }}
+          style={{ paddingInlineStart: `${4 + depth * 12}px` }}
           data-testid="note-tree-item"
           data-note-id={note.id}
         >
-          <span className="-me-1.5 flex w-3 shrink-0 justify-center">
+          {dropLine ? (
+            <span
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute end-1 h-0.5 rounded-full bg-primary",
+                dropLine.edge === "top" && "top-0",
+                dropLine.edge === "bottom" && "bottom-0",
+              )}
+              style={{ insetInlineStart: `${6 + dropLine.depth * 12}px` }}
+            />
+          ) : null}
+          <span className="-me-1 flex w-3 shrink-0 justify-center">
             {hasChildren ? (
               <SidebarListRowDisclosure
+                size="compact"
                 aria-expanded={isExpanded}
                 aria-label={
                   isExpanded
@@ -254,7 +287,7 @@ export function NoteTreeItem({
 export function NoteTreeDragPreview({ note }: { note: NoteSummary }) {
   const { t } = useTranslation("notes");
   return (
-    <div className="flex h-7 max-w-56 items-center gap-1.5 rounded-control bg-popover px-2 shadow-menu ring-1 ring-menu-ring">
+    <div className="ms-6 mt-6 flex h-7 w-fit max-w-56 items-center gap-1.5 rounded-control bg-popover px-2 opacity-90 shadow-menu ring-1 ring-menu-ring">
       {note.kind === "folder" ? (
         <Folder className="size-3.5 shrink-0 text-sidebar-fg-muted" />
       ) : null}

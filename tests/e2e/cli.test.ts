@@ -232,6 +232,23 @@ describe("cocurdex CLI against a running daemon", () => {
     );
     expect((JSON.parse(updated.stdout) as NoteJson).title).toBe("Renamed");
 
+    const second = JSON.parse(
+      (await runCli(["note", "create", "--title", "Second", "--json"], options))
+        .stdout,
+    ) as NoteJson;
+    const moved = await runCli(
+      ["note", "move", second.id, "--before", note.id, "--json"],
+      options,
+    );
+    expect(moved.code).toBe(0);
+    const order = (
+      JSON.parse(
+        (await runCli(["note", "list", "--json"], options)).stdout,
+      ) as NoteJson[]
+    ).map((entry) => entry.id);
+    expect(order.indexOf(second.id)).toBe(order.indexOf(note.id) - 1);
+    await runCli(["note", "delete", second.id, "--json"], options);
+
     const deleted = await runCli(
       ["note", "delete", note.id, "--json"],
       options,

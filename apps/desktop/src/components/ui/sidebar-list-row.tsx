@@ -6,7 +6,7 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 export const sidebarListRowVariants = cva(
-  "peer/menu-button group/list-row group/menu-button relative flex w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-control text-start outline-hidden transition-colors disabled:pointer-events-none disabled:opacity-50 [&>svg]:shrink-0 [&>span:last-child]:truncate",
+  "peer/menu-button group/list-row group/menu-button relative flex w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-control text-start outline-hidden disabled:pointer-events-none disabled:opacity-50 [&>svg]:shrink-0 [&>span:last-child]:truncate",
   {
     variants: {
       variant: {
@@ -100,13 +100,18 @@ function SidebarListRowActions({
 
 function SidebarListRowDisclosure({
   className,
+  size = "default",
   ...props
-}: React.ComponentProps<"button">) {
+}: React.ComponentProps<"button"> & { size?: "default" | "compact" }) {
   return (
     <button
       type="button"
       className={cn(
-        "-mx-0.75 flex size-5 shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted outline-hidden hover:text-sidebar-fg focus-visible:ring-2 focus-visible:ring-ring",
+        "flex shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted outline-hidden hover:text-sidebar-fg focus-visible:ring-2 focus-visible:ring-ring",
+        {
+          default: "-mx-0.75 size-5",
+          compact: "size-3.5 focus-visible:ring-inset",
+        }[size],
         className,
       )}
       {...props}

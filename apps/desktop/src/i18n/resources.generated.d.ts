@@ -487,6 +487,10 @@ export default interface Resources {
       untitled: "Untitled";
     };
     mermaid: {
+      copied: "Copied";
+      copyCode: "Copy code";
+      copyFailed: "Copy failed";
+      copyImage: "Copy image";
       download: "Download SVG";
       openPreview: "Open preview";
       title: "Mermaid diagram";
@@ -1470,6 +1474,7 @@ export default interface Resources {
     };
     sidebar: {
       collapse: "Collapse sidebar";
+      collapseAllPages: "Collapse all pages";
       collapsePage: "Collapse subpages";
       delete: "Delete";
       deleteConfirm: {
@@ -1484,6 +1489,7 @@ export default interface Resources {
         title: "No notes yet";
       };
       expand: "Expand sidebar";
+      expandAllPages: "Expand all pages";
       expandPage: "Expand subpages";
       moveTo: "Move to";
       newNote: "New note";
