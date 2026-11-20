@@ -1,38 +1,63 @@
 import { Extension } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
-import { canJoin } from "@tiptap/pm/transform";
+import { canJoin, Mapping } from "@tiptap/pm/transform";
 import { ySyncPluginKey } from "@tiptap/y-tiptap";
 
 const LIST_TYPES = new Set(["bulletList", "orderedList", "taskList"]);
 
+interface Range {
+  from: number;
+  to: number;
+}
+
+interface ListBoundary extends Range {
+  pos: number;
+}
+
 function collectBoundaries(
   parent: PmNode,
   contentStart: number,
-  boundaries: number[],
+  boundaries: ListBoundary[],
 ): void {
-  let previous: PmNode | null = null;
+  let previous: { node: PmNode; pos: number } | null = null;
   parent.forEach((child, offset) => {
     const childPos = contentStart + offset;
-    if (previous?.type === child.type && LIST_TYPES.has(child.type.name)) {
-      boundaries.push(childPos);
+    if (previous?.node.type === child.type && LIST_TYPES.has(child.type.name)) {
+      boundaries.push({
+        pos: childPos,
+        from: previous.pos,
+        to: childPos + child.nodeSize,
+      });
     }
     if (!child.isTextblock && !child.isLeaf) {
       collectBoundaries(child, childPos + 1, boundaries);
     }
-    previous = child;
+    previous = { node: child, pos: childPos };
   });
 }
 
-function adjacentListBoundaries(doc: PmNode): number[] {
-  const boundaries: number[] = [];
-  collectBoundaries(doc, 0, boundaries);
-  return boundaries;
+function changedRanges(transactions: readonly Transaction[]): Range[] {
+  const mapping = new Mapping(transactions.flatMap((tr) => tr.mapping.maps));
+  const ranges: Range[] = [];
+  mapping.maps.forEach((map, index) => {
+    const rest = mapping.slice(index + 1);
+    map.forEach((_oldFrom, _oldTo, newFrom, newTo) => {
+      ranges.push({ from: rest.map(newFrom, -1), to: rest.map(newTo, 1) });
+    });
+  });
+  return ranges;
 }
 
-function joinAdjacentLists(tr: Transaction): Transaction {
-  const boundaries = adjacentListBoundaries(tr.doc);
-  for (const pos of boundaries.reverse()) {
+function joinTouchedLists(tr: Transaction, touched: Range[]): Transaction {
+  const boundaries: ListBoundary[] = [];
+  collectBoundaries(tr.doc, 0, boundaries);
+  const toJoin = boundaries.filter((boundary) =>
+    touched.some(
+      (range) => range.from <= boundary.to && range.to >= boundary.from,
+    ),
+  );
+  for (const { pos } of toJoin.reverse()) {
     if (canJoin(tr.doc, pos)) tr.join(pos);
   }
   return tr;
@@ -43,9 +68,10 @@ function isRemoteChange(tr: Transaction): boolean {
   return root.getMeta(ySyncPluginKey) !== undefined;
 }
 
-// Markdown has no way to keep two same-kind lists apart, so adjacent lists
-// left behind by deleting the block between them are merged. Remote Yjs
-// changes are skipped: the client that made the edit merges and syncs it.
+// Markdown has no way to keep two same-kind lists apart, so adjacent lists an
+// edit leaves or touches are merged. Only lists the local edit touched are
+// merged, and remote Yjs changes are skipped, so two clients do not both merge
+// the same lists and leave duplicated items after sync.
 export const JoinAdjacentLists = Extension.create({
   name: "joinAdjacentLists",
   addProseMirrorPlugins() {
@@ -59,7 +85,7 @@ export const JoinAdjacentLists = Extension.create({
           ) {
             return null;
           }
-          const tr = joinAdjacentLists(newState.tr);
+          const tr = joinTouchedLists(newState.tr, changedRanges(transactions));
           return tr.docChanged ? tr : null;
         },
       }),

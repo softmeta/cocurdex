@@ -36,6 +36,23 @@ describe("adjacent note lists", () => {
     expect(target.state.doc.child(0).childCount).toBe(3);
   });
 
+  it("leaves split lists alone when the edit is elsewhere", () => {
+    const target = open(`${SPLIT_LIST.replace("<p></p>", "")}<p>tail</p>`);
+    const end = target.state.doc.content.size - 1;
+
+    target.chain().setTextSelection(end).insertContent("!").run();
+
+    expect(topLevel(target)).toEqual(["bulletList", "bulletList", "paragraph"]);
+  });
+
+  it("merges split lists once an edit touches them", () => {
+    const target = open(SPLIT_LIST.replace("<p></p>", ""));
+
+    target.chain().setTextSelection(3).insertContent("!").run();
+
+    expect(topLevel(target)).toEqual(["bulletList", "paragraph"]);
+  });
+
   it("leaves a remote Yjs change for the editing client to merge", () => {
     const target = open(SPLIT_LIST);
     const { from, to } = separatorRange(target);
