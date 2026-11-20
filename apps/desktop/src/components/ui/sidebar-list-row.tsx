@@ -110,7 +110,7 @@ function SidebarListRowDisclosure({
         "flex shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted outline-hidden hover:text-sidebar-fg focus-visible:ring-2 focus-visible:ring-ring",
         {
           default: "-mx-0.75 size-5",
-          compact: "size-4 focus-visible:ring-inset",
+          compact: "size-3.5 focus-visible:ring-inset",
         }[size],
         className,
       )}
