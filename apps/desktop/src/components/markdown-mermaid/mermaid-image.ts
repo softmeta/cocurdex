@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+import type { CopyStatus } from "@/components/media-preview";
 import type { SizedMermaidSvg } from "./mermaid-svg";
 
 const TRANSPARENT = "rgba(0, 0, 0, 0)";
@@ -62,4 +64,13 @@ export async function copyMermaidImage(
 ): Promise<void> {
   const png = mermaidPngBlob(diagram, opaqueBackgroundOf(backgroundSource));
   await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+}
+
+export function mermaidCopyImageLabel(
+  t: TFunction<"common">,
+  status: CopyStatus | null,
+): string {
+  if (status === "copied") return t("mermaid.copied");
+  if (status === "failed") return t("mermaid.copyFailed");
+  return t("mermaid.copyImage");
 }

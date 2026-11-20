@@ -5,11 +5,9 @@ import { CodeBlockCopyButton, type CustomRendererProps } from "streamdown";
 import { PreviewToolbarButton } from "@/components/media-preview";
 import { Text } from "@/components/ui/text";
 import { useRenderReadinessHold } from "../render-readiness";
-import {
-  MermaidCopyImageIcon,
-  mermaidCopyImageLabel,
-} from "./mermaid-copy-image-icon";
+import { MermaidCopyImageIcon } from "./mermaid-copy-image-icon";
 import { downloadMermaidSvg } from "./mermaid-download";
+import { mermaidCopyImageLabel } from "./mermaid-image";
 import { MermaidPreviewDialog } from "./mermaid-preview-dialog";
 import { useMermaidImageCopy } from "./use-mermaid-image-copy";
 import { useMermaidRender } from "./use-mermaid-render";
