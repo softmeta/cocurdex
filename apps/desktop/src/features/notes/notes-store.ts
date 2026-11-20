@@ -145,6 +145,8 @@ export const moveNoteAtom = atom(
       id: string;
       parentId: string | null;
       workspaceId?: string | null;
+      beforeId?: string;
+      afterId?: string;
     },
   ): Promise<NoteRecord> => {
     await waitForNoteSaves(payload.id);

@@ -1291,6 +1291,37 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("orders note siblings by title from version 51 and keeps notes", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-11-20T00:00:00.000Z";
+    database.exec(`
+      INSERT INTO workspaces (id, name, root_paths, created_at, updated_at, last_opened_at)
+      VALUES ('w1', 'Shop', '[]', '${now}', '${now}', '${now}');
+      INSERT INTO notes (id, workspace_id, parent_id, kind, title, body_markdown, sort_order, revision, created_at, updated_at) VALUES
+        ('r1', 'w1', NULL, 'note', 'Roadmap', 'Plan', 1000, 3, '${now}', '${now}'),
+        ('r2', 'w1', NULL, 'note', 'Discount math', 'Math', 2000, 1, '${now}', '${now}'),
+        ('c1', 'w1', 'r1', 'note', 'zeta', '', 1000, 1, '${now}', '${now}'),
+        ('c2', 'w1', 'r1', 'note', 'Alpha', '', 2000, 1, '${now}', '${now}'),
+        ('p1', NULL, NULL, 'note', 'Scratchpad', 'Ideas', 3000, 1, '${now}', '${now}');
+      PRAGMA user_version = 51;
+    `);
+
+    initializeDatabase(database);
+
+    const rows = database
+      .prepare(
+        "SELECT id, title, body_markdown, revision, updated_at FROM notes ORDER BY parent_id IS NOT NULL, parent_id, workspace_id, sort_order",
+      )
+      .all();
+    expect(rows.map((row) => row.id)).toEqual(["p1", "r2", "r1", "c2", "c1"]);
+    expect(rows.find((row) => row.id === "r1")).toMatchObject({
+      body_markdown: "Plan",
+      revision: 3,
+      updated_at: now,
+    });
+  });
+
   it("adds issue view pins from version 50 and keeps views and issues", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);

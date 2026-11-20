@@ -9,6 +9,7 @@ import {
 } from "@cocurdex/note-doc";
 import {
   type CreateNotePayload,
+  type MoveNotePayload,
   NOTE_EXCERPT_SOURCE_LENGTH,
   type NoteKind,
   type NoteLink,
@@ -147,6 +148,100 @@ function nextSortOrder(
     )
     .get(parentId) as { sort_order?: number } | undefined;
   return row?.sort_order ?? 0;
+}
+
+const SORT_ORDER_STEP = 1000;
+
+interface SiblingOrder extends SqliteRow {
+  id: string;
+  sort_order: number;
+}
+
+function readSiblingOrder(
+  database: DatabaseSync,
+  parentId: string | null,
+  workspaceId: string | null,
+  excludeId: string,
+): SiblingOrder[] {
+  const scope = parentId
+    ? database.prepare(
+        `SELECT id, sort_order FROM notes
+         WHERE parent_id = ? AND id != ?
+         ORDER BY sort_order, title, id`,
+      )
+    : database.prepare(
+        `SELECT id, sort_order FROM notes
+         WHERE parent_id IS NULL AND workspace_id IS ? AND id != ?
+         ORDER BY sort_order, title, id`,
+      );
+  return scope.all(parentId ?? workspaceId, excludeId) as SiblingOrder[];
+}
+
+function renumberSiblings(
+  database: DatabaseSync,
+  siblings: readonly SiblingOrder[],
+): SiblingOrder[] {
+  const update = database.prepare(
+    "UPDATE notes SET sort_order = ? WHERE id = ?",
+  );
+  return siblings.map((sibling, index) => {
+    const sortOrder = (index + 1) * SORT_ORDER_STEP;
+    update.run(sortOrder, sibling.id);
+    return { id: sibling.id, sort_order: sortOrder };
+  });
+}
+
+function sortOrderBeside(
+  database: DatabaseSync,
+  siblings: readonly SiblingOrder[],
+  anchorId: string,
+  side: "before" | "after",
+): number {
+  const index = siblings.findIndex((sibling) => sibling.id === anchorId);
+  if (index < 0) {
+    throw new ReasonError(
+      "note.invalidAnchor",
+      "The anchor note is not a sibling at the destination",
+    );
+  }
+  const neighborIndex = side === "before" ? index - 1 : index + 1;
+  const anchor = siblings[index].sort_order;
+  const neighbor = siblings[neighborIndex]?.sort_order;
+  if (neighbor === undefined) {
+    return side === "before"
+      ? anchor - SORT_ORDER_STEP
+      : anchor + SORT_ORDER_STEP;
+  }
+  const middle = (anchor + neighbor) / 2;
+  if (middle !== anchor && middle !== neighbor) {
+    return middle;
+  }
+  const renumbered = renumberSiblings(database, siblings);
+  return (
+    (renumbered[index].sort_order + renumbered[neighborIndex].sort_order) / 2
+  );
+}
+
+function resolveMoveSortOrder(
+  database: DatabaseSync,
+  payload: MoveNotePayload,
+  workspaceId: string | null,
+): number {
+  if (payload.sortOrder !== undefined) {
+    return payload.sortOrder;
+  }
+  const anchorId = payload.beforeId ?? payload.afterId;
+  if (anchorId === undefined) {
+    return nextSortOrder(database, payload.parentId);
+  }
+  const siblings = readSiblingOrder(
+    database,
+    payload.parentId,
+    workspaceId,
+    payload.id,
+  );
+  const side = payload.beforeId !== undefined ? "before" : "after";
+  return sortOrderBeside(database, siblings, anchorId, side);
 }
 
 function assertMoveDoesNotCreateCycle(
@@ -487,7 +582,7 @@ export function createSqliteNotesRepository(
           .run(
             payload.parentId,
             workspaceId,
-            payload.sortOrder ?? nextSortOrder(database, payload.parentId),
+            resolveMoveSortOrder(database, payload, workspaceId),
             updatedAt,
             current.id,
             current.revision,

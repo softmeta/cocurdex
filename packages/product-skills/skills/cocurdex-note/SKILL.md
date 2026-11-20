@@ -13,7 +13,7 @@ cocurdex note list --json
 cocurdex note show <id> --json
 cocurdex note create --title <title> [--body-file <path>] [--parent <id>] [--workspace <id>] --json
 cocurdex note update <id> [--title <title>] [--body-file <path>] --json
-cocurdex note move <id> --parent <note-id> | --root --json
+cocurdex note move <id> [--parent <note-id> | --root] [--before <note-id> | --after <note-id>] --json
 cocurdex note backlinks <id> --json
 cocurdex note tags [<id>] --json
 ```
@@ -24,6 +24,11 @@ cocurdex note tags [<id>] --json
 Any note can hold child pages. A child page always belongs to its top-level
 page's workspace: `--workspace` applies only to top-level notes, and moving a
 note under another page moves its whole subtree into that page's workspace.
+
+`note list` returns siblings in display order (`sortOrder`). `note move` with
+`--before` or `--after` places the note next to that sibling, and without
+`--parent` or `--root` it moves into that sibling's parent; a move without them
+appends the note as the last child.
 
 If the prompt already contains an attached `<note … complete="true">` block,
 treat it as the full note and do not run `cocurdex note show` for it. Use the

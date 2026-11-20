@@ -1,16 +1,9 @@
-import type { NoteSummary } from "@cocurdex/shared";
+import { compareNoteSiblings, type NoteSummary } from "@cocurdex/shared";
 
 export interface FlatNoteNode {
   note: NoteSummary;
   depth: number;
   hasChildren: boolean;
-}
-
-export function compareNotes(left: NoteSummary, right: NoteSummary): number {
-  const byTitle = (left.title || left.id).localeCompare(
-    right.title || right.id,
-  );
-  return byTitle !== 0 ? byTitle : left.id.localeCompare(right.id);
 }
 
 export function buildVisibleNoteTree(
@@ -24,7 +17,7 @@ export function buildVisibleNoteTree(
     byParent.set(note.parentId, siblings);
   }
   for (const siblings of byParent.values()) {
-    siblings.sort(compareNotes);
+    siblings.sort(compareNoteSiblings);
   }
 
   const result: FlatNoteNode[] = [];
@@ -59,7 +52,7 @@ export function buildVisibleNoteTree(
 
   const orphans = summaries
     .filter((note) => !visited.has(note.id))
-    .sort(compareNotes);
+    .sort(compareNoteSiblings);
   for (const note of orphans) {
     if (visited.has(note.id)) {
       continue;
