@@ -12,7 +12,7 @@ export function SidebarSectionHeader({
   flush = false,
 }: {
   title: string;
-  inset?: "row" | "none";
+  inset?: "row" | "toggle";
   flush?: boolean;
   collapsed?: boolean;
   onToggle?: () => void;
@@ -32,7 +32,7 @@ export function SidebarSectionHeader({
     <div
       className={cn(
         "group/section flex items-center justify-between gap-1 pe-0.5",
-        { row: "ps-2", none: "ps-0" }[inset],
+        { row: "ps-2", toggle: "ps-1.5" }[inset],
         flush && "h-4",
         !flush && "h-6 pt-2",
       )}

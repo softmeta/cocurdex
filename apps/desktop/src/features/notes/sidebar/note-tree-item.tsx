@@ -117,7 +117,7 @@ export function NoteTreeItem({
               "bg-accent/40 ring-1 ring-ring ring-inset hover:bg-accent/40 data-active:hover:bg-accent/40",
             !isRenaming && "cursor-grab active:cursor-grabbing",
           )}
-          style={{ paddingInlineStart: `${depth * 12}px` }}
+          style={{ paddingInlineStart: `${6 + depth * 12}px` }}
           data-testid="note-tree-item"
           data-note-id={note.id}
         >
