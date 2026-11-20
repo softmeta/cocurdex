@@ -13,12 +13,22 @@ export function opaqueBackgroundOf(element: Element | null): string {
   return getComputedStyle(document.body).backgroundColor;
 }
 
+function toXmlSvg(svg: string): string {
+  const element = new DOMParser()
+    .parseFromString(svg, "text/html")
+    .querySelector("svg");
+  if (!element) {
+    throw new Error("Mermaid output has no SVG element");
+  }
+  return new XMLSerializer().serializeToString(element);
+}
+
 function loadSvgImage(svg: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error("Mermaid SVG failed to load"));
-    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(toXmlSvg(svg))}`;
   });
 }
 
@@ -44,4 +54,12 @@ export async function mermaidPngBlob(
       else reject(new Error("Mermaid PNG encoding failed"));
     }, "image/png");
   });
+}
+
+export async function copyMermaidImage(
+  diagram: SizedMermaidSvg,
+  backgroundSource: Element | null,
+): Promise<void> {
+  const png = mermaidPngBlob(diagram, opaqueBackgroundOf(backgroundSource));
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
 }

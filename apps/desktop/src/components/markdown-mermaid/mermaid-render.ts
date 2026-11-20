@@ -68,11 +68,12 @@ async function renderChart(
 ): Promise<MermaidRenderResult> {
   renderCount += 1;
   try {
+    const bodyStyle = getComputedStyle(document.body);
     mermaid.initialize(
-      mermaidThemeConfig(
-        appearance,
-        getComputedStyle(document.body).fontFamily,
-      ),
+      mermaidThemeConfig(appearance, {
+        fontFamily: bodyStyle.fontFamily,
+        lineHeight: bodyStyle.lineHeight,
+      }),
     );
     const { svg } = await mermaid.render(
       `cocurdex-mermaid-${renderCount}`,

@@ -5,8 +5,13 @@ import { CodeBlockCopyButton, type CustomRendererProps } from "streamdown";
 import { PreviewToolbarButton } from "@/components/media-preview";
 import { Text } from "@/components/ui/text";
 import { useRenderReadinessHold } from "../render-readiness";
+import {
+  MermaidCopyImageIcon,
+  mermaidCopyImageLabel,
+} from "./mermaid-copy-image-icon";
 import { downloadMermaidSvg } from "./mermaid-download";
 import { MermaidPreviewDialog } from "./mermaid-preview-dialog";
+import { useMermaidImageCopy } from "./use-mermaid-image-copy";
 import { useMermaidRender } from "./use-mermaid-render";
 import { useMermaidStreamFrame } from "./use-mermaid-stream-frame";
 
@@ -22,6 +27,7 @@ export function MermaidDiagram({ code, isIncomplete }: CustomRendererProps) {
   const { t } = useTranslation("common");
   const { diagram, error } = useMermaidRender(code, !isIncomplete);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const imageCopy = useMermaidImageCopy();
   useRenderReadinessHold(!isIncomplete && !diagram && !error);
   const svgContainerRef = useMermaidStreamFrame(
     diagram?.svg ?? null,
@@ -60,6 +66,15 @@ export function MermaidDiagram({ code, isIncomplete }: CustomRendererProps) {
             className="flex size-6 items-center justify-center rounded-full text-chat-fg-muted hover:bg-muted hover:text-chat-fg dark:hover:bg-muted/50"
             code={code}
           />
+          <PreviewToolbarButton
+            className="rounded-full"
+            label={mermaidCopyImageLabel(t, imageCopy.status)}
+            onClick={() =>
+              void imageCopy.copy(diagram, svgContainerRef.current)
+            }
+          >
+            <MermaidCopyImageIcon status={imageCopy.status} />
+          </PreviewToolbarButton>
           <PreviewToolbarButton
             className="rounded-full"
             label={t("mermaid.download")}

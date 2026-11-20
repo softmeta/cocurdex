@@ -1,18 +1,17 @@
-import { CodeXml, Copy, Download } from "lucide-react";
+import { Copy, Download } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   MediaPreviewDialog,
   PreviewToolbarButton,
-  useTemporaryCopyStatus,
 } from "@/components/media-preview";
 import { Text } from "@/components/ui";
+import { MermaidCopyImageIcon } from "./mermaid-copy-image-icon";
 import { downloadMermaidSvg } from "./mermaid-download";
-import { mermaidPngBlob, opaqueBackgroundOf } from "./mermaid-image";
 import type { SizedMermaidSvg } from "./mermaid-svg";
+import { useMermaidImageCopy } from "./use-mermaid-image-copy";
 
 const MERMAID_SCALE_LIMITS = { max: 2, min: 0.75 };
-const COPY_STATUS_MS = 1800;
 
 export function MermaidPreviewDialog({
   code,
@@ -25,22 +24,11 @@ export function MermaidPreviewDialog({
 }) {
   const { t } = useTranslation("common");
   const diagramRef = useRef<HTMLDivElement>(null);
-  const [copyStatus, showCopyStatus] = useTemporaryCopyStatus(COPY_STATUS_MS);
-
-  const copyImage = async () => {
-    try {
-      const png = mermaidPngBlob(
-        diagram,
-        opaqueBackgroundOf(diagramRef.current),
-      );
-      await navigator.clipboard.write([
-        new ClipboardItem({ "image/png": png }),
-      ]);
-      showCopyStatus("copied");
-    } catch {
-      showCopyStatus("failed");
-    }
-  };
+  const {
+    status: copyStatus,
+    showStatus: showCopyStatus,
+    copy,
+  } = useMermaidImageCopy();
 
   const copyCode = async () => {
     try {
@@ -56,18 +44,18 @@ export function MermaidPreviewDialog({
       actions={
         <>
           <PreviewToolbarButton
-            label={t("mermaid.copyImage")}
-            onClick={() => void copyImage()}
+            label={t("mermaid.copyCode")}
+            onClick={() => void copyCode()}
             tooltipSide="bottom"
           >
             <Copy className="size-3.5" />
           </PreviewToolbarButton>
           <PreviewToolbarButton
-            label={t("mermaid.copyCode")}
-            onClick={() => void copyCode()}
+            label={t("mermaid.copyImage")}
+            onClick={() => void copy(diagram, diagramRef.current)}
             tooltipSide="bottom"
           >
-            <CodeXml className="size-3.5" />
+            <MermaidCopyImageIcon status={null} />
           </PreviewToolbarButton>
           <PreviewToolbarButton
             label={t("mermaid.download")}
