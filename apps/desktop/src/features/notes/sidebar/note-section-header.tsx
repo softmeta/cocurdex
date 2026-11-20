@@ -35,7 +35,7 @@ export function NoteSectionHeader({
     >
       <SidebarSectionHeader
         title={title}
-        inset="nested"
+        inset="none"
         flush={first}
         collapsed={collapsed}
         onToggle={onToggle}

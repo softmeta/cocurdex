@@ -8,11 +8,11 @@ export function SidebarSectionHeader({
   collapsed,
   onToggle,
   action,
-  inset = "edge",
+  inset = "row",
   flush = false,
 }: {
   title: string;
-  inset?: "edge" | "nested";
+  inset?: "row" | "none";
   flush?: boolean;
   collapsed?: boolean;
   onToggle?: () => void;
@@ -32,7 +32,7 @@ export function SidebarSectionHeader({
     <div
       className={cn(
         "group/section flex items-center justify-between gap-1 pe-0.5",
-        { edge: "ps-2", nested: "ps-4" }[inset],
+        { row: "ps-2", none: "ps-0" }[inset],
         flush && "h-4",
         !flush && "h-6 pt-2",
       )}
