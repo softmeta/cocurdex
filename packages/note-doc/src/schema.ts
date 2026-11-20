@@ -10,6 +10,7 @@ import { TableKit } from "@tiptap/extension-table";
 import { Markdown } from "@tiptap/markdown";
 import type { Schema } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
+import { JoinAdjacentLists } from "./join-lists";
 import { InlineMathMarkdown, MathMarkdown } from "./math";
 import { NoteTable } from "./table";
 
@@ -55,6 +56,7 @@ export function buildNoteDocExtensions({
     buildCodeBlock(codeBlockView),
     TaskList,
     TaskItem.configure({ nested: true }),
+    JoinAdjacentLists,
     TableKit.configure({ table: false }),
     NoteTable,
     buildImage(imageView),
