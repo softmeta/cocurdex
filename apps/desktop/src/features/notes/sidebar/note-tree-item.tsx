@@ -138,7 +138,7 @@ export function NoteTreeItem({
               "bg-accent/40 ring-1 ring-ring ring-inset hover:bg-accent/40 data-active:hover:bg-accent/40",
             !isRenaming && "cursor-grab active:cursor-grabbing",
           )}
-          style={{ paddingInlineStart: `${6 + depth * 12}px` }}
+          style={{ paddingInlineStart: `${2 + depth * 12}px` }}
           data-testid="note-tree-item"
           data-note-id={note.id}
         >
@@ -153,9 +153,10 @@ export function NoteTreeItem({
               style={{ insetInlineStart: `${6 + dropLine.depth * 12}px` }}
             />
           ) : null}
-          <span className="-me-1.5 flex w-3 shrink-0 justify-center">
+          <span className="-me-0.5 flex w-3 shrink-0 justify-center">
             {hasChildren ? (
               <SidebarListRowDisclosure
+                size="compact"
                 aria-expanded={isExpanded}
                 aria-label={
                   isExpanded

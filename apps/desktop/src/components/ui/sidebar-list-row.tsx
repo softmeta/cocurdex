@@ -100,13 +100,18 @@ function SidebarListRowActions({
 
 function SidebarListRowDisclosure({
   className,
+  size = "default",
   ...props
-}: React.ComponentProps<"button">) {
+}: React.ComponentProps<"button"> & { size?: "default" | "compact" }) {
   return (
     <button
       type="button"
       className={cn(
-        "-mx-0.75 flex size-5 shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted outline-hidden hover:text-sidebar-fg focus-visible:ring-2 focus-visible:ring-ring",
+        "flex shrink-0 items-center justify-center rounded-control text-sidebar-fg-muted outline-hidden hover:text-sidebar-fg focus-visible:ring-2 focus-visible:ring-ring",
+        {
+          default: "-mx-0.75 size-5",
+          compact: "size-4 focus-visible:ring-inset",
+        }[size],
         className,
       )}
       {...props}
