@@ -55,7 +55,7 @@ import { useHideDragHandleOnLayoutShift } from "./use-hide-drag-handle-on-layout
 
 const NOTE_LINK_PREFIX = "note://";
 
-const BLOCK_GRIP_OVERLAP = -6;
+const BLOCK_GRIP_GAP = 0;
 const TABLE_GRIP_GAP = 8;
 
 function createDragHandlePosition() {
@@ -67,7 +67,7 @@ function createDragHandlePosition() {
       strategy: "absolute" as const,
       middleware: [
         offset(() => ({
-          mainAxis: hovered.isTable ? TABLE_GRIP_GAP : BLOCK_GRIP_OVERLAP,
+          mainAxis: hovered.isTable ? TABLE_GRIP_GAP : BLOCK_GRIP_GAP,
         })),
       ],
     },
