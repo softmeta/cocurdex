@@ -23,6 +23,7 @@
       "renameLabel": "文件夹名称"
     },
     "placeholder": "开始写作，或按 “/” 插入块…",
+    "readOnly": "只读",
     "save": {
       "error": "保存失败",
       "saved": "已保存",
