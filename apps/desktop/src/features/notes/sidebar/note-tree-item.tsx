@@ -136,7 +136,7 @@ export function NoteTreeItem({
             isDragging && "opacity-40",
             isDropTarget &&
               "bg-accent/40 ring-1 ring-ring ring-inset hover:bg-accent/40 data-active:hover:bg-accent/40",
-            !isRenaming && "cursor-grab active:cursor-grabbing",
+            !isRenaming && "cursor-default active:cursor-grabbing",
           )}
           style={{ paddingInlineStart: `${4 + depth * 12}px` }}
           data-testid="note-tree-item"
