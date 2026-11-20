@@ -208,6 +208,14 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
     const nodes = collapsed
       ? []
       : buildVisibleNoteTree(section.notes, expansion.collapsedNoteIds);
+    const parentIds = section.notes
+      .filter((note) =>
+        section.notes.some((child) => child.parentId === note.id),
+      )
+      .map((note) => note.id);
+    const allPagesCollapsed = parentIds.every((id) =>
+      expansion.collapsedNoteIds.has(id),
+    );
     return (
       <div key={key} className="flex flex-col gap-0.5">
         <NoteSectionHeader
@@ -218,6 +226,15 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
           isDropTarget={
             dropTarget !== undefined &&
             overId === sectionDropId(section.workspaceId)
+          }
+          pages={
+            collapsed || parentIds.length === 0
+              ? null
+              : {
+                  allCollapsed: allPagesCollapsed,
+                  onToggle: () =>
+                    expansion.setNotesCollapsed(parentIds, !allPagesCollapsed),
+                }
           }
           onToggle={() => expansion.toggleSection(key)}
           onCreate={() => handleCreateInSection(section.workspaceId)}

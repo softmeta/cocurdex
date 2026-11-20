@@ -50,6 +50,7 @@
   },
   "sidebar": {
     "collapse": "Collapse sidebar",
+    "collapseAllPages": "Collapse all pages",
     "collapsePage": "Collapse subpages",
     "delete": "Delete",
     "deleteConfirm": {
@@ -64,6 +65,7 @@
       "title": "No notes yet"
     },
     "expand": "Expand sidebar",
+    "expandAllPages": "Expand all pages",
     "expandPage": "Expand subpages",
     "moveTo": "Move to",
     "newNote": "New note",

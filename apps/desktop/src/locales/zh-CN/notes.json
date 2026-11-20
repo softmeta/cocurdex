@@ -50,6 +50,7 @@
   },
   "sidebar": {
     "collapse": "折叠侧栏",
+    "collapseAllPages": "折叠全部页面",
     "collapsePage": "收起子页面",
     "delete": "删除",
     "deleteConfirm": {
@@ -64,6 +65,7 @@
       "title": "还没有笔记"
     },
     "expand": "展开侧栏",
+    "expandAllPages": "展开全部页面",
     "expandPage": "展开子页面",
     "moveTo": "移动到",
     "newNote": "新建笔记",
