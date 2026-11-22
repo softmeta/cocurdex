@@ -1,5 +1,6 @@
 import { ArrowDownToLine, ArrowUpToLine } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { IconButton } from "@/components/ui/icon-button";
 
 export function JumpControls({
   streaming = false,
@@ -41,21 +42,21 @@ export function JumpControls({
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center">
-      <button
+      <IconButton
         aria-label={label}
-        className="group/jump pointer-events-auto relative flex size-9 cursor-default items-center justify-center rounded-full bg-popover text-popover-foreground ring-1 ring-foreground/10 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="group/jump pointer-events-auto relative cursor-default rounded-full bg-popover text-popover-foreground ring-1 ring-foreground/10 hover:bg-accent"
         onClick={onJump}
-        type="button"
+        size="sm"
       >
         {streaming && showJumpToLatest ? (
           <>
             <StreamingDots />
-            <Icon className="hidden size-4 group-hover/jump:block group-focus-visible/jump:block" />
+            <Icon className="hidden size-3.5 group-hover/jump:block group-focus-visible/jump:block" />
           </>
         ) : (
-          <Icon className="size-4" />
+          <Icon className="size-3.5" />
         )}
-      </button>
+      </IconButton>
     </div>
   );
 }
@@ -64,7 +65,7 @@ function StreamingDots() {
   return (
     <svg
       aria-hidden="true"
-      className="stream-dots size-5 group-hover/jump:hidden group-focus-visible/jump:hidden"
+      className="stream-dots size-4 group-hover/jump:hidden group-focus-visible/jump:hidden"
       data-stream-indicator="true"
       fill="currentColor"
       viewBox="0 0 24 24"
