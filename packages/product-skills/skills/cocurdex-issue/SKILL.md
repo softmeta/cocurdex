@@ -58,9 +58,12 @@ If the prompt already contains an attached `<issue … complete="true">` block,
 treat it as the full issue and do not run `cocurdex issue show` for it. Use the
 CLI only to change the issue, or when the user asks for its current state.
 
-When you implement an issue, move it to the in-progress column (`doing` by
-default) before you start, and to `review` once its acceptance criteria are met
-and the relevant checks pass (`done` when the user does not review). Record
+When you implement an issue, set its status to the in-progress one (`doing` by
+default) with `issue update <id> --status doing` before you start, and to
+`review` once its acceptance criteria are met and the relevant checks pass
+(`done` when the user does not review). Use `update --status`, not `move`:
+`move` targets the default view's columns, which are priorities or labels when
+that view is grouped by them. Record
 what you verified with `cocurdex issue comment`. Split large work into
 sub-issues with `--parent`, and record ordering constraints with
 `issue relate <id> blocks <other-id>`. Stop and ask when the issue has no clear
