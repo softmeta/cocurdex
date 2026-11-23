@@ -24,6 +24,7 @@ import {
   PendingIndicator,
   useTransitionSettled,
 } from "@/ui";
+import { copyIssueAgentPrompt } from "./copy-issue-agent-prompt";
 import {
   type IssueField,
   NO_WORKSPACE,
@@ -254,6 +255,17 @@ export function IssueScreen({
       <Stack.Screen options={{ title: issue.identifier }} />
       <HeaderButtons
         items={[
+          {
+            key: "copyPrompt",
+            icon: { ios: "doc.on.clipboard", android: "content_paste" },
+            label: t("agentPrompt.copy"),
+            onPress: () =>
+              void copyIssueAgentPrompt(host.hostId, issue.id)
+                .then((copied) => {
+                  if (!copied) Alert.alert(t("missing"));
+                })
+                .catch(() => Alert.alert(t("agentPrompt.copyFailed"))),
+          },
           {
             key: "edit",
             icon: { ios: "pencil", android: "edit" },

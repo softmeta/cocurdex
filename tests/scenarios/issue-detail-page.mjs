@@ -2,6 +2,7 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import {
+  backendNodeIdOf,
   centerOf,
   clickByRole,
   clickPoint,
@@ -14,6 +15,8 @@ import { showPanelView, translate } from "./lib/navigate.mjs";
 const UI_TIMEOUT_MS = 30_000;
 const ISSUE_TITLE = "Checkout fails for some carts";
 const RENAMED_TITLE = "Checkout fails for carts with discounts";
+const MARKDOWN_DESCRIPTION =
+  "Totals come from `cartSubtotal` in `src/cart.ts`.\n\n- Steps are unclear.";
 
 const args = readScenarioArgs();
 
@@ -50,6 +53,24 @@ async function waitForIssue(session, issueId, predicate, label) {
   throw new Error(`${label}: ${JSON.stringify(issue)}`);
 }
 
+async function captureClipboard(session) {
+  await session.run(() => {
+    window.__scenarioClipboard = null;
+    navigator.clipboard.writeText = async (text) => {
+      window.__scenarioClipboard = text;
+    };
+  });
+}
+
+async function waitForCopiedPrompt(session) {
+  await session.waitUntil(
+    () => typeof window.__scenarioClipboard === "string",
+    undefined,
+    UI_TIMEOUT_MS,
+  );
+  return session.run(() => window.__scenarioClipboard);
+}
+
 async function pressKey(session, key, code = key) {
   for (const type of ["keyDown", "keyUp"]) {
     await session.send("Input.dispatchKeyEvent", { type, key, code });
@@ -84,6 +105,44 @@ runScenario("issue-detail-page", {
     return { issueId };
   },
   steps: [
+    [
+      "a card's menu copies an agent prompt with the full Markdown description",
+      async ({ session, issueId }) => {
+        const issue = await daemonRequest(session, "issue.get", {
+          id: issueId,
+        });
+        await daemonRequest(session, "issue.update", {
+          viewId: issue.viewId,
+          id: issueId,
+          description: MARKDOWN_DESCRIPTION,
+          expectedRevision: issue.revision,
+        });
+        const card = `div[data-issue-id="${issueId}"] [role="button"]`;
+        await waitForSelector(session, card);
+        await captureClipboard(session);
+        const point = await centerOf(
+          session,
+          await backendNodeIdOf(session, card),
+        );
+        await clickPoint(session, point, "right");
+        await clickByRole(session, {
+          role: "menuitem",
+          name: await translate(session, "issues:cardMenu.copyAgentPrompt"),
+        });
+        const prompt = await waitForCopiedPrompt(session);
+        check(
+          prompt.includes(MARKDOWN_DESCRIPTION),
+          "prompt lacks the full description",
+          { prompt },
+        );
+        check(
+          prompt.includes(`cocurdex issue show ${issue.identifier}`),
+          "prompt lacks the CLI tracking steps",
+          { prompt },
+        );
+        return { length: prompt.length };
+      },
+    ],
     [
       "a card opens the issue as a page in the panel, not a dialog",
       async ({ session, issueId }) => {

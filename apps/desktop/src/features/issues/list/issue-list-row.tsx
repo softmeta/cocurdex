@@ -4,7 +4,7 @@ import type {
   ViewGroupBy,
 } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import { Check, Flag, Pencil, Trash2 } from "lucide-react";
+import { Check, ClipboardCopy, Flag, Pencil, Trash2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -19,6 +19,7 @@ import {
   Text,
 } from "@/components/ui";
 import { cn } from "@/lib";
+import { copyIssueAgentPrompt } from "../copy-issue-agent-prompt";
 import { priorityFieldColor } from "../group-field-color";
 import {
   formatIssueDate,
@@ -164,6 +165,14 @@ export function IssueListRow({
         >
           <Pencil className="size-3.5" />
           {t("cardMenu.open")}
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => {
+            void copyIssueAgentPrompt(card.id);
+          }}
+        >
+          <ClipboardCopy className="size-3.5" />
+          {t("cardMenu.copyAgentPrompt")}
         </ContextMenuItem>
 
         {statusOptions.length > 0 ? (
