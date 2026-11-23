@@ -24,6 +24,7 @@ import type {
   AgentProviderSessionRecord,
   AgentRateLimitsRecord,
   AgentSessionMode,
+  AgentToolCallRecord,
   MessageRecord,
   SessionRecord,
 } from "@cocurdex/shared";
@@ -43,6 +44,10 @@ import {
   requiresNativeSessionRecovery,
 } from "../shared/session-recovery";
 import type { AcpConnection, AcpConnectionFactory } from "./acp-connection";
+import {
+  AcpDetachedReplies,
+  type AcpDetachedReplyProtocol,
+} from "./acp-detached-replies";
 import {
   createAcpConnectionLostError,
   createAcpSignInRequiredError,
@@ -124,6 +129,8 @@ export interface AcpAgentAdapterOptions {
     }): Record<string, unknown>;
   };
   subagentProtocol?: AcpSubagentProtocol;
+  detachedReplies?: AcpDetachedReplyProtocol;
+  normalizeToolCall?(toolCall: AgentToolCallRecord): AgentToolCallRecord;
   afterInitialize?(connection: AcpConnection): Promise<void>;
   cancelTimeoutMs?: number;
 }
@@ -288,11 +295,30 @@ export class AcpAgentAdapter implements AgentAdapter {
       onEvent,
       undefined,
       payload.providerSession ? null : payload.session.title,
-      (toolCall) =>
-        subagentBridge ? subagentBridge.transform(toolCall) : toolCall,
+      (toolCall) => {
+        const normalized =
+          this.options.normalizeToolCall?.(toolCall) ?? toolCall;
+        return subagentBridge
+          ? subagentBridge.transform(normalized)
+          : normalized;
+      },
       payload.workspaceRootPath,
       { contextFromUsageUpdates: this.options.contextFromUsageUpdates },
     );
+    let continuationStartedAt = 0;
+    const detachedReplies = this.options.detachedReplies
+      ? new AcpDetachedReplies(this.options.detachedReplies, {
+          start() {
+            continuationStartedAt = Date.now();
+          },
+          end(outcome) {
+            mapper.complete(
+              outcome === "cancelled" ? "cancelled" : "end_turn",
+              Date.now() - continuationStartedAt,
+            );
+          },
+        })
+      : null;
     const createChildMapper = (session: SessionRecord) => {
       const existing = childMappers.get(session.id);
       if (existing) {
@@ -372,6 +398,7 @@ export class AcpAgentAdapter implements AgentAdapter {
         subagentBridge.buffer(notification);
         return;
       }
+      detachedReplies?.observe(notification.update);
       mapper.handle(notification);
     };
     const connectionOptions: Parameters<AcpConnectionFactory>[0] = {
@@ -500,6 +527,7 @@ export class AcpAgentAdapter implements AgentAdapter {
             if (disposed || connectionPromise !== opened) {
               return;
             }
+            detachedReplies?.release("cancelled");
             logAdapterDiagnostic(
               "info",
               "[AcpAgentAdapter] agent connection lost",
@@ -1018,6 +1046,7 @@ export class AcpAgentAdapter implements AgentAdapter {
             messagePayload.attachments ?? [],
             capabilities,
           );
+          detachedReplies?.beginTurn();
           prompt = connection.prompt({
             sessionId: providerSessionId,
             prompt: promptContent,
@@ -1028,10 +1057,14 @@ export class AcpAgentAdapter implements AgentAdapter {
               activePrompt = null;
             }
           });
+          const detachedOutcome =
+            detachedReplies && response.stopReason === "end_turn"
+              ? await detachedReplies.afterPrompt()
+              : "settled";
           void refreshRateLimits(connection);
           void refreshMcpServers(connection, providerSessionId);
           const message = mapper.complete(
-            response.stopReason,
+            detachedOutcome === "cancelled" ? "cancelled" : response.stopReason,
             Date.now() - startedAt,
             response,
           );
@@ -1126,6 +1159,7 @@ export class AcpAgentAdapter implements AgentAdapter {
             _meta: { cancelTrigger: "client_stop" },
           });
         } catch {}
+        detachedReplies?.release("cancelled");
         const prompt = activePrompt;
         if (!prompt || (await settlesWithin(prompt, cancelTimeoutMs))) {
           return;
@@ -1150,6 +1184,7 @@ export class AcpAgentAdapter implements AgentAdapter {
       async dispose() {
         disposed = true;
         clearTimeout(mcpRefreshTimer);
+        detachedReplies?.release("cancelled");
         const connection = connectionPromise;
         try {
           await connection?.then((value) => value.close());

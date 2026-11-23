@@ -401,19 +401,21 @@ export function SessionSidebarItem({
             </SidebarContextMenuItem>
           ) : null}
           {isChatSession(session) ? null : (
-            <SidebarContextMenuItem
-              icon={GitFork}
-              onClick={() => void forkSession(session)}
-            >
-              {t("sidebar.fork")}
-            </SidebarContextMenuItem>
+            <>
+              <SidebarContextMenuItem
+                icon={GitFork}
+                onClick={() => void forkSession(session)}
+              >
+                {t("sidebar.fork")}
+              </SidebarContextMenuItem>
+              <SidebarContextMenuItem
+                icon={ListTree}
+                onClick={() => setIsTreeOpen(true)}
+              >
+                {t("sidebar.executionTree")}
+              </SidebarContextMenuItem>
+            </>
           )}
-          <SidebarContextMenuItem
-            icon={ListTree}
-            onClick={() => setIsTreeOpen(true)}
-          >
-            {t("sidebar.executionTree")}
-          </SidebarContextMenuItem>
           <SidebarContextMenuItem
             icon={Archive}
             onClick={handleArchive}
@@ -431,7 +433,7 @@ export function SessionSidebarItem({
           </SidebarContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
-      {isTreeOpen ? (
+      {!isChatSession(session) && isTreeOpen ? (
         <ExecutionTreeDialog
           onClose={() => setIsTreeOpen(false)}
           sessionId={session.id}

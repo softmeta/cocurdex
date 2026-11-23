@@ -263,9 +263,7 @@ export function LeftSidebar({
           ) : null}
         </div>
       </div>
-      {showFooter ? (
-        <SidebarFooter isAssistant={activeTab === "personal"} />
-      ) : null}
+      {showFooter ? <SidebarFooter activeTab={activeTab} /> : null}
       <ArchiveGroupDialog />
     </SidebarShell>
   );

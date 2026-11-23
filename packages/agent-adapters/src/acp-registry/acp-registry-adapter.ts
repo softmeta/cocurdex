@@ -35,12 +35,18 @@ import {
   readGrokBuildRateLimits,
 } from "../grok-build";
 import { antigravitySessionMeta } from "./antigravity-session-meta";
+import {
+  antigravityDetachedReplies,
+  normalizeAntigravityToolCall,
+} from "./antigravity-subagents";
 
 interface AcpAgentAdapterProfile {
   args?: string[];
   authMethodPriority?: () => string[];
   authenticateOnSession?: boolean;
   contextFromUsageUpdates?: boolean;
+  detachedReplies?: AcpAgentAdapterOptions["detachedReplies"];
+  normalizeToolCall?: AcpAgentAdapterOptions["normalizeToolCall"];
   sessionMeta?(
     initialized: InitializeResponse,
   ): Record<string, unknown> | undefined;
@@ -58,6 +64,8 @@ interface AcpAgentAdapterProfile {
 const adapterProfiles: Readonly<Record<string, AcpAgentAdapterProfile>> = {
   "antigravity-acp": {
     contextFromUsageUpdates: true,
+    detachedReplies: antigravityDetachedReplies,
+    normalizeToolCall: normalizeAntigravityToolCall,
     sessionMeta: antigravitySessionMeta,
   },
   cursor: {
@@ -117,6 +125,8 @@ export function createAcpRegistryAdapter(
     modelProviderId: agentId,
     skipAuthenticate: !profile.authenticateOnSession,
     contextFromUsageUpdates: profile.contextFromUsageUpdates,
+    detachedReplies: profile.detachedReplies,
+    normalizeToolCall: profile.normalizeToolCall,
     sessionMeta: profile.sessionMeta,
   };
   return new AcpAgentAdapter(options, connectionFactory);

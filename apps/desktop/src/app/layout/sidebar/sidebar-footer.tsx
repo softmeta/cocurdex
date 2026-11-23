@@ -8,15 +8,16 @@ import {
   openSettings,
 } from "@/features/settings";
 import { hostHasScope } from "@/lib";
+import type { SidebarTab } from "./sidebar-tab-store";
 
-export function SidebarFooter({ isAssistant }: { isAssistant: boolean }) {
+export function SidebarFooter({ activeTab }: { activeTab: SidebarTab }) {
   const { t } = useTranslation("sessions");
 
   return (
     <div className="flex h-8 shrink-0 items-center gap-0.5 pe-1.75 ps-3">
-      <AppsEntryButton />
+      {activeTab !== "chat" ? <AppsEntryButton /> : null}
       <div className="min-w-0 flex-1" />
-      {isAssistant ? <MemoryStatusButton /> : null}
+      {activeTab === "personal" ? <MemoryStatusButton /> : null}
       {hostHasScope("host.admin") ? <NetworkProxyStatusButton /> : null}
       <AppSidebarIconButton
         aria-label={t("sidebar.settings")}
