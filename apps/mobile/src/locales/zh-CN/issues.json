@@ -7,6 +7,10 @@
     "failed": "无法更新事项，请检查连接后重试。",
     "title": "操作"
   },
+  "agentPrompt": {
+    "copy": "复制给 Agent 的提示词",
+    "copyFailed": "无法复制提示词，请检查连接后重试。"
+  },
   "create": {
     "creating": "正在创建…",
     "descriptionPlaceholder": "添加描述",

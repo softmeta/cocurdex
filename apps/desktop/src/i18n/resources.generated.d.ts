@@ -1004,6 +1004,10 @@ export default interface Resources {
       sessionLinked: "linked an agent session";
       title: "Activity";
     };
+    agentPrompt: {
+      copied: "Prompt copied. Paste it into any agent.";
+      copyFailed: "Could not copy the prompt.";
+    };
     board: {
       addCard: "Add card";
       columnMenu: "Column menu";
@@ -1035,6 +1039,7 @@ export default interface Resources {
       untitledColumn: "Untitled column";
     };
     cardMenu: {
+      copyAgentPrompt: "Copy prompt for an agent";
       delete: "Delete";
       open: "Open";
       priority: "Priority";

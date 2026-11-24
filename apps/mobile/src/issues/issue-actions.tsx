@@ -11,12 +11,13 @@ import {
   useAnchoredMenu,
   useConfirm,
 } from "@/ui";
+import { copyIssueAgentPrompt } from "./copy-issue-agent-prompt";
 import { type IssuePatch, patchedIssue } from "./issue-patch";
 import { IssuePriorityMark } from "./issue-priority-mark";
 import { useIssueView } from "./issue-queries";
 import { IssueStatusMark } from "./issue-status-mark";
 
-type IssueAction = "status" | "priority" | "edit" | "delete";
+type IssueAction = "status" | "priority" | "edit" | "copyPrompt" | "delete";
 
 const ACTION_ICONS: Record<
   IssueAction,
@@ -25,6 +26,7 @@ const ACTION_ICONS: Record<
   status: { ios: "circle.dashed", android: "radio_button_partial" },
   priority: { ios: "chart.bar", android: "signal_cellular_alt" },
   edit: { ios: "pencil", android: "edit" },
+  copyPrompt: { ios: "doc.on.clipboard", android: "content_paste" },
   delete: { ios: "trash", android: "delete" },
 };
 
@@ -125,6 +127,7 @@ export function useIssueActions(host: SavedHost) {
     status: t("field.status"),
     priority: t("field.priority"),
     edit: t("edit.action"),
+    copyPrompt: t("agentPrompt.copy"),
     delete: t("actions.delete"),
   };
 
@@ -139,6 +142,12 @@ export function useIssueActions(host: SavedHost) {
         pathname: "/edit-issue/[hostId]/[issueId]",
         params: { hostId: host.hostId, issueId: issue.id },
       }),
+    copyPrompt: () =>
+      void copyIssueAgentPrompt(host.hostId, issue.id)
+        .then((copied) => {
+          if (!copied) Alert.alert(t("missing"));
+        })
+        .catch(() => Alert.alert(t("agentPrompt.copyFailed"))),
     delete: () =>
       confirm({
         title: t("actions.deleteTitle", { title: issue.title }),
@@ -156,6 +165,7 @@ export function useIssueActions(host: SavedHost) {
       "status",
       "priority",
       "edit",
+      "copyPrompt",
       "delete",
     ];
     menu.open(anchor, {
@@ -167,7 +177,10 @@ export function useIssueActions(host: SavedHost) {
         group: action === "delete" ? "remove" : "change",
         destructive: action === "delete",
         presents: true,
-        onPress: gate("interact", rowHandlers[action]),
+        onPress:
+          action === "copyPrompt"
+            ? rowHandlers[action]
+            : gate("interact", rowHandlers[action]),
       })),
     });
   };

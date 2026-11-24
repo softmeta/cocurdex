@@ -26,6 +26,10 @@
     "sessionLinked": "关联了一个 Agent 会话",
     "title": "动态"
   },
+  "agentPrompt": {
+    "copied": "提示词已复制，可粘贴给任意 Agent。",
+    "copyFailed": "复制提示词失败。"
+  },
   "board": {
     "addCard": "添加卡片",
     "columnMenu": "列菜单",
@@ -57,6 +61,7 @@
     "untitledColumn": "无标题列"
   },
   "cardMenu": {
+    "copyAgentPrompt": "复制给 Agent 的提示词",
     "delete": "删除",
     "open": "打开",
     "priority": "优先级",

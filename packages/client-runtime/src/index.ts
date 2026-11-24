@@ -30,6 +30,10 @@ export {
   isUnknownDaemonMethodError,
 } from "./host-connection";
 export {
+  buildIssueAgentPrompt,
+  type IssueAgentPromptSource,
+} from "./issue-agent-prompt";
+export {
   ALL_ISSUE_PLACE,
   countIssuePlace,
   type IssuePlace,

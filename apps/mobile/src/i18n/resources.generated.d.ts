@@ -333,6 +333,10 @@ export default interface Resources {
       failed: "Couldn't update the issue. Check the connection and try again.";
       title: "Actions";
     };
+    agentPrompt: {
+      copy: "Copy prompt for an agent";
+      copyFailed: "Could not copy the prompt. Check the connection and try again.";
+    };
     create: {
       creating: "Creating…";
       descriptionPlaceholder: "Add a description";

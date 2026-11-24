@@ -1,6 +1,6 @@
 import type { IssueRecord } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
-import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, ClipboardCopy } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FindInDocumentButton } from "@/app/layout/find-in-document-button";
@@ -11,6 +11,7 @@ import {
   type MarkdownBodyEditorHandle,
 } from "@/components/markdown-body-editor";
 import { ScrollArea, Text } from "@/components/ui";
+import { copyIssueAgentPrompt } from "../copy-issue-agent-prompt";
 import {
   type IssueDetailState,
   saveIssueDetailAtom,
@@ -83,6 +84,14 @@ export function IssueDetailPage({
           </Text>
         </div>
         <div className="ms-auto flex shrink-0 items-center gap-0.5">
+          <TitlebarIconButton
+            aria-label={t("cardMenu.copyAgentPrompt")}
+            onClick={() => {
+              void copyIssueAgentPrompt(card.id);
+            }}
+          >
+            <ClipboardCopy className="size-3.5" />
+          </TitlebarIconButton>
           <FindInDocumentButton />
           {stepper ? <IssueStepControls stepper={stepper} /> : null}
         </div>
