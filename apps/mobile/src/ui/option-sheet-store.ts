@@ -5,6 +5,7 @@ export interface OptionSheetItem {
   key: string;
   label: string;
   supporting?: string;
+  group?: string;
   indent?: number;
   leading?: ReactElement;
   destructive?: boolean;

@@ -28,11 +28,11 @@
       "child": "Sub-issue",
       "duplicate-of": "Duplicate of",
       "duplicated-by": "Duplicated by",
-      "mentioned-by": "Mentioned by",
+      "mentioned-by": "Mentioned in",
       "mentions": "Mentions",
       "parent": "Parent",
       "related": "Related",
-      "worked-on-by": "Session",
+      "worked-on-by": "Sessions",
       "works-on": "Works on"
     },
     "title": "Linked",

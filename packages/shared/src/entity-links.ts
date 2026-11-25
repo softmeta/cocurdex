@@ -94,3 +94,31 @@ export function parseEntityRef(value: string): EntityRef | null {
 export function sameEntity(a: EntityRef, b: EntityRef): boolean {
   return a.kind === b.kind && a.id === b.id;
 }
+
+const ENTITY_LINK_RELATION_ORDER: readonly EntityLinkRelation[] = [
+  "parent",
+  "child",
+  "blocked-by",
+  "blocks",
+  "duplicate-of",
+  "duplicated-by",
+  "works-on",
+  "worked-on-by",
+  "related",
+  "mentions",
+  "mentioned-by",
+];
+
+export interface EntityLinkGroup {
+  relation: EntityLinkRelation;
+  links: EntityLink[];
+}
+
+export function groupEntityLinks(
+  links: readonly EntityLink[],
+): EntityLinkGroup[] {
+  return ENTITY_LINK_RELATION_ORDER.map((relation) => ({
+    relation,
+    links: links.filter((link) => link.relation === relation),
+  })).filter((group) => group.links.length > 0);
+}
