@@ -16,6 +16,11 @@ describe("matchesQuery", () => {
     expect(matchesQuery(model, "openai")).toBe(true);
   });
 
+  it("matches the group heading the option is listed under", () => {
+    const link = { label: "Release checklist", group: "Mentioned in" };
+    expect(matchesQuery(link, "mentioned")).toBe(true);
+  });
+
   it("hides options that match neither", () => {
     expect(matchesQuery(model, "deepseek")).toBe(false);
   });
