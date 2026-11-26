@@ -104,10 +104,8 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
     summaries,
     activeNoteId,
     activeSectionKey,
-    initiallyCollapsedSections: () =>
-      workspaces
-        .map((workspace) => workspace.id)
-        .filter((id) => id !== activeWorkspaceId),
+    isSectionCollapsedByDefault: (key) =>
+      key !== PERSONAL_SECTION_KEY && key !== activeWorkspaceId,
   });
 
   const workspaceName = new Map(

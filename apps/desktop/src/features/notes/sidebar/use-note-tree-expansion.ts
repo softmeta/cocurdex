@@ -1,16 +1,14 @@
 import type { NoteSummary } from "@cocurdex/shared";
+import { useSetAtom, useStore } from "jotai";
 import { useState } from "react";
 import { ancestorIds } from "./build-note-tree";
-
-function toggled(set: ReadonlySet<string>, id: string): Set<string> {
-  const next = new Set(set);
-  if (next.has(id)) {
-    next.delete(id);
-  } else {
-    next.add(id);
-  }
-  return next;
-}
+import {
+  collapsedPageIdsAtom,
+  persistPagesCollapsedAtom,
+  persistSectionCollapsedAtom,
+  type SectionCollapse,
+  sectionCollapseAtom,
+} from "./note-tree-expansion-store";
 
 function withoutIds(
   set: ReadonlySet<string>,
@@ -22,67 +20,100 @@ function withoutIds(
   return new Set([...set].filter((id) => !ids.includes(id)));
 }
 
+function withIds(
+  set: ReadonlySet<string>,
+  ids: readonly string[],
+): ReadonlySet<string> {
+  if (ids.every((id) => set.has(id))) {
+    return set;
+  }
+  return new Set([...set, ...ids]);
+}
+
+function expandedSection(
+  sections: SectionCollapse,
+  key: string | null,
+): SectionCollapse {
+  if (key === null || sections[key] === false) {
+    return sections;
+  }
+  return { ...sections, [key]: false };
+}
+
 export function useNoteTreeExpansion({
   summaries,
   activeNoteId,
   activeSectionKey,
-  initiallyCollapsedSections,
+  isSectionCollapsedByDefault,
 }: {
   summaries: readonly NoteSummary[];
   activeNoteId: string | null;
   activeSectionKey: string | null;
-  initiallyCollapsedSections: () => Iterable<string>;
+  isSectionCollapsedByDefault: (key: string) => boolean;
 }) {
+  const store = useStore();
+  const persistPages = useSetAtom(persistPagesCollapsedAtom);
+  const persistSection = useSetAtom(persistSectionCollapsedAtom);
+  const revealedAncestors = activeNoteId
+    ? ancestorIds(activeNoteId, summaries)
+    : [];
+
   const [collapsedNoteIds, setCollapsedNoteIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
+    () =>
+      withoutIds(new Set(store.get(collapsedPageIdsAtom)), revealedAncestors),
   );
-  const [collapsedSections, setCollapsedSections] = useState<
-    ReadonlySet<string>
-  >(() =>
-    withoutIds(
-      new Set(initiallyCollapsedSections()),
-      activeSectionKey ? [activeSectionKey] : [],
-    ),
+  const [sections, setSections] = useState<SectionCollapse>(() =>
+    expandedSection(store.get(sectionCollapseAtom), activeSectionKey),
   );
 
-  const revealKey = `${activeNoteId ?? ""}\u0000${activeSectionKey ?? ""}`;
+  const revealKey = [
+    activeNoteId ?? "",
+    activeSectionKey ?? "",
+    ...revealedAncestors,
+  ].join("\u0000");
   const [revealedKey, setRevealedKey] = useState(revealKey);
   if (revealKey !== revealedKey) {
     setRevealedKey(revealKey);
-    if (activeNoteId) {
-      setCollapsedNoteIds((prev) =>
-        withoutIds(prev, ancestorIds(activeNoteId, summaries)),
-      );
-    }
-    if (activeSectionKey) {
-      setCollapsedSections((prev) => withoutIds(prev, [activeSectionKey]));
-    }
+    setCollapsedNoteIds((prev) => withoutIds(prev, revealedAncestors));
+    setSections((prev) => expandedSection(prev, activeSectionKey));
   }
+
+  const isSectionCollapsed = (key: string) =>
+    sections[key] ?? isSectionCollapsedByDefault(key);
+
+  const setNotesCollapsed = (ids: readonly string[], collapsed: boolean) => {
+    setCollapsedNoteIds((prev) =>
+      collapsed ? withIds(prev, ids) : withoutIds(prev, ids),
+    );
+    persistPages({
+      ids,
+      collapsed,
+      existingIds: new Set(summaries.map((note) => note.id)),
+    });
+  };
+
+  const setSectionCollapsed = (key: string, collapsed: boolean) => {
+    setSections((prev) => ({ ...prev, [key]: collapsed }));
+    persistSection({ key, collapsed });
+  };
 
   return {
     collapsedNoteIds,
-    isSectionCollapsed: (key: string) => collapsedSections.has(key),
+    isSectionCollapsed,
+    setNotesCollapsed,
     toggleNote: (id: string) =>
-      setCollapsedNoteIds((prev) => toggled(prev, id)),
-    setNotesCollapsed: (ids: readonly string[], collapsed: boolean) =>
-      setCollapsedNoteIds((prev) =>
-        collapsed ? new Set([...prev, ...ids]) : withoutIds(prev, ids),
-      ),
+      setNotesCollapsed([id], !collapsedNoteIds.has(id)),
+    expandNote: (id: string) => {
+      if (collapsedNoteIds.has(id)) {
+        setNotesCollapsed([id], false);
+      }
+    },
     toggleSection: (key: string) =>
-      setCollapsedSections((prev) => toggled(prev, key)),
-    expandNote: (id: string) =>
-      setCollapsedNoteIds((prev) => {
-        if (!prev.has(id)) {
-          return prev;
-        }
-        return toggled(prev, id);
-      }),
-    expandSection: (key: string) =>
-      setCollapsedSections((prev) => {
-        if (!prev.has(key)) {
-          return prev;
-        }
-        return toggled(prev, key);
-      }),
+      setSectionCollapsed(key, !isSectionCollapsed(key)),
+    expandSection: (key: string) => {
+      if (isSectionCollapsed(key)) {
+        setSectionCollapsed(key, false);
+      }
+    },
   };
 }
