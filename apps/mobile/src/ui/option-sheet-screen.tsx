@@ -26,6 +26,25 @@ import { SelectedMark } from "./row-accessory";
 const SEARCH_AFTER_ITEMS = 10;
 const OPTION_INDENT = 16;
 
+interface OptionGroup {
+  key: string;
+  title?: string;
+  items: OptionSheetItem[];
+}
+
+function groupOptions(items: readonly OptionSheetItem[]): OptionGroup[] {
+  const groups: OptionGroup[] = [];
+  for (const item of items) {
+    const last = groups.at(-1);
+    if (last && last.title === item.group) {
+      last.items.push(item);
+    } else {
+      groups.push({ key: item.key, title: item.group, items: [item] });
+    }
+  }
+  return groups;
+}
+
 function OptionRow({
   item,
   onSelect,
@@ -69,6 +88,11 @@ export function OptionSheetScreen({
   const shown = searchable
     ? items.filter((item) => matchesQuery(item, query))
     : items;
+  const groups = groupOptions(shown);
+  const footer =
+    searchable && shown.length === 0
+      ? t("optionSearch.empty")
+      : (request?.subtitle ?? undefined);
 
   const close = () => {
     if (closesSheet) navigation.getParent()?.goBack();
@@ -103,17 +127,18 @@ export function OptionSheetScreen({
             />
           </FieldSection>
         ) : null}
-        <FormSection
-          footer={
-            searchable && shown.length === 0
-              ? t("optionSearch.empty")
-              : (request?.subtitle ?? undefined)
-          }
-        >
-          {shown.map((item) => (
-            <OptionRow key={item.key} item={item} onSelect={select} />
-          ))}
-        </FormSection>
+        {groups.map((group, index) => (
+          <FormSection
+            key={group.key}
+            title={group.title}
+            footer={index === groups.length - 1 ? footer : undefined}
+          >
+            {group.items.map((item) => (
+              <OptionRow key={item.key} item={item} onSelect={select} />
+            ))}
+          </FormSection>
+        ))}
+        {groups.length === 0 ? <FormSection footer={footer} /> : null}
       </Form>
     </>
   );

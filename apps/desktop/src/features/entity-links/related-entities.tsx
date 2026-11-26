@@ -2,6 +2,7 @@ import {
   type EntityLink,
   type EntityRef,
   entityUri,
+  groupEntityLinks,
   LINKABLE_ENTITY_KINDS,
   parseEntityRef,
   sameEntity,
@@ -68,12 +69,24 @@ export function RelatedEntities({ entity, hideLink }: RelatedEntitiesProps) {
           <AddEntityLink entity={entity} links={links} />
         </div>
       </div>
-      {visible.map((link) => (
-        <RelatedEntityRow
-          key={linkKey(link)}
-          link={link}
-          onRemove={() => void changeLink("link.remove", entity, link.target)}
-        />
+      {groupEntityLinks(visible).map((group) => (
+        <div key={group.relation} className="flex flex-col gap-0.5">
+          <Text
+            size="2xs"
+            className="flex h-6 items-end px-1.5 pb-1 text-editor-fg-subtle"
+          >
+            {t(`links.relation.${group.relation}`)}
+          </Text>
+          {group.links.map((link) => (
+            <RelatedEntityRow
+              key={linkKey(link)}
+              link={link}
+              onRemove={() =>
+                void changeLink("link.remove", entity, link.target)
+              }
+            />
+          ))}
+        </div>
       ))}
     </section>
   );
@@ -108,9 +121,6 @@ function RelatedEntityRow({
         <Text size="meta" truncate className="text-editor-fg">
           {link.title || t("links.untitled")}
         </Text>
-        <Text size="meta" className="ms-auto shrink-0 text-editor-fg-subtle">
-          {t(`links.relation.${link.relation}`)}
-        </Text>
       </button>
       {link.removable ? (
         <IconButton
@@ -120,9 +130,7 @@ function RelatedEntityRow({
         >
           <X className="size-3.5" />
         </IconButton>
-      ) : (
-        <span aria-hidden className="size-7 shrink-0" />
-      )}
+      ) : null}
     </div>
   );
 }

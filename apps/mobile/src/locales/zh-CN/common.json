@@ -17,17 +17,17 @@
   "links": {
     "count_other": "关联 {{count}}",
     "relation": {
-      "blocked-by": "被阻塞",
+      "blocked-by": "被阻塞于",
       "blocks": "阻塞",
       "child": "子事项",
       "duplicate-of": "重复于",
-      "duplicated-by": "被重复",
-      "mentioned-by": "被提及",
-      "mentions": "提及",
+      "duplicated-by": "与此重复",
+      "mentioned-by": "提及此项",
+      "mentions": "此项提及",
       "parent": "父事项",
       "related": "相关",
-      "worked-on-by": "会话",
-      "works-on": "处理中"
+      "worked-on-by": "处理会话",
+      "works-on": "正在处理"
     },
     "title": "关联内容",
     "untitled": "未命名"

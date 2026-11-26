@@ -1,7 +1,8 @@
-import type {
-  EntityLink,
-  EntityLinkRelation,
-  EntityRef,
+import {
+  type EntityLink,
+  type EntityLinkRelation,
+  type EntityRef,
+  groupEntityLinks,
 } from "@cocurdex/shared";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -39,20 +40,20 @@ function useLinkedEntityRows(
   const router = useRouter();
   const relations = useRelationLabels();
   const { data = [] } = useEntityLinks(hostId, entity);
-  return data
-    .filter((link) => !hideLink?.(link))
-    .map((link) => {
+  const visible = data.filter((link) => !hideLink?.(link));
+  return groupEntityLinks(visible).flatMap((group) =>
+    group.links.map((link) => {
       const href = entityLinkHref(hostId, link.target);
       return {
         key: linkKey(link),
         testID: `linked-${link.target.kind}-${link.target.id}`,
+        group: relations[group.relation],
         title: link.title || t("links.untitled"),
-        detail: [relations[link.relation], link.detail]
-          .filter(Boolean)
-          .join(" · "),
+        detail: link.detail ?? undefined,
         onPress: href ? () => router.push(href) : undefined,
       };
-    });
+    }),
+  );
 }
 
 export function useLinkedEntitiesSheet(
@@ -69,6 +70,7 @@ export function useLinkedEntitiesSheet(
       items: rows.map((row) => ({
         key: row.key,
         label: row.title,
+        group: row.group,
         supporting: row.detail,
         testID: row.testID,
         opensPage: row.onPress !== undefined,
