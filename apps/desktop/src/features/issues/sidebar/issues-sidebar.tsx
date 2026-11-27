@@ -25,7 +25,6 @@ interface IssuesSidebarProps {
   onDeleteView: (viewId: string) => void;
   onRenameView: (title: string) => void;
   onTogglePin: (pinned: boolean) => void;
-  onCollapse: () => void;
 }
 
 export function IssuesSidebar({
@@ -38,7 +37,6 @@ export function IssuesSidebar({
   onDeleteView,
   onRenameView,
   onTogglePin,
-  onCollapse,
 }: IssuesSidebarProps) {
   const { t } = useTranslation("issues");
   const preset = selection.kind === "issues" ? selection.preset : "all";
@@ -52,11 +50,7 @@ export function IssuesSidebar({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-2">
-      <SidebarPanelHeader
-        title={t("sidebar.nav.title")}
-        collapseLabel={t("sidebar.collapse")}
-        onCollapse={onCollapse}
-      />
+      <SidebarPanelHeader title={t("sidebar.nav.title")} />
 
       <nav
         aria-label={t("sidebar.nav.title")}

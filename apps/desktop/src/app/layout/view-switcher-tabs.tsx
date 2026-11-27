@@ -229,6 +229,7 @@ export function ViewSwitcherTabs({
     );
   };
 
+  const hasViewTabs = visibleTabs.length > 0 || overflowTabs.length > 0;
   return (
     <TooltipProvider>
       <div
@@ -246,10 +247,12 @@ export function ViewSwitcherTabs({
             <div className="app-no-drag flex h-full shrink-0 items-center gap-1 px-2">
               {leading}
             </div>
-            <Separator
-              orientation="vertical"
-              className="h-4 bg-editor-border data-[orientation=vertical]:self-center"
-            />
+            {hasViewTabs ? (
+              <Separator
+                orientation="vertical"
+                className="h-4 bg-editor-border data-[orientation=vertical]:self-center"
+              />
+            ) : null}
           </>
         ) : null}
         <ToggleGroup

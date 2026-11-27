@@ -5,6 +5,11 @@ import { useTranslation } from "react-i18next";
 import type { AppearanceSettings } from "@/features/settings";
 import { cn } from "@/lib";
 import { AppRail } from "../app-rail";
+import { activeAppAtom } from "../app-rail/app-rail-store";
+import {
+  useAppSidebarCollapsed,
+  useToggleAppSidebar,
+} from "../app-rail/app-sidebar-store";
 import { ChatDock } from "../chat-dock";
 import { ChatDockActions } from "../chat-dock-actions";
 import {
@@ -18,6 +23,7 @@ import { DetachedChatPlaceholder, useChatWindowActions } from "../chat-window";
 import { NavigationButtons } from "../navigation";
 import { RightEditorPanel } from "../right-editor-panel-lazy";
 import {
+  appWorkbenchShownAtom,
   rightPanelDockedAtom,
   rightPanelResolvedActiveViewAtom,
 } from "../right-editor-panel-store";
@@ -110,9 +116,29 @@ export function AppShellContent({
     isRightPanelMaximized ||
     (detached && isRightPanelOpen)
   );
+  const activeApp = useAtomValue(activeAppAtom);
+  const isAppSidebarCollapsed = useAppSidebarCollapsed(activeApp);
+  const toggleAppSidebar = useToggleAppSidebar();
+  let railSidebarToggle: { open: boolean; onToggle(): void } | null = null;
+  if (activeApp) {
+    railSidebarToggle = {
+      open: !isAppSidebarCollapsed,
+      onToggle: () => toggleAppSidebar(activeApp),
+    };
+  } else if (isChatSurfaceShown && !isPanelFullWidth) {
+    railSidebarToggle = {
+      open: isLeftSidebarOpen,
+      onToggle: onToggleLeftSidebar,
+    };
+  }
   const isContentBesideSidebar = isLeftSidebarOpen && !isCompact;
-  const isSidebarBesideRail =
-    isLeftSidebarOpen && isChatSurfaceShown && !isPanelFullWidth && !isCompact;
+  const isAppWorkbenchShown = useAtomValue(appWorkbenchShownAtom);
+  const isSidebarBesideRail = isAppWorkbenchShown
+    ? !isAppSidebarCollapsed
+    : isLeftSidebarOpen &&
+      isChatSurfaceShown &&
+      !isPanelFullWidth &&
+      !isCompact;
   return (
     <main
       className={cn(
@@ -123,11 +149,7 @@ export function AppShellContent({
     >
       <AppRail
         besideSidebar={isSidebarBesideRail}
-        sidebarToggle={
-          isChatSurfaceShown && !isPanelFullWidth
-            ? { open: isLeftSidebarOpen, onToggle: onToggleLeftSidebar }
-            : null
-        }
+        sidebarToggle={railSidebarToggle}
       />
       {isRightPanelOpen ? (
         <div

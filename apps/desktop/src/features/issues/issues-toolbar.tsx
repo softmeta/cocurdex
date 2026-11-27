@@ -9,12 +9,10 @@ import type {
   WorkspaceRecord,
 } from "@cocurdex/shared";
 import { Plus } from "lucide-react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { PanelToolbar } from "@/app/layout/panel-toolbar";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
 import { Text } from "@/components/ui";
-import { cn } from "@/lib";
 import { ViewDisplayMenu, ViewFilterBar, ViewFilterMenu } from "./board";
 import {
   canSaveNavScope,
@@ -27,7 +25,6 @@ export function IssuesToolbar({
   pinnedViews,
   viewTitle,
   scopeLabel,
-  leading,
   showViewControls,
   filters,
   workspaces,
@@ -48,7 +45,6 @@ export function IssuesToolbar({
   pinnedViews: readonly ViewSummary[];
   viewTitle: string;
   scopeLabel: string | null;
-  leading: ReactNode;
   showViewControls: boolean;
   filters: ViewFilter[];
   workspaces: WorkspaceRecord[];
@@ -69,13 +65,7 @@ export function IssuesToolbar({
   return (
     <>
       <PanelToolbar className="gap-1" divided={false}>
-        {leading}
-        <Text
-          size="body"
-          weight="medium"
-          truncate
-          className={cn("me-auto", leading && "ps-0.5", !leading && "ps-1")}
-        >
+        <Text size="body" weight="medium" truncate className="me-auto ps-1">
           {viewTitle}
         </Text>
         {onNewIssue ? (

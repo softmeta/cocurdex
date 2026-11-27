@@ -346,7 +346,7 @@ export const MentionEditor = forwardRef<
         shortcut: sendShortcut,
         hasPrimaryModifier: event.metaKey || event.ctrlKey,
         hasShiftModifier: event.shiftKey,
-        isMultiline: editorRef.current?.innerText.includes("\n") ?? false,
+        isMultiline: editorRef.current?.textContent.includes("\n") ?? false,
       });
       if (action.type === "newline") return;
 

@@ -3,13 +3,9 @@ import { Brain } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { AppWorkbench } from "@/app/layout/app-workbench";
 import { SidebarPanelHeader } from "@/app/layout/sidebar-panel-header";
-import { SidebarToggleButton } from "@/app/layout/titlebar-icon-button";
-import {
-  AppSelect,
-  ResizableSidebar,
-  WORKBENCH_SIDEBAR_WIDTH_PX,
-} from "@/components";
+import { AppSelect } from "@/components";
 import {
   EmptyState,
   Input,
@@ -56,7 +52,6 @@ export function MemoryLibraryView() {
   const [mode, setMode] = useState<MemoryLibraryMode>("diary");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const canHistory = capabilities?.history ?? false;
   const canRestore = capabilities?.restore ?? false;
   const library = useMemoryLibrary(scope, revision);
@@ -142,14 +137,6 @@ export function MemoryLibraryView() {
     );
   }
 
-  const expandSidebar = (
-    <SidebarToggleButton
-      label={t("library.expand")}
-      open={false}
-      onToggle={() => setSidebarCollapsed(false)}
-    />
-  );
-
   if (status && !ready) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
@@ -163,93 +150,75 @@ export function MemoryLibraryView() {
   }
 
   return (
-    <section
-      aria-label={t("library.label")}
-      className="flex min-h-0 flex-1"
-      style={{ minWidth: WORKBENCH_SIDEBAR_WIDTH_PX + MIN_DETAIL_WIDTH_PX }}
-    >
-      {sidebarCollapsed ? null : (
-        <ResizableSidebar
-          ariaLabel={t("library.resize")}
-          defaultWidth={WORKBENCH_SIDEBAR_WIDTH_PX}
-        >
-          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 px-2 pb-2">
-            <SidebarPanelHeader
-              collapseLabel={t("library.collapse")}
-              title={t("library.label")}
-              onCollapse={() => setSidebarCollapsed(true)}
+    <AppWorkbench
+      app="memory"
+      ariaLabel={t("library.label")}
+      contentMinWidth={MIN_DETAIL_WIDTH_PX}
+      sidebarResizeLabel={t("library.resize")}
+      sidebar={
+        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 px-2 pb-2">
+          <SidebarPanelHeader title={t("library.label")} />
+          {capabilities?.partitions ? (
+            <AppSelect
+              options={scopeOptions}
+              triggerAriaLabel={t("library.scope.label")}
+              value={scope}
+              onValueChange={(value) => {
+                setScope(value as MemoryScope);
+                setSelectedId(null);
+              }}
             />
-            {capabilities?.partitions ? (
-              <AppSelect
-                options={scopeOptions}
-                triggerAriaLabel={t("library.scope.label")}
-                value={scope}
-                onValueChange={(value) => {
-                  setScope(value as MemoryScope);
-                  setSelectedId(null);
-                }}
+          ) : null}
+          <Input
+            aria-label={t("library.search")}
+            placeholder={t("library.search")}
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <ToggleGroup
+            spacing={0.5}
+            type="single"
+            value={mode}
+            variant="segmented"
+            onValueChange={(value) => {
+              if (isLibraryMode(value)) setMode(value);
+            }}
+          >
+            <ToggleGroupItem value="diary">
+              {t("library.mode.diary")}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="tree">
+              {t("library.mode.tree")}
+            </ToggleGroupItem>
+            {canHistory ? (
+              <ToggleGroupItem value="history">
+                {t("library.mode.history")}
+              </ToggleGroupItem>
+            ) : null}
+          </ToggleGroup>
+          <ScrollArea className="min-h-0 flex-1">
+            {library.data ? (
+              <MemoryLibraryList
+                canRestore={canRestore}
+                entries={entries}
+                history={history.data ?? []}
+                mode={mode}
+                selectedId={selectedId}
+                onRestore={(id) => void restore(id)}
+                onSelect={setSelectedId}
               />
             ) : null}
-            <Input
-              aria-label={t("library.search")}
-              placeholder={t("library.search")}
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <ToggleGroup
-              spacing={0.5}
-              type="single"
-              value={mode}
-              variant="segmented"
-              onValueChange={(value) => {
-                if (isLibraryMode(value)) setMode(value);
-              }}
-            >
-              <ToggleGroupItem value="diary">
-                {t("library.mode.diary")}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="tree">
-                {t("library.mode.tree")}
-              </ToggleGroupItem>
-              {canHistory ? (
-                <ToggleGroupItem value="history">
-                  {t("library.mode.history")}
-                </ToggleGroupItem>
-              ) : null}
-            </ToggleGroup>
-            <ScrollArea className="min-h-0 flex-1">
-              {library.data ? (
-                <MemoryLibraryList
-                  canRestore={canRestore}
-                  entries={entries}
-                  history={history.data ?? []}
-                  mode={mode}
-                  selectedId={selectedId}
-                  onRestore={(id) => void restore(id)}
-                  onSelect={setSelectedId}
-                />
-              ) : null}
-            </ScrollArea>
-            {libraryError ? (
-              <Text className="px-2" size="meta" tone="destructive">
-                {libraryError}
-              </Text>
-            ) : null}
-          </div>
-        </ResizableSidebar>
-      )}
-      <div
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-editor-canvas"
-        style={{ minWidth: MIN_DETAIL_WIDTH_PX }}
-      >
-        {sidebarCollapsed ? (
-          <div className="flex h-8 shrink-0 items-center px-2">
-            {expandSidebar}
-          </div>
-        ) : null}
-        {detail}
-      </div>
-    </section>
+          </ScrollArea>
+          {libraryError ? (
+            <Text className="px-2" size="meta" tone="destructive">
+              {libraryError}
+            </Text>
+          ) : null}
+        </div>
+      }
+    >
+      {detail}
+    </AppWorkbench>
   );
 }

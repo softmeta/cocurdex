@@ -9,6 +9,7 @@ interface ResizableSidebarProps {
   minWidth?: number;
   maxWidth?: number;
   ariaLabel: string;
+  surface?: "editor" | "sidebar";
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export function ResizableSidebar({
   minWidth = 180,
   maxWidth = 480,
   ariaLabel,
+  surface = "editor",
   className,
 }: ResizableSidebarProps) {
   const [width, setWidth] = useState(defaultWidth);
@@ -42,9 +44,11 @@ export function ResizableSidebar({
     <>
       <div
         className={cn(
-          "flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden bg-editor-shell",
+          "flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden",
+          { editor: "bg-editor-shell", sidebar: "bg-sidebar" }[surface],
           className,
         )}
+        data-window-sidebar={surface === "sidebar" ? "" : undefined}
         style={{ width }}
       >
         {children}

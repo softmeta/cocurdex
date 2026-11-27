@@ -56,138 +56,136 @@ export function ProviderDetailsSection({
     !isPresetProvider || openEndpointProviderIds.has(draftProvider.id);
 
   return (
-    <>
-      <div className="grid gap-4 py-4">
-        <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
-          <Text size="body" weight="semibold">
-            {t("providers.sections.provider")}
-          </Text>
-          {selectedProvider ? (
-            <Label
-              className="flex shrink-0 items-center gap-2"
-              htmlFor={enabledSwitchId}
-            >
-              <Text size="body">{t("providers.state.enabled")}</Text>
-              <Switch
-                checked={draftProvider.enabled}
-                id={enabledSwitchId}
-                onCheckedChange={onEnabledChange}
-              />
-            </Label>
-          ) : null}
-        </div>
+    <div className="grid gap-4 py-4">
+      <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
+        <Text size="body" weight="semibold">
+          {t("providers.sections.provider")}
+        </Text>
+        {selectedProvider ? (
+          <Label
+            className="flex shrink-0 items-center gap-2"
+            htmlFor={enabledSwitchId}
+          >
+            <Text size="body">{t("providers.state.enabled")}</Text>
+            <Switch
+              checked={draftProvider.enabled}
+              id={enabledSwitchId}
+              onCheckedChange={onEnabledChange}
+            />
+          </Label>
+        ) : null}
+      </div>
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <Label className="grid gap-1.5">
-            <FieldCaption>{t("providers.fields.providerId")}</FieldCaption>
-            <Input
-              className={fieldClass}
-              disabled={isIdLocked}
-              placeholder={t("providers.fields.providerId")}
-              value={draftProvider.id}
-              onChange={(event) =>
-                onDraftProviderChange({
-                  ...draftProvider,
-                  id: event.target.value,
-                })
-              }
-            />
-          </Label>
-          <Label className="grid gap-1.5">
-            <FieldCaption>{t("providers.fields.displayName")}</FieldCaption>
-            <Input
-              className={fieldClass}
-              disabled={isPresetProvider}
-              placeholder={t("providers.fields.displayName")}
-              value={draftProvider.name}
-              onChange={(event) =>
-                onDraftProviderChange({
-                  ...draftProvider,
-                  name: event.target.value,
-                })
-              }
-            />
-          </Label>
-        </div>
+      <div className="grid gap-3 md:grid-cols-2">
         <Label className="grid gap-1.5">
-          <FieldCaption>{t("providers.fields.baseUrl")}</FieldCaption>
+          <FieldCaption>{t("providers.fields.providerId")}</FieldCaption>
           <Input
             className={fieldClass}
-            disabled={!isEndpointEditable}
-            placeholder="e.g. https://api.openai.com/v1"
-            value={draftProvider.baseUrl}
+            disabled={isIdLocked}
+            placeholder={t("providers.fields.providerId")}
+            value={draftProvider.id}
             onChange={(event) =>
               onDraftProviderChange({
                 ...draftProvider,
-                baseUrl: event.target.value,
+                id: event.target.value,
               })
             }
           />
         </Label>
-        {!managedAuth ? (
-          <div className="grid gap-1.5">
-            <Label htmlFor={apiKeyId}>
-              <FieldCaption>{t("providers.fields.apiKey")}</FieldCaption>
-              <Text size="meta" tone="subtle">
-                {hasStoredApiKey
-                  ? t("providers.state.configured")
-                  : t("providers.state.notConfigured")}
-              </Text>
-            </Label>
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-              <Input
-                className={cn(fieldClass, "min-w-0 flex-1")}
-                id={apiKeyId}
-                placeholder={
-                  hasStoredApiKey ? t("providers.fields.newApiKey") : undefined
-                }
-                type="password"
-                value={apiKey}
-                onChange={(event) => onApiKeyChange(event.target.value)}
-              />
-              {hasStoredApiKey ? (
-                <Button
-                  className="shrink-0"
-                  type="button"
-                  variant="ghost"
-                  onClick={onClearApiKey}
-                >
-                  <KeyRound className="size-4" />
-                  {t("providers.actions.clearKey")}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-        {!isPresetProvider && selectedProvider ? (
-          <div className="flex flex-col items-start gap-1.5">
-            <Label>{t("providers.manageLabel")}</Label>
-            <AppRemoveButton
-              cancelLabel={t("providers.deleteConfirm.cancel")}
-              confirmDescription={t("providers.deleteConfirm.description", {
-                provider: selectedProvider.name,
-              })}
-              confirmLabel={t("providers.deleteConfirm.confirm")}
-              confirmTitle={t("providers.deleteConfirm.title")}
-              label={t("providers.actions.delete")}
-              onConfirm={() => void onRemoveProvider(selectedProvider.id)}
-            />
-          </div>
-        ) : null}
-        {isEndpointEditable ? (
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <Button
-              size="sm"
-              type="button"
-              variant="secondary"
-              onClick={onSaveProvider}
-            >
-              <Check className="size-4" />
-              {t("providers.actions.save")}
-            </Button>
-          </div>
-        ) : null}
+        <Label className="grid gap-1.5">
+          <FieldCaption>{t("providers.fields.displayName")}</FieldCaption>
+          <Input
+            className={fieldClass}
+            disabled={isPresetProvider}
+            placeholder={t("providers.fields.displayName")}
+            value={draftProvider.name}
+            onChange={(event) =>
+              onDraftProviderChange({
+                ...draftProvider,
+                name: event.target.value,
+              })
+            }
+          />
+        </Label>
       </div>
-    </>
+      <Label className="grid gap-1.5">
+        <FieldCaption>{t("providers.fields.baseUrl")}</FieldCaption>
+        <Input
+          className={fieldClass}
+          disabled={!isEndpointEditable}
+          placeholder="e.g. https://api.openai.com/v1"
+          value={draftProvider.baseUrl}
+          onChange={(event) =>
+            onDraftProviderChange({
+              ...draftProvider,
+              baseUrl: event.target.value,
+            })
+          }
+        />
+      </Label>
+      {!managedAuth ? (
+        <div className="grid gap-1.5">
+          <Label htmlFor={apiKeyId}>
+            <FieldCaption>{t("providers.fields.apiKey")}</FieldCaption>
+            <Text size="meta" tone="subtle">
+              {hasStoredApiKey
+                ? t("providers.state.configured")
+                : t("providers.state.notConfigured")}
+            </Text>
+          </Label>
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              className={cn(fieldClass, "min-w-0 flex-1")}
+              id={apiKeyId}
+              placeholder={
+                hasStoredApiKey ? t("providers.fields.newApiKey") : undefined
+              }
+              type="password"
+              value={apiKey}
+              onChange={(event) => onApiKeyChange(event.target.value)}
+            />
+            {hasStoredApiKey ? (
+              <Button
+                className="shrink-0"
+                type="button"
+                variant="ghost"
+                onClick={onClearApiKey}
+              >
+                <KeyRound className="size-4" />
+                {t("providers.actions.clearKey")}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {!isPresetProvider && selectedProvider ? (
+        <div className="flex flex-col items-start gap-1.5">
+          <Label>{t("providers.manageLabel")}</Label>
+          <AppRemoveButton
+            cancelLabel={t("providers.deleteConfirm.cancel")}
+            confirmDescription={t("providers.deleteConfirm.description", {
+              provider: selectedProvider.name,
+            })}
+            confirmLabel={t("providers.deleteConfirm.confirm")}
+            confirmTitle={t("providers.deleteConfirm.title")}
+            label={t("providers.actions.delete")}
+            onConfirm={() => void onRemoveProvider(selectedProvider.id)}
+          />
+        </div>
+      ) : null}
+      {isEndpointEditable ? (
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <Button
+            size="sm"
+            type="button"
+            variant="secondary"
+            onClick={onSaveProvider}
+          >
+            <Check className="size-4" />
+            {t("providers.actions.save")}
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }

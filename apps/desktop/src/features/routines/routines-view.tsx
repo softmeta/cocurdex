@@ -1,17 +1,11 @@
 import { useAtom } from "jotai";
 import { AlarmClock, Plus } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { AppWorkbench } from "@/app/layout/app-workbench";
 import { SidebarPanelHeader } from "@/app/layout/sidebar-panel-header";
-import {
-  SidebarToggleButton,
-  TitlebarIconButton,
-} from "@/app/layout/titlebar-icon-button";
-import {
-  AppSelect,
-  ResizableSidebar,
-  WORKBENCH_SIDEBAR_WIDTH_PX,
-} from "@/components";
+import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
+import { AppSelect } from "@/components";
 import { EmptyState, ScrollArea } from "@/components/ui";
 import { usePersonalAgents } from "@/features/personal";
 import { RoutineForm } from "./routine-form";
@@ -33,7 +27,6 @@ export function RoutinesView({
   const { routines, loaded } = useRoutines();
   const [scope, setScope] = useAtom(routineScopeAtom);
   const [selectedId, setSelectedId] = useAtom(routineSelectionAtom);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const agentNames = new Map(
     agents.map((agent) => [agent.id, agent.role.name] as const),
@@ -96,68 +89,48 @@ export function RoutinesView({
   }
 
   return (
-    <section
-      aria-label={t("routines.label")}
-      className="flex min-h-0 flex-1"
-      style={{ minWidth: WORKBENCH_SIDEBAR_WIDTH_PX + MIN_DETAIL_WIDTH_PX }}
+    <AppWorkbench
+      app="routines"
+      ariaLabel={t("routines.label")}
+      contentMinWidth={MIN_DETAIL_WIDTH_PX}
+      sidebarResizeLabel={t("routines.resize")}
+      sidebar={
+        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 px-2 pb-2">
+          <SidebarPanelHeader
+            action={
+              <TitlebarIconButton
+                aria-label={t("routines.new")}
+                disabled={agents.length === 0}
+                onClick={() => setSelectedId(NEW_ROUTINE)}
+              >
+                <Plus className="size-3.5" />
+              </TitlebarIconButton>
+            }
+            title={t("routines.label")}
+          />
+          {agents.length > 1 ? (
+            <AppSelect
+              options={[
+                { value: ALL_AGENTS, label: t("routines.allAgents") },
+                ...agentOptions,
+              ]}
+              triggerAriaLabel={t("routines.agent")}
+              value={scope}
+              onValueChange={setScope}
+            />
+          ) : null}
+          <ScrollArea className="min-h-0 flex-1">
+            <RoutineList
+              agentNames={agents.length > 1 ? agentNames : new Map()}
+              routines={visible}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+          </ScrollArea>
+        </div>
+      }
     >
-      {sidebarCollapsed ? null : (
-        <ResizableSidebar
-          ariaLabel={t("routines.resize")}
-          defaultWidth={WORKBENCH_SIDEBAR_WIDTH_PX}
-        >
-          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 px-2 pb-2">
-            <SidebarPanelHeader
-              action={
-                <TitlebarIconButton
-                  aria-label={t("routines.new")}
-                  disabled={agents.length === 0}
-                  onClick={() => setSelectedId(NEW_ROUTINE)}
-                >
-                  <Plus className="size-3.5" />
-                </TitlebarIconButton>
-              }
-              collapseLabel={t("routines.collapse")}
-              title={t("routines.label")}
-              onCollapse={() => setSidebarCollapsed(true)}
-            />
-            {agents.length > 1 ? (
-              <AppSelect
-                options={[
-                  { value: ALL_AGENTS, label: t("routines.allAgents") },
-                  ...agentOptions,
-                ]}
-                triggerAriaLabel={t("routines.agent")}
-                value={scope}
-                onValueChange={setScope}
-              />
-            ) : null}
-            <ScrollArea className="min-h-0 flex-1">
-              <RoutineList
-                agentNames={agents.length > 1 ? agentNames : new Map()}
-                routines={visible}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-              />
-            </ScrollArea>
-          </div>
-        </ResizableSidebar>
-      )}
-      <div
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-editor-canvas"
-        style={{ minWidth: MIN_DETAIL_WIDTH_PX }}
-      >
-        {sidebarCollapsed ? (
-          <div className="flex h-8 shrink-0 items-center px-2">
-            <SidebarToggleButton
-              label={t("routines.expand")}
-              open={false}
-              onToggle={() => setSidebarCollapsed(false)}
-            />
-          </div>
-        ) : null}
-        {detail}
-      </div>
-    </section>
+      {detail}
+    </AppWorkbench>
   );
 }

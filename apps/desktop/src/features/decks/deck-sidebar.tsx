@@ -24,7 +24,7 @@ import { canPickLocalFiles, pickLocalFilePath } from "./local-file-picker";
 const PPTX_ACCEPT =
   ".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
-export function DeckSidebar({ onCollapse }: { onCollapse: () => void }) {
+export function DeckSidebar() {
   const { t } = useTranslation("decks");
   const decks = useAtomValue(deckSummariesAtom);
   const activeDeckId = useAtomValue(activeDeckIdAtom);
@@ -75,8 +75,6 @@ export function DeckSidebar({ onCollapse }: { onCollapse: () => void }) {
     <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 px-2 pb-2">
       <SidebarPanelHeader
         title={t("sidebar.title")}
-        collapseLabel={t("sidebar.collapse")}
-        onCollapse={onCollapse}
         action={
           <div className="flex items-center gap-0.5">
             {canImport ? (

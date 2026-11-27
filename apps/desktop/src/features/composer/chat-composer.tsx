@@ -564,61 +564,59 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     );
 
     return (
-      <>
-        <form
-          className="relative flex flex-col gap-3 @container/composer"
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          onSubmit={(event) => {
-            event.preventDefault();
-            sendMessage();
-          }}
-        >
-          <input
-            accept={
-              canAttachDocuments
-                ? `image/png,image/jpeg,image/gif,image/webp,${DOCUMENT_ATTACHMENT_ACCEPT}`
-                : "image/png,image/jpeg,image/gif,image/webp"
-            }
-            className="hidden"
-            multiple
-            onChange={handleAttachmentInputChange}
-            ref={attachmentInputRef}
-            type="file"
-          />
-          <ComposerCard
-            attachMenuContent={attachMenuContent}
-            canSend={canSubmitNow}
-            composerAttachments={composerAttachments}
-            contextAttachments={contextAttachments}
-            contextChips={contextChips}
-            contextFileMentions={contextFileMentions}
-            editorRef={editorRef}
-            footerLeading={footerLeading}
-            footerTrailing={footerTrailing}
-            initialEditorContent={initialDraft}
-            runtimeMenuHeader={isAgentMode ? inSessionAgentSubmenu : null}
-            runtimeMenuExtras={runtimeMenuExtras}
-            modelLeading={modelLeading}
-            sessionId={sessionId}
-            attachmentError={attachmentError}
-            isAgentMode={isAgentMode}
-            runtimeControls={runtimeControls}
-            isRunning={isRunning}
-            mentionAnchor={mentionAnchor}
-            onEditorChange={handleEditorChange}
-            onMentionAnchorChange={setMentionAnchor}
-            onPaste={handlePaste}
-            onRemoveAttachment={removeAttachment}
-            onStop={onStop}
-            onSubmit={sendMessage}
-            placeholderOverride={placeholderOverride}
-            resolvedControls={resolvedControls}
-            slashCommands={slashCommands}
-            sendShortcut={sendShortcut}
-          />
-        </form>
-      </>
+      <form
+        className="relative flex flex-col gap-3 @container/composer"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onSubmit={(event) => {
+          event.preventDefault();
+          sendMessage();
+        }}
+      >
+        <input
+          accept={
+            canAttachDocuments
+              ? `image/png,image/jpeg,image/gif,image/webp,${DOCUMENT_ATTACHMENT_ACCEPT}`
+              : "image/png,image/jpeg,image/gif,image/webp"
+          }
+          className="hidden"
+          multiple
+          onChange={handleAttachmentInputChange}
+          ref={attachmentInputRef}
+          type="file"
+        />
+        <ComposerCard
+          attachMenuContent={attachMenuContent}
+          canSend={canSubmitNow}
+          composerAttachments={composerAttachments}
+          contextAttachments={contextAttachments}
+          contextChips={contextChips}
+          contextFileMentions={contextFileMentions}
+          editorRef={editorRef}
+          footerLeading={footerLeading}
+          footerTrailing={footerTrailing}
+          initialEditorContent={initialDraft}
+          runtimeMenuHeader={isAgentMode ? inSessionAgentSubmenu : null}
+          runtimeMenuExtras={runtimeMenuExtras}
+          modelLeading={modelLeading}
+          sessionId={sessionId}
+          attachmentError={attachmentError}
+          isAgentMode={isAgentMode}
+          runtimeControls={runtimeControls}
+          isRunning={isRunning}
+          mentionAnchor={mentionAnchor}
+          onEditorChange={handleEditorChange}
+          onMentionAnchorChange={setMentionAnchor}
+          onPaste={handlePaste}
+          onRemoveAttachment={removeAttachment}
+          onStop={onStop}
+          onSubmit={sendMessage}
+          placeholderOverride={placeholderOverride}
+          resolvedControls={resolvedControls}
+          slashCommands={slashCommands}
+          sendShortcut={sendShortcut}
+        />
+      </form>
     );
   },
 );

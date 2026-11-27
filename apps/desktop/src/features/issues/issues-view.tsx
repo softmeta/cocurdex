@@ -13,8 +13,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { ListTodo } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { SidebarToggleButton } from "@/app/layout/titlebar-icon-button";
-import { ResizableSidebar, WORKBENCH_SIDEBAR_WIDTH_PX } from "@/components";
+import { AppWorkbench } from "@/app/layout/app-workbench";
 import { EmptyState } from "@/components/ui";
 import { useDataSync } from "@/features/data-sync";
 import { activeWorkspaceIdAtom, workspacesAtom } from "@/features/workspaces";
@@ -120,7 +119,6 @@ export function IssuesView() {
   const [composeDraft, setComposeDraft] = useState<IssueComposeDraft | null>(
     null,
   );
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [pendingDeleteBoardId, setPendingDeleteBoardId] = useState<
     string | null
   >(null);
@@ -264,13 +262,6 @@ export function IssuesView() {
     return null;
   }
 
-  const sidebarToggle = sidebarCollapsed ? (
-    <SidebarToggleButton
-      label={t("sidebar.expand")}
-      open={false}
-      onToggle={() => setSidebarCollapsed(false)}
-    />
-  ) : null;
   const fieldOptions: IssueFieldOptions | null = viewBoard
     ? {
         statusOptions: viewBoard.statusOptions,
@@ -290,141 +281,135 @@ export function IssuesView() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1">
-      {sidebarCollapsed ? null : (
-        <ResizableSidebar
-          defaultWidth={WORKBENCH_SIDEBAR_WIDTH_PX}
-          ariaLabel={t("sidebar.resize")}
-        >
-          <IssuesSidebar
+    <AppWorkbench
+      app="issues"
+      contentMinWidth={0}
+      sidebarResizeLabel={t("sidebar.resize")}
+      sidebar={
+        <IssuesSidebar
+          selection={nav.selection}
+          onSelect={(selection) => {
+            closeIssueDetail();
+            nav.select(selection);
+          }}
+          issues={loadedBoard?.issues ?? []}
+          workspaces={workspaces}
+          activityOf={nav.activityOf}
+          views={customViews}
+          onDeleteView={setPendingDeleteBoardId}
+          onRenameView={(title) => {
+            void updateView({ title });
+          }}
+          onTogglePin={(pinned) => {
+            void updateView({ pinned });
+          }}
+        />
+      }
+    >
+      {issueDetail && viewBoard && fieldOptions ? (
+        <IssueDetailPage
+          state={issueDetail}
+          viewTitle={viewBoard.view.title}
+          options={fieldOptions}
+          actions={detailActions}
+          stepper={stepper}
+          onBack={closeIssueDetail}
+        />
+      ) : null}
+      <div
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col",
+          detailPageOpen && "hidden",
+        )}
+      >
+        {boards.length > 0 ? (
+          <IssuesToolbar
             selection={nav.selection}
-            onSelect={(selection) => {
-              closeIssueDetail();
-              nav.select(selection);
-            }}
-            issues={loadedBoard?.issues ?? []}
+            pinnedViews={pinnedViews}
+            viewTitle={viewTitle}
+            scopeLabel={scopeLabel}
+            showViewControls={boards.length > 0}
+            filters={viewFilters}
             workspaces={workspaces}
-            activityOf={nav.activityOf}
-            views={customViews}
-            onDeleteView={setPendingDeleteBoardId}
-            onRenameView={(title) => {
-              void updateView({ title });
+            labels={activeBoard?.labels ?? []}
+            statuses={activeBoard?.statusOptions ?? []}
+            layout={layout}
+            groupBy={groupBy}
+            onSelect={nav.select}
+            onFiltersChange={handleFiltersChange}
+            onLayoutChange={handleLayout}
+            onGroupByChange={handleGroupBy}
+            display={display}
+            onDisplayChange={handleDisplayChange}
+            onSaveView={(title) => {
+              void handleSaveView(title);
             }}
-            onTogglePin={(pinned) => {
-              void updateView({ pinned });
-            }}
-            onCollapse={() => setSidebarCollapsed(true)}
+            onNewIssue={
+              viewBoard ? () => handleAddCard(UNGROUPED_COLUMN_ID) : null
+            }
           />
-        </ResizableSidebar>
-      )}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
-        {issueDetail && viewBoard && fieldOptions ? (
-          <IssueDetailPage
-            state={issueDetail}
+        ) : null}
+        {viewBoard ? (
+          layout === "list" ? (
+            <IssuesList
+              board={viewBoard}
+              onAddCard={handleAddCard}
+              onDeleteCard={(id) => {
+                void deleteIssue(id);
+              }}
+              onEditCard={handleEditCard}
+              onUpdateCardFields={(id, fields) => {
+                void updateIssue({ id, ...fields });
+              }}
+            />
+          ) : (
+            <IssuesBoard
+              board={viewBoard}
+              onMoveIssue={handleMoveIssue}
+              onMoveIssueLocal={moveIssueLocal}
+              onAddCard={handleAddCard}
+              onDeleteCard={(id) => {
+                void deleteIssue(id);
+              }}
+              onEditCard={handleEditCard}
+              onUpdateCardFields={(id, fields) => {
+                void updateIssue({ id, ...fields });
+              }}
+              onRenameColumn={handleRenameColumn}
+            />
+          )
+        ) : boards.length > 0 ? (
+          <div className="flex-1" />
+        ) : (
+          <div className="flex flex-1 items-center justify-center">
+            <EmptyState
+              icon={<ListTodo />}
+              title={t("empty.title")}
+              description={t("empty.description")}
+            />
+          </div>
+        )}
+      </div>
+      {viewBoard && fieldOptions ? (
+        <>
+          <IssueCreateDialog
+            composeDraft={composeDraft}
             viewTitle={viewBoard.view.title}
             options={fieldOptions}
-            actions={detailActions}
-            leading={sidebarToggle}
-            stepper={stepper}
-            onBack={closeIssueDetail}
+            onCreateLabel={createIssueLabel}
+            onClose={() => setComposeDraft(null)}
+            onSave={handleSaveIssue}
           />
-        ) : null}
-        <div
-          className={cn(
-            "flex min-h-0 min-w-0 flex-1 flex-col",
-            detailPageOpen && "hidden",
-          )}
-        >
-          {boards.length > 0 || sidebarCollapsed ? (
-            <IssuesToolbar
-              selection={nav.selection}
-              pinnedViews={pinnedViews}
-              viewTitle={viewTitle}
-              scopeLabel={scopeLabel}
-              leading={sidebarToggle}
-              showViewControls={boards.length > 0}
-              filters={viewFilters}
-              workspaces={workspaces}
-              labels={activeBoard?.labels ?? []}
-              statuses={activeBoard?.statusOptions ?? []}
-              layout={layout}
-              groupBy={groupBy}
-              onSelect={nav.select}
-              onFiltersChange={handleFiltersChange}
-              onLayoutChange={handleLayout}
-              onGroupByChange={handleGroupBy}
-              display={display}
-              onDisplayChange={handleDisplayChange}
-              onSaveView={(title) => {
-                void handleSaveView(title);
-              }}
-              onNewIssue={
-                viewBoard ? () => handleAddCard(UNGROUPED_COLUMN_ID) : null
-              }
-            />
-          ) : null}
-          {viewBoard ? (
-            layout === "list" ? (
-              <IssuesList
-                board={viewBoard}
-                onAddCard={handleAddCard}
-                onDeleteCard={(id) => {
-                  void deleteIssue(id);
-                }}
-                onEditCard={handleEditCard}
-                onUpdateCardFields={(id, fields) => {
-                  void updateIssue({ id, ...fields });
-                }}
-              />
-            ) : (
-              <IssuesBoard
-                board={viewBoard}
-                onMoveIssue={handleMoveIssue}
-                onMoveIssueLocal={moveIssueLocal}
-                onAddCard={handleAddCard}
-                onDeleteCard={(id) => {
-                  void deleteIssue(id);
-                }}
-                onEditCard={handleEditCard}
-                onUpdateCardFields={(id, fields) => {
-                  void updateIssue({ id, ...fields });
-                }}
-                onRenameColumn={handleRenameColumn}
-              />
-            )
-          ) : boards.length > 0 ? (
-            <div className="flex-1" />
-          ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <EmptyState
-                icon={<ListTodo />}
-                title={t("empty.title")}
-                description={t("empty.description")}
-              />
-            </div>
-          )}
-        </div>
-        {viewBoard && fieldOptions ? (
-          <>
-            <IssueCreateDialog
-              composeDraft={composeDraft}
-              viewTitle={viewBoard.view.title}
-              options={fieldOptions}
-              onCreateLabel={createIssueLabel}
-              onClose={() => setComposeDraft(null)}
-              onSave={handleSaveIssue}
-            />
-            <DeleteViewDialog
-              view={pendingDeleteBoard}
-              onClose={() => setPendingDeleteBoardId(null)}
-              onConfirm={(viewId) => {
-                void deleteView(viewId);
-              }}
-            />
-            <IssueStatusesDialog />
-          </>
-        ) : null}
-      </div>
-    </div>
+          <DeleteViewDialog
+            view={pendingDeleteBoard}
+            onClose={() => setPendingDeleteBoardId(null)}
+            onConfirm={(viewId) => {
+              void deleteView(viewId);
+            }}
+          />
+          <IssueStatusesDialog />
+        </>
+      ) : null}
+    </AppWorkbench>
   );
 }

@@ -49,7 +49,10 @@ import type { ChatLayoutMode } from "../chat-layout-preference";
 import { useChatBrowserContext } from "../chat-window/chat-browser-context";
 import { useChatContext } from "../chat-window/use-chat-context";
 import { NavigationButtons } from "../navigation";
-import { rightPanelResolvedActiveViewAtom } from "../right-editor-panel-store";
+import {
+  appWorkbenchShownAtom,
+  rightPanelResolvedActiveViewAtom,
+} from "../right-editor-panel-store";
 import {
   SearchPalette,
   SearchPaletteButton,
@@ -166,6 +169,9 @@ export function AppShellFrame({
   const providerConfigs = useAtomValue(providerConfigsAtom);
   const sidebarTab = useAtomValue(sidebarTabAtom);
   const isAppMode = useAtomValue(activeAppAtom) !== null;
+  const isAppWorkbenchShown = useAtomValue(appWorkbenchShownAtom);
+  const showsTitlebarLeading = !isPanelFullWidth || isAppWorkbenchShown;
+  const isSessionSidebarShown = isLeftSidebarOpen && !isPanelFullWidth;
   const selectRailItem = useSetAtom(selectRailItemAtom);
   const isAssistantSidebar = sidebarTab === "personal";
   const providerModelsLoaded = useAtomValue(providerModelsLoadedAtom);
@@ -300,11 +306,11 @@ export function AppShellFrame({
             <div
               className="app-drag flex h-full shrink-0 items-center"
               style={{
-                width: isLeftSidebarOpen
+                width: isSessionSidebarShown
                   ? APP_RAIL_WIDTH + leftWidth
                   : undefined,
                 paddingInlineStart: TITLEBAR_LEADING_RESERVE,
-                paddingInlineEnd: isLeftSidebarOpen
+                paddingInlineEnd: isSessionSidebarShown
                   ? TITLEBAR_SIDEBAR_END_INSET
                   : undefined,
               }}
@@ -312,10 +318,12 @@ export function AppShellFrame({
               <div
                 className={cn(
                   "app-no-drag min-w-0 flex-1 items-center gap-1",
-                  isPanelFullWidth ? "hidden" : "flex",
+                  showsTitlebarLeading ? "flex" : "hidden",
                 )}
               >
-                {isAssistantSidebar ? null : <NavigationButtons />}
+                {isAssistantSidebar && !isAppMode ? null : (
+                  <NavigationButtons />
+                )}
                 <SearchPaletteButton />
               </div>
             </div>
