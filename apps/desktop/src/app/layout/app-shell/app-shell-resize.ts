@@ -1,3 +1,4 @@
+import { useAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { beginColumnResize } from "@/components/use-column-resize";
 import {
@@ -14,10 +15,16 @@ import {
   PANEL_SEPARATOR_WIDTH,
   resolveCompactPanel,
 } from "./panel-geometry";
+import {
+  clampSidebarWidth,
+  DEFAULT_LEFT,
+  windowSidebarWidthAtom,
+} from "./sidebar-width-store";
+
+export { DEFAULT_LEFT };
 
 export const MIN_RIGHT = MIN_RIGHT_WIDTH;
 
-export const DEFAULT_LEFT = 240;
 export const DEFAULT_RIGHT = MIN_RIGHT;
 export const LEFT_SIDEBAR_COLLAPSE_WIDTH =
   MIN_LEFT + MIN_CHAT_WIDTH + PANEL_SEPARATOR_WIDTH;
@@ -65,8 +72,7 @@ interface AppShellResizeOptions {
 }
 
 function getInitialLeftWidth() {
-  const stored = getStoredLeftWidth() ?? DEFAULT_LEFT;
-  return clamp(stored, MIN_LEFT, MAX_LEFT);
+  return clampSidebarWidth(getStoredLeftWidth() ?? DEFAULT_LEFT);
 }
 
 function getInitialRightWidth() {
@@ -90,7 +96,7 @@ export function useAppShellResize({
     return { width, compact: resolveCompactPanel(width, false) };
   });
   const contentWidth = viewport.width;
-  const [leftWidth, setLeftWidth] = useState(getInitialLeftWidth);
+  const [leftWidth, setLeftWidth] = useAtom(windowSidebarWidthAtom);
   const [rightWidth, setRightWidth] = useState(getInitialRightWidth);
   const effectiveRightWidth = clampPanelWidth(rightWidth, contentWidth);
   const effectiveLeftWidth = clampLeftWidth(leftWidth, contentWidth);
@@ -192,6 +198,7 @@ export function useAppShellResize({
       isRightPanelOpen,
       effectiveLeftWidth,
       effectiveRightWidth,
+      setLeftWidth,
       setRightPanelResizing,
     ],
   );

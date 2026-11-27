@@ -8,6 +8,9 @@ interface ResizableSidebarProps {
   defaultWidth: number;
   minWidth?: number;
   maxWidth?: number;
+  width?: number;
+  onWidthChange?(width: number): void;
+  onWidthCommit?(width: number): void;
   ariaLabel: string;
   surface?: "editor" | "sidebar";
   className?: string;
@@ -23,8 +26,13 @@ export function ResizableSidebar({
   ariaLabel,
   surface = "editor",
   className,
+  width: controlledWidth,
+  onWidthChange,
+  onWidthCommit,
 }: ResizableSidebarProps) {
-  const [width, setWidth] = useState(defaultWidth);
+  const [localWidth, setLocalWidth] = useState(defaultWidth);
+  const width = controlledWidth ?? localWidth;
+  const setWidth = onWidthChange ?? setLocalWidth;
   const widthRef = useRef(width);
   widthRef.current = width;
 
@@ -35,9 +43,10 @@ export function ResizableSidebar({
         startWidth: widthRef.current,
         clamp: (next) => Math.min(maxWidth, Math.max(minWidth, next)),
         onWidthChange: setWidth,
+        onDragEnd: onWidthCommit,
       });
     },
-    [minWidth, maxWidth],
+    [minWidth, maxWidth, setWidth, onWidthCommit],
   );
 
   return (

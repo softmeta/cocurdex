@@ -1,10 +1,16 @@
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import type { ReactNode } from "react";
 import { ResizableSidebar, WORKBENCH_SIDEBAR_WIDTH_PX } from "@/components";
 import { cn } from "@/lib";
 import { activeAppAtom } from "./app-rail/app-rail-store";
 import { useAppSidebarCollapsed } from "./app-rail/app-sidebar-store";
-import { TITLEBAR_HEIGHT } from "./app-shell/app-shell-layout";
+import {
+  MAX_LEFT,
+  MIN_LEFT,
+  TITLEBAR_HEIGHT,
+} from "./app-shell/app-shell-layout";
+import { windowSidebarWidthAtom } from "./app-shell/sidebar-width-store";
+import { persistLeftWidth } from "./chat-layout-preference";
 import type { AppView } from "./right-panel-tab-sets";
 
 interface AppWorkbenchProps {
@@ -26,6 +32,8 @@ export function AppWorkbench({
 }: AppWorkbenchProps) {
   const isWindowApp = useAtomValue(activeAppAtom) === app;
   const isCollapsed = useAppSidebarCollapsed(app) && isWindowApp;
+  const [sharedWidth, setSharedWidth] = useAtom(windowSidebarWidthAtom);
+  const sidebarWidth = isWindowApp ? sharedWidth : WORKBENCH_SIDEBAR_WIDTH_PX;
   const titlebarSpacer = isWindowApp ? (
     <div
       aria-hidden
@@ -37,12 +45,21 @@ export function AppWorkbench({
     <section
       aria-label={ariaLabel}
       className="flex min-h-0 flex-1"
-      style={{ minWidth: WORKBENCH_SIDEBAR_WIDTH_PX + contentMinWidth }}
+      style={{ minWidth: sidebarWidth + contentMinWidth }}
     >
       {isCollapsed ? null : (
         <ResizableSidebar
           ariaLabel={sidebarResizeLabel}
           defaultWidth={WORKBENCH_SIDEBAR_WIDTH_PX}
+          {...(isWindowApp
+            ? {
+                width: sharedWidth,
+                minWidth: MIN_LEFT,
+                maxWidth: MAX_LEFT,
+                onWidthChange: setSharedWidth,
+                onWidthCommit: persistLeftWidth,
+              }
+            : {})}
           surface={isWindowApp ? "sidebar" : "editor"}
         >
           {titlebarSpacer}

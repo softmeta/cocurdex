@@ -45,8 +45,11 @@ export function ResizeSeparator({
       >
         <div
           className={cn(
-            "mx-auto h-full w-px transition-colors duration-150 group-hover:bg-chrome-separator-hover",
-            { always: "bg-chrome-separator", hover: "bg-transparent" }[line],
+            "absolute inset-x-0 mx-auto w-px transition-colors duration-150 group-hover:bg-chrome-separator-hover",
+            {
+              always: "inset-y-0 bg-chrome-separator",
+              hover: "inset-y-(--radius-card) bg-transparent",
+            }[line],
           )}
         />
       </div>
