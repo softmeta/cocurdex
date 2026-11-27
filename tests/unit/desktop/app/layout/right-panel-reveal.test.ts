@@ -33,6 +33,7 @@ beforeEach(() => {
 describe("rightPanelResolvedActiveViewAtom reveal", () => {
   it("keeps assistant and work selections independent", () => {
     const store = createStore();
+    store.set(sidebarTabAtom, "workspaces");
     store.set(rightPanelResolvedActiveViewAtom, "git");
     store.set(sidebarTabAtom, "personal");
     expect(store.get(rightPanelResolvedActiveViewAtom)).toBe("overview");
@@ -102,6 +103,7 @@ describe("rightPanelResolvedActiveViewAtom reveal", () => {
 
   it("stops forcing the reveal view after the user picks a tab", () => {
     const store = createStore();
+    store.set(sidebarTabAtom, "workspaces");
 
     store.set(openFileAtom, "/workspace/a.ts");
     store.set(openPdfReaderAtom, "/workspace/b.pdf");
@@ -143,6 +145,7 @@ describe("rightPanelResolvedActiveViewAtom reveal", () => {
 
   it("falls back to editor when stored view is pdf but no docs remain", () => {
     const store = createStore();
+    store.set(sidebarTabAtom, "workspaces");
     store.set(rightPanelActiveViewAtom, "pdf");
     store.set(rightPanelLastNonTerminalViewAtom, "git");
     store.set(rightPanelViewTouchedAtom, true);

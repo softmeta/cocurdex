@@ -11,7 +11,21 @@ export type RightPanelView =
   | "pdf"
   | "terminal";
 
-export type RightPanelMode = "work" | "chat" | "personal";
+export type RightPanelMode = "work" | "chat" | "personal" | "app";
+
+export const APP_VIEWS = [
+  "issues",
+  "notes",
+  "decks",
+  "routines",
+  "memory",
+] as const satisfies readonly RightPanelView[];
+
+export type AppView = (typeof APP_VIEWS)[number];
+
+export function isAppView(view: RightPanelView): view is AppView {
+  return (APP_VIEWS as readonly RightPanelView[]).includes(view);
+}
 
 interface RightPanelTabSet {
   primary: readonly RightPanelView[];
@@ -23,17 +37,9 @@ interface RightPanelTabSet {
 
 const TAB_SETS: Record<RightPanelMode, RightPanelTabSet> = {
   work: {
-    primary: [
-      "editor",
-      "git",
-      "terminal",
-      "issues",
-      "notes",
-      "browser",
-      "decks",
-    ],
-    overflow: ["memory", "routines"],
-    revealOnly: [],
+    primary: ["editor", "git", "terminal", "browser"],
+    overflow: [],
+    revealOnly: ["issues", "notes", "decks", "memory", "routines"],
     fallback: "editor",
     reorderable: true,
   },
@@ -45,10 +51,17 @@ const TAB_SETS: Record<RightPanelMode, RightPanelTabSet> = {
     reorderable: true,
   },
   personal: {
-    primary: ["overview", "memory", "notes", "issues", "routines"],
-    overflow: ["editor", "browser", "decks"],
-    revealOnly: [],
+    primary: ["overview"],
+    overflow: ["editor", "browser"],
+    revealOnly: ["memory", "notes", "issues", "routines", "decks"],
     fallback: "overview",
+    reorderable: false,
+  },
+  app: {
+    primary: [],
+    overflow: [],
+    revealOnly: [...APP_VIEWS, "editor", "browser"],
+    fallback: "notes",
     reorderable: false,
   },
 };

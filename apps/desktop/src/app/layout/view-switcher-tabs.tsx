@@ -1,19 +1,5 @@
 import { useAtom, useAtomValue } from "jotai";
-import {
-  AlarmClock,
-  Brain,
-  Ellipsis,
-  FileText,
-  FolderTree,
-  GitCompare,
-  Globe,
-  LayoutDashboard,
-  ListTodo,
-  type LucideIcon,
-  NotebookPen,
-  Presentation,
-  TerminalSquare,
-} from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import { type ReactNode, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { AppDropdownContent, AppDropdownItem } from "@/components";
@@ -33,64 +19,20 @@ import {
   TITLEBAR_HEIGHT,
   TITLEBAR_ICON_BUTTON_GAP,
   TITLEBAR_ICON_BUTTON_SIZE,
-  TITLEBAR_LEADING_RESERVE,
+  TITLEBAR_LEADING_RESERVE_BESIDE_RAIL,
 } from "./app-shell/app-shell-layout";
+import { PANEL_VIEW_REGISTRY } from "./panel-view-registry";
 import {
   isRightPanelViewAvailable,
   type RightPanelView,
   rightPanelModeAtom,
   rightPanelTabOrderAtom,
 } from "./right-editor-panel-store";
-import { rightPanelTabSet } from "./right-panel-tab-sets";
+import { isAppView, rightPanelTabSet } from "./right-panel-tab-sets";
 import {
   TitlebarIconButton,
   titlebarIconButtonClassName,
 } from "./titlebar-icon-button";
-
-type ViewTabLabelKey =
-  | "actions.showAssistantOverview"
-  | "actions.showGitChanges"
-  | "actions.showEditor"
-  | "actions.showNotes"
-  | "actions.showDecks"
-  | "actions.showIssues"
-  | "actions.showMemory"
-  | "actions.showRoutines"
-  | "actions.showBrowser"
-  | "actions.showPdf"
-  | "actions.showTerminal";
-
-interface TabDef {
-  id: RightPanelView;
-  icon: LucideIcon;
-  labelKey: ViewTabLabelKey;
-}
-
-const TAB_REGISTRY: Record<RightPanelView, TabDef> = {
-  overview: {
-    id: "overview",
-    icon: LayoutDashboard,
-    labelKey: "actions.showAssistantOverview",
-  },
-  git: { id: "git", icon: GitCompare, labelKey: "actions.showGitChanges" },
-  editor: { id: "editor", icon: FolderTree, labelKey: "actions.showEditor" },
-  notes: { id: "notes", icon: NotebookPen, labelKey: "actions.showNotes" },
-  decks: { id: "decks", icon: Presentation, labelKey: "actions.showDecks" },
-  issues: { id: "issues", icon: ListTodo, labelKey: "actions.showIssues" },
-  memory: { id: "memory", icon: Brain, labelKey: "actions.showMemory" },
-  routines: {
-    id: "routines",
-    icon: AlarmClock,
-    labelKey: "actions.showRoutines",
-  },
-  browser: { id: "browser", icon: Globe, labelKey: "actions.showBrowser" },
-  pdf: { id: "pdf", icon: FileText, labelKey: "actions.showPdf" },
-  terminal: {
-    id: "terminal",
-    icon: TerminalSquare,
-    labelKey: "actions.showTerminal",
-  },
-};
 
 const DRAG_THRESHOLD_PX = 3;
 const TAB_STEP_PX = TITLEBAR_ICON_BUTTON_SIZE + TITLEBAR_ICON_BUTTON_GAP;
@@ -130,7 +72,7 @@ export function ViewSwitcherTabs({
   const visibleTabs = [
     ...primaryTabs,
     ...[...overflowTabs, ...tabSet.revealOnly].filter(
-      (id) => id === activeView,
+      (id) => id === activeView && !(mode === "app" && isAppView(id)),
     ),
     ...(hasPdfsOpen ? (["pdf"] as const) : []),
   ].filter(available);
@@ -268,7 +210,7 @@ export function ViewSwitcherTabs({
   const handleValueChange = useCallback(
     (value: string) => {
       if (isDraggingRef.current) return;
-      if (Object.hasOwn(TAB_REGISTRY, value)) {
+      if (Object.hasOwn(PANEL_VIEW_REGISTRY, value)) {
         onViewChange(value as RightPanelView);
       }
     },
@@ -295,7 +237,7 @@ export function ViewSwitcherTabs({
         style={{
           height: VIEW_SWITCHER_ROW_HEIGHT_PX,
           paddingInlineStart: reserveTrafficLights
-            ? TITLEBAR_LEADING_RESERVE
+            ? TITLEBAR_LEADING_RESERVE_BESIDE_RAIL
             : undefined,
         }}
       >
@@ -319,7 +261,7 @@ export function ViewSwitcherTabs({
           onValueChange={handleValueChange}
         >
           {visibleTabs.map((id) => {
-            const def = TAB_REGISTRY[id];
+            const def = PANEL_VIEW_REGISTRY[id];
             const Icon = def.icon;
             const label =
               conversationFiles && id === "editor"
@@ -380,7 +322,7 @@ export function ViewSwitcherTabs({
             </DropdownMenuTrigger>
             <AppDropdownContent align="start" side="bottom">
               {overflowTabs.map((id) => {
-                const def = TAB_REGISTRY[id];
+                const def = PANEL_VIEW_REGISTRY[id];
                 const Icon = def.icon;
                 return (
                   <AppDropdownItem key={id} onClick={() => onViewChange(id)}>

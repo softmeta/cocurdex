@@ -4,6 +4,7 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clearColorScheme, emulateColorScheme } from "./lib/appearance.mjs";
 import {
+  centerOf,
   clickByRole,
   clickPoint,
   queryAllByRole,
@@ -770,18 +771,15 @@ runScenario("note-table", {
           { role: "button", name: expand },
           UI_TIMEOUT_MS,
         );
-        const layout = await session.run(() => {
-          const button = document.querySelector(
-            "button[aria-label][class*='size-3.5']",
-          );
-          const prose = document.querySelector(".md-body-prose");
-          const rect = button.getBoundingClientRect();
-          return {
-            toggleLeft: rect.left,
-            toggleTop: rect.top,
-            proseLeft: prose.getBoundingClientRect().left,
-          };
-        });
+        const toggleCenter = await centerOf(session, toggle.backendNodeId);
+        const layout = {
+          toggleLeft: toggleCenter.x,
+          proseLeft: await session.run(
+            () =>
+              document.querySelector(".md-body-prose").getBoundingClientRect()
+                .left,
+          ),
+        };
         check(layout.toggleLeft < layout.proseLeft, "toggle overlaps body", {
           layout,
           toggle,
@@ -805,8 +803,7 @@ runScenario("note-table", {
     ],
   ],
   teardown: async ({ session }) => {
-    const editorTab = await translate(session, "editor:actions.showEditor");
-    await clickByRole(session, { role: "button", name: editorTab });
+    await showPanelView(session, "files");
     return {};
   },
 });

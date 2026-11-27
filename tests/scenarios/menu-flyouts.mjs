@@ -214,8 +214,7 @@ runScenario("menu-flyouts", {
     ],
   ],
   teardown: async ({ session }) => {
-    const editorTab = await translate(session, "editor:actions.showEditor");
-    await clickByRole(session, { role: "button", name: editorTab });
+    await showPanelView(session, "files");
     return {};
   },
 });

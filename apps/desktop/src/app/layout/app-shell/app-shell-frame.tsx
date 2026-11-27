@@ -38,6 +38,7 @@ import type { LanguageMode } from "@/i18n/language";
 import type { WorkspaceFileEntry } from "@/lib";
 import { cn } from "@/lib";
 import { requestChatContextAtom } from "@/lib/chat-context-store";
+import { activeAppAtom, selectRailItemAtom } from "../app-rail";
 import { ChatDock } from "../chat-dock";
 import { CHAT_DOCK_ACTIONS_INSET } from "../chat-dock-actions";
 import {
@@ -62,6 +63,7 @@ import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
 import { appBootstrappedAtom } from "./app-bootstrap-store";
 import { AppShellContent } from "./app-shell-content";
 import {
+  APP_RAIL_WIDTH,
   TITLEBAR_HEIGHT,
   TITLEBAR_LEADING_RESERVE,
   TITLEBAR_PANE_HEADER_START_INSET,
@@ -163,7 +165,9 @@ export function AppShellFrame({
   const appBootstrapped = useAtomValue(appBootstrappedAtom);
   const workspaces = useAtomValue(workspacesAtom);
   const providerConfigs = useAtomValue(providerConfigsAtom);
-  const [sidebarTab, setSidebarTab] = useAtom(sidebarTabAtom);
+  const sidebarTab = useAtomValue(sidebarTabAtom);
+  const isAppMode = useAtomValue(activeAppAtom) !== null;
+  const selectRailItem = useSetAtom(selectRailItemAtom);
   const isAssistantSidebar = sidebarTab === "personal";
   const providerModelsLoaded = useAtomValue(providerModelsLoadedAtom);
   const onboardingDismissed = useAtomValue(onboardingDismissedAtom);
@@ -265,7 +269,7 @@ export function AppShellFrame({
         onSkip={() => setOnboardingEntered(true)}
         onStartChat={() => {
           setOnboardingEntered(true);
-          setSidebarTab("chat");
+          selectRailItem("chat");
         }}
         titlebarHeight={TITLEBAR_HEIGHT}
       />
@@ -295,7 +299,9 @@ export function AppShellFrame({
             <div
               className="app-drag flex h-full shrink-0 items-center"
               style={{
-                width: isLeftSidebarOpen ? leftWidth : undefined,
+                width: isLeftSidebarOpen
+                  ? APP_RAIL_WIDTH + leftWidth
+                  : undefined,
                 paddingInlineStart: TITLEBAR_LEADING_RESERVE,
                 paddingInlineEnd: isLeftSidebarOpen
                   ? TITLEBAR_SIDEBAR_END_INSET
@@ -341,7 +347,7 @@ export function AppShellFrame({
           <AppShellContent
             isRightPanelCompact={isRightPanelCompact}
             rightPanelActions={
-              isChatDetached ? null : (
+              isChatDetached || isAppMode ? null : (
                 <RightPanelWindowActions
                   isRightPanelMaximized={isRightPanelMaximized}
                   onToggleRightPanelMaximize={onToggleRightPanelMaximize}

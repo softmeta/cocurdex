@@ -24,7 +24,6 @@ export function assistantPanelsStep() {
             "editor:actions.showAssistantOverview",
           ),
         });
-        await showPanelView(session, "notes");
         const group = {
           role: "group",
           name: await translate(session, "editor:actions.panelViews"),
@@ -43,7 +42,7 @@ export function assistantPanelsStep() {
           });
           check(tabs.length === 0, `${key} is not a primary assistant tab`);
         }
-        for (const view of ["memory", "issues", "routines", "files"])
+        for (const view of ["notes", "memory", "issues", "routines", "files"])
           await showPanelView(session, view);
         await waitForRole(session, {
           role: "region",

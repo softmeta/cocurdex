@@ -7,7 +7,7 @@ import {
   waitForNoRole,
   waitForRole,
 } from "./lib/locate.mjs";
-import { translate } from "./lib/navigate.mjs";
+import { openSidebarForm, showPanelView, translate } from "./lib/navigate.mjs";
 
 const DECK_TITLE = "Checkout review";
 const SLIDE_COUNT = 5;
@@ -234,23 +234,7 @@ async function switchDeckWithoutBlankFrames(session, title, expectedText) {
 runScenario("decks", {
   open: () => openScenarioApp(args, { fixtureDb: true }),
   setup: async ({ session }) => {
-    const [openPanel, closePanel, decksTab] = await Promise.all(
-      [
-        "editor:actions.openEditorPanel",
-        "editor:actions.closeEditorPanel",
-        "editor:actions.showDecks",
-      ].map((key) => translate(session, key)),
-    );
-    const [toggle] = await waitForRole(
-      session,
-      { role: "button", name: new RegExp(`^(${openPanel}|${closePanel})$`) },
-      UI_TIMEOUT_MS,
-    );
-    const panelWasOpen = toggle.name === closePanel;
-    if (!panelWasOpen) {
-      await clickByRole(session, { role: "button", name: openPanel });
-    }
-    await clickByRole(session, { role: "button", name: decksTab });
+    await showPanelView(session, "decks");
     await clickByRole(
       session,
       { role: "button", name: DECK_TITLE },
@@ -261,7 +245,7 @@ runScenario("decks", {
       { role: "button", name: await slideLabel(session, 1) },
       UI_TIMEOUT_MS,
     );
-    return { panelWasOpen, closePanel, openPanel };
+    return {};
   },
   steps: [
     [
@@ -921,20 +905,8 @@ runScenario("decks", {
       },
     ],
   ],
-  teardown: async ({ session, panelWasOpen, closePanel, openPanel }) => {
-    const editorTab = await translate(session, "editor:actions.showEditor");
-    await clickByRole(session, { role: "button", name: editorTab });
-    if (!panelWasOpen) {
-      await session.run((label) => {
-        window.__scenario.byLabel(label)?.click();
-        return true;
-      }, closePanel);
-      await waitForRole(
-        session,
-        { role: "button", name: openPanel },
-        UI_TIMEOUT_MS,
-      );
-    }
+  teardown: async ({ session }) => {
+    await openSidebarForm(session, "sessions:sidebar.workspacesGroup");
     return {};
   },
 });

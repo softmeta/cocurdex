@@ -413,7 +413,6 @@ export default interface Resources {
       error: "Request failed";
     };
     sidebar: {
-      hint: "Ask anything, get quick answers";
       title: "Chat";
     };
   };
@@ -1802,7 +1801,6 @@ export default interface Resources {
       timeZone: "Time zone";
     };
     sidebar: {
-      hint: "Remembers you and minds your day";
       title: "Assistants";
     };
     thread: {
@@ -2132,6 +2130,10 @@ export default interface Resources {
       "opencode-deny": "Deny";
       unavailableForModel: "{{model}} does not support this mode.";
     };
+    rail: {
+      label: "Apps";
+      more: "More apps";
+    };
     sessionMode: {
       "claude-agent": {
         default: "Default";
@@ -2228,7 +2230,6 @@ export default interface Resources {
       showMore_other: "Show more ({{count}} left)";
       splitDown: "Open Below";
       splitRight: "Open to the Right";
-      switchForm: "Switch view ({{name}})";
       unpin: "Unpin";
       unread: "Unread";
       view: {
@@ -2305,7 +2306,6 @@ export default interface Resources {
         };
       };
       workspacesGroup: "Work";
-      workspacesHint: "Build, fix, and ship in your projects";
       yesterday: "Yesterday";
     };
     split: {

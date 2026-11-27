@@ -215,6 +215,10 @@
     "opencode-deny": "拒绝",
     "unavailableForModel": "{{model}} 不支持此模式。"
   },
+  "rail": {
+    "label": "应用",
+    "more": "更多应用"
+  },
   "sessionMode": {
     "claude-agent": {
       "default": "默认",
@@ -305,7 +309,6 @@
     "showMore_other": "显示更多（剩余 {{count}}）",
     "splitDown": "分屏到下侧",
     "splitRight": "分屏到右侧",
-    "switchForm": "切换视图（{{name}}）",
     "unpin": "取消置顶",
     "unread": "未读",
     "view": {
@@ -382,7 +385,6 @@
       }
     },
     "workspacesGroup": "工作",
-    "workspacesHint": "在项目里写代码、修问题、交付",
     "yesterday": "昨天"
   },
   "split": {

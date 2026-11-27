@@ -2,9 +2,9 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clickByRole, clickSelector, waitForRole } from "./lib/locate.mjs";
 import {
-  closeEditorPanel,
   openNote,
   openSettingsSection,
+  openSidebarForm,
   showPanelView,
   translate,
 } from "./lib/navigate.mjs";
@@ -111,13 +111,13 @@ async function pressMouseBack(session) {
 runScenario("app-navigation", {
   open: () => openScenarioApp(args, { fixtureDb: true }),
   setup: async ({ session }) => {
-    const { wasOpen } = await showPanelView(session, "notes");
+    await showPanelView(session, "notes");
     await waitForHistory(
       session,
       (state) => state.length > 0 && !state.pending,
       "no history",
     );
-    return { panelWasOpen: wasOpen };
+    return {};
   },
   steps: [
     [
@@ -154,6 +154,11 @@ runScenario("app-navigation", {
             ),
           "issue detail not recorded",
         );
+        const work = await recordStep(
+          session,
+          () => openSidebarForm(session, "sessions:sidebar.workspacesGroup"),
+          "leaving the app not recorded",
+        );
         const sessionBefore = await activeSessionId(session);
         const otherSession = await session.run(
           (current) =>
@@ -171,7 +176,13 @@ runScenario("app-navigation", {
         );
         Object.assign(context, { issueId, sessionBefore });
         return {
-          indexes: [note.index, board.index, issue.index, switched.index],
+          indexes: [
+            note.index,
+            board.index,
+            issue.index,
+            work.index,
+            switched.index,
+          ],
           issueId,
           sessionBefore,
           otherSession,
@@ -179,13 +190,10 @@ runScenario("app-navigation", {
       },
     ],
     [
-      "Back returns to the issue and the previous session",
+      "Back returns to the previous session, then to the issue",
       async ({ session, issueId, sessionBefore }) => {
-        await clickByRole(session, {
-          role: "button",
-          name: await translate(session, "editor:actions.navigateBack"),
-        });
-        await waitForSelector(session, `article[data-issue-id="${issueId}"]`);
+        const back = await translate(session, "editor:actions.navigateBack");
+        await clickByRole(session, { role: "button", name: back });
         await session.waitUntil(
           (expected) =>
             (document.querySelector("[data-session-id][data-active]")?.dataset
@@ -193,6 +201,8 @@ runScenario("app-navigation", {
           sessionBefore,
           UI_TIMEOUT_MS,
         );
+        await clickByRole(session, { role: "button", name: back });
+        await waitForSelector(session, `article[data-issue-id="${issueId}"]`);
         return {};
       },
     ],
@@ -234,54 +244,23 @@ runScenario("app-navigation", {
       },
     ],
     [
-      "the fullscreen panel keeps Back and Forward next to its view tabs",
+      "an app keeps Back and Forward in the titlebar",
       async ({ session }) => {
-        const enter = await translate(
-          session,
-          "editor:actions.enterEditorFullscreen",
-        );
-        await clickByRole(session, { role: "button", name: enter });
-        const exit = await translate(
-          session,
-          "editor:actions.exitEditorFullscreen",
-        );
-        await waitForRole(
-          session,
-          { role: "button", name: exit },
-          UI_TIMEOUT_MS,
-        );
         const backName = await translate(
           session,
           "editor:actions.navigateBack",
         );
-        const [back] = await waitForRole(
-          session,
-          { role: "button", name: backName },
-          UI_TIMEOUT_MS,
-        );
-        const tabsLeft = await session.run(
-          () =>
-            document
-              .querySelector('[data-testid="editor-panel-view-switcher"]')
-              ?.querySelector('[role="group"]')
-              ?.getBoundingClientRect().left,
-        );
-        const backLeft = await session.run(
+        const visible = await session.run(
           (name) =>
-            [...document.querySelectorAll("button")]
-              .find(
-                (button) =>
-                  button.getAttribute("aria-label") === name &&
-                  button.getClientRects().length > 0,
-              )
-              ?.getBoundingClientRect().left,
+            [...document.querySelectorAll("button")].some(
+              (button) =>
+                button.getAttribute("aria-label") === name &&
+                button.getClientRects().length > 0 &&
+                button.getBoundingClientRect().top < 40,
+            ),
           backName,
         );
-        check(
-          typeof backLeft === "number" && backLeft < tabsLeft,
-          "Back is not before the view tabs",
-          { backLeft, tabsLeft, back },
-        );
+        check(visible, "Back is not in the titlebar");
         await clickByRole(session, { role: "button", name: backName });
         await waitForSelector(session, "[data-note-id][data-active]");
         await clickByRole(session, {
@@ -289,13 +268,7 @@ runScenario("app-navigation", {
           name: await translate(session, "editor:actions.navigateForward"),
         });
         await waitForSelector(session, '[data-issue-id] [role="button"]');
-        await clickByRole(session, { role: "button", name: exit });
-        await waitForRole(
-          session,
-          { role: "button", name: enter },
-          UI_TIMEOUT_MS,
-        );
-        return { backLeft, tabsLeft };
+        return {};
       },
     ],
     [
@@ -346,8 +319,8 @@ runScenario("app-navigation", {
       },
     ],
   ],
-  teardown: async ({ session, panelWasOpen }) => {
-    if (!panelWasOpen) await closeEditorPanel(session);
+  teardown: async ({ session }) => {
+    await openSidebarForm(session, "sessions:sidebar.workspacesGroup");
     return {};
   },
 });

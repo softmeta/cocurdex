@@ -23,6 +23,9 @@ const PANEL_VIEW_KEYS = {
   decks: "editor:actions.showDecks",
 };
 
+const RAIL_APPS = new Set(["issues", "notes"]);
+const RAIL_MORE_APPS = new Set(["decks", "routines", "memory"]);
+
 export const BODY_EDITOR_IN_DIALOG = '[role="dialog"] .md-body-prose';
 
 export async function translate(session, key, options) {
@@ -77,6 +80,11 @@ export async function closeEditorPanel(session) {
 export async function showPanelView(session, view) {
   const key = PANEL_VIEW_KEYS[view];
   if (!key) throw new Error(`Unknown panel view "${view}"`);
+  if (RAIL_APPS.has(view) || RAIL_MORE_APPS.has(view)) {
+    await openRailApp(session, view);
+    return { wasOpen: true };
+  }
+  await leaveRailApp(session);
   const panel = await openEditorPanel(session);
   const group = {
     role: "group",
@@ -238,22 +246,96 @@ export async function openExecutionTree(session, sessionTitle) {
   );
 }
 
+async function railRegion(session) {
+  return {
+    role: "navigation",
+    name: await translate(session, "sessions:rail.label"),
+  };
+}
+
 export async function openSidebarForm(session, labelKey) {
-  const template = await translate(session, "sessions:sidebar.switchForm", {
-    name: "\u0000",
-  });
-  const [before, after] = template.split("\u0000");
   await clickByRole(
     session,
     {
       role: "button",
-      name: new RegExp(`^${escapeRegExp(before)}.*${escapeRegExp(after)}$`),
+      name: await translate(session, labelKey),
+      within: await railRegion(session),
     },
     NAVIGATION_TIMEOUT_MS,
   );
+}
+
+const SESSION_FORM_KEYS = [
+  "personal:sidebar.title",
+  "sessions:sidebar.workspacesGroup",
+  "chat:sidebar.title",
+];
+
+const railReturnForms = new WeakMap();
+
+async function currentRailItem(session) {
+  return session.run(
+    () =>
+      document
+        .querySelector('[data-testid="app-rail"] [aria-current="page"]')
+        ?.getAttribute("aria-label") ?? null,
+  );
+}
+
+async function sessionFormNames(session) {
+  return Promise.all(SESSION_FORM_KEYS.map((key) => translate(session, key)));
+}
+
+async function leaveRailApp(session) {
+  const current = await currentRailItem(session);
+  if (current === null) return;
+  if ((await sessionFormNames(session)).includes(current)) return;
   await clickByRole(
     session,
-    { role: "menuitemradio", name: await translate(session, labelKey) },
+    {
+      role: "button",
+      name:
+        railReturnForms.get(session) ??
+        (await translate(session, "sessions:sidebar.workspacesGroup")),
+      within: await railRegion(session),
+    },
+    NAVIGATION_TIMEOUT_MS,
+  );
+}
+
+export async function openRailApp(session, view) {
+  const within = await railRegion(session);
+  const from = await currentRailItem(session);
+  if ((await sessionFormNames(session)).includes(from)) {
+    railReturnForms.set(session, from);
+  }
+  const name = await translate(session, PANEL_VIEW_KEYS[view]);
+  const inMore = RAIL_MORE_APPS.has(view);
+  const moreName = await translate(session, "sessions:rail.more");
+  if (inMore) {
+    await clickByRole(
+      session,
+      { role: "button", name: moreName, within },
+      NAVIGATION_TIMEOUT_MS,
+    );
+    await clickByRole(
+      session,
+      { role: "menuitem", name },
+      NAVIGATION_TIMEOUT_MS,
+    );
+  } else {
+    await clickByRole(
+      session,
+      { role: "button", name, within },
+      NAVIGATION_TIMEOUT_MS,
+    );
+  }
+  await session.waitUntil(
+    (label) =>
+      document
+        .querySelector('[data-testid="app-rail"] [aria-current="page"]')
+        ?.getAttribute("aria-label") === label,
+    inMore ? moreName : name,
     NAVIGATION_TIMEOUT_MS,
   );
 }

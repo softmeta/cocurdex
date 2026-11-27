@@ -6,7 +6,7 @@ import {
   persistLeftWidth,
   persistRightWidth,
 } from "../chat-layout-preference";
-import { MAX_LEFT, MIN_LEFT } from "./app-shell-layout";
+import { APP_RAIL_WIDTH, MAX_LEFT, MIN_LEFT } from "./app-shell-layout";
 import {
   clampPanelWidth,
   MIN_CHAT_WIDTH,
@@ -27,7 +27,11 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export function getContainerWidth(container: HTMLElement | null) {
-  return container?.clientWidth ?? window.innerWidth;
+  return withoutRail(container?.clientWidth ?? window.innerWidth);
+}
+
+function withoutRail(width: number) {
+  return Math.max(0, width - APP_RAIL_WIDTH);
 }
 
 export function getInitialContentWidth() {
@@ -35,7 +39,7 @@ export function getInitialContentWidth() {
     return 1440;
   }
 
-  return window.innerWidth;
+  return withoutRail(window.innerWidth);
 }
 
 function getMaxLeftWidth(totalWidth: number) {
@@ -116,17 +120,17 @@ export function useAppShellResize({
 
       if (typeof ResizeObserver !== "undefined") {
         const resizeObserver = new ResizeObserver(([entry]) => {
-          syncContentWidth(Math.round(entry.contentRect.width));
+          syncContentWidth(withoutRail(Math.round(entry.contentRect.width)));
         });
 
         resizeObserver.observe(node);
-        syncContentWidth(node.clientWidth);
+        syncContentWidth(withoutRail(node.clientWidth));
         resizeCleanupRef.current = () => resizeObserver.disconnect();
         return;
       }
 
       const syncWindowWidth = () => {
-        syncContentWidth(window.innerWidth);
+        syncContentWidth(withoutRail(window.innerWidth));
       };
 
       syncWindowWidth();

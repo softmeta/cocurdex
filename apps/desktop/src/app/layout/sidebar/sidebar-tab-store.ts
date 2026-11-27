@@ -13,7 +13,7 @@ import { selectWorkspaceAtom } from "@/features/workspaces";
 
 export type SidebarTab = "workspaces" | "chat" | "personal";
 
-export const sidebarTabAtom = atom<SidebarTab>("workspaces");
+export const sidebarTabAtom = atom<SidebarTab>("personal");
 
 export function sidebarTabOf(session: SessionRecord): SidebarTab {
   if (isChatSession(session)) return "chat";

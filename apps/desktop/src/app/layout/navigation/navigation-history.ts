@@ -1,5 +1,6 @@
 import type { SettingsSectionId } from "../app-shell/app-shell-types";
 import type { RightPanelView } from "../right-editor-panel-store";
+import type { AppView } from "../right-panel-tab-sets";
 
 export interface PanelLocation {
   view: RightPanelView;
@@ -7,6 +8,7 @@ export interface PanelLocation {
 }
 
 export interface AppLocation {
+  app: AppView | null;
   sessionId: string | null;
   panel: PanelLocation;
   settings: SettingsSectionId | null;
@@ -29,6 +31,7 @@ export function panelLocationsEqual(left: PanelLocation, right: PanelLocation) {
 
 export function locationsEqual(left: AppLocation, right: AppLocation) {
   return (
+    left.app === right.app &&
     left.sessionId === right.sessionId &&
     left.settings === right.settings &&
     panelLocationsEqual(left.panel, right.panel)
