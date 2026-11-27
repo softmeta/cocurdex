@@ -215,6 +215,19 @@ const CHECKOUT_GRID = [
   ["FIVEOFF", "5 off", "Draft"],
 ];
 
+async function pressToggleSidebarShortcut(session) {
+  const isMac = await session.run(() => /Mac/.test(navigator.platform));
+  for (const type of ["rawKeyDown", "keyUp"]) {
+    await session.send("Input.dispatchKeyEvent", {
+      type,
+      modifiers: isMac ? 4 : 2,
+      key: "b",
+      code: "KeyB",
+      windowsVirtualKeyCode: 66,
+    });
+  }
+}
+
 runScenario("note-table", {
   open: () => openScenarioApp(args, { fixtureDb: true }),
   setup: async ({ session }) => {
@@ -771,6 +784,10 @@ runScenario("note-table", {
         await clickByRole(session, toggle);
         await waitForNoRole(session, notesSidebar, UI_TIMEOUT_MS);
         await clickByRole(session, toggle);
+        await waitForRole(session, notesSidebar, UI_TIMEOUT_MS);
+        await pressToggleSidebarShortcut(session);
+        await waitForNoRole(session, notesSidebar, UI_TIMEOUT_MS);
+        await pressToggleSidebarShortcut(session);
         await waitForRole(session, notesSidebar, UI_TIMEOUT_MS);
         return {};
       },

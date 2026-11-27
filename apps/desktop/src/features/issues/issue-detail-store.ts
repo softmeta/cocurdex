@@ -99,7 +99,10 @@ export const openIssueDetailAtom = atom(
     const viewId = get(activeViewIdAtom);
     set(issueDetailIdAtom, issueId);
     const prefetched = takePrefetchedDetail(issueId, viewId);
-    if (prefetched?.value) {
+    const isFresh =
+      prefetched !== undefined &&
+      Date.now() - prefetched.at < PREFETCH_FRESH_MS;
+    if (isFresh && prefetched.value) {
       set(issueDetailAtom, {
         bodyEpoch: 0,
         bodyStatus: "ready",
@@ -121,8 +124,6 @@ export const openIssueDetailAtom = atom(
       }
     };
     try {
-      const isFresh =
-        prefetched && Date.now() - prefetched.at < PREFETCH_FRESH_MS;
       const detail = await (isFresh
         ? prefetched.request
         : issuesIpc.getDetail({ id: issueId, viewId }));

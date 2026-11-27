@@ -38,6 +38,7 @@ import {
   appDockPinnedAtom,
   appDockVisibilityAtom,
 } from "../app-rail";
+import { useToggleAppSidebar } from "../app-rail/app-sidebar-store";
 import {
   type ChatDockVisibility,
   getStoredChatDockVisibility,
@@ -125,6 +126,7 @@ export function AppShell() {
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [chatLayoutMode, setChatLayoutMode] = useState(getStoredChatLayoutMode);
   const [activeApp, setActiveApp] = useAtom(activeAppAtom);
+  const toggleAppSidebar = useToggleAppSidebar();
   const isAppMode = activeApp !== null;
   const [appDockPinned, setAppDockPinned] = useAtom(appDockPinnedAtom);
   const isRightPanelMaximized =
@@ -220,6 +222,10 @@ export function AppShell() {
   useCompletionNotifier(notificationSettings);
 
   const toggleLeftSidebar = () => {
+    if (activeApp) {
+      toggleAppSidebar(activeApp);
+      return;
+    }
     if (isLeftSidebarOpen) {
       setIsLeftSidebarOpen(false);
       return;
