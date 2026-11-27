@@ -2,7 +2,6 @@ import type { MessageAttachment } from "@cocurdex/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import type { Ref } from "react";
 import { useCallback, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import {
   editorPanelOpenAtom,
   setChatComposerAttachmentAtom,
@@ -57,7 +56,6 @@ import {
   useOpenEntityBridge,
 } from "../search-palette";
 import { SessionSplitLayout } from "../session-split";
-import { SidebarToggleButton } from "../sidebar";
 import { PersonaEditDialogHost } from "../sidebar/persona-edit-dialog-host";
 import { sidebarTabAtom } from "../sidebar/sidebar-tab-store";
 import { appBootstrappedAtom } from "./app-bootstrap-store";
@@ -68,9 +66,11 @@ import {
   TITLEBAR_LEADING_RESERVE,
   TITLEBAR_PANE_HEADER_START_INSET,
   TITLEBAR_SIDEBAR_END_INSET,
+  TITLEBAR_TRAILING_PADDING,
+  TITLEBAR_TRAILING_TOGGLE_RESERVE,
   withTitlebarControlsInset,
 } from "./app-shell-layout";
-import { AppShellTitlebarActions } from "./app-shell-titlebar-actions";
+import { RightPanelOpenButton } from "./app-shell-titlebar-actions";
 import type { AppScreen, SettingsSectionId } from "./app-shell-types";
 import { BootSplash } from "./boot-splash";
 import { RightPanelWindowActions } from "./right-panel-window-actions";
@@ -161,7 +161,6 @@ export function AppShellFrame({
   rightWidth,
   themeMode,
 }: AppShellFrameProps) {
-  const { t } = useTranslation(["editor", "sessions"]);
   const appBootstrapped = useAtomValue(appBootstrappedAtom);
   const workspaces = useAtomValue(workspacesAtom);
   const providerConfigs = useAtomValue(providerConfigsAtom);
@@ -232,7 +231,9 @@ export function AppShellFrame({
   if (isRightPanelCompact && !isRightPanelMaximized) {
     paneHeaderEndInset = CHAT_DOCK_ACTIONS_INSET;
   } else if (!isRightPanelOpen) {
-    paneHeaderEndInset = withTitlebarControlsInset(0);
+    paneHeaderEndInset = isChatDetached
+      ? withTitlebarControlsInset(0)
+      : withTitlebarControlsInset(TITLEBAR_TRAILING_TOGGLE_RESERVE);
   }
   const splitChatNode = (
     <SessionSplitLayout
@@ -314,20 +315,8 @@ export function AppShellFrame({
                   isPanelFullWidth ? "hidden" : "flex",
                 )}
               >
-                <SidebarToggleButton
-                  label={t("editor:actions.toggleSidebar")}
-                  open={isLeftSidebarOpen}
-                  onToggle={onToggleLeftSidebar}
-                />
-                <AppShellTitlebarActions
-                  isChatDetached={isChatDetached}
-                  isRightPanelOpen={isRightPanelOpen}
-                  onToggleRightPanel={onToggleRightPanel}
-                />
-                <div className="ms-auto flex items-center gap-1">
-                  {isAssistantSidebar ? null : <NavigationButtons />}
-                  <SearchPaletteButton />
-                </div>
+                {isAssistantSidebar ? null : <NavigationButtons />}
+                <SearchPaletteButton />
               </div>
             </div>
 
@@ -337,11 +326,18 @@ export function AppShellFrame({
             />
 
             <div
-              className="app-drag flex h-full shrink-0 items-center justify-end px-3"
+              className="app-drag flex h-full shrink-0 items-center justify-end ps-3"
               style={{
                 width: isRightPanelOpen ? effectiveRightWidth : undefined,
+                paddingInlineEnd: withTitlebarControlsInset(
+                  TITLEBAR_TRAILING_PADDING,
+                ),
               }}
-            />
+            >
+              {isRightPanelOpen || isChatDetached || isAppMode ? null : (
+                <RightPanelOpenButton onOpen={onToggleRightPanel} />
+              )}
+            </div>
           </header>
 
           <AppShellContent
@@ -369,6 +365,7 @@ export function AppShellFrame({
             isChatDockPinned={isChatDockPinned}
             hideFabWhenClosed={hideFabWhenClosed}
             onResizeHandleMouseDown={onResizeHandleMouseDown}
+            onToggleLeftSidebar={onToggleLeftSidebar}
             onToggleRightPanel={onToggleRightPanel}
             onAddContextToChat={handleAddContextToChat}
             onInsertTextToChat={handleInsertTextToChat}

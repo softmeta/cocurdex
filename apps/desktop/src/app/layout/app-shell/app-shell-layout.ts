@@ -17,10 +17,15 @@ export const TITLEBAR_LEADING_RESERVE_BESIDE_RAIL = Math.max(
 export function withTitlebarControlsInset(px: number): string {
   return `calc(${px}px + var(--titlebar-controls-inset))`;
 }
-export const TITLEBAR_CONTROL_COUNT = 5;
+export const TITLEBAR_CONTROL_COUNT = 3;
 export const TITLEBAR_CONTROL_SIZE = TITLEBAR_ICON_BUTTON_SIZE;
 export const TITLEBAR_RIGHT_PADDING = 0;
 export const TITLEBAR_SIDEBAR_END_INSET = 7;
+export const TITLEBAR_TRAILING_PADDING = 12;
+export const TITLEBAR_TRAILING_TOGGLE_RESERVE =
+  TITLEBAR_TRAILING_PADDING +
+  TITLEBAR_ICON_BUTTON_SIZE +
+  TITLEBAR_ICON_BUTTON_GAP;
 
 export const TITLEBAR_TOOLBAR_MIN_WIDTH =
   TITLEBAR_LEADING_RESERVE +

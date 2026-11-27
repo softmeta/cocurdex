@@ -43,6 +43,7 @@ interface AppShellContentProps {
   isChatDockPinned: boolean;
   hideFabWhenClosed: boolean;
   onResizeHandleMouseDown(target: "left" | "right", event: MouseEvent): void;
+  onToggleLeftSidebar(): void;
   onToggleRightPanel(): void;
   onAddContextToChat(attachment: MessageAttachment): boolean;
   onInsertTextToChat(text: string): boolean;
@@ -67,6 +68,7 @@ export function AppShellContent({
   isChatDockPinned,
   hideFabWhenClosed,
   onResizeHandleMouseDown,
+  onToggleLeftSidebar,
   onToggleRightPanel,
   onAddContextToChat,
   onInsertTextToChat,
@@ -104,6 +106,12 @@ export function AppShellContent({
     pinLayout.canPin
       ? pinLayout.width
       : 0;
+  const isChatSurfaceShown = !(
+    isRightPanelMaximized ||
+    (detached && isRightPanelOpen)
+  );
+  const isSidebarBesideRail =
+    isLeftSidebarOpen && isChatSurfaceShown && !isPanelFullWidth && !isCompact;
   return (
     <main
       className={cn(
@@ -112,7 +120,14 @@ export function AppShellContent({
       )}
       ref={contentRowRef}
     >
-      <AppRail />
+      <AppRail
+        besideSidebar={isSidebarBesideRail}
+        sidebarToggle={
+          isChatSurfaceShown && !isPanelFullWidth
+            ? { open: isLeftSidebarOpen, onToggle: onToggleLeftSidebar }
+            : null
+        }
+      />
       {isRightPanelOpen ? (
         <div
           data-testid="shell-right-panel"
@@ -158,7 +173,7 @@ export function AppShellContent({
           </div>
         </div>
       ) : null}
-      {isRightPanelMaximized || (detached && isRightPanelOpen) ? null : (
+      {isChatSurfaceShown ? (
         <div
           className={cn(
             "flex min-w-0 overflow-hidden",
@@ -213,7 +228,7 @@ export function AppShellContent({
             </div>
           ) : null}
         </div>
-      )}
+      ) : null}
       {detached && chatDockVisibility !== "hidden" ? (
         <ChatDockLauncher
           detached

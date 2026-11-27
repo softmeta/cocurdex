@@ -5,12 +5,14 @@ import {
   Ellipsis,
   type LucideIcon,
   MessageCircle,
+  PanelLeft,
   Settings,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AppDropdownContent, AppDropdownItem } from "@/components/app";
 import { DropdownMenu, DropdownMenuTrigger, Separator } from "@/components/ui";
 import { openSettings } from "@/features/settings";
+import { cn } from "@/lib";
 import { APP_RAIL_WIDTH, TITLEBAR_HEIGHT } from "../app-shell/app-shell-layout";
 import { PANEL_VIEW_REGISTRY } from "../panel-view-registry";
 import type { AppView } from "../right-panel-tab-sets";
@@ -42,7 +44,13 @@ const SESSION_ITEMS: readonly {
 const PRIMARY_APPS: readonly AppView[] = ["issues", "notes"];
 const MORE_APPS: readonly AppView[] = ["decks", "routines", "memory"];
 
-export function AppRail() {
+export function AppRail({
+  besideSidebar,
+  sidebarToggle,
+}: {
+  besideSidebar: boolean;
+  sidebarToggle: { open: boolean; onToggle(): void } | null;
+}) {
   const { t } = useTranslation(["sessions", "personal", "chat", "editor"]);
   const selection = useAtomValue(railSelectionAtom);
   const select = useSetAtom(selectRailItemAtom);
@@ -63,9 +71,13 @@ export function AppRail() {
   return (
     <nav
       aria-label={t("sessions:rail.label")}
-      className="app-no-drag flex h-full shrink-0 flex-col items-center gap-1 bg-sidebar pb-2"
+      className={cn(
+        "app-no-drag flex h-full shrink-0 flex-col items-center gap-1 bg-app pb-2",
+        besideSidebar && "bg-sidebar",
+      )}
       data-testid="app-rail"
-      data-window-sidebar=""
+      data-window-sidebar={besideSidebar ? "" : undefined}
+      data-window-content={besideSidebar ? undefined : ""}
       style={{ width: APP_RAIL_WIDTH, paddingTop: TITLEBAR_HEIGHT + 4 }}
     >
       {SESSION_ITEMS.map((item) => (
@@ -105,6 +117,15 @@ export function AppRail() {
         </AppDropdownContent>
       </DropdownMenu>
       <div className="min-h-0 flex-1" />
+      {sidebarToggle ? (
+        <AppRailButton
+          active={false}
+          aria-pressed={sidebarToggle.open}
+          icon={PanelLeft}
+          label={t("editor:actions.toggleSidebar")}
+          onClick={sidebarToggle.onToggle}
+        />
+      ) : null}
       <AppRailButton
         active={false}
         icon={Settings}
