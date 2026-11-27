@@ -217,7 +217,9 @@
   },
   "rail": {
     "label": "应用",
-    "more": "更多应用"
+    "more": "更多应用",
+    "pin": "固定到侧边栏",
+    "unpin": "从侧边栏取消固定"
   },
   "sessionMode": {
     "claude-agent": {

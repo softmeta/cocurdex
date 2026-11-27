@@ -2093,6 +2093,8 @@ export default interface Resources {
     rail: {
       label: "Apps";
       more: "More apps";
+      pin: "Pin to rail";
+      unpin: "Unpin from rail";
     };
     sessionMode: {
       "claude-agent": {
