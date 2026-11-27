@@ -110,6 +110,7 @@ export function AppShellContent({
     isRightPanelMaximized ||
     (detached && isRightPanelOpen)
   );
+  const isContentBesideSidebar = isLeftSidebarOpen && !isCompact;
   const isSidebarBesideRail =
     isLeftSidebarOpen && isChatSurfaceShown && !isPanelFullWidth && !isCompact;
   return (
@@ -200,18 +201,29 @@ export function AppShellContent({
             <LeftSidebar showFooter />
           </ResizableSidebarSlot>
           <div
-            className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden bg-app"
-            data-window-content={isCompact ? undefined : ""}
+            className={cn(
+              "flex min-w-0 flex-1",
+              isContentBesideSidebar && "bg-sidebar",
+            )}
+            data-window-sidebar-edge={isContentBesideSidebar ? "" : undefined}
           >
             <div
-              className="h-full"
-              style={
-                chatOverlayInset && !isRightPanelDocked
-                  ? { minWidth: `calc(100% + ${chatInset})` }
-                  : undefined
-              }
+              className={cn(
+                "min-w-0 flex-1 overflow-x-auto overflow-y-hidden bg-app",
+                isContentBesideSidebar && "rounded-s-card",
+              )}
+              data-window-content={isCompact ? undefined : ""}
             >
-              {detached ? <DetachedChatPlaceholder /> : splitChatNode}
+              <div
+                className="h-full"
+                style={
+                  chatOverlayInset && !isRightPanelDocked
+                    ? { minWidth: `calc(100% + ${chatInset})` }
+                    : undefined
+                }
+              >
+                {detached ? <DetachedChatPlaceholder /> : splitChatNode}
+              </div>
             </div>
           </div>
           {isCompact && compactChatOpen ? (
