@@ -1,12 +1,13 @@
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clickByRole, queryAllByRole, waitForRole } from "./lib/locate.mjs";
-import { translate } from "./lib/navigate.mjs";
+import { closeEditorPanel, translate } from "./lib/navigate.mjs";
 
 const SESSION_ROW = /^Checkout audit log(?:$|\s+(?![(（]))/;
 const UI_TIMEOUT_MS = 30_000;
 const JUMP_TIMEOUT_MS = 5_000;
 const MAX_WHEEL_TICKS = 20;
+const MAX_SCROLL_UP_BATCHES = 400;
 
 const args = readScenarioArgs();
 
@@ -141,6 +142,7 @@ runScenario("chat-jump-to-top", {
       { role: "button", name: SESSION_ROW },
       UI_TIMEOUT_MS,
     );
+    await closeEditorPanel(session);
     await session.waitUntil(
       () => {
         window.__jumpViewport = [
@@ -170,7 +172,22 @@ runScenario("chat-jump-to-top", {
         const point = await session.run(readViewport);
         await session.run(watchJumpButtonWhileScrollingUp, latestLabel);
         let scrollTop = point.scrollTop;
-        while (scrollTop > 200) {
+        for (let batch = 0; scrollTop > 200; batch += 1) {
+          if (batch >= MAX_SCROLL_UP_BATCHES) {
+            const hit = await session.run(
+              ({ x, y }) =>
+                document
+                  .elementFromPoint(x, y)
+                  ?.closest("[data-testid]")
+                  ?.getAttribute("data-testid") ?? null,
+              point,
+            );
+            check(false, "wheel did not reach the top of the transcript", {
+              point,
+              scrollTop,
+              hit,
+            });
+          }
           await wheel(session, point, -120, 5);
           scrollTop = (await session.run(readViewport)).scrollTop;
         }
