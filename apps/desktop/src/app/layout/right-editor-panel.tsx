@@ -302,7 +302,10 @@ export function RightEditorPanel({
 
   return (
     <aside
-      className="flex h-full min-w-0 flex-col overflow-hidden bg-editor-shell"
+      className={cn(
+        "flex h-full min-w-0 flex-col overflow-hidden",
+        !isAppWorkbenchShown && "bg-editor-shell",
+      )}
       ref={handlePanelRef}
     >
       {isAppWorkbenchShown ? null : (

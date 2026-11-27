@@ -154,9 +154,10 @@ export function AppShellContent({
       {isRightPanelOpen ? (
         <div
           data-testid="shell-right-panel"
-          data-window-content=""
+          data-window-content={isAppWorkbenchShown ? undefined : ""}
           className={cn(
-            "flex min-w-0 overflow-hidden bg-app",
+            "flex min-w-0 overflow-hidden",
+            !isAppWorkbenchShown && "bg-app",
             isPanelFullWidth
               ? "flex-1"
               : "absolute inset-y-0 end-0 z-40 max-w-full",
