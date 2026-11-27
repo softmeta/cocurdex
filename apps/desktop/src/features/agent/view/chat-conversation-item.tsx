@@ -256,7 +256,7 @@ function createClipboardHtml(element: HTMLElement) {
 
   return {
     html: clone.innerHTML,
-    text: (element.textContent ?? element.textContent ?? "").trim(),
+    text: (element.innerText ?? element.textContent ?? "").trim(),
   };
 }
 
