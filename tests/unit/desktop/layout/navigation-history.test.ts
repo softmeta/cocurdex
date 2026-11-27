@@ -16,7 +16,7 @@ function at(
   view: AppLocation["panel"]["view"] = "editor",
   entityId: string | null = null,
 ): AppLocation {
-  return { sessionId, panel: { view, entityId }, settings: null };
+  return { app: null, sessionId, panel: { view, entityId }, settings: null };
 }
 
 function recordAll(locations: AppLocation[]): NavigationHistory {
@@ -24,6 +24,15 @@ function recordAll(locations: AppLocation[]): NavigationHistory {
 }
 
 describe("navigation history", () => {
+  it("records entering an app as its own step back to the session", () => {
+    const session = at("s1", "notes", "n1");
+    const notesApp: AppLocation = { ...session, app: "notes" };
+    let history = recordAll([session, notesApp]);
+
+    history = stepHistory(history, "back") ?? history;
+    expect(currentLocation(history)).toEqual(session);
+  });
+
   it("walks back and forward across session and panel entities", () => {
     const note = at("s1", "notes", "n1");
     const issue = at("s1", "issues", "i1");

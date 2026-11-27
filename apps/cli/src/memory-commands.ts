@@ -1,9 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { requestDaemon } from "@cocurdex/daemon/client";
-import type {
-  MemoryCloudMode,
-  MemoryImportance,
-  MemorySettings,
+import {
+  MEMORY_SYNC_MANAGED_BY_RSRS,
+  type MemoryImportance,
+  type MemorySettings,
+  ReasonError,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
 import {
@@ -12,7 +13,6 @@ import {
 } from "./memory-library-commands";
 import type { ParsedArgs } from "./parse-args";
 import { printResult, printRows, stringFlag } from "./parse-args";
-import { createCredentialReader } from "./read-secret";
 
 function importanceFlag(parsed: ParsedArgs): MemoryImportance | undefined {
   const value = stringFlag(parsed, "importance");
@@ -42,70 +42,6 @@ async function readContent(args: string[], parsed: ParsedArgs) {
     );
   }
   return positional;
-}
-
-export function memoryCloudMode(action: string | undefined): MemoryCloudMode {
-  if (action === "register" || action === "create") return "register";
-  if (action === "signin" || action === "sign-in" || action === "login") {
-    return "signin";
-  }
-  throw new Error(
-    "Usage: cocurdex memory cloud register|signin --user <name> | signout | keys",
-  );
-}
-
-async function handleCloudCommand(sub: string | undefined, parsed: ParsedArgs) {
-  if (sub === "keys") {
-    printResult(
-      await withDaemon(() => requestDaemon("memory.cloud.keys")),
-      parsed,
-    );
-    return;
-  }
-
-  if (sub === "signout" || sub === "disconnect") {
-    printResult(
-      await withDaemon(() => requestDaemon("memory.cloud.disconnect")),
-      parsed,
-    );
-    return;
-  }
-
-  const mode = memoryCloudMode(sub);
-  const user = stringFlag(parsed, "user");
-  if (!user) throw new Error("Missing required --user");
-
-  const reader = createCredentialReader();
-  try {
-    const password = await reader.read("Login password: ");
-    if (!password) throw new Error("A login password is required");
-    const recoveryKey =
-      mode === "signin" ? await reader.read("Recovery key: ") : null;
-    if (mode === "signin" && !recoveryKey) {
-      throw new Error("A recovery key is required to sign in");
-    }
-    const result = await withDaemon(() =>
-      requestDaemon("memory.cloud.connect", {
-        mode,
-        user,
-        password,
-        recoveryKey,
-      }),
-    );
-    if (parsed.flags.has("json")) {
-      printResult(result, parsed);
-      return;
-    }
-    if (result.recoveryKey) {
-      console.log(`Recovery key: ${result.recoveryKey}`);
-      console.log(
-        "Save it now: it decrypts your memories on another device, and nobody can recover it for you.",
-      );
-    }
-    printResult(result.status, parsed);
-  } finally {
-    reader.close();
-  }
 }
 
 async function handleRsrsCommand(args: string[], parsed: ParsedArgs) {
@@ -163,11 +99,8 @@ export function memoryUsageLines() {
     "  cocurdex memory rsrs sync [--dry-run] [--json]",
     "  cocurdex memory install [--force] [--json]",
     "  cocurdex memory doctor [--remote] [--check-update] [--json]",
-    "  cocurdex memory sync on|off [--json]",
-    "  cocurdex memory cloud register|signin --user <name> [--json]",
-    "  cocurdex memory cloud signout|keys [--json]",
     "  cocurdex memory policy",
-    "  Account secrets are read from a hidden prompt, or from piped stdin when not a terminal (signin: password, then recovery key).",
+    "  Multi-device sync is managed by rsrs: rsrs login, then rsrs web or the rsrs app.",
   ];
 }
 
@@ -288,21 +221,11 @@ export async function handleMemoryCommand(
     return true;
   }
 
-  if (action === "sync") {
-    const mode = args[0] ?? stringFlag(parsed, "mode");
-    if (mode !== "on" && mode !== "off") {
-      throw new Error("Usage: cocurdex memory sync on|off");
-    }
-    const status = await withDaemon(() =>
-      requestDaemon("memory.cloud.setSync", { enabled: mode === "on" }),
+  if (action === "sync" || action === "cloud") {
+    throw new ReasonError(
+      "memory.syncManagedByRsrs",
+      MEMORY_SYNC_MANAGED_BY_RSRS,
     );
-    printResult(status, parsed);
-    return true;
-  }
-
-  if (action === "cloud") {
-    await handleCloudCommand(args[0], parsed);
-    return true;
   }
 
   if (await handleMemoryLibraryCommand(action, args, parsed)) return true;

@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { openAppSession } from "./app-session.mjs";
 import { daemonRequest } from "./daemon-rpc.mjs";
 import { launchIsolatedInstance, removeTempDir } from "./instance.mjs";
+import { openSidebarForm } from "./navigate.mjs";
 
 const HARNESS_DIR = fileURLToPath(new URL("../../harness/", import.meta.url));
 const FIXTURE_DB_TIMEOUT_MS = 120_000;
@@ -27,6 +28,7 @@ async function seedWorkspaces(session, workspaces) {
     });
   }
   await session.reload();
+  await openSidebarForm(session, "sessions:sidebar.workspacesGroup");
 }
 
 function fixtureDbWorkspaces(install) {

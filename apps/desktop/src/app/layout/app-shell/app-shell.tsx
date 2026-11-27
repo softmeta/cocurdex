@@ -34,6 +34,11 @@ import {
 import type { WorkspaceFileEntry } from "@/lib";
 import { desktopApi, useMountEffect } from "@/lib";
 import {
+  activeAppAtom,
+  appDockPinnedAtom,
+  appDockVisibilityAtom,
+} from "../app-rail";
+import {
   type ChatDockVisibility,
   getStoredChatDockVisibility,
   getStoredHideFabWhenClosed,
@@ -119,11 +124,23 @@ export function AppShell() {
   );
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [chatLayoutMode, setChatLayoutMode] = useState(getStoredChatLayoutMode);
-  const isRightPanelMaximized = isEditorFullscreenLayout(chatLayoutMode);
-  const isChatDockPinned = isPinnedChatLayout(chatLayoutMode);
-  const [isRightPanelOpen, setIsRightPanelOpen] = useAtom(editorPanelOpenAtom);
+  const [activeApp, setActiveApp] = useAtom(activeAppAtom);
+  const isAppMode = activeApp !== null;
+  const [appDockPinned, setAppDockPinned] = useAtom(appDockPinnedAtom);
+  const isRightPanelMaximized =
+    isAppMode || isEditorFullscreenLayout(chatLayoutMode);
+  const isChatDockPinned = isAppMode
+    ? appDockPinned
+    : isPinnedChatLayout(chatLayoutMode);
+  const [isRightPanelPreferredOpen, setIsRightPanelOpen] =
+    useAtom(editorPanelOpenAtom);
+  const isRightPanelOpen = isAppMode || isRightPanelPreferredOpen;
   const [chatDockVisibility, setChatDockVisibility] =
     useState<ChatDockVisibility>(getStoredChatDockVisibility);
+  const [appDockVisibility, setAppDockVisibility] = useAtom(
+    appDockVisibilityAtom,
+  );
+  const dockVisibility = isAppMode ? appDockVisibility : chatDockVisibility;
   const [hideFabWhenClosed, setHideFabWhenClosed] = useState(
     getStoredHideFabWhenClosed,
   );
@@ -229,6 +246,9 @@ export function AppShell() {
   );
 
   const toggleRightPanel = () => {
+    if (isAppMode) {
+      return;
+    }
     if (isRightPanelOpen) {
       setIsRightPanelOpen(false);
       applyChatLayoutMode("center", "panel-close");
@@ -239,6 +259,9 @@ export function AppShell() {
   };
 
   const toggleRightPanelMaximize = () => {
+    if (isAppMode) {
+      return;
+    }
     if (isRightPanelMaximized) {
       applyChatLayoutMode("center", "maximize");
       return;
@@ -263,6 +286,15 @@ export function AppShell() {
           } else {
             toggleChatWindow();
           }
+          return;
+        }
+        if (isAppMode) {
+          setAppDockVisibility(
+            nextChatDockVisibilityOnToggle(
+              appDockVisibility,
+              hideFabWhenClosed,
+            ),
+          );
           return;
         }
         setChatDockVisibility((current) => {
@@ -301,6 +333,10 @@ export function AppShell() {
   );
 
   const handleChatDockVisibilityChange = (visibility: ChatDockVisibility) => {
+    if (isAppMode) {
+      setAppDockVisibility(visibility);
+      return;
+    }
     setChatDockVisibility(visibility);
     persistChatDockVisibility(visibility);
   };
@@ -315,6 +351,9 @@ export function AppShell() {
   const handleHideFabWhenClosedChange = (hide: boolean) => {
     setHideFabWhenClosed(hide);
     persistHideFabWhenClosed(hide);
+    setAppDockVisibility((current) =>
+      resolveChatDockVisibilityAfterHideFabChange(current, hide),
+    );
     setChatDockVisibility((current) => {
       const next = resolveChatDockVisibilityAfterHideFabChange(current, hide);
       if (next !== current) {
@@ -325,6 +364,10 @@ export function AppShell() {
   };
 
   const handleChatDockPinnedChange = (pinned: boolean) => {
+    if (isAppMode) {
+      setAppDockPinned(pinned);
+      return;
+    }
     applyChatLayoutMode(pinned ? "pinned" : "float", "pin");
   };
 
@@ -355,10 +398,11 @@ export function AppShell() {
   );
 
   const openFileFromPalette = (file: WorkspaceFileEntry) => {
+    setActiveApp(null);
     openFile(file.path);
     setIsSearchOpen(false);
 
-    if (isRightPanelOpen) {
+    if (isRightPanelPreferredOpen) {
       return;
     }
 
@@ -427,7 +471,7 @@ export function AppShell() {
       isRightPanelMaximized={isRightPanelGlobal}
       isPanelFullWidth={isPanelFullWidth}
       isChatDetached={chatDetached}
-      chatDockVisibility={chatDockVisibility}
+      chatDockVisibility={dockVisibility}
       isChatDockPinned={isChatDockPinned}
       isSearchOpen={isSearchOpen}
       languageMode={languageMode}

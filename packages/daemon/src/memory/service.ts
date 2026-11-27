@@ -14,9 +14,6 @@ import {
   isUserLibraryMemoryId,
   MEMORY_DISABLED_MESSAGE,
   MEMORY_MISSING_EXECUTABLE_MESSAGE,
-  type MemoryCloudConnectInput,
-  type MemoryCloudConnectResult,
-  type MemoryCloudKeys,
   type MemoryCloudStatus,
   type MemoryDoctorReport,
   type MemoryEntry,
@@ -91,21 +88,16 @@ import { personaMemoryBrief, personaMemoryPolicy } from "./persona-memory";
 import type { MemoryProvider, MemoryTransferEntry } from "./provider";
 import {
   createRsrsLocalKeys,
-  exportRsrsKeys,
   installRsrsModel,
   installRsrsRuntime,
-  loginRsrsAccount,
-  logoutRsrs,
   parseRsrsCloudStatus,
   type RsrsCloudSummary,
   type RsrsExecutable,
   readRsrsDoctor,
   readRsrsStatus,
   readRsrsVersion,
-  registerRsrsAccount,
   restartRsrsRuntime,
   startRsrsRuntime,
-  writeRsrsAutosync,
 } from "./rsrs";
 import {
   allocateLoopbackPort,
@@ -259,15 +251,6 @@ function withIdentityHint(message: string) {
   return isMissingMemoryIdentity(message)
     ? withMemoryIdentityHint(message)
     : message;
-}
-
-function redactSecrets(message: string, secrets: ReadonlyArray<string>) {
-  let result = message;
-  for (const secret of secrets) {
-    if (!secret) continue;
-    result = result.split(secret).join("[redacted]");
-  }
-  return result;
 }
 
 function clampRecallLimit(limit: number | undefined) {
@@ -984,124 +967,6 @@ export class MemoryService {
       this.doctorPromise = null;
     });
     return this.doctorPromise;
-  }
-
-  private async cloudExecutable() {
-    this.assertUsesRsrs();
-    const executable = await this.resolveExecutable(true);
-    if (!executable) throw new Error(MEMORY_MISSING_EXECUTABLE_MESSAGE);
-    return executable;
-  }
-
-  private async refreshAfterCloudMutation() {
-    this.rsrs.invalidateRuntime();
-    this.statusCache = null;
-    const status = await this.getStatus(true);
-    if (status.enabled && status.cloud.hasKeys && !status.error)
-      void this.rsrs.warmup(true);
-    this.broadcast();
-    return status;
-  }
-
-  async connectCloud(
-    input: MemoryCloudConnectInput,
-  ): Promise<MemoryCloudConnectResult> {
-    await this.ensureInitialized();
-    if (!this.supported) {
-      throw new Error(
-        `The rsrs CLI has no build for ${this.platform.os}/${this.platform.arch}, so cloud sync stays off on this machine.`,
-      );
-    }
-    const user = input.user.trim();
-    const password = input.password;
-    const recoveryKey = input.recoveryKey?.trim() ?? "";
-    if (user.length < 3) {
-      throw new ReasonError(
-        "memory.invalidUsername",
-        "Username must be at least 3 characters",
-      );
-    }
-    if (password.length < 8) {
-      throw new ReasonError(
-        "memory.invalidPassword",
-        "Login password must be at least 8 characters",
-      );
-    }
-    if (input.mode === "signin" && !recoveryKey) {
-      throw new ReasonError(
-        "memory.recoveryKeyRequired",
-        "The recovery key is required to sign in on a new device",
-      );
-    }
-    const executable = await this.cloudExecutable();
-    try {
-      const issued =
-        input.mode === "register"
-          ? (await registerRsrsAccount(executable, { user, password }))
-              .recoveryKey
-          : (
-              await loginRsrsAccount(executable, {
-                user,
-                password,
-                recoveryKey: recoveryKey || null,
-              })
-            ).recoveryKey;
-      await writeRsrsAutosync(executable, true).catch((error) => {
-        logDaemonDiagnostic("warn", "memory.cloudAutosyncFailed", {
-          error: errorMessage(error),
-        });
-      });
-      this.rsrs.adoptExecutable(executable);
-      const status = await this.refreshAfterCloudMutation();
-      return { status, recoveryKey: issued };
-    } catch (error) {
-      const message = redactSecrets(errorMessage(error), [
-        password,
-        recoveryKey,
-      ]);
-      logDaemonDiagnostic("warn", "memory.cloudConnectFailed", {
-        error: message,
-        mode: input.mode,
-      });
-      throw new Error(message);
-    }
-  }
-
-  async disconnectCloud(): Promise<MemoryStatus> {
-    await this.ensureInitialized();
-    const executable = await this.cloudExecutable();
-    try {
-      await logoutRsrs(executable);
-    } catch (error) {
-      const message = errorMessage(error);
-      logDaemonDiagnostic("warn", "memory.cloudDisconnectFailed", {
-        error: message,
-      });
-      throw new Error(message);
-    }
-    return this.refreshAfterCloudMutation();
-  }
-
-  async setCloudSync(enabled: boolean): Promise<MemoryStatus> {
-    await this.ensureInitialized();
-    const executable = await this.cloudExecutable();
-    if (enabled) {
-      const summary = await readRsrsStatus(executable).catch(() => null);
-      if (!toCloudStatus(summary).connected) {
-        throw new ReasonError(
-          "memory.cloudAccountRequired",
-          "Connect an rsrs account before turning on multi-device sync",
-        );
-      }
-    }
-    await writeRsrsAutosync(executable, enabled);
-    return this.refreshAfterCloudMutation();
-  }
-
-  async cloudKeys(): Promise<MemoryCloudKeys> {
-    await this.ensureInitialized();
-    const executable = await this.cloudExecutable();
-    return { content: await exportRsrsKeys(executable) };
   }
 
   private async runtimeStatus(

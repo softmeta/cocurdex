@@ -2,20 +2,28 @@ import type { SessionRecord } from "@cocurdex/shared";
 import { isChatSession, isPersonalSession } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { openDeckAtom } from "@/features/decks";
-import { editorPanelOpenAtom } from "@/features/editor";
 import { openIssueDetailAtom } from "@/features/issues";
 import { openNoteAtom } from "@/features/notes";
 import { selectSessionAtom } from "@/features/sessions";
 import { selectWorkspaceAtom } from "@/features/workspaces";
-import { rightPanelResolvedActiveViewAtom } from "../right-editor-panel-store";
+import { leaveAppAtom, peekAppViewAtom, selectRailItemAtom } from "../app-rail";
+import type { AppView } from "../right-panel-tab-sets";
 import { sidebarTabAtom } from "../sidebar";
 
-export function useSearchPaletteActions(onClose: () => void) {
+export function useSearchPaletteActions(
+  onClose: () => void,
+  placement: "app" | "peek" = "app",
+) {
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const setSidebarTab = useSetAtom(sidebarTabAtom);
-  const setRightPanelView = useSetAtom(rightPanelResolvedActiveViewAtom);
-  const setRightPanelOpen = useSetAtom(editorPanelOpenAtom);
+  const selectRailItem = useSetAtom(selectRailItemAtom);
+  const leaveApp = useSetAtom(leaveAppAtom);
+  const peekAppView = useSetAtom(peekAppViewAtom);
+  const showApp = (view: AppView) => {
+    if (placement === "peek") peekAppView(view);
+    else selectRailItem(view);
+  };
   const openNote = useSetAtom(openNoteAtom);
   const openIssueDetail = useSetAtom(openIssueDetailAtom);
   const openDeck = useSetAtom(openDeckAtom);
@@ -23,6 +31,7 @@ export function useSearchPaletteActions(onClose: () => void) {
   return {
     openSession(session: SessionRecord) {
       onClose();
+      leaveApp();
       if (isChatSession(session)) {
         setSidebarTab("chat");
       } else if (isPersonalSession(session)) {
@@ -35,20 +44,17 @@ export function useSearchPaletteActions(onClose: () => void) {
     },
     openNote(noteId: string) {
       onClose();
-      setRightPanelView("notes");
-      setRightPanelOpen(true);
+      showApp("notes");
       void openNote(noteId);
     },
     openIssue(issueId: string) {
       onClose();
-      setRightPanelView("issues");
-      setRightPanelOpen(true);
+      showApp("issues");
       void openIssueDetail(issueId);
     },
     openDeck(deckId: string) {
       onClose();
-      setRightPanelView("decks");
-      setRightPanelOpen(true);
+      showApp("decks");
       void openDeck(deckId);
     },
   };

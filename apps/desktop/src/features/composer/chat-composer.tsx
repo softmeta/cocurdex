@@ -32,7 +32,6 @@ import {
   AppDropdownTriggerLabel,
 } from "@/components";
 import { DropdownMenuGroup, DropdownMenuSeparator } from "@/components/ui";
-import { CloudSyncDialog } from "@/features/memory/cloud";
 import { MemoryMenuItem } from "@/features/memory/menu";
 import {
   AgentIcon,
@@ -208,8 +207,6 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const [managedAttachments, setManagedAttachments] = useState<
       MessageAttachment[]
     >(initialDraft?.attachments ?? []);
-    const [cloudDialogOpen, setCloudDialogOpen] = useState(false);
-    const [cloudUser, setCloudUser] = useState<string | null>(null);
 
     const writeDraft = (draft: ComposerDraft) => {
       draftVersion.current += 1;
@@ -562,12 +559,7 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
           </>
         ) : null}
         <DropdownMenuSeparator />
-        <MemoryMenuItem
-          onConnectCloud={(user) => {
-            setCloudUser(user);
-            setCloudDialogOpen(true);
-          }}
-        />
+        <MemoryMenuItem />
       </AppDropdownContent>
     );
 
@@ -626,12 +618,6 @@ const ChatComposerBound = forwardRef<ChatComposerHandle, ChatComposerProps>(
             sendShortcut={sendShortcut}
           />
         </form>
-        {cloudDialogOpen ? (
-          <CloudSyncDialog
-            initialUser={cloudUser}
-            onClose={() => setCloudDialogOpen(false)}
-          />
-        ) : null}
       </>
     );
   },

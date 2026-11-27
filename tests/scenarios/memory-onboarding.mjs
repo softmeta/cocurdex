@@ -5,7 +5,6 @@ import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import {
   clickByRole,
   queryAllByRole,
-  waitForNoRole,
   waitForRole,
 } from "./lib/locate.mjs";
 import { openAssistantsTab, translate } from "./lib/navigate.mjs";
@@ -95,30 +94,19 @@ runScenario("memory-onboarding", {
       },
     ],
     [
-      "sync opens the account dialog once rsrs is on",
+      "with rsrs on, the entry points to rsrs for multi-device sync",
       async ({ session }) => {
         const settings = await daemonRequest(session, "memory.settings.get");
         await daemonRequest(session, "memory.settings.set", {
           settings: { ...settings, rsrs: true },
         });
-        const row = await openMemoryStatus(session);
-        await clickByRole(session, {
-          role: "button",
-          name: await translate(session, "memory:onboarding.sync"),
-          within: row,
-        });
-        const dialog = {
-          role: "dialog",
-          name: await translate(session, "memory:cloud.title"),
-        };
-        await waitForRole(session, dialog, UI_TIMEOUT_MS);
-        await session.send("Input.dispatchKeyEvent", {
-          type: "keyDown",
-          key: "Escape",
-          code: "Escape",
-          windowsVirtualKeyCode: 27,
-        });
-        await waitForNoRole(session, dialog, UI_TIMEOUT_MS);
+        await openMemoryStatus(session);
+        const hint = await translate(session, "memory:onboarding.syncHint");
+        await session.waitUntil(
+          (text) => document.body.textContent.includes(text),
+          hint,
+          UI_TIMEOUT_MS,
+        );
         return {};
       },
     ],

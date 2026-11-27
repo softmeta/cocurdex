@@ -33,8 +33,7 @@ import { SessionGroupsPanel } from "./session-groups-panel";
 import { SessionListSections } from "./session-list-sections";
 import { SessionListViewMenu } from "./session-list-view-menu";
 import { SidebarFooter } from "./sidebar-footer";
-import { SidebarFormSwitcher } from "./sidebar-form-switcher";
-import { sidebarTabAtom, switchSidebarTabAtom } from "./sidebar-tab-store";
+import { type SidebarTab, sidebarTabAtom } from "./sidebar-tab-store";
 import { useSidebarCreateActions } from "./use-sidebar-create-actions";
 import { useSidebarSessionView } from "./use-sidebar-session-view";
 import { WorkspacesPanel } from "./workspaces-panel";
@@ -45,6 +44,12 @@ interface LeftSidebarProps {
   onAfterNavigate?(): void;
   showFooter?: boolean;
 }
+
+const SIDEBAR_TITLE_KEYS = {
+  personal: "personal:sidebar.title",
+  workspaces: "sessions:sidebar.workspacesGroup",
+  chat: "chat:sidebar.title",
+} as const satisfies Record<SidebarTab, string>;
 
 function SidebarShell({ children }: { children?: ReactNode }) {
   return (
@@ -90,7 +95,6 @@ export function LeftSidebar({
     collapsedWorkspaceIdsAtom,
   );
   const activeTab = useAtomValue(sidebarTabAtom);
-  const switchSidebarTab = useSetAtom(switchSidebarTabAtom);
 
   const sessionView = useSidebarSessionView(workspaces, sessions);
 
@@ -180,11 +184,9 @@ export function LeftSidebar({
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <div className="flex shrink-0 items-center gap-0.5 pe-1.75">
-            <SidebarFormSwitcher
-              onValueChange={switchSidebarTab}
-              value={activeTab}
-            />
-            <div className="min-w-0 flex-1" />
+            <h2 className="min-w-0 flex-1 truncate text-body font-medium text-sidebar-fg">
+              {t(SIDEBAR_TITLE_KEYS[activeTab])}
+            </h2>
             {activeTab === "personal" ? (
               <BriefControl onOpenSession={selectFormSession} />
             ) : null}

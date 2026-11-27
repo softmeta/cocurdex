@@ -174,6 +174,12 @@ describe("web client through the relay", () => {
         daemon.options,
       ),
     ).resolves.toMatchObject({ ok: true });
+    const showWork = () =>
+      page
+        .getByRole("navigation", { name: "Apps" })
+        .getByRole("button", { name: "Work" })
+        .click({ timeout: 30_000 });
+    await showWork();
     await expect
       .poll(() => page.getByText(WORKSPACE_NAME).first().isVisible(), {
         timeout: 30_000,
@@ -181,6 +187,7 @@ describe("web client through the relay", () => {
       .toBe(true);
 
     await page.reload();
+    await showWork();
     await expect
       .poll(() => page.getByText(WORKSPACE_NAME).first().isVisible(), {
         timeout: 30_000,
@@ -206,6 +213,7 @@ describe("web client through the relay", () => {
     await requestDaemon("host.relay.set", { url: relay.url }, daemon.options);
     await relayEndpoint(daemon);
     await page.getByRole("button", { name: unreachableCopy.retry }).click();
+    await showWork();
     await expect
       .poll(() => page.getByText(WORKSPACE_NAME).first().isVisible(), {
         timeout: 30_000,

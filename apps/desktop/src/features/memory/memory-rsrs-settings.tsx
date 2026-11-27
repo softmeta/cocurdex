@@ -3,26 +3,20 @@ import {
   type MemoryCloudStatus,
   type MemorySettings,
   type MemoryStatus,
+  RSRS_DASHBOARD_URL,
   RSRS_REPO_URL,
   RSRS_SITE_URL,
 } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
-import { ExternalLink, KeyRound, LogOut } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import {
-  AppActivityTime,
-  AppConfirmDialog,
-  SettingRow,
-  SettingsGroup,
-} from "@/components/app";
-import { Button, Input, Spinner, Switch, Text } from "@/components/ui";
+import { AppActivityTime, SettingRow, SettingsGroup } from "@/components/app";
+import { Button, Input, Spinner, Text } from "@/components/ui";
 import { desktopApi } from "@/lib";
-import { CloudSyncDialog } from "./cloud-sync-dialog";
 import { MemoryDoctorDetails } from "./memory-doctor-details";
 import { revalidateMemory } from "./memory-queries";
-import { RecoveryKeyDialog } from "./recovery-key-dialog";
 
 function statusText(
   t: TFunction<"memory">,
@@ -80,14 +74,10 @@ export function MemoryRsrsSettings({
 }) {
   const { t } = useTranslation("memory");
   const [busy, setBusy] = useState(false);
-  const [cloudDialogOpen, setCloudDialogOpen] = useState(false);
-  const [cloudKeys, setCloudKeys] = useState<string | null>(null);
-  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const installing = status?.installation === "installing";
   const unsupported = status?.supported === false;
   const setupAction = memorySetupAction(status);
   const cloud = status?.cloud ?? DEFAULT_MEMORY_CLOUD_STATUS;
-  const cloudLocked = busy || installing || !status?.rsrsAvailable;
 
   const runInstall = async () => {
     setBusy(true);
@@ -127,60 +117,9 @@ export function MemoryRsrsSettings({
     }
   };
 
-  const changeSync = async (enabled: boolean) => {
-    if (enabled && !cloud.connected) {
-      setCloudDialogOpen(true);
-      return;
-    }
-    setBusy(true);
-    try {
-      await desktopApi.setMemoryCloudSync(enabled);
-      await revalidateMemory();
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("settings.cloud.toggleFailed"),
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const signOut = async () => {
-    setBusy(true);
-    try {
-      await desktopApi.disconnectMemoryCloud();
-      await revalidateMemory();
-      toast.success(t("settings.cloud.signedOut"));
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("settings.cloud.signOutFailed"),
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const revealCloudKeys = async () => {
-    setBusy(true);
-    try {
-      const keys = await desktopApi.getMemoryCloudKeys();
-      setCloudKeys(keys.content);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("settings.keys.failed"),
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const cloudDescription = !status?.rsrsAvailable
     ? t("settings.cloud.needsRsrs")
-    : t("settings.cloud.description");
+    : t("settings.cloud.managedByRsrs");
   const detail = cloudDetail(t, cloud);
 
   return (
@@ -191,51 +130,41 @@ export function MemoryRsrsSettings({
           description={cloudDescription}
           title={t("settings.cloud.title")}
         >
-          <Switch
-            aria-label={t("settings.cloud.title")}
-            checked={cloud.connected && cloud.autosync}
-            disabled={cloudLocked}
-            onCheckedChange={(enabled) => void changeSync(enabled)}
-          />
+          <Button
+            aria-label={t("settings.cloud.openDashboard")}
+            size="sm"
+            variant="ghost"
+            onClick={() => void desktopApi.openExternal(RSRS_DASHBOARD_URL)}
+          >
+            <ExternalLink className="size-3.5" />
+            {t("settings.links.open")}
+          </Button>
         </SettingRow>
-        {cloud.connected ? (
-          <div className="flex items-center justify-between gap-6 py-3.5">
-            <div className="min-w-0 flex-1">
-              <Text className="block" size="body" weight="medium">
-                {cloud.user}
-              </Text>
+        {status?.rsrsAvailable ? (
+          <div className="min-w-0 py-3.5">
+            <Text className="block" size="body" weight="medium">
+              {cloud.connected
+                ? t("settings.cloud.signedInAs", { user: cloud.user ?? "" })
+                : t("settings.cloud.notSignedIn")}
+            </Text>
+            <Text className="mt-0.5 block" size="meta" tone="muted">
+              {cloud.connected && cloud.autosync
+                ? t("settings.cloud.autosyncOn")
+                : t("settings.cloud.autosyncOff")}
+            </Text>
+            {cloud.server ? (
               <Text className="mt-0.5 block break-all" size="meta" tone="muted">
                 {cloud.server}
               </Text>
-              {detail ? (
-                <Text className="mt-0.5 block" size="meta" tone="muted">
-                  {detail}
-                </Text>
-              ) : null}
-              {cloud.lastSyncAt ? (
-                <AppActivityTime timestamp={cloud.lastSyncAt} />
-              ) : null}
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Button
-                disabled={cloudLocked}
-                size="sm"
-                variant="ghost"
-                onClick={() => void revealCloudKeys()}
-              >
-                <KeyRound className="size-3.5" />
-                {t("settings.cloud.recoveryKey")}
-              </Button>
-              <Button
-                disabled={cloudLocked}
-                size="sm"
-                variant="ghost"
-                onClick={() => setConfirmSignOut(true)}
-              >
-                <LogOut className="size-3.5" />
-                {t("settings.cloud.signOut")}
-              </Button>
-            </div>
+            ) : null}
+            {detail ? (
+              <Text className="mt-0.5 block" size="meta" tone="muted">
+                {detail}
+              </Text>
+            ) : null}
+            {cloud.lastSyncAt ? (
+              <AppActivityTime timestamp={cloud.lastSyncAt} />
+            ) : null}
           </div>
         ) : null}
       </SettingsGroup>
@@ -346,29 +275,6 @@ export function MemoryRsrsSettings({
           </Button>
         </SettingRow>
       </SettingsGroup>
-
-      {cloudDialogOpen ? (
-        <CloudSyncDialog
-          initialUser={cloud.user}
-          onClose={() => setCloudDialogOpen(false)}
-        />
-      ) : null}
-      {cloudKeys !== null ? (
-        <RecoveryKeyDialog
-          content={cloudKeys}
-          onClose={() => setCloudKeys(null)}
-        />
-      ) : null}
-      <AppConfirmDialog
-        cancelLabel={t("settings.cloud.cancel")}
-        confirmLabel={t("settings.cloud.signOut")}
-        description={t("settings.cloud.signOutDescription")}
-        open={confirmSignOut}
-        title={t("settings.cloud.signOutTitle")}
-        variant="destructive"
-        onConfirm={() => void signOut()}
-        onOpenChange={setConfirmSignOut}
-      />
     </>
   );
 }

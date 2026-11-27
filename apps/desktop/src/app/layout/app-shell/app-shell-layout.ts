@@ -7,6 +7,13 @@ export const TITLEBAR_ICON_BUTTON_GAP = 4;
 
 export const TITLEBAR_LEADING_RESERVE = hasMacTrafficLights() ? 80 : 12;
 
+export const APP_RAIL_WIDTH = 44;
+
+export const TITLEBAR_LEADING_RESERVE_BESIDE_RAIL = Math.max(
+  0,
+  TITLEBAR_LEADING_RESERVE - APP_RAIL_WIDTH,
+);
+
 export function withTitlebarControlsInset(px: number): string {
   return `calc(${px}px + var(--titlebar-controls-inset))`;
 }
@@ -22,7 +29,7 @@ export const TITLEBAR_TOOLBAR_MIN_WIDTH =
   TITLEBAR_RIGHT_PADDING;
 
 export const TITLEBAR_PANE_HEADER_START_INSET =
-  TITLEBAR_TOOLBAR_MIN_WIDTH + TITLEBAR_ICON_BUTTON_GAP;
+  TITLEBAR_TOOLBAR_MIN_WIDTH + TITLEBAR_ICON_BUTTON_GAP - APP_RAIL_WIDTH;
 
 export const MIN_SIDEBAR_CONTENT_WIDTH = 200;
 

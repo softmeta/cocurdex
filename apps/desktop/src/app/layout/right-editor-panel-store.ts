@@ -4,11 +4,13 @@ import { atomWithStorage } from "jotai/utils";
 import { openPdfsAtom } from "@/features/pdf-reader/pdf-reader-store";
 import { activeSessionIdAtom, sessionsAtom } from "@/features/sessions";
 import { desktopApi, type HostCapabilities } from "@/lib";
+import { activeAppAtom } from "./app-rail/app-rail-store";
 import {
   rightPanelHandledRevealClockAtom,
   rightPanelRevealIntentAtom,
 } from "./right-panel-reveal";
 import {
+  isAppView,
   isRightPanelViewInMode,
   type RightPanelMode,
   type RightPanelView,
@@ -94,6 +96,7 @@ function hasStoredActiveView(): boolean {
 }
 
 export const rightPanelModeAtom = atom<RightPanelMode>((get) => {
+  if (get(activeAppAtom) !== null) return "app";
   const sessionId = get(activeSessionIdAtom);
   const session = get(sessionsAtom).find((item) => item.id === sessionId);
   if (session) {
@@ -130,10 +133,18 @@ const storedActiveViewAtom = atomWithStorage<RightPanelView>(
   { getOnInit: true },
 );
 
+const appActiveViewAtom = atom(
+  (get): RightPanelView => get(activeAppAtom) ?? "notes",
+  (_get, set, next: RightPanelView) => {
+    if (isAppView(next)) set(activeAppAtom, next);
+  },
+);
+
 const ACTIVE_VIEW_ATOMS = {
   work: storedActiveViewAtom,
   chat: chatActiveViewAtom,
   personal: personalActiveViewAtom,
+  app: appActiveViewAtom,
 } satisfies Record<RightPanelMode, unknown>;
 
 export const rightPanelActiveViewAtom = atom(
@@ -147,6 +158,7 @@ const LAST_VIEW_ATOMS = {
   work: atom<RightPanelView>("editor"),
   chat: atom<RightPanelView>("notes"),
   personal: atom<RightPanelView>("overview"),
+  app: atom<RightPanelView>("notes"),
 } satisfies Record<RightPanelMode, unknown>;
 
 export const rightPanelLastNonTerminalViewAtom = atom(
@@ -217,7 +229,8 @@ export const rightPanelResolvedActiveViewAtom = atom(
       return availableView(fallback, mode);
     }
 
-    if (mode !== "personal" && !get(rightPanelViewTouchedAtom)) {
+    const keepsOwnView = mode === "personal" || mode === "app";
+    if (!keepsOwnView && !get(rightPanelViewTouchedAtom)) {
       return fallbackView;
     }
 

@@ -13,6 +13,7 @@ import {
   sessionsAtom,
 } from "@/features/sessions";
 import { selectWorkspaceAtom } from "@/features/workspaces";
+import { activeAppAtom } from "../app-rail/app-rail-store";
 import {
   appScreenAtom,
   settingsSectionAtom,
@@ -52,6 +53,7 @@ function panelEntityId(get: Getter, view: RightPanelView): string | null {
 export const currentAppLocationAtom = atom((get): AppLocation => {
   const view = get(rightPanelResolvedActiveViewAtom);
   return {
+    app: get(activeAppAtom),
     sessionId: get(activeSessionIdAtom),
     panel: { view, entityId: panelEntityId(get, view) },
     settings:
@@ -128,6 +130,7 @@ export const navigateAtom = atom(
     set(navigationHistoryAtom, next);
     set(navigationApplyingAtom, true);
     set(navigationEpochAtom, get(navigationEpochAtom) + 1);
+    set(activeAppAtom, target.app);
     applySession(get, set, target.sessionId);
     applyPanel(get, set, target.panel);
     if (target.settings) set(settingsSectionAtom, target.settings);

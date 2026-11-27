@@ -21,9 +21,6 @@ import type {
   InboxItem,
   McpLoginOutcome,
   McpLoginStartResult,
-  MemoryCloudConnectInput,
-  MemoryCloudConnectResult,
-  MemoryCloudKeys,
   MemoryDoctorReport,
   MemoryEntry,
   MemoryHistoryEntry,
@@ -103,10 +100,6 @@ export type AutomationRequests = {
   "memory.install": { force?: boolean };
   "memory.doctor": { remote?: boolean; checkUpdate?: boolean };
   "memory.policy": undefined;
-  "memory.cloud.connect": MemoryCloudConnectInput;
-  "memory.cloud.disconnect": undefined;
-  "memory.cloud.setSync": { enabled: boolean };
-  "memory.cloud.keys": undefined;
   "memory.list": MemoryListInput;
   "memory.update": MemoryUpdateInput;
   "memory.forget": { id: string };
@@ -206,10 +199,6 @@ export type AutomationResults = {
   "memory.install": MemoryInstallResult;
   "memory.doctor": MemoryDoctorReport;
   "memory.policy": string;
-  "memory.cloud.connect": MemoryCloudConnectResult;
-  "memory.cloud.disconnect": MemoryStatus;
-  "memory.cloud.setSync": MemoryStatus;
-  "memory.cloud.keys": MemoryCloudKeys;
   "memory.list": MemoryListResult;
   "memory.update": MemoryEntry | null;
   "memory.forget": null;

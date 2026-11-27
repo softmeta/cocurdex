@@ -226,6 +226,10 @@
     "opencode-deny": "Deny",
     "unavailableForModel": "{{model}} does not support this mode."
   },
+  "rail": {
+    "label": "Apps",
+    "more": "More apps"
+  },
   "sessionMode": {
     "claude-agent": {
       "default": "Default",
@@ -322,7 +326,6 @@
     "showMore_other": "Show more ({{count}} left)",
     "splitDown": "Open Below",
     "splitRight": "Open to the Right",
-    "switchForm": "Switch view ({{name}})",
     "unpin": "Unpin",
     "unread": "Unread",
     "view": {
@@ -399,7 +402,6 @@
       }
     },
     "workspacesGroup": "Work",
-    "workspacesHint": "Build, fix, and ship in your projects",
     "yesterday": "Yesterday"
   },
   "split": {

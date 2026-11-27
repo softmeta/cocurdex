@@ -413,7 +413,6 @@ export default interface Resources {
       error: "Request failed";
     };
     sidebar: {
-      hint: "Ask anything, get quick answers";
       title: "Chat";
     };
   };
@@ -1202,34 +1201,6 @@ export default interface Resources {
     };
   };
   memory: {
-    cloud: {
-      alreadyRegistered: "That username is already registered. Enter its password and recovery key to sign in.";
-      cancel: "Cancel";
-      connected: "Multi-device sync is on";
-      copyRecoveryKey: "Copy recovery key";
-      createHint: "The recovery key is generated when the account is created and shown once. Save it before you close the next step.";
-      description: "Sync memories between your devices through an rsrs account. Records reach the server encrypted; the keys stay on this device.";
-      done: "Done";
-      hidePassword: "Hide password";
-      mode: "Account";
-      modeRegister: "Create account";
-      modeSignIn: "Sign in";
-      password: "Login password";
-      passwordHint: "Used to sign in on this and other devices. Cocurdex does not store it.";
-      passwordPlaceholder: "At least 8 characters";
-      recoveryDescription: "This is your recovery key. It decrypts your memories on another device.";
-      recoveryKey: "Recovery key";
-      recoveryKeyHint: "From the device that already has your memories: Settings, Memory, Recovery key.";
-      recoveryKeyPlaceholder: "A3-...";
-      recoveryTitle: "Save your recovery key";
-      recoveryWarning: "Keep it somewhere safe. Without it your memories cannot be decrypted on another device, and nobody, including the server, can recover them. You can show it again from this page.";
-      showPassword: "Show password";
-      submitCreate: "Create account";
-      submitSignIn: "Sign in";
-      title: "Connect cloud memory";
-      username: "Username";
-      usernamePlaceholder: "Your rsrs account name";
-    };
     library: {
       action: {
         create: "Created";
@@ -1286,7 +1257,6 @@ export default interface Resources {
     menu: {
       enable: "Enable memory";
       settings: "Memory settings";
-      sync: "Multi-device sync";
     };
     onboarding: {
       enable: "Turn on memory";
@@ -1299,7 +1269,7 @@ export default interface Resources {
         off: "Memory is off";
         ready: "Memory is on";
       };
-      sync: "Sync devices";
+      syncHint: "To sync memories across devices, sign in with rsrs login and manage sync in rsrs.";
     };
     session: {
       recallFailed: "Memory recall failed this turn: {{error}}";
@@ -1333,24 +1303,21 @@ export default interface Resources {
         title: "rsrs executable";
       };
       cloud: {
-        cancel: "Cancel";
+        autosyncOff: "Automatic sync is off";
+        autosyncOn: "Automatic sync is on";
         conflicts_one: "{{count}} conflict";
         conflicts_other: "{{count}} conflicts";
-        description: "Turn on to create or connect an rsrs account, then keep encrypted memories in sync across your devices. Off by default: nothing leaves this device until you turn it on.";
+        managedByRsrs: "Managed by rsrs, not here. Sign in with rsrs login in a terminal, then turn sync on and manage your account in the rsrs dashboard (rsrs web) or the rsrs app.";
         needsRsrs: "rsrs is not installed yet.";
+        notSignedIn: "Not signed in to rsrs";
         offline: "This device is offline.";
+        openDashboard: "Open the rsrs dashboard";
         pending_one: "{{count}} memory waiting to upload";
         pending_other: "{{count}} memories waiting to upload";
-        recoveryKey: "Recovery key";
-        signOut: "Sign out";
-        signOutDescription: "Automatic sync stops and the cloud copy is no longer updated. Memories on this device stay where they are. Signing back in needs the same username, password, and recovery key.";
-        signOutFailed: "Could not sign out";
-        signOutTitle: "Sign out of cloud memory?";
-        signedOut: "Signed out of cloud memory";
+        signedInAs: "Signed in to rsrs as {{user}}";
         syncFailed: "Sync failed: {{error}}";
         syncing: "Syncing...";
         title: "Multi-device sync";
-        toggleFailed: "Could not change multi-device sync";
       };
       cloudTitle: "Cloud sync";
       connectionTitle: "Connection";
@@ -1363,13 +1330,6 @@ export default interface Resources {
       groupTitle: "Long-term memory";
       installFailed: "Could not install rsrs";
       installReady: "rsrs is ready";
-      keys: {
-        close: "Close";
-        copy: "Copy recovery key";
-        description: "These keys decrypt your memories on another device. Anyone who has them can read your memories.";
-        failed: "Could not read the recovery key";
-        title: "Recovery key";
-      };
       links: {
         open: "Open";
         repo: {
@@ -1423,7 +1383,6 @@ export default interface Resources {
     };
     switch: {
       label: "Memory";
-      syncToggleFailed: "Could not change multi-device sync";
       toggleFailed: "Could not change the memory setting";
     };
   };
@@ -1802,7 +1761,6 @@ export default interface Resources {
       timeZone: "Time zone";
     };
     sidebar: {
-      hint: "Remembers you and minds your day";
       title: "Assistants";
     };
     thread: {
@@ -2132,6 +2090,10 @@ export default interface Resources {
       "opencode-deny": "Deny";
       unavailableForModel: "{{model}} does not support this mode.";
     };
+    rail: {
+      label: "Apps";
+      more: "More apps";
+    };
     sessionMode: {
       "claude-agent": {
         default: "Default";
@@ -2228,7 +2190,6 @@ export default interface Resources {
       showMore_other: "Show more ({{count}} left)";
       splitDown: "Open Below";
       splitRight: "Open to the Right";
-      switchForm: "Switch view ({{name}})";
       unpin: "Unpin";
       unread: "Unread";
       view: {
@@ -2305,7 +2266,6 @@ export default interface Resources {
         };
       };
       workspacesGroup: "Work";
-      workspacesHint: "Build, fix, and ship in your projects";
       yesterday: "Yesterday";
     };
     split: {

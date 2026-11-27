@@ -76,8 +76,6 @@ export const DAEMON_NO_PARAM_METHODS = {
   "teamTemplate.list": true,
   "memory.settings.get": true,
   "memory.policy": true,
-  "memory.cloud.disconnect": true,
-  "memory.cloud.keys": true,
   "memory.revision": true,
   "memory.capabilities": true,
   "memory.rsrs.preview": true,

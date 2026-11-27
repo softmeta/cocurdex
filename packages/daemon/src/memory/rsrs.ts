@@ -21,7 +21,6 @@ const RECALL_TIMEOUT_MS = 25_000;
 const SHOW_TIMEOUT_MS = 25_000;
 const REMEMBER_TIMEOUT_MS = 180_000;
 const POLICY_TIMEOUT_MS = 30_000;
-const CLOUD_AUTH_TIMEOUT_MS = 120_000;
 const MAX_OUTPUT_BYTES = 2_000_000;
 
 const ANSI_PATTERN = new RegExp(
@@ -300,126 +299,12 @@ export async function readRsrsStatus(
   return parseRsrsCloudStatus(payload);
 }
 
-export async function writeRsrsAutosync(
-  executable: RsrsExecutable,
-  enabled: boolean,
-  timeoutMs = CONFIG_TIMEOUT_MS,
-) {
-  await runRsrs(
-    executable,
-    ["config", "--autosync", enabled ? "true" : "false", "--json"],
-    { timeoutMs },
-  );
-}
-
-function cloudFailure(
-  payload: Record<string, unknown> | null,
-  result: RsrsRunResult,
-) {
-  const message =
-    (payload ? rsrsErrorText(payload) : null) ??
-    result.stderr.trim() ??
-    result.stdout.trim();
-  return commandError(
-    message || "rsrs cloud command failed",
-    "cloud_failed",
-    result.stderr,
-  );
-}
-
 function parseOptionalJson(stdout: string) {
   try {
     return parseRsrsJson(stdout);
   } catch {
     return null;
   }
-}
-
-export async function registerRsrsAccount(
-  executable: RsrsExecutable,
-  input: { user: string; password: string },
-  timeoutMs = CLOUD_AUTH_TIMEOUT_MS,
-) {
-  const result = await runRsrs(
-    executable,
-    ["register", "--json", "--user", input.user, "--pass", input.password],
-    { timeoutMs },
-  );
-  const payload = parseOptionalJson(result.stdout);
-  if (result.code !== 0 || payload?.status === "fail") {
-    throw cloudFailure(payload, result);
-  }
-  const summary = asRecord(payload?.summary) ?? {};
-  return {
-    recoveryKey: stringValue(summary.super),
-    user: stringValue(summary.user) ?? input.user,
-  };
-}
-
-export async function loginRsrsAccount(
-  executable: RsrsExecutable,
-  input: {
-    user: string;
-    password: string;
-    recoveryKey: string | null;
-  },
-  timeoutMs = CLOUD_AUTH_TIMEOUT_MS,
-) {
-  const args = [
-    "login",
-    "--json",
-    "--interactive",
-    "--user",
-    input.user,
-    "--pass",
-    input.password,
-  ];
-  if (input.recoveryKey) args.push("--super", input.recoveryKey);
-  const result = await runRsrs(executable, args, { timeoutMs });
-  const payload = parseOptionalJson(result.stdout);
-  if (result.code !== 0 || payload?.status === "fail") {
-    throw cloudFailure(payload, result);
-  }
-  const summary = asRecord(payload?.summary) ?? {};
-  return {
-    recoveryKey:
-      stringValue(summary.super_issued) ?? stringValue(summary.super),
-    user: stringValue(summary.user) ?? input.user,
-  };
-}
-
-export async function logoutRsrs(
-  executable: RsrsExecutable,
-  timeoutMs = CONFIG_TIMEOUT_MS,
-) {
-  const result = await runRsrs(executable, ["logout", "--json"], { timeoutMs });
-  if (result.code !== 0) {
-    throw cloudFailure(parseOptionalJson(result.stdout), result);
-  }
-}
-
-export async function exportRsrsKeys(
-  executable: RsrsExecutable,
-  timeoutMs = CONFIG_TIMEOUT_MS,
-) {
-  const result = await runRsrs(executable, ["keys-export", "--json"], {
-    timeoutMs,
-  });
-  const payload = parseOptionalJson(result.stdout);
-  const items = Array.isArray(payload?.items) ? payload.items : [];
-  for (const item of items) {
-    const record = asRecord(item);
-    if (record?.name === "content") {
-      const value = stringValue(record.value);
-      if (value) return value;
-    }
-  }
-  const details = asRecord(payload?.details);
-  const inline = details ? stringValue(details.content) : null;
-  if (inline) return inline;
-  const raw = result.stdout.trim();
-  if (raw && (result.code === 0 || result.code === 2)) return raw;
-  throw cloudFailure(payload, result);
 }
 
 function doctorStatus(value: unknown): MemoryDoctorCheck["status"] {

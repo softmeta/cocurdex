@@ -75,9 +75,6 @@ import type {
   McpServerConfig,
   McpServerStatus,
   McpStatusReport,
-  MemoryCloudConnectInput,
-  MemoryCloudConnectResult,
-  MemoryCloudKeys,
   MemoryDoctorReport,
   MemoryEntry,
   MemoryHistoryEntry,
@@ -623,12 +620,6 @@ export interface ProductApi {
     checkUpdate?: boolean;
   }): Promise<MemoryDoctorReport>;
   getMemoryPolicy(): Promise<string>;
-  connectMemoryCloud(
-    input: MemoryCloudConnectInput,
-  ): Promise<MemoryCloudConnectResult>;
-  disconnectMemoryCloud(): Promise<MemoryStatus>;
-  setMemoryCloudSync(enabled: boolean): Promise<MemoryStatus>;
-  getMemoryCloudKeys(): Promise<MemoryCloudKeys>;
   getDaemonBackground(): Promise<DaemonBackgroundStatus>;
   setDaemonBackground(enabled: boolean): Promise<DaemonBackgroundStatus>;
   getHostRemoteAccess(): Promise<HostRemoteAccessStatus>;

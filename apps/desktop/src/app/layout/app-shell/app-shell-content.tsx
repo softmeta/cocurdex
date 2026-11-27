@@ -4,6 +4,7 @@ import type { MouseEvent, ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
 import type { AppearanceSettings } from "@/features/settings";
 import { cn } from "@/lib";
+import { AppRail } from "../app-rail";
 import { ChatDock } from "../chat-dock";
 import { ChatDockActions } from "../chat-dock-actions";
 import {
@@ -111,6 +112,7 @@ export function AppShellContent({
       )}
       ref={contentRowRef}
     >
+      <AppRail />
       {isRightPanelOpen ? (
         <div
           data-testid="shell-right-panel"
@@ -159,7 +161,8 @@ export function AppShellContent({
       {isRightPanelMaximized || (detached && isRightPanelOpen) ? null : (
         <div
           className={cn(
-            "flex min-w-0 shrink-0 overflow-hidden",
+            "flex min-w-0 overflow-hidden",
+            isCompact ? "shrink-0" : "flex-1",
             isCompact &&
               "app-no-drag absolute end-2 top-10 bottom-2 z-50 rounded-panel bg-chat-canvas shadow-overlay ring-1 ring-menu-ring",
             isCompact && !compactChatOpen && "invisible pointer-events-none",
@@ -167,7 +170,7 @@ export function AppShellContent({
           inert={busy || (isCompact && !compactChatOpen)}
           data-testid="shell-chat-surface"
           style={{
-            width: isCompact ? MIN_CHAT_WIDTH + 2 : "100%",
+            width: isCompact ? MIN_CHAT_WIDTH + 2 : undefined,
             paddingInlineEnd: chatInset,
           }}
         >

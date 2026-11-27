@@ -2,7 +2,7 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import { clickByRole, queryAllByRole, waitForRole } from "./lib/locate.mjs";
-import { translate } from "./lib/navigate.mjs";
+import { openSidebarForm, translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
 const APP_READY_TIMEOUT_MS = 120_000;
@@ -75,6 +75,7 @@ async function removeWorkWorkspaces(session) {
     return true;
   });
   await session.reload();
+  await openSidebarForm(session, "sessions:sidebar.workspacesGroup");
 }
 
 async function sendButton(session) {

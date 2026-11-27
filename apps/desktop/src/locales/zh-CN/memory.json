@@ -1,32 +1,4 @@
 {
-  "cloud": {
-    "alreadyRegistered": "该用户名已被注册。请输入它的登录密码和恢复密钥来登录。",
-    "cancel": "取消",
-    "connected": "多设备同步已开启",
-    "copyRecoveryKey": "复制恢复密钥",
-    "createHint": "创建账号时会生成恢复密钥，并且只显示一次；请在关闭下一步之前保存好。",
-    "description": "用 rsrs 账号在你的多台设备之间同步记忆。记录加密后才会上传，密钥只留在这台设备。",
-    "done": "完成",
-    "hidePassword": "隐藏密码",
-    "mode": "账号方式",
-    "modeRegister": "创建账号",
-    "modeSignIn": "登录已有账号",
-    "password": "登录密码",
-    "passwordHint": "用于在这台和其它设备登录；Cocurdex 不会保存它。",
-    "passwordPlaceholder": "至少 8 个字符",
-    "recoveryDescription": "这是你的恢复密钥，换设备时用它解密记忆。",
-    "recoveryKey": "恢复密钥",
-    "recoveryKeyHint": "在已有记忆的设备上打开：设置 → 记忆 → 恢复密钥。",
-    "recoveryKeyPlaceholder": "A3-…",
-    "recoveryTitle": "保存恢复密钥",
-    "recoveryWarning": "请妥善保存。没有它就无法在另一台设备解密记忆，服务端也无法恢复。你随时可以回到本页再次查看。",
-    "showPassword": "显示密码",
-    "submitCreate": "创建账号",
-    "submitSignIn": "登录",
-    "title": "连接云端记忆",
-    "username": "用户名",
-    "usernamePlaceholder": "你的 rsrs 账号名"
-  },
   "library": {
     "action": {
       "create": "创建",
@@ -82,8 +54,7 @@
   },
   "menu": {
     "enable": "启用记忆",
-    "settings": "记忆设置",
-    "sync": "多设备同步"
+    "settings": "记忆设置"
   },
   "onboarding": {
     "enable": "开启记忆",
@@ -96,7 +67,7 @@
       "off": "记忆未开启",
       "ready": "记忆已开启"
     },
-    "sync": "多设备同步"
+    "syncHint": "要在多台设备间同步记忆，请运行 rsrs login 登录，并在 rsrs 里管理同步。"
   },
   "session": {
     "recallFailed": "本轮记忆召回失败：{{error}}",
@@ -130,24 +101,21 @@
       "title": "rsrs 可执行文件"
     },
     "cloud": {
-      "cancel": "取消",
+      "autosyncOff": "自动同步未开启",
+      "autosyncOn": "自动同步已开启",
       "conflicts_one": "{{count}} 个冲突",
       "conflicts_other": "{{count}} 个冲突",
-      "description": "打开后会创建或连接 rsrs 账号，并在多台设备之间同步加密记忆。默认关闭：打开之前不会有任何数据离开这台设备。",
+      "managedByRsrs": "多设备同步由 rsrs 自己管理，Cocurdex 不再提供登录。请在终端运行 rsrs login 登录，然后在 rsrs 控制台（rsrs web）或 rsrs 应用里开启同步、管理账号。",
       "needsRsrs": "rsrs 尚未安装。",
+      "notSignedIn": "未登录 rsrs",
       "offline": "这台设备当前离线。",
+      "openDashboard": "打开 rsrs 控制台",
       "pending_one": "{{count}} 条记忆待上传",
       "pending_other": "{{count}} 条记忆待上传",
-      "recoveryKey": "恢复密钥",
-      "signedOut": "已退出云端记忆",
-      "signOut": "退出登录",
-      "signOutDescription": "自动同步会停止，云端副本不再更新；这台设备上的记忆保持原样。重新登录需要同样的用户名、密码和恢复密钥。",
-      "signOutFailed": "退出登录失败",
-      "signOutTitle": "退出云端记忆？",
+      "signedInAs": "已以 {{user}} 登录 rsrs",
       "syncFailed": "同步失败：{{error}}",
       "syncing": "正在同步…",
-      "title": "多设备同步",
-      "toggleFailed": "无法修改多设备同步"
+      "title": "多设备同步"
     },
     "cloudTitle": "云端同步",
     "connectionTitle": "连接",
@@ -160,13 +128,6 @@
     "groupTitle": "长期记忆",
     "installFailed": "无法安装 rsrs",
     "installReady": "rsrs 已就绪",
-    "keys": {
-      "close": "关闭",
-      "copy": "复制恢复密钥",
-      "description": "这些密钥用于在另一台设备解密记忆。拿到它的人可以读取你的全部记忆。",
-      "failed": "无法读取恢复密钥",
-      "title": "恢复密钥"
-    },
     "links": {
       "open": "打开",
       "repo": {
@@ -220,7 +181,6 @@
   },
   "switch": {
     "label": "记忆",
-    "syncToggleFailed": "无法修改多设备同步",
     "toggleFailed": "无法修改记忆开关"
   }
 }
