@@ -10,7 +10,7 @@ import { useSearchPaletteActions } from "./use-search-palette-actions";
 
 export function useOpenEntityBridge() {
   const store = useStore();
-  const actions = useSearchPaletteActions(() => {});
+  const actions = useSearchPaletteActions(() => {}, "peek");
   const open = useEffectEvent((ref: EntityRef) => {
     if (ref.kind === "issue") actions.openIssue(ref.id);
     else if (ref.kind === "note") actions.openNote(ref.id);

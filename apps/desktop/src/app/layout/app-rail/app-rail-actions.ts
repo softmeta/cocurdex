@@ -1,5 +1,14 @@
 import { atom } from "jotai";
-import type { AppView } from "../right-panel-tab-sets";
+import { editorPanelOpenAtom } from "@/features/editor";
+import {
+  rightPanelModeAtom,
+  rightPanelResolvedActiveViewAtom,
+} from "../right-editor-panel-store";
+import {
+  rightPanelHandledRevealClockAtom,
+  rightPanelRevealIntentAtom,
+} from "../right-panel-reveal";
+import { type AppView, isRightPanelViewInMode } from "../right-panel-tab-sets";
 import {
   type SidebarTab,
   sidebarTabAtom,
@@ -19,15 +28,27 @@ export const railSelectionAtom = atom<RailItem>(
   (get) => get(activeAppAtom) ?? get(sidebarTabAtom),
 );
 
-export const selectRailItemAtom = atom(null, (_get, set, item: RailItem) => {
+export const selectRailItemAtom = atom(null, (get, set, item: RailItem) => {
   if (isSidebarTab(item)) {
     set(activeAppAtom, null);
     set(switchSidebarTabAtom, item);
     return;
   }
   set(activeAppAtom, item);
+  const intent = get(rightPanelRevealIntentAtom);
+  if (intent !== null) set(rightPanelHandledRevealClockAtom, intent.clock);
 });
 
 export const leaveAppAtom = atom(null, (_get, set) => {
   set(activeAppAtom, null);
+});
+
+export const peekAppViewAtom = atom(null, (get, set, view: AppView) => {
+  const mode = get(rightPanelModeAtom);
+  if (mode === "app" || !isRightPanelViewInMode(view, mode)) {
+    set(selectRailItemAtom, view);
+    return;
+  }
+  set(rightPanelResolvedActiveViewAtom, view);
+  set(editorPanelOpenAtom, true);
 });

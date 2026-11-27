@@ -398,9 +398,9 @@ export function AppShell() {
   );
 
   const openFileFromPalette = (file: WorkspaceFileEntry) => {
+    setActiveApp(null);
     openFile(file.path);
     setIsSearchOpen(false);
-    setActiveApp(null);
 
     if (isRightPanelPreferredOpen) {
       return;

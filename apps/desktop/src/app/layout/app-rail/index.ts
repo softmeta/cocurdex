@@ -1,5 +1,9 @@
 export { AppRail } from "./app-rail";
-export { leaveAppAtom, selectRailItemAtom } from "./app-rail-actions";
+export {
+  leaveAppAtom,
+  peekAppViewAtom,
+  selectRailItemAtom,
+} from "./app-rail-actions";
 export {
   activeAppAtom,
   appDockPinnedAtom,

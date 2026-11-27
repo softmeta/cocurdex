@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { beginColumnResize } from "@/components/use-column-resize";
 import { useMountEffect } from "@/lib";
+import { APP_RAIL_WIDTH } from "./app-shell/app-shell-layout";
 import {
   CHAT_DOCK_MIN_WIDTH,
   resolveChatDockPinLayout,
@@ -62,6 +63,10 @@ export const SESSION_LIST_DEFAULT_WIDTH = 220;
 export const SESSION_LIST_MAX_WIDTH = 400;
 const SESSION_LIST_CHAT_MIN = 160;
 const EDGE_MARGIN = 8;
+
+export function dockAreaWidth(): number {
+  return Math.max(0, window.innerWidth - APP_RAIL_WIDTH);
+}
 const TOP_MARGIN = 40;
 export const CHAT_FAB_SIZE_PX = 36;
 const FAB_DRAG_THRESHOLD_PX = 4;
@@ -237,7 +242,7 @@ export function useDockGeometry() {
     }
     return fitFloatingGeometryToWindow(
       getStoredGeometry(),
-      window.innerWidth,
+      dockAreaWidth(),
       window.innerHeight,
     );
   });
@@ -247,7 +252,7 @@ export function useDockGeometry() {
       setGeometry((prev) => {
         const next = fitFloatingGeometryToWindow(
           prev,
-          window.innerWidth,
+          dockAreaWidth(),
           window.innerHeight,
         );
         if (geometryEquals(prev, next)) {
@@ -274,7 +279,7 @@ export function useDockGeometry() {
         right: clamp(
           start.right - (moveEvent.clientX - startX),
           EDGE_MARGIN,
-          window.innerWidth - start.width - EDGE_MARGIN,
+          dockAreaWidth() - start.width - EDGE_MARGIN,
         ),
         bottom: clamp(
           start.bottom - (moveEvent.clientY - startY),
@@ -310,7 +315,7 @@ export function useDockGeometry() {
       const start = geometry;
 
       const compute = (moveEvent: MouseEvent): DockGeometry => {
-        const maxWidth = window.innerWidth - start.right - EDGE_MARGIN;
+        const maxWidth = dockAreaWidth() - start.right - EDGE_MARGIN;
         const maxHeight = window.innerHeight - start.bottom - TOP_MARGIN;
         return {
           ...start,
@@ -350,11 +355,10 @@ export function useDockGeometry() {
       const start = geometry;
       beginColumnResize(event, {
         edge: "inline-start",
-        startWidth: resolveChatDockPinLayout(window.innerWidth, start.width)
+        startWidth: resolveChatDockPinLayout(dockAreaWidth(), start.width)
           .width,
         stopPropagation: true,
-        clamp: (next) =>
-          resolveChatDockPinLayout(window.innerWidth, next).width,
+        clamp: (next) => resolveChatDockPinLayout(dockAreaWidth(), next).width,
         onWidthChange: (width) => {
           setGeometry({ ...start, width });
         },
@@ -421,7 +425,7 @@ export function useFabPosition() {
     }
     return fitFabPositionToWindow(
       getStoredFabPosition(),
-      window.innerWidth,
+      dockAreaWidth(),
       window.innerHeight,
     );
   });
@@ -440,7 +444,7 @@ export function useFabPosition() {
       setPosition((prev) => {
         const next = fitFabPositionToWindow(
           prev,
-          window.innerWidth,
+          dockAreaWidth(),
           window.innerHeight,
         );
         if (fabPositionEquals(prev, next)) {
@@ -477,7 +481,7 @@ export function useFabPosition() {
             right: start.right - (moveEvent.clientX - startX),
             bottom: start.bottom - (moveEvent.clientY - startY),
           },
-          window.innerWidth,
+          dockAreaWidth(),
           window.innerHeight,
           fabSize,
         );

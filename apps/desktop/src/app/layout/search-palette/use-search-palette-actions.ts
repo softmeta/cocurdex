@@ -6,15 +6,24 @@ import { openIssueDetailAtom } from "@/features/issues";
 import { openNoteAtom } from "@/features/notes";
 import { selectSessionAtom } from "@/features/sessions";
 import { selectWorkspaceAtom } from "@/features/workspaces";
-import { leaveAppAtom, selectRailItemAtom } from "../app-rail";
+import { leaveAppAtom, peekAppViewAtom, selectRailItemAtom } from "../app-rail";
+import type { AppView } from "../right-panel-tab-sets";
 import { sidebarTabAtom } from "../sidebar";
 
-export function useSearchPaletteActions(onClose: () => void) {
+export function useSearchPaletteActions(
+  onClose: () => void,
+  placement: "app" | "peek" = "app",
+) {
   const selectWorkspace = useSetAtom(selectWorkspaceAtom);
   const selectSession = useSetAtom(selectSessionAtom);
   const setSidebarTab = useSetAtom(sidebarTabAtom);
   const selectRailItem = useSetAtom(selectRailItemAtom);
   const leaveApp = useSetAtom(leaveAppAtom);
+  const peekAppView = useSetAtom(peekAppViewAtom);
+  const showApp = (view: AppView) => {
+    if (placement === "peek") peekAppView(view);
+    else selectRailItem(view);
+  };
   const openNote = useSetAtom(openNoteAtom);
   const openIssueDetail = useSetAtom(openIssueDetailAtom);
   const openDeck = useSetAtom(openDeckAtom);
@@ -35,17 +44,17 @@ export function useSearchPaletteActions(onClose: () => void) {
     },
     openNote(noteId: string) {
       onClose();
-      selectRailItem("notes");
+      showApp("notes");
       void openNote(noteId);
     },
     openIssue(issueId: string) {
       onClose();
-      selectRailItem("issues");
+      showApp("issues");
       void openIssueDetail(issueId);
     },
     openDeck(deckId: string) {
       onClose();
-      selectRailItem("decks");
+      showApp("decks");
       void openDeck(deckId);
     },
   };
