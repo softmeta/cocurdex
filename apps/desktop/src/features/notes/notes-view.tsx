@@ -9,7 +9,7 @@ import { NoteEditor } from "./editor";
 import {
   activeNoteIdAtom,
   loadNotesAtom,
-  notesLoadingAtom,
+  notesLoadedAtom,
 } from "./notes-store";
 import { NotesSidebar } from "./sidebar";
 
@@ -18,8 +18,7 @@ const MIN_NOTES_EDITOR_WIDTH_PX = 280;
 export function NotesView() {
   const { t } = useTranslation("notes");
   const loadNotes = useSetAtom(loadNotesAtom);
-  const activeNoteId = useAtomValue(activeNoteIdAtom);
-  const loading = useAtomValue(notesLoadingAtom);
+  const loaded = useAtomValue(notesLoadedAtom);
 
   useMountEffect(() => {
     void loadNotes();
@@ -27,28 +26,29 @@ export function NotesView() {
 
   useDataSync("notes");
 
-  if (loading) {
-    return null;
-  }
-
   return (
     <AppWorkbench
       app="notes"
       contentMinWidth={MIN_NOTES_EDITOR_WIDTH_PX}
       sidebarResizeLabel={t("sidebar.resize")}
-      sidebar={<NotesSidebar />}
+      sidebar={loaded ? <NotesSidebar /> : null}
     >
-      {activeNoteId ? (
-        <NoteEditor />
-      ) : (
-        <div className="flex flex-1 items-center justify-center">
-          <EmptyState
-            icon={<NotebookPen />}
-            title={t("editor.empty.title")}
-            description={t("editor.empty.description")}
-          />
-        </div>
-      )}
+      {loaded ? <NoteContent /> : null}
     </AppWorkbench>
+  );
+}
+
+function NoteContent() {
+  const { t } = useTranslation("notes");
+  const activeNoteId = useAtomValue(activeNoteIdAtom);
+  if (activeNoteId) return <NoteEditor />;
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <EmptyState
+        icon={<NotebookPen />}
+        title={t("editor.empty.title")}
+        description={t("editor.empty.description")}
+      />
+    </div>
   );
 }

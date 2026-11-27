@@ -1,6 +1,6 @@
 import type { MessageAttachment } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import type { MouseEvent, ReactNode, Ref } from "react";
+import { type MouseEvent, type ReactNode, type Ref, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AppearanceSettings } from "@/features/settings";
 import { cn } from "@/lib";
@@ -139,11 +139,15 @@ export function AppShellContent({
       isChatSurfaceShown &&
       !isPanelFullWidth &&
       !isCompact;
+  const isPanelOpening = usePanelOpeningMotion(
+    isRightPanelOpen,
+    isPanelFullWidth,
+  );
   return (
     <main
       className={cn(
         "relative flex min-h-0 flex-1 overflow-hidden bg-shell",
-        isRightPanelOpen && !isPanelFullWidth && "shell-panel-opening",
+        isPanelOpening && "shell-panel-opening",
       )}
       ref={contentRowRef}
     >
@@ -298,4 +302,20 @@ export function AppShellContent({
       ) : null}
     </main>
   );
+}
+
+function usePanelOpeningMotion(isOpen: boolean, isFullWidth: boolean) {
+  const [motion, setMotion] = useState({
+    isOpen,
+    isFullWidth,
+    isOpening: isOpen && !isFullWidth,
+  });
+  if (motion.isOpen !== isOpen || motion.isFullWidth !== isFullWidth) {
+    setMotion({
+      isOpen,
+      isFullWidth,
+      isOpening: isOpen && !isFullWidth && (motion.isOpening || !motion.isOpen),
+    });
+  }
+  return motion.isOpening;
 }

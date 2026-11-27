@@ -108,6 +108,40 @@ async function pressMouseBack(session) {
   }
 }
 
+async function startFrameSampling(session) {
+  await session.run(() => {
+    const frames = [];
+    window.__appSwitchFrames = frames;
+    const sample = () => {
+      if (window.__appSwitchFrames !== frames) return;
+      const panel = document.querySelector('[data-testid="shell-right-panel"]');
+      const isWorkbench = Boolean(
+        panel && panel.getBoundingClientRect().left < innerWidth / 4,
+      );
+      if (isWorkbench) {
+        const layer = [
+          ...document.querySelectorAll('[data-testid$="-layer"]'),
+        ].find((element) => element.getClientRects().length > 0);
+        const sidebar = layer?.querySelector("[data-window-sidebar]");
+        frames.push({
+          layer: layer?.dataset.testid ?? null,
+          sidebarChildren: sidebar?.childElementCount ?? 0,
+        });
+      }
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+}
+
+function stopFrameSampling(session) {
+  return session.run(() => {
+    const frames = window.__appSwitchFrames;
+    window.__appSwitchFrames = null;
+    return frames;
+  });
+}
+
 runScenario("app-navigation", {
   open: () => openScenarioApp(args, { fixtureDb: true }),
   setup: async ({ session }) => {
@@ -306,6 +340,27 @@ runScenario("app-navigation", {
           { general, after },
         );
         return { general, after };
+      },
+    ],
+    [
+      "switching to a visited app paints its sidebar on every frame",
+      async ({ session }) => {
+        await showPanelView(session, "issues");
+        await showPanelView(session, "notes");
+        await startFrameSampling(session);
+        await showPanelView(session, "issues");
+        await showPanelView(session, "notes");
+        await openSidebarForm(session, "sessions:sidebar.workspacesGroup");
+        await showPanelView(session, "issues");
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const frames = await stopFrameSampling(session);
+        const blank = frames.filter((frame) => frame.sidebarChildren < 2);
+        check(frames.length > 0, "no app frames sampled");
+        check(blank.length === 0, "an app switch painted a blank frame", {
+          blank,
+          frames: frames.length,
+        });
+        return { frames: frames.length };
       },
     ],
     [

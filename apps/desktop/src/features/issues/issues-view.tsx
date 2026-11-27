@@ -46,7 +46,7 @@ import {
   deleteIssueAtom,
   deleteViewAtom,
   type IssueMovePayload,
-  issueLoadingAtom,
+  issuesLoadedAtom,
   issueViewsAtom,
   loadIssuesAtom,
   moveIssueAtom,
@@ -92,7 +92,7 @@ function buildDetailStepper(
 export function IssuesView() {
   const { t } = useTranslation("issues");
   const loadIssues = useSetAtom(loadIssuesAtom);
-  const loading = useAtomValue(issueLoadingAtom);
+  const loaded = useAtomValue(issuesLoadedAtom);
   const activeBoard = useAtomValue(activeViewAtom);
   const boards = useAtomValue(issueViewsAtom);
   const activeBoardId = useAtomValue(activeViewIdAtom);
@@ -258,8 +258,17 @@ export function IssuesView() {
     }
   };
 
-  if (loading) {
-    return null;
+  if (!loaded) {
+    return (
+      <AppWorkbench
+        app="issues"
+        contentMinWidth={0}
+        sidebarResizeLabel={t("sidebar.resize")}
+        sidebar={null}
+      >
+        {null}
+      </AppWorkbench>
+    );
   }
 
   const fieldOptions: IssueFieldOptions | null = viewBoard

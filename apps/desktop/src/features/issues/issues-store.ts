@@ -24,7 +24,7 @@ import { issuesIpc } from "./issues-ipc";
 export const issueViewsAtom = atom<ViewSummary[]>([]);
 export const activeViewIdAtom = atom<string>(DEFAULT_VIEW_ID);
 export const activeViewAtom = atom<ViewFull | null>(null);
-export const issueLoadingAtom = atom(false);
+export const issuesLoadedAtom = atom(false);
 
 async function loadActiveView(
   set: (atom: typeof activeViewAtom, value: ViewFull | null) => void,
@@ -70,7 +70,6 @@ async function runIssueMutation<T>(
 }
 
 export const loadIssuesAtom = atom(null, async (_get, set) => {
-  set(issueLoadingAtom, true);
   try {
     const views = await refreshViewList(set);
     const viewId =
@@ -80,7 +79,7 @@ export const loadIssuesAtom = atom(null, async (_get, set) => {
     set(activeViewIdAtom, viewId);
     await loadActiveView(set, viewId);
   } finally {
-    set(issueLoadingAtom, false);
+    set(issuesLoadedAtom, true);
   }
 });
 
@@ -141,7 +140,7 @@ export const reloadViewAtom = atom(null, async (get, set) => {
 });
 
 export const refreshIssuesAtom = atom(null, async (get, set) => {
-  if (get(issueLoadingAtom)) {
+  if (!get(issuesLoadedAtom)) {
     return;
   }
   try {

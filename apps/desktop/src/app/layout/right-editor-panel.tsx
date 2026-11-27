@@ -153,10 +153,19 @@ export function RightEditorPanel({
   const pdfEverActive = hasPdfsOpen || activeView === "pdf";
   const [notesKeepAlive, setNotesKeepAlive] = useState(false);
   const notesEverActive = notesKeepAlive || activeView === "notes";
+  if (notesEverActive && !notesKeepAlive) {
+    setNotesKeepAlive(true);
+  }
   const [decksKeepAlive, setDecksKeepAlive] = useState(false);
   const decksEverActive = decksKeepAlive || activeView === "decks";
+  if (decksEverActive && !decksKeepAlive) {
+    setDecksKeepAlive(true);
+  }
   const [issuesKeepAlive, setIssuesKeepAlive] = useState(false);
   const issuesEverActive = issuesKeepAlive || activeView === "issues";
+  if (issuesEverActive && !issuesKeepAlive) {
+    setIssuesKeepAlive(true);
+  }
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
   const setRightPanelResizing = useSetAtom(rightPanelResizingAtom);
   const openFile = useSetAtom(openFileAtom);
@@ -324,15 +333,6 @@ export function RightEditorPanel({
             }
             if (value === "editor") {
               setFileTreeVisible(true);
-            }
-            if (value === "notes") {
-              setNotesKeepAlive(true);
-            }
-            if (value === "decks") {
-              setDecksKeepAlive(true);
-            }
-            if (value === "issues") {
-              setIssuesKeepAlive(true);
             }
           }}
         />
