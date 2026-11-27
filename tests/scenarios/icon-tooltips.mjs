@@ -6,6 +6,7 @@ import { showPanelView, translate } from "./lib/navigate.mjs";
 const HOVER_TIMEOUT_MS = 3_000;
 const REST_POINT = { x: 2, y: 400 };
 const MAX_GLYPH_RATIO = 0.75;
+const MAX_COLLECT_PASSES = 5;
 const UI_TIMEOUT_MS = 30_000;
 const SEEDED_DECK_TITLE = "Checkout review";
 
@@ -16,6 +17,7 @@ async function waitForButton(session, key) {
 
 const VIEW_READY = {
   git: (session) => waitForButton(session, "editor:git.refresh"),
+  issues: (session) => waitForButton(session, "issues:board.addCard"),
   decks: async (session) => {
     await clickByRole(
       session,
@@ -29,6 +31,9 @@ const VIEW_READY = {
 const args = readScenarioArgs();
 
 function collectIconButtons() {
+  const isDisclosure = (button) =>
+    button.hasAttribute("aria-expanded") &&
+    !button.hasAttribute("aria-haspopup");
   const visible = (element) => {
     const rect = element.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return false;
@@ -43,6 +48,7 @@ function collectIconButtons() {
       !button.disabled &&
       button.textContent.trim() === "" &&
       button.querySelector("svg") &&
+      !isDisclosure(button) &&
       !button.closest('[role="dialog"], [role="menu"]') &&
       visible(button),
   );
@@ -59,6 +65,7 @@ function collectIconButtons() {
 function iconButtonCenter(index) {
   const button = window.__iconButtons[index];
   const rect = button.getBoundingClientRect();
+  if (!button.isConnected || rect.width === 0) return null;
   return {
     name: button.getAttribute("aria-label"),
     x: rect.left + rect.width / 2,
@@ -101,22 +108,31 @@ async function moveMouse(session, point) {
 }
 
 async function inspectIconButtons(session) {
-  const { total, fresh } = await session.run(collectIconButtons);
-  const oversized = await session.run(oversizedGlyphs, MAX_GLYPH_RATIO);
   const missing = [];
   const stacked = [];
-  for (let index = 0; index < fresh; index += 1) {
-    const target = await session.run(iconButtonCenter, index);
-    await moveMouse(session, target);
-    const surfaces = await session
-      .waitUntil(hoverSurfaces, undefined, HOVER_TIMEOUT_MS)
-      .catch(() => null);
-    if (!surfaces) missing.push(target.name);
-    else if (surfaces.length > 1) stacked.push(target.name);
-    await moveMouse(session, REST_POINT);
-    await session.waitUntil(noHoverSurface, undefined, HOVER_TIMEOUT_MS);
+  const oversized = [];
+  let count = 0;
+  let checked = 0;
+  for (let pass = 0; pass < MAX_COLLECT_PASSES; pass += 1) {
+    const { total, fresh } = await session.run(collectIconButtons);
+    if (pass === 0) count = total;
+    if (fresh === 0) break;
+    oversized.push(...(await session.run(oversizedGlyphs, MAX_GLYPH_RATIO)));
+    for (let index = 0; index < fresh; index += 1) {
+      const target = await session.run(iconButtonCenter, index);
+      if (!target) continue;
+      checked += 1;
+      await moveMouse(session, target);
+      const surfaces = await session
+        .waitUntil(hoverSurfaces, undefined, HOVER_TIMEOUT_MS)
+        .catch(() => null);
+      if (!surfaces) missing.push(target.name);
+      else if (surfaces.length > 1) stacked.push(target.name);
+      await moveMouse(session, REST_POINT);
+      await session.waitUntil(noHoverSurface, undefined, HOVER_TIMEOUT_MS);
+    }
   }
-  return { count: total, checked: fresh, missing, stacked, oversized };
+  return { count, checked, missing, stacked, oversized };
 }
 
 function viewStep(view) {
