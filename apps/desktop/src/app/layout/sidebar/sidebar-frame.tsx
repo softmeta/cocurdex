@@ -36,6 +36,7 @@ export function ResizableSidebarSlot({
       >
         <ResizeSeparator
           ariaLabel={separatorAriaLabel}
+          line="hover"
           onMouseDown={onResizeMouseDown}
         />
       </div>

@@ -53,7 +53,20 @@ export function ResizableSidebar({
       >
         {children}
       </div>
-      <ResizeSeparator ariaLabel={ariaLabel} onMouseDown={handleMouseDown} />
+      {surface === "sidebar" ? (
+        <div
+          className="relative z-10 flex shrink-0 bg-sidebar"
+          data-window-sidebar-edge=""
+        >
+          <ResizeSeparator
+            ariaLabel={ariaLabel}
+            line="hover"
+            onMouseDown={handleMouseDown}
+          />
+        </div>
+      ) : (
+        <ResizeSeparator ariaLabel={ariaLabel} onMouseDown={handleMouseDown} />
+      )}
     </>
   );
 }

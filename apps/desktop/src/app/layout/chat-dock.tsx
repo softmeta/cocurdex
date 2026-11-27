@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ResizeSeparator } from "@/components/resize-separator";
 import { focusedSessionPaneAtom, sessionsAtom } from "@/features/sessions";
 import { cn } from "@/lib";
+import { TITLEBAR_HEIGHT } from "./app-shell/app-shell-layout";
 import { ChatDockActions } from "./chat-dock-actions";
 import {
   type ChatDockVisibility,
@@ -13,6 +14,7 @@ import {
 } from "./chat-dock-geometry";
 import { ChatDockLauncher } from "./chat-dock-launcher";
 import { resolveChatDockPinLayout } from "./chat-dock-sizing";
+import { appWorkbenchShownAtom } from "./right-editor-panel-store";
 import {
   SessionPaneHeader,
   sessionPaneTitle,
@@ -58,6 +60,9 @@ export function ChatDock({
   const viewportWidth = useChatDockViewportWidth();
   const pinLayout = resolveChatDockPinLayout(viewportWidth, geometry.width);
   const pinned = pinnable && pinRequested && pinLayout.canPin;
+  const isAppWorkbenchShown = useAtomValue(appWorkbenchShownAtom);
+  const isBesideViewSwitcher = pinned && !isAppWorkbenchShown;
+  const isFullHeight = pinned && isAppWorkbenchShown;
   const { paneCount, focusedPaneId, splitPaneById } = useSessionSplitActions();
   const focusedPane = useAtomValue(focusedSessionPaneAtom);
   const sessions = useAtomValue(sessionsAtom);
@@ -203,7 +208,7 @@ export function ChatDock({
       )}
       style={pinned ? { width: pinLayout.width } : undefined}
     >
-      {pinned ? (
+      {isBesideViewSwitcher ? (
         <div
           aria-hidden
           className="absolute inset-x-0 top-0 box-content border-b border-editor-border"
@@ -219,7 +224,11 @@ export function ChatDock({
         )}
         style={
           pinned
-            ? { top: VIEW_SWITCHER_ROW_OUTER_HEIGHT_PX }
+            ? {
+                top: isBesideViewSwitcher
+                  ? VIEW_SWITCHER_ROW_OUTER_HEIGHT_PX
+                  : 0,
+              }
             : {
                 right: geometry.right,
                 bottom: geometry.bottom,
@@ -245,6 +254,13 @@ export function ChatDock({
         )}
 
         <div className="relative flex min-h-0 flex-1 flex-col bg-chat-canvas">
+          {isFullHeight ? (
+            <div
+              aria-hidden
+              className="app-drag shrink-0"
+              style={{ height: TITLEBAR_HEIGHT }}
+            />
+          ) : null}
           {actionHeader({ draggable: !pinned })}
           <div className="relative min-h-0 flex-1 overflow-hidden">
             {children}
