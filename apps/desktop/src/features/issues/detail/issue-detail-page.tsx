@@ -1,7 +1,7 @@
 import type { IssueRecord } from "@cocurdex/shared";
 import { useSetAtom } from "jotai";
 import { ArrowLeft, ChevronDown, ChevronUp, ClipboardCopy } from "lucide-react";
-import { type ReactNode, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FindInDocumentButton } from "@/app/layout/find-in-document-button";
 import { PanelToolbar } from "@/app/layout/panel-toolbar";
@@ -35,7 +35,6 @@ export function IssueDetailPage({
   viewTitle,
   options,
   actions,
-  leading,
   stepper,
   onBack,
 }: {
@@ -43,7 +42,6 @@ export function IssueDetailPage({
   viewTitle: string;
   options: IssueFieldOptions;
   actions: IssueDetailActions;
-  leading?: ReactNode;
   stepper: IssueDetailStepper | null;
   onBack: () => void;
 }) {
@@ -61,7 +59,6 @@ export function IssueDetailPage({
       className="relative flex min-h-0 min-w-0 flex-1 flex-col"
     >
       <PanelToolbar className="gap-1" divided={false}>
-        {leading}
         <TitlebarIconButton
           aria-label={t("detail.backToView", { view: viewTitle })}
           onClick={onBack}

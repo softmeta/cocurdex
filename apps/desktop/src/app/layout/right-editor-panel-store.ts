@@ -245,3 +245,9 @@ export const rightPanelResolvedActiveViewAtom = atom(
     }
   },
 );
+
+export const appWorkbenchShownAtom = atom(
+  (get) =>
+    get(rightPanelModeAtom) === "app" &&
+    isAppView(get(rightPanelResolvedActiveViewAtom)),
+);

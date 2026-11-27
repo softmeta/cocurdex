@@ -1,7 +1,7 @@
 import type { DeckRecord } from "@cocurdex/shared";
 import { useAtomValue, useSetAtom } from "jotai";
 import { ImagePlus, MonitorPlay, Play, Presentation } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { TitlebarIconButton } from "@/app/layout/titlebar-icon-button";
@@ -29,13 +29,7 @@ type PresentationState =
   | { kind: "starting" }
   | { kind: "presenter"; session: PresenterSession };
 
-export function DeckViewer({
-  deck,
-  leading,
-}: {
-  deck: DeckRecord;
-  leading?: ReactNode;
-}) {
+export function DeckViewer({ deck }: { deck: DeckRecord }) {
   const { t } = useTranslation("decks");
   const activeIndex = useAtomValue(activeSlideIndexAtom);
   const selectSlide = useSetAtom(selectSlideAtom);
@@ -49,7 +43,6 @@ export function DeckViewer({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-8 shrink-0 items-center gap-1 ps-2 pe-1.5">
-        {leading}
         <Text
           size="meta"
           weight="medium"

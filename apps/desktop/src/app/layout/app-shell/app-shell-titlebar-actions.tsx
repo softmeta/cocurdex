@@ -2,31 +2,14 @@ import { PanelRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TitlebarIconButton } from "../titlebar-icon-button";
 
-interface AppShellTitlebarActionsProps {
-  isChatDetached: boolean;
-  isRightPanelOpen: boolean;
-  onToggleRightPanel(): void;
-}
-
-export function AppShellTitlebarActions({
-  isChatDetached,
-  isRightPanelOpen,
-  onToggleRightPanel,
-}: AppShellTitlebarActionsProps) {
+export function RightPanelOpenButton({ onOpen }: { onOpen(): void }) {
   const { t } = useTranslation("editor");
-  const panelLabel = isRightPanelOpen
-    ? t("actions.closeEditorPanel")
-    : t("actions.openEditorPanel");
-
-  if (isChatDetached) {
-    return null;
-  }
   return (
     <TitlebarIconButton
-      active={isRightPanelOpen}
-      aria-label={panelLabel}
+      aria-label={t("actions.openEditorPanel")}
+      className="app-no-drag"
       cursor="default"
-      onClick={onToggleRightPanel}
+      onClick={onOpen}
     >
       <PanelRight className="size-3.5" />
     </TitlebarIconButton>

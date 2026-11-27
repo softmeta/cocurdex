@@ -4,10 +4,10 @@ import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clearColorScheme, emulateColorScheme } from "./lib/appearance.mjs";
 import {
-  centerOf,
   clickByRole,
   clickPoint,
   queryAllByRole,
+  waitForNoRole,
   waitForRole,
 } from "./lib/locate.mjs";
 import { openNote, showPanelView, translate } from "./lib/navigate.mjs";
@@ -214,6 +214,19 @@ const CHECKOUT_GRID = [
   ["SPRING10", "10% off", "Live"],
   ["FIVEOFF", "5 off", "Draft"],
 ];
+
+async function pressToggleSidebarShortcut(session) {
+  const isMac = await session.run(() => /Mac/.test(navigator.platform));
+  for (const type of ["rawKeyDown", "keyUp"]) {
+    await session.send("Input.dispatchKeyEvent", {
+      type,
+      modifiers: isMac ? 4 : 2,
+      key: "b",
+      code: "KeyB",
+      windowsVirtualKeyCode: 66,
+    });
+  }
+}
 
 runScenario("note-table", {
   open: () => openScenarioApp(args, { fixtureDb: true }),
@@ -758,39 +771,25 @@ runScenario("note-table", {
       },
     ],
     [
-      "collapsed notes sidebar keeps the expand control in the content column",
+      "the rail toggle collapses and restores the notes sidebar",
       async ({ session }) => {
-        const [collapse, expand] = await Promise.all(
-          ["notes:sidebar.collapse", "notes:sidebar.expand"].map((key) =>
+        const [toggleLabel, newNote] = await Promise.all(
+          ["editor:actions.toggleSidebar", "notes:sidebar.newNote"].map((key) =>
             translate(session, key),
           ),
         );
-        await clickByRole(session, { role: "button", name: collapse });
-        const [toggle] = await waitForRole(
-          session,
-          { role: "button", name: expand },
-          UI_TIMEOUT_MS,
-        );
-        const toggleCenter = await centerOf(session, toggle.backendNodeId);
-        const layout = {
-          toggleLeft: toggleCenter.x,
-          proseLeft: await session.run(
-            () =>
-              document.querySelector(".md-body-prose").getBoundingClientRect()
-                .left,
-          ),
-        };
-        check(layout.toggleLeft < layout.proseLeft, "toggle overlaps body", {
-          layout,
-          toggle,
-        });
-        await clickByRole(session, { role: "button", name: expand });
-        await waitForRole(
-          session,
-          { role: "button", name: collapse },
-          UI_TIMEOUT_MS,
-        );
-        return layout;
+        const toggle = { role: "button", name: toggleLabel };
+        const notesSidebar = { role: "button", name: newNote };
+        await waitForRole(session, notesSidebar, UI_TIMEOUT_MS);
+        await clickByRole(session, toggle);
+        await waitForNoRole(session, notesSidebar, UI_TIMEOUT_MS);
+        await clickByRole(session, toggle);
+        await waitForRole(session, notesSidebar, UI_TIMEOUT_MS);
+        await pressToggleSidebarShortcut(session);
+        await waitForNoRole(session, notesSidebar, UI_TIMEOUT_MS);
+        await pressToggleSidebarShortcut(session);
+        await waitForRole(session, notesSidebar, UI_TIMEOUT_MS);
+        return {};
       },
     ],
     [

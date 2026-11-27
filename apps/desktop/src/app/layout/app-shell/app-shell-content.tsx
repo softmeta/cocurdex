@@ -1,10 +1,15 @@
 import type { MessageAttachment } from "@cocurdex/shared";
 import { useAtomValue } from "jotai";
-import type { MouseEvent, ReactNode, Ref } from "react";
+import { type MouseEvent, type ReactNode, type Ref, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AppearanceSettings } from "@/features/settings";
 import { cn } from "@/lib";
 import { AppRail } from "../app-rail";
+import { activeAppAtom } from "../app-rail/app-rail-store";
+import {
+  useAppSidebarCollapsed,
+  useToggleAppSidebar,
+} from "../app-rail/app-sidebar-store";
 import { ChatDock } from "../chat-dock";
 import { ChatDockActions } from "../chat-dock-actions";
 import {
@@ -18,6 +23,7 @@ import { DetachedChatPlaceholder, useChatWindowActions } from "../chat-window";
 import { NavigationButtons } from "../navigation";
 import { RightEditorPanel } from "../right-editor-panel-lazy";
 import {
+  appWorkbenchShownAtom,
   rightPanelDockedAtom,
   rightPanelResolvedActiveViewAtom,
 } from "../right-editor-panel-store";
@@ -43,6 +49,7 @@ interface AppShellContentProps {
   isChatDockPinned: boolean;
   hideFabWhenClosed: boolean;
   onResizeHandleMouseDown(target: "left" | "right", event: MouseEvent): void;
+  onToggleLeftSidebar(): void;
   onToggleRightPanel(): void;
   onAddContextToChat(attachment: MessageAttachment): boolean;
   onInsertTextToChat(text: string): boolean;
@@ -67,6 +74,7 @@ export function AppShellContent({
   isChatDockPinned,
   hideFabWhenClosed,
   onResizeHandleMouseDown,
+  onToggleLeftSidebar,
   onToggleRightPanel,
   onAddContextToChat,
   onInsertTextToChat,
@@ -104,21 +112,56 @@ export function AppShellContent({
     pinLayout.canPin
       ? pinLayout.width
       : 0;
+  const isChatSurfaceShown = !(
+    isRightPanelMaximized ||
+    (detached && isRightPanelOpen)
+  );
+  const activeApp = useAtomValue(activeAppAtom);
+  const isAppSidebarCollapsed = useAppSidebarCollapsed(activeApp);
+  const toggleAppSidebar = useToggleAppSidebar();
+  let railSidebarToggle: { open: boolean; onToggle(): void } | null = null;
+  if (activeApp) {
+    railSidebarToggle = {
+      open: !isAppSidebarCollapsed,
+      onToggle: () => toggleAppSidebar(activeApp),
+    };
+  } else if (isChatSurfaceShown && !isPanelFullWidth) {
+    railSidebarToggle = {
+      open: isLeftSidebarOpen,
+      onToggle: onToggleLeftSidebar,
+    };
+  }
+  const isContentBesideSidebar = isLeftSidebarOpen && !isCompact;
+  const isAppWorkbenchShown = useAtomValue(appWorkbenchShownAtom);
+  const isSidebarBesideRail = isAppWorkbenchShown
+    ? !isAppSidebarCollapsed
+    : isLeftSidebarOpen &&
+      isChatSurfaceShown &&
+      !isPanelFullWidth &&
+      !isCompact;
+  const isPanelOpening = usePanelOpeningMotion(
+    isRightPanelOpen,
+    isPanelFullWidth,
+  );
   return (
     <main
       className={cn(
         "relative flex min-h-0 flex-1 overflow-hidden bg-shell",
-        isRightPanelOpen && !isPanelFullWidth && "shell-panel-opening",
+        isPanelOpening && "shell-panel-opening",
       )}
       ref={contentRowRef}
     >
-      <AppRail />
+      <AppRail
+        besideSidebar={isSidebarBesideRail}
+        sidebarToggle={railSidebarToggle}
+      />
       {isRightPanelOpen ? (
         <div
           data-testid="shell-right-panel"
-          data-window-content=""
+          data-window-content={isAppWorkbenchShown ? undefined : ""}
           className={cn(
-            "flex min-w-0 overflow-hidden bg-app",
+            "flex min-w-0 overflow-hidden",
+            !isAppWorkbenchShown && "bg-app",
             isPanelFullWidth
               ? "flex-1"
               : "absolute inset-y-0 end-0 z-40 max-w-full",
@@ -158,7 +201,7 @@ export function AppShellContent({
           </div>
         </div>
       ) : null}
-      {isRightPanelMaximized || (detached && isRightPanelOpen) ? null : (
+      {isChatSurfaceShown ? (
         <div
           className={cn(
             "flex min-w-0 overflow-hidden",
@@ -185,18 +228,29 @@ export function AppShellContent({
             <LeftSidebar showFooter />
           </ResizableSidebarSlot>
           <div
-            className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden bg-app"
-            data-window-content={isCompact ? undefined : ""}
+            className={cn(
+              "flex min-w-0 flex-1",
+              isContentBesideSidebar && "bg-sidebar",
+            )}
+            data-window-sidebar-edge={isContentBesideSidebar ? "" : undefined}
           >
             <div
-              className="h-full"
-              style={
-                chatOverlayInset && !isRightPanelDocked
-                  ? { minWidth: `calc(100% + ${chatInset})` }
-                  : undefined
-              }
+              className={cn(
+                "min-w-0 flex-1 overflow-x-auto overflow-y-hidden bg-app",
+                isContentBesideSidebar && "rounded-s-card",
+              )}
+              data-window-content={isCompact ? undefined : ""}
             >
-              {detached ? <DetachedChatPlaceholder /> : splitChatNode}
+              <div
+                className="h-full"
+                style={
+                  chatOverlayInset && !isRightPanelDocked
+                    ? { minWidth: `calc(100% + ${chatInset})` }
+                    : undefined
+                }
+              >
+                {detached ? <DetachedChatPlaceholder /> : splitChatNode}
+              </div>
             </div>
           </div>
           {isCompact && compactChatOpen ? (
@@ -213,7 +267,7 @@ export function AppShellContent({
             </div>
           ) : null}
         </div>
-      )}
+      ) : null}
       {detached && chatDockVisibility !== "hidden" ? (
         <ChatDockLauncher
           detached
@@ -248,4 +302,20 @@ export function AppShellContent({
       ) : null}
     </main>
   );
+}
+
+function usePanelOpeningMotion(isOpen: boolean, isFullWidth: boolean) {
+  const [motion, setMotion] = useState({
+    isOpen,
+    isFullWidth,
+    isOpening: isOpen && !isFullWidth,
+  });
+  if (motion.isOpen !== isOpen || motion.isFullWidth !== isFullWidth) {
+    setMotion({
+      isOpen,
+      isFullWidth,
+      isOpening: isOpen && !isFullWidth && (motion.isOpening || !motion.isOpen),
+    });
+  }
+  return motion.isOpening;
 }

@@ -49,6 +49,7 @@ import { PanScrollbar } from "./pan-scrollbar";
 import { PanelToolbar } from "./panel-toolbar";
 import { PdfReaderView } from "./pdf-reader-view";
 import {
+  appWorkbenchShownAtom,
   fileTreeWidthAtom,
   type RightPanelView,
   rightPanelLastNonTerminalViewAtom,
@@ -113,6 +114,7 @@ export function RightEditorPanel({
   const { t: tSearch } = useTranslation("search");
   const store = useStore();
   const conversationFiles = useAtomValue(rightPanelModeAtom) !== "work";
+  const isAppWorkbenchShown = useAtomValue(appWorkbenchShownAtom);
   const openRoutineSession = useOpenPersonalSession();
   const [fileTreeWidth, setFileTreeWidth] = useAtom(fileTreeWidthAtom);
   const [fileTreeVisible, setFileTreeVisible] = useAtom(fileTreeVisibleAtom);
@@ -151,10 +153,19 @@ export function RightEditorPanel({
   const pdfEverActive = hasPdfsOpen || activeView === "pdf";
   const [notesKeepAlive, setNotesKeepAlive] = useState(false);
   const notesEverActive = notesKeepAlive || activeView === "notes";
+  if (notesEverActive && !notesKeepAlive) {
+    setNotesKeepAlive(true);
+  }
   const [decksKeepAlive, setDecksKeepAlive] = useState(false);
   const decksEverActive = decksKeepAlive || activeView === "decks";
+  if (decksEverActive && !decksKeepAlive) {
+    setDecksKeepAlive(true);
+  }
   const [issuesKeepAlive, setIssuesKeepAlive] = useState(false);
   const issuesEverActive = issuesKeepAlive || activeView === "issues";
+  if (issuesEverActive && !issuesKeepAlive) {
+    setIssuesKeepAlive(true);
+  }
   const setChatComposerAttachment = useSetAtom(setChatComposerAttachmentAtom);
   const setRightPanelResizing = useSetAtom(rightPanelResizingAtom);
   const openFile = useSetAtom(openFileAtom);
@@ -300,36 +311,32 @@ export function RightEditorPanel({
 
   return (
     <aside
-      className="flex h-full min-w-0 flex-col overflow-hidden bg-editor-shell"
+      className={cn(
+        "flex h-full min-w-0 flex-col overflow-hidden",
+        !isAppWorkbenchShown && "bg-editor-shell",
+      )}
       ref={handlePanelRef}
     >
-      <ViewSwitcherTabs
-        activeView={activeView}
-        hasPdfsOpen={hasPdfsOpen}
-        reserveTrafficLights={reserveTrafficLights}
-        leading={viewSwitcherLeading}
-        trailing={viewSwitcherTrailing}
-        onViewChange={(value) => {
-          setActiveView(value);
-          if (value === "terminal") {
-            setTerminalEverActive(true);
-          } else {
-            setLastNonTerminalView(value);
-          }
-          if (value === "editor") {
-            setFileTreeVisible(true);
-          }
-          if (value === "notes") {
-            setNotesKeepAlive(true);
-          }
-          if (value === "decks") {
-            setDecksKeepAlive(true);
-          }
-          if (value === "issues") {
-            setIssuesKeepAlive(true);
-          }
-        }}
-      />
+      {isAppWorkbenchShown ? null : (
+        <ViewSwitcherTabs
+          activeView={activeView}
+          hasPdfsOpen={hasPdfsOpen}
+          reserveTrafficLights={reserveTrafficLights}
+          leading={viewSwitcherLeading}
+          trailing={viewSwitcherTrailing}
+          onViewChange={(value) => {
+            setActiveView(value);
+            if (value === "terminal") {
+              setTerminalEverActive(true);
+            } else {
+              setLastNonTerminalView(value);
+            }
+            if (value === "editor") {
+              setFileTreeVisible(true);
+            }
+          }}
+        />
+      )}
 
       {activeView === "editor" ? (
         <PanelToolbar

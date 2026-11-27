@@ -8,7 +8,11 @@ interface ResizableSidebarProps {
   defaultWidth: number;
   minWidth?: number;
   maxWidth?: number;
+  width?: number;
+  onWidthChange?(width: number): void;
+  onWidthCommit?(width: number): void;
   ariaLabel: string;
+  surface?: "editor" | "sidebar";
   className?: string;
 }
 
@@ -20,9 +24,15 @@ export function ResizableSidebar({
   minWidth = 180,
   maxWidth = 480,
   ariaLabel,
+  surface = "editor",
   className,
+  width: controlledWidth,
+  onWidthChange,
+  onWidthCommit,
 }: ResizableSidebarProps) {
-  const [width, setWidth] = useState(defaultWidth);
+  const [localWidth, setLocalWidth] = useState(defaultWidth);
+  const width = controlledWidth ?? localWidth;
+  const setWidth = onWidthChange ?? setLocalWidth;
   const widthRef = useRef(width);
   widthRef.current = width;
 
@@ -33,23 +43,39 @@ export function ResizableSidebar({
         startWidth: widthRef.current,
         clamp: (next) => Math.min(maxWidth, Math.max(minWidth, next)),
         onWidthChange: setWidth,
+        onDragEnd: onWidthCommit,
       });
     },
-    [minWidth, maxWidth],
+    [minWidth, maxWidth, setWidth, onWidthCommit],
   );
 
   return (
     <>
       <div
         className={cn(
-          "flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden bg-editor-shell",
+          "flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden",
+          { editor: "bg-editor-shell", sidebar: "bg-sidebar" }[surface],
           className,
         )}
+        data-window-sidebar={surface === "sidebar" ? "" : undefined}
         style={{ width }}
       >
         {children}
       </div>
-      <ResizeSeparator ariaLabel={ariaLabel} onMouseDown={handleMouseDown} />
+      {surface === "sidebar" ? (
+        <div
+          className="relative z-10 flex shrink-0 bg-sidebar"
+          data-window-sidebar-edge=""
+        >
+          <ResizeSeparator
+            ariaLabel={ariaLabel}
+            line="hover"
+            onMouseDown={handleMouseDown}
+          />
+        </div>
+      ) : (
+        <ResizeSeparator ariaLabel={ariaLabel} onMouseDown={handleMouseDown} />
+      )}
     </>
   );
 }

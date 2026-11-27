@@ -1,30 +1,25 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { NotebookPen } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { SidebarToggleButton } from "@/app/layout/titlebar-icon-button";
-import { ResizableSidebar, WORKBENCH_SIDEBAR_WIDTH_PX } from "@/components";
+import { AppWorkbench } from "@/app/layout/app-workbench";
 import { EmptyState } from "@/components/ui";
 import { useDataSync } from "@/features/data-sync";
 import { useMountEffect } from "@/lib";
 import { NoteEditor } from "./editor";
 import {
+  activeNoteAtom,
   activeNoteIdAtom,
   loadNotesAtom,
-  notesLoadingAtom,
+  notesLoadedAtom,
 } from "./notes-store";
 import { NotesSidebar } from "./sidebar";
 
 const MIN_NOTES_EDITOR_WIDTH_PX = 280;
-const MIN_NOTES_VIEW_WIDTH_PX =
-  WORKBENCH_SIDEBAR_WIDTH_PX + MIN_NOTES_EDITOR_WIDTH_PX;
 
 export function NotesView() {
   const { t } = useTranslation("notes");
   const loadNotes = useSetAtom(loadNotesAtom);
-  const activeNoteId = useAtomValue(activeNoteIdAtom);
-  const loading = useAtomValue(notesLoadingAtom);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const loaded = useAtomValue(notesLoadedAtom);
 
   useMountEffect(() => {
     void loadNotes();
@@ -32,48 +27,30 @@ export function NotesView() {
 
   useDataSync("notes");
 
-  if (loading) {
-    return null;
-  }
-
   return (
-    <div
-      className="flex min-h-0 flex-1"
-      style={{ minWidth: MIN_NOTES_VIEW_WIDTH_PX }}
+    <AppWorkbench
+      app="notes"
+      contentMinWidth={MIN_NOTES_EDITOR_WIDTH_PX}
+      sidebarResizeLabel={t("sidebar.resize")}
+      sidebar={loaded ? <NotesSidebar /> : null}
     >
-      {sidebarCollapsed ? null : (
-        <ResizableSidebar
-          defaultWidth={WORKBENCH_SIDEBAR_WIDTH_PX}
-          ariaLabel={t("sidebar.resize")}
-        >
-          <NotesSidebar onCollapse={() => setSidebarCollapsed(true)} />
-        </ResizableSidebar>
-      )}
-      <div
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-editor-canvas"
-        style={{ minWidth: MIN_NOTES_EDITOR_WIDTH_PX }}
-      >
-        {sidebarCollapsed ? (
-          <div className="absolute start-2 top-0 z-10 flex h-8 items-center">
-            <SidebarToggleButton
-              label={t("sidebar.expand")}
-              open={false}
-              onToggle={() => setSidebarCollapsed(false)}
-            />
-          </div>
-        ) : null}
-        {activeNoteId ? (
-          <NoteEditor />
-        ) : (
-          <div className="flex flex-1 items-center justify-center">
-            <EmptyState
-              icon={<NotebookPen />}
-              title={t("editor.empty.title")}
-              description={t("editor.empty.description")}
-            />
-          </div>
-        )}
-      </div>
+      {loaded ? <NoteContent /> : null}
+    </AppWorkbench>
+  );
+}
+
+function NoteContent() {
+  const { t } = useTranslation("notes");
+  const activeNoteId = useAtomValue(activeNoteIdAtom);
+  const activeNote = useAtomValue(activeNoteAtom);
+  if (activeNoteId && activeNote) return <NoteEditor />;
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <EmptyState
+        icon={<NotebookPen />}
+        title={t("editor.empty.title")}
+        description={t("editor.empty.description")}
+      />
     </div>
   );
 }

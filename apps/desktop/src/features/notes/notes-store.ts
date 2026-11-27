@@ -20,6 +20,7 @@ import {
   noteReadOnlyAtom,
   noteSaveStatusAtom,
   noteSummariesAtom,
+  notesLoadedAtom,
   notesLoadingAtom,
   notesRevealNonceAtom,
   noteTitleEpochAtom,
@@ -34,6 +35,7 @@ export {
   noteReadOnlyAtom,
   noteSaveStatusAtom,
   noteSummariesAtom,
+  notesLoadedAtom,
   notesLoadingAtom,
   notesRevealNonceAtom,
   noteTitleEpochAtom,
@@ -45,6 +47,7 @@ export const loadNotesAtom = atom(null, async (_get, set) => {
     set(noteSummariesAtom, await notesApi.list());
   } finally {
     set(notesLoadingAtom, false);
+    set(notesLoadedAtom, true);
   }
 });
 

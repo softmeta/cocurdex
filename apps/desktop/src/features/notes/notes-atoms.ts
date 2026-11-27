@@ -13,6 +13,7 @@ export const activeNoteIdAtom = atom<string | null>(null);
 export const activeNoteAtom = atom<NoteRecord | null>(null);
 export const activeNoteDocAtom = atom<ActiveNoteDoc | null>(null);
 export const notesLoadingAtom = atom(false);
+export const notesLoadedAtom = atom(false);
 export const noteSaveStatusAtom = atom<NoteSaveStatus>("idle");
 export const notesRevealNonceAtom = atom(0);
 export const noteTitleEpochAtom = atom(0);

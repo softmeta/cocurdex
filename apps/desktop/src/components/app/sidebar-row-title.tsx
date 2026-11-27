@@ -62,7 +62,8 @@ export function AppSidebarRowTitle({
       <TooltipTrigger asChild>
         <button
           type="button"
-          className="flex h-6 min-w-0 flex-1 items-center overflow-hidden text-start"
+          data-slot="sidebar-row-title"
+          className="flex h-6 min-w-0 flex-1 items-center overflow-hidden text-start outline-hidden"
           onClick={onOpen}
           onDoubleClick={(event) => {
             event.preventDefault();

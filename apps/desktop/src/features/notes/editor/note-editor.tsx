@@ -232,12 +232,12 @@ function NoteEditorBody({
         <div className="flex min-w-0 flex-1 flex-col">
           <div
             className={cn(
-              "mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pt-4 pb-8",
+              "mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pb-8",
               hasOutline && DOCUMENT_OUTLINE_MENU_PADDING_CLASS,
             )}
           >
-            <div className="mb-4 flex flex-col gap-1">
-              <div className="flex items-center gap-3">
+            <div className="mb-4 flex flex-col">
+              <div className="flex h-8 items-center gap-3">
                 <NoteTitleInput
                   key={titleEpoch}
                   noteId={note.id}

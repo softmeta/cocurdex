@@ -72,7 +72,7 @@ function sectionKey(workspaceId: string | null): string {
   return workspaceId ?? PERSONAL_SECTION_KEY;
 }
 
-export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
+export function NotesSidebar() {
   const { t } = useTranslation("notes");
   const summaries = useAtomValue(noteSummariesAtom);
   const loading = useAtomValue(notesLoadingAtom);
@@ -280,8 +280,6 @@ export function NotesSidebar({ onCollapse }: { onCollapse: () => void }) {
     <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 px-2 pb-2">
       <SidebarPanelHeader
         title={t("sidebar.title")}
-        collapseLabel={t("sidebar.collapse")}
-        onCollapse={onCollapse}
         action={
           <TitlebarIconButton
             aria-label={t("sidebar.newNote")}

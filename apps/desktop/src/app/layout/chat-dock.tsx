@@ -13,6 +13,7 @@ import {
 } from "./chat-dock-geometry";
 import { ChatDockLauncher } from "./chat-dock-launcher";
 import { resolveChatDockPinLayout } from "./chat-dock-sizing";
+import { appWorkbenchShownAtom } from "./right-editor-panel-store";
 import {
   SessionPaneHeader,
   sessionPaneTitle,
@@ -58,6 +59,9 @@ export function ChatDock({
   const viewportWidth = useChatDockViewportWidth();
   const pinLayout = resolveChatDockPinLayout(viewportWidth, geometry.width);
   const pinned = pinnable && pinRequested && pinLayout.canPin;
+  const isAppWorkbenchShown = useAtomValue(appWorkbenchShownAtom);
+  const isBesideViewSwitcher = pinned && !isAppWorkbenchShown;
+  const isFullHeight = pinned && isAppWorkbenchShown;
   const { paneCount, focusedPaneId, splitPaneById } = useSessionSplitActions();
   const focusedPane = useAtomValue(focusedSessionPaneAtom);
   const sessions = useAtomValue(sessionsAtom);
@@ -120,6 +124,10 @@ export function ChatDock({
     </>
   ) : null;
 
+  const titlebarRowStyle = isFullHeight
+    ? { paddingInlineEnd: "var(--titlebar-controls-inset)" }
+    : undefined;
+
   const actionHeader = (options?: { draggable?: boolean }) => {
     const drawerOpen = sessionListOpen;
     const canDrag = !!options?.draggable && !drawerOpen;
@@ -147,7 +155,9 @@ export function ChatDock({
             "relative z-30 shrink-0",
             drawerOpen && "pointer-events-none [&_button]:pointer-events-auto",
             canDrag && "cursor-move",
+            isFullHeight && "app-drag",
           )}
+          style={titlebarRowStyle}
           onMouseDown={handleRowMouseDown}
         >
           <SessionPaneHeader
@@ -173,7 +183,9 @@ export function ChatDock({
           "relative z-30 flex shrink-0 items-center py-1 pe-3",
           drawerOpen && "pointer-events-none",
           canDrag && "cursor-move",
+          isFullHeight && "app-drag",
         )}
+        style={titlebarRowStyle}
         onMouseDown={handleRowMouseDown}
       >
         {leading}
@@ -203,7 +215,7 @@ export function ChatDock({
       )}
       style={pinned ? { width: pinLayout.width } : undefined}
     >
-      {pinned ? (
+      {isBesideViewSwitcher ? (
         <div
           aria-hidden
           className="absolute inset-x-0 top-0 box-content border-b border-editor-border"
@@ -219,7 +231,11 @@ export function ChatDock({
         )}
         style={
           pinned
-            ? { top: VIEW_SWITCHER_ROW_OUTER_HEIGHT_PX }
+            ? {
+                top: isBesideViewSwitcher
+                  ? VIEW_SWITCHER_ROW_OUTER_HEIGHT_PX
+                  : 0,
+              }
             : {
                 right: geometry.right,
                 bottom: geometry.bottom,

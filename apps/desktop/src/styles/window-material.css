@@ -17,6 +17,7 @@
       var(--sidebar-material) var(--sidebar-tint, 88%),
       transparent
     );
+    --sidebar-divider: color-mix(in srgb, var(--foreground) 10%, transparent);
   }
 
   :root[data-window-material][data-theme="light"] {
