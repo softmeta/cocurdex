@@ -7,6 +7,7 @@ import { useDataSync } from "@/features/data-sync";
 import { useMountEffect } from "@/lib";
 import { NoteEditor } from "./editor";
 import {
+  activeNoteAtom,
   activeNoteIdAtom,
   loadNotesAtom,
   notesLoadedAtom,
@@ -41,7 +42,8 @@ export function NotesView() {
 function NoteContent() {
   const { t } = useTranslation("notes");
   const activeNoteId = useAtomValue(activeNoteIdAtom);
-  if (activeNoteId) return <NoteEditor />;
+  const activeNote = useAtomValue(activeNoteAtom);
+  if (activeNoteId && activeNote) return <NoteEditor />;
   return (
     <div className="flex flex-1 items-center justify-center">
       <EmptyState

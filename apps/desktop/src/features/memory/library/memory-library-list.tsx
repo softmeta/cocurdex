@@ -1,7 +1,13 @@
 import type { MemoryEntry, MemoryHistoryEntry } from "@cocurdex/shared";
 import { Brain, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button, EmptyState, SidebarListRow, Text } from "@/components/ui";
+import {
+  Button,
+  EmptyState,
+  SidebarListRow,
+  SidebarListRowLabel,
+  Text,
+} from "@/components/ui";
 import { useScrollIntoViewWhenActive } from "@/lib/react-hooks";
 import { buildMemoryTree, groupMemoriesByDay } from "./memory-library-groups";
 
@@ -30,11 +36,13 @@ function MemoryRow({
   depth,
   active,
   onSelect,
+  onIntent,
 }: {
   entry: MemoryEntry;
   depth: number;
   active: boolean;
   onSelect: () => void;
+  onIntent: () => void;
 }) {
   const scrollRef = useScrollIntoViewWhenActive<HTMLDivElement>(active);
   return (
@@ -43,15 +51,19 @@ function MemoryRow({
       isActive={active}
       data-memory-id={entry.id}
       style={{ paddingInlineStart: `${0.5 + depth}rem` }}
+      render={
+        <button
+          aria-current={active ? "true" : undefined}
+          type="button"
+          onClick={onSelect}
+          onFocus={onIntent}
+          onPointerEnter={onIntent}
+        />
+      }
     >
-      <button
-        aria-current={active ? "true" : undefined}
-        className="flex h-6 min-w-0 flex-1 items-center truncate text-start"
-        type="button"
-        onClick={onSelect}
-      >
+      <SidebarListRowLabel className="text-start">
         {entry.title}
-      </button>
+      </SidebarListRowLabel>
     </SidebarListRow>
   );
 }
@@ -76,6 +88,7 @@ export function MemoryLibraryList({
   selectedId,
   canRestore,
   onSelect,
+  onIntent,
   onRestore,
 }: {
   mode: MemoryLibraryMode;
@@ -84,6 +97,7 @@ export function MemoryLibraryList({
   selectedId: string | null;
   canRestore: boolean;
   onSelect: (id: string) => void;
+  onIntent: (id: string) => void;
   onRestore: (id: string) => void;
 }) {
   const { t, i18n } = useTranslation("memory");
@@ -161,6 +175,7 @@ export function MemoryLibraryList({
               active={entry.id === selectedId}
               depth={depth}
               entry={entry}
+              onIntent={() => onIntent(entry.id)}
               onSelect={() => onSelect(entry.id)}
             />
           </li>
@@ -182,6 +197,7 @@ export function MemoryLibraryList({
               depth={0}
               entry={entry}
               key={entry.id}
+              onIntent={() => onIntent(entry.id)}
               onSelect={() => onSelect(entry.id)}
             />
           ))}

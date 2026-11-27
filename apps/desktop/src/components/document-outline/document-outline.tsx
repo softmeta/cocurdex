@@ -87,14 +87,14 @@ export function DocumentOutlineRail({ activeKey, headings }: OutlineProps) {
   return (
     <nav
       aria-label={t("outline")}
-      className="sticky top-6 mt-6 hidden max-h-[60vh] w-56 shrink-0 flex-col self-start pe-4 @min-[896px]/outline:flex"
+      className="sticky top-0 hidden max-h-[60vh] w-56 shrink-0 flex-col self-start pe-4 @min-[896px]/outline:flex"
     >
       <Text
         as="div"
         size="meta"
         tone="muted"
         weight="medium"
-        className="mb-2 shrink-0 ps-3"
+        className="flex h-8 shrink-0 items-center ps-3"
       >
         {t("outline")}
       </Text>

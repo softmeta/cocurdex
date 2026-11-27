@@ -26,14 +26,14 @@ export function FolderPlaceholder({ note }: { note: NoteRecord }) {
       className="min-h-0 flex-1"
       viewportProps={{ className: "flex flex-col" }}
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pt-4 pb-8">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-10 pb-8">
         <input
           type="text"
           value={value}
           placeholder={t("editor.untitledPlaceholder")}
           aria-label={t("editor.folder.renameLabel")}
           className={cn(
-            "w-full bg-transparent text-title font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none",
+            "h-8 w-full bg-transparent text-title font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none",
           )}
           onChange={(event) => setValue(event.target.value)}
           onBlur={() => {

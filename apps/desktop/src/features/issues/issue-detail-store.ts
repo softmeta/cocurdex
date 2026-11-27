@@ -39,6 +39,53 @@ function relationPayload(
     : { id: change.relatedId, kind: change.kind, relatedId: issueId };
 }
 
+const PREFETCH_FRESH_MS = 5000;
+
+interface PrefetchedDetail {
+  at: number;
+  request: Promise<IssueDetail | null>;
+  value?: IssueDetail | null;
+}
+
+const prefetchedDetails = new Map<string, PrefetchedDetail>();
+
+function prefetchKey(issueId: string, viewId: string) {
+  return `${viewId}:${issueId}`;
+}
+
+function requestDetail(issueId: string, viewId: string) {
+  const entry: PrefetchedDetail = {
+    at: Date.now(),
+    request: issuesIpc.getDetail({ id: issueId, viewId }),
+  };
+  entry.request.then(
+    (value) => {
+      entry.value = value;
+    },
+    () => prefetchedDetails.delete(prefetchKey(issueId, viewId)),
+  );
+  return entry;
+}
+
+export const prefetchIssueDetailAtom = atom(
+  null,
+  (get, _set, issueId: string) => {
+    if (get(issueDetailIdAtom) === issueId) return;
+    const viewId = get(activeViewIdAtom);
+    const key = prefetchKey(issueId, viewId);
+    const cached = prefetchedDetails.get(key);
+    if (cached && Date.now() - cached.at < PREFETCH_FRESH_MS) return;
+    prefetchedDetails.set(key, requestDetail(issueId, viewId));
+  },
+);
+
+function takePrefetchedDetail(issueId: string, viewId: string) {
+  const key = prefetchKey(issueId, viewId);
+  const entry = prefetchedDetails.get(key);
+  prefetchedDetails.delete(key);
+  return entry;
+}
+
 export const issueDetailAtom = atom<IssueDetailState | null>(null);
 export const issueDetailIdAtom = atom<string | null>(null);
 const issueDetailRequestAtom = atom(0);
@@ -49,8 +96,17 @@ export const openIssueDetailAtom = atom(
     const requestId = get(issueDetailRequestAtom) + 1;
     set(issueDetailRequestAtom, requestId);
     const issueId = typeof target === "string" ? target : target.id;
+    const viewId = get(activeViewIdAtom);
     set(issueDetailIdAtom, issueId);
-    if (typeof target !== "string") {
+    const prefetched = takePrefetchedDetail(issueId, viewId);
+    if (prefetched?.value) {
+      set(issueDetailAtom, {
+        bodyEpoch: 0,
+        bodyStatus: "ready",
+        card: prefetched.value.issue,
+        detail: prefetched.value,
+      });
+    } else if (typeof target !== "string") {
       set(issueDetailAtom, {
         bodyEpoch: 0,
         bodyStatus: "loading",
@@ -65,10 +121,11 @@ export const openIssueDetailAtom = atom(
       }
     };
     try {
-      const detail = await issuesIpc.getDetail({
-        id: issueId,
-        viewId: get(activeViewIdAtom),
-      });
+      const isFresh =
+        prefetched && Date.now() - prefetched.at < PREFETCH_FRESH_MS;
+      const detail = await (isFresh
+        ? prefetched.request
+        : issuesIpc.getDetail({ id: issueId, viewId }));
       if (get(issueDetailRequestAtom) !== requestId) {
         return;
       }

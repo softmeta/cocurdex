@@ -207,6 +207,20 @@ Every view that reads data asynchronously (daemon RPC, host IPC, network) caches
 - Only the first load of a key may show nothing (or a `Spinner` for user-initiated slow work); later visits render cached data while revalidating, without a loading indicator.
 - State that the daemon pushes through subscriptions stays in its existing store (jotai or `useSyncExternalStore`); this rule covers request/response reads.
 
+### Switching without flashes
+
+Every switch (app rail, tab, mode toggle, list item, detail page, first visit after startup included) goes straight from the old complete frame to the new complete frame. A frame in between that is blank, half-built, or laid out differently from the result is a flash, and a flash is a bug, not a polish item.
+
+- Keep the old content on screen until the new content is ready. Do not render an empty `div` or a cleared panel while the next item loads; when nothing was shown yet, keep the previous empty state.
+- Render from data already in hand: a list row usually carries the entity (or enough of it), so the detail renders from it at once and swaps in the full record when it arrives. When that preview is not safe to edit, keep the controls rendered but disabled or read-only; never mount controls, sections, or buttons late so the layout shifts.
+- Fetch before the user asks. App chunks and each app's first load run in `idle-preload.ts`; item details prefetch on `pointerenter`/`focus` of the row (`swr`'s `preload`, or a store-level prefetch for jotai stores), so the click usually finds the data cached.
+- Keep views mounted that people return to (`keepAlive` layers), and set sticky state during render, not in an effect that runs a frame late.
+- Verify with frame sampling, not by eye: over CDP, record each `requestAnimationFrame` the visible sidebar and content (text length, child count) while clicking with real mouse events, cold (reload, wait for the idle preloads) and warm. A frame where a region drops below both its start and end state, or more than one intermediate state, is a flash. `tests/scenarios/app-navigation.mjs` has the sampler; extend it when a switch regresses.
+
+### Top alignment
+
+Content that starts at the top of a pane shares the band under the titlebar with the sidebar header: a `h-8` row directly below `TITLEBAR_HEIGHT`, content centered in it. Page titles, detail headers, toolbars, and side rails (such as the document outline) put their first row in that band instead of adding their own top padding, so the sidebar title, the page title, and the outline label sit on one horizontal line. Measure the row centers over CDP when changing a pane's top.
+
 ### Fast Refresh exports
 
 A `.tsx` module that exports a component is a Vite Fast Refresh boundary. `@vitejs/plugin-react` accepts the update only when every runtime export is a component, or a string, number, or boolean that stays `===` to the previous value. A plain function, hook, atom, array, or object is a new value when the module re-executes, so the plugin invalidates importers. `export *` barrels repeat that walk across the shell until `main.tsx` fully reloads, which is the long `hmr invalidate` / `hmr update` burst in the dev server log.

@@ -36,6 +36,7 @@ import {
   commentIssueAtom,
   issueDetailAtom,
   openIssueDetailAtom,
+  prefetchIssueDetailAtom,
   removeIssueRelationAtom,
 } from "./issue-detail-store";
 import {
@@ -105,6 +106,7 @@ export function IssuesView() {
   const updateIssue = useSetAtom(updateIssueAtom);
   const issueDetail = useAtomValue(issueDetailAtom);
   const openIssueDetail = useSetAtom(openIssueDetailAtom);
+  const prefetchIssueDetail = useSetAtom(prefetchIssueDetailAtom);
   const closeIssueDetail = useSetAtom(closeIssueDetailAtom);
   const moveIssue = useSetAtom(moveIssueAtom);
   const moveIssueLocal = useSetAtom(moveIssueLocalAtom);
@@ -330,6 +332,11 @@ export function IssuesView() {
           "flex min-h-0 min-w-0 flex-1 flex-col",
           detailPageOpen && "hidden",
         )}
+        onPointerOver={(event) => {
+          const row = (event.target as Element).closest("[data-issue-id]");
+          const issueId = row?.getAttribute("data-issue-id");
+          if (issueId) prefetchIssueDetail(issueId);
+        }}
       >
         {boards.length > 0 ? (
           <IssuesToolbar

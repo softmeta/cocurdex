@@ -36,6 +36,7 @@ export function MemoryEntryDetail({
   entry,
   history,
   canEdit,
+  loaded,
   canForget,
   onSave,
   onForget,
@@ -43,6 +44,7 @@ export function MemoryEntryDetail({
   entry: MemoryEntry;
   history: MemoryHistoryEntry[] | null;
   canEdit: boolean;
+  loaded: boolean;
   canForget: boolean;
   onSave: (input: MemoryUpdateInput) => Promise<void>;
   onForget: () => void;
@@ -110,21 +112,21 @@ export function MemoryEntryDetail({
         void save();
       }}
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-10 pt-4 pb-8">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-10 pb-8">
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex h-8 items-center gap-3">
             <input
               aria-label={t("library.title")}
               className="min-w-0 flex-1 bg-transparent font-semibold text-foreground text-title placeholder:text-muted-foreground focus:outline-none"
               id="memory-entry-title"
-              readOnly={!canEdit}
+              readOnly={!canEdit || !loaded}
               type="text"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
             />
             {canEdit ? (
               <Button
-                disabled={!changes || invalid || saving}
+                disabled={!loaded || !changes || invalid || saving}
                 size="sm"
                 type="submit"
               >
@@ -151,7 +153,7 @@ export function MemoryEntryDetail({
                 className="h-6 w-full bg-transparent text-foreground text-meta placeholder:text-muted-foreground focus:outline-none"
                 id="memory-entry-tags"
                 placeholder={t("library.tagsPlaceholder")}
-                readOnly={!canEdit}
+                readOnly={!canEdit || !loaded}
                 type="text"
                 value={tags}
                 onChange={(event) => setTags(event.target.value)}
@@ -180,7 +182,7 @@ export function MemoryEntryDetail({
           aria-label={t("library.content")}
           className="field-sizing-content min-h-40 w-full resize-none bg-transparent text-body text-foreground leading-relaxed placeholder:text-muted-foreground focus:outline-none"
           id="memory-entry-content"
-          readOnly={!canEdit}
+          readOnly={!canEdit || !loaded}
           value={content}
           onChange={(event) => setContent(event.target.value)}
         />

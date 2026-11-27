@@ -25,6 +25,7 @@ import {
 } from "./memory-library-list";
 import {
   type MemoryScope,
+  prefetchMemoryEntry,
   useMemoryCapabilities,
   useMemoryEntry,
   useMemoryHistory,
@@ -111,16 +112,19 @@ export function MemoryLibraryView() {
     await revalidateMemory();
   };
 
-  const selected = entry.data ?? null;
+  const listed = library.data?.items.find((item) => item.id === selectedId);
+  const selected = entry.data ?? listed ?? null;
+  const isFullEntry = Boolean(entry.data);
   let detail: ReactNode = null;
   if (selected) {
     detail = (
       <MemoryEntryDetail
         canEdit={capabilities?.update ?? false}
+        loaded={isFullEntry}
         canForget={capabilities?.forget ?? false}
         entry={selected}
         history={entryHistory.data ?? null}
-        key={`${selected.id}:${selected.updatedAt ?? ""}`}
+        key={`${selected.id}:${selected.updatedAt ?? ""}:${isFullEntry}`}
         onForget={() => void forget(selected.id)}
         onSave={save}
       />
@@ -206,6 +210,7 @@ export function MemoryLibraryView() {
                 mode={mode}
                 selectedId={selectedId}
                 onRestore={(id) => void restore(id)}
+                onIntent={(id) => prefetchMemoryEntry(id, revision, canHistory)}
                 onSelect={setSelectedId}
               />
             ) : null}

@@ -1,5 +1,5 @@
 import type { MemoryPartition } from "@cocurdex/shared";
-import useSWR, { mutate } from "swr";
+import useSWR, { mutate, preload } from "swr";
 import { desktopApi } from "@/lib";
 import { MEMORY_STATUS_KEY } from "../memory-queries";
 
@@ -51,6 +51,19 @@ export function useMemoryEntry(id: string | null, revision: string | null) {
   );
 }
 
+export function prefetchMemoryEntry(
+  id: string,
+  revision: string | null,
+  withHistory: boolean,
+) {
+  void preload(["memory.show", id, revision], () => desktopApi.showMemory(id));
+  if (withHistory) {
+    void preload(["memory.history", id, revision], () =>
+      desktopApi.getMemoryHistory({ id, limit: HISTORY_LIMIT }),
+    );
+  }
+}
+
 export function useMemoryHistory(
   id: string | null,
   enabled: boolean,
@@ -70,8 +83,14 @@ export async function preloadMemoryLibrary() {
     mutate(MEMORY_STATUS_KEY, desktopApi.getMemoryStatus(), {
       revalidate: false,
     }),
-    mutate("memory.capabilities", desktopApi.getMemoryCapabilities(), {
-      revalidate: false,
+    desktopApi.getMemoryCapabilities().then(async (capabilities) => {
+      await mutate("memory.capabilities", capabilities, { revalidate: false });
+      if (!capabilities?.history) return;
+      await mutate(
+        ["memory.history", null, revision],
+        desktopApi.getMemoryHistory({ id: null, limit: HISTORY_LIMIT }),
+        { revalidate: false },
+      );
     }),
     mutate(
       ["memory.list", "all", revision],
