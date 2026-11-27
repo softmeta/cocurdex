@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { ResizeSeparator } from "@/components/resize-separator";
 import { focusedSessionPaneAtom, sessionsAtom } from "@/features/sessions";
 import { cn } from "@/lib";
-import { TITLEBAR_HEIGHT } from "./app-shell/app-shell-layout";
 import { ChatDockActions } from "./chat-dock-actions";
 import {
   type ChatDockVisibility,
@@ -125,6 +124,10 @@ export function ChatDock({
     </>
   ) : null;
 
+  const titlebarRowStyle = isFullHeight
+    ? { paddingInlineEnd: "var(--titlebar-controls-inset)" }
+    : undefined;
+
   const actionHeader = (options?: { draggable?: boolean }) => {
     const drawerOpen = sessionListOpen;
     const canDrag = !!options?.draggable && !drawerOpen;
@@ -152,7 +155,9 @@ export function ChatDock({
             "relative z-30 shrink-0",
             drawerOpen && "pointer-events-none [&_button]:pointer-events-auto",
             canDrag && "cursor-move",
+            isFullHeight && "app-drag",
           )}
+          style={titlebarRowStyle}
           onMouseDown={handleRowMouseDown}
         >
           <SessionPaneHeader
@@ -178,7 +183,9 @@ export function ChatDock({
           "relative z-30 flex shrink-0 items-center py-1 pe-3",
           drawerOpen && "pointer-events-none",
           canDrag && "cursor-move",
+          isFullHeight && "app-drag",
         )}
+        style={titlebarRowStyle}
         onMouseDown={handleRowMouseDown}
       >
         {leading}
@@ -254,13 +261,6 @@ export function ChatDock({
         )}
 
         <div className="relative flex min-h-0 flex-1 flex-col bg-chat-canvas">
-          {isFullHeight ? (
-            <div
-              aria-hidden
-              className="app-drag shrink-0"
-              style={{ height: TITLEBAR_HEIGHT }}
-            />
-          ) : null}
           {actionHeader({ draggable: !pinned })}
           <div className="relative min-h-0 flex-1 overflow-hidden">
             {children}

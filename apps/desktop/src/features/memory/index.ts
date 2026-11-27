@@ -1,4 +1,5 @@
 export { MemoryLibraryView } from "./library/memory-library-view-lazy";
+export { preloadMemory } from "./memory-preload";
 export {
   MEMORY_SETTINGS_KEY,
   MEMORY_STATUS_KEY,

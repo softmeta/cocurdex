@@ -1,6 +1,7 @@
 import type { MemoryPartition } from "@cocurdex/shared";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { desktopApi } from "@/lib";
+import { MEMORY_STATUS_KEY } from "../memory-queries";
 
 export type MemoryScope = "all" | "me" | `agent:${string}`;
 
@@ -60,4 +61,22 @@ export function useMemoryHistory(
     () => desktopApi.getMemoryHistory({ id, limit: HISTORY_LIMIT }),
     SWR_OPTIONS,
   );
+}
+
+export async function preloadMemoryLibrary() {
+  const revision = await desktopApi.getMemoryRevision();
+  await Promise.all([
+    mutate("memory.revision", revision, { revalidate: false }),
+    mutate(MEMORY_STATUS_KEY, desktopApi.getMemoryStatus(), {
+      revalidate: false,
+    }),
+    mutate("memory.capabilities", desktopApi.getMemoryCapabilities(), {
+      revalidate: false,
+    }),
+    mutate(
+      ["memory.list", "all", revision],
+      desktopApi.listMemories({ limit: LIBRARY_LIMIT, partition: null }),
+      { revalidate: false },
+    ),
+  ]);
 }

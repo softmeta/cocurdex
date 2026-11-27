@@ -8,7 +8,8 @@ const NO_RUNS: RoutineRunRecord[] = [];
 
 function isRoutineKey(key: unknown) {
   return (
-    key === "routine.list" || (Array.isArray(key) && key[0] === "routine.runs")
+    key === ROUTINE_LIST_KEY ||
+    (Array.isArray(key) && key[0] === "routine.runs")
   );
 }
 
@@ -24,12 +25,18 @@ function useRoutineChanges() {
   );
 }
 
+const ROUTINE_LIST_KEY = "routine.list";
+
+export async function preloadRoutineList() {
+  await mutate(ROUTINE_LIST_KEY, routinesApi.list(), { revalidate: false });
+}
+
 export function useRoutines() {
   const {
     data,
     error,
     mutate: revalidate,
-  } = useSWR("routine.list", routinesApi.list, {
+  } = useSWR(ROUTINE_LIST_KEY, routinesApi.list, {
     dedupingInterval: 0,
   });
   useRoutineChanges();
