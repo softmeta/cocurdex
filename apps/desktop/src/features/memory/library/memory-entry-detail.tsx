@@ -3,10 +3,11 @@ import type {
   MemoryHistoryEntry,
   MemoryUpdateInput,
 } from "@cocurdex/shared";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppRemoveButton } from "@/components";
-import { Button, Input, Label, Text, Textarea } from "@/components/ui";
+import { Button, Label, Text } from "@/components/ui";
+import { cn } from "@/lib";
 
 function tagsText(tags: string[]) {
   return tags.join(", ");
@@ -83,112 +84,149 @@ export function MemoryEntryDetail({
     }
   };
 
+  const properties = [
+    {
+      key: "updated",
+      label: t("library.updated"),
+      value: formatTime(entry.updatedAt),
+      mono: false,
+    },
+    {
+      key: "device",
+      label: t("library.device"),
+      value: entry.device,
+      mono: false,
+    },
+    { key: "id", label: t("library.id"), value: entry.id, mono: true },
+  ].filter((property) => property.value);
+
   return (
     <form
       aria-label={t("library.detail")}
-      className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
+      className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       data-memory-id={entry.id}
       onSubmit={(event) => {
         event.preventDefault();
         void save();
       }}
     >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="memory-entry-title">{t("library.title")}</Label>
-        <Input
-          id="memory-entry-title"
-          readOnly={!canEdit}
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-      </div>
-      <div className="flex min-h-40 flex-1 flex-col gap-1.5">
-        <Label htmlFor="memory-entry-content">{t("library.content")}</Label>
-        <Textarea
-          className="min-h-40 flex-1 resize-none"
-          id="memory-entry-content"
-          readOnly={!canEdit}
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="memory-entry-tags">{t("library.tags")}</Label>
-        <Input
-          id="memory-entry-tags"
-          placeholder={t("library.tagsPlaceholder")}
-          readOnly={!canEdit}
-          value={tags}
-          onChange={(event) => setTags(event.target.value)}
-        />
-      </div>
-      <Text size="meta" tone="muted">
-        {[
-          entry.updatedAt
-            ? t("library.updatedAt", { time: formatTime(entry.updatedAt) })
-            : null,
-          entry.device,
-          entry.id,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-      </Text>
-      {canEdit ? (
-        <div className="flex flex-col items-end gap-1">
-          <Button
-            disabled={!changes || invalid || saving}
-            size="sm"
-            type="submit"
-          >
-            {t("library.save")}
-          </Button>
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-10 pt-4 pb-8">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <input
+              aria-label={t("library.title")}
+              className="min-w-0 flex-1 bg-transparent font-semibold text-foreground text-title placeholder:text-muted-foreground focus:outline-none"
+              id="memory-entry-title"
+              readOnly={!canEdit}
+              type="text"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+            {canEdit ? (
+              <Button
+                disabled={!changes || invalid || saving}
+                size="sm"
+                type="submit"
+              >
+                {t("library.save")}
+              </Button>
+            ) : null}
+          </div>
           {error ? (
             <Text size="meta" tone="destructive">
               {error}
             </Text>
           ) : null}
-        </div>
-      ) : null}
-      {history && history.length > 0 ? (
-        <section
-          aria-label={t("library.entryHistory")}
-          className="flex flex-col gap-1"
-        >
-          <Text size="meta" tone="muted">
-            {t("library.entryHistory")}
-          </Text>
-          <ul className="flex flex-col gap-1">
-            {history.map((row, index) => (
-              <li
-                className="flex items-baseline justify-between gap-3"
-                key={`${row.action}-${row.at ?? index}`}
+          <dl className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1">
+            <dt>
+              <Label
+                className="font-normal text-meta text-muted-foreground"
+                htmlFor="memory-entry-tags"
               >
-                <Text size="body">
-                  {actionLabels[row.action] ?? row.action}
-                </Text>
-                <Text className="shrink-0" size="meta" tone="muted">
-                  {[row.actor, formatTime(row.at)].filter(Boolean).join(" · ")}
-                </Text>
-              </li>
+                {t("library.tags")}
+              </Label>
+            </dt>
+            <dd>
+              <input
+                className="h-6 w-full bg-transparent text-foreground text-meta placeholder:text-muted-foreground focus:outline-none"
+                id="memory-entry-tags"
+                placeholder={t("library.tagsPlaceholder")}
+                readOnly={!canEdit}
+                type="text"
+                value={tags}
+                onChange={(event) => setTags(event.target.value)}
+              />
+            </dd>
+            {properties.map((property) => (
+              <Fragment key={property.key}>
+                <dt>
+                  <Text size="meta" tone="muted">
+                    {property.label}
+                  </Text>
+                </dt>
+                <dd className="flex h-6 min-w-0 items-center">
+                  <Text
+                    className={cn("truncate", property.mono && "font-mono")}
+                    size="meta"
+                  >
+                    {property.value}
+                  </Text>
+                </dd>
+              </Fragment>
             ))}
-          </ul>
-        </section>
-      ) : null}
-      {canForget ? (
-        <div className="flex flex-col items-start gap-1">
-          <Text size="meta" tone="muted">
-            {t("library.manage")}
-          </Text>
-          <AppRemoveButton
-            cancelLabel={t("library.cancel")}
-            confirmDescription={t("library.forgetDescription")}
-            confirmLabel={t("library.forget")}
-            confirmTitle={t("library.forgetTitle")}
-            label={t("library.forget")}
-            onConfirm={onForget}
-          />
+          </dl>
         </div>
-      ) : null}
+        <textarea
+          aria-label={t("library.content")}
+          className="field-sizing-content min-h-40 w-full resize-none bg-transparent text-body text-foreground leading-relaxed placeholder:text-muted-foreground focus:outline-none"
+          id="memory-entry-content"
+          readOnly={!canEdit}
+          value={content}
+          onChange={(event) => setContent(event.target.value)}
+        />
+        {history && history.length > 0 ? (
+          <section
+            aria-label={t("library.entryHistory")}
+            className="flex flex-col gap-2"
+          >
+            <Text size="meta" tone="muted">
+              {t("library.entryHistory")}
+            </Text>
+            <ul className="flex flex-col gap-1.5">
+              {history.map((row, index) => (
+                <li
+                  className="flex items-baseline justify-between gap-3"
+                  key={`${row.action}-${row.at ?? index}`}
+                >
+                  <Text size="meta">
+                    {actionLabels[row.action] ?? row.action}
+                  </Text>
+                  <Text className="truncate" size="meta" tone="muted">
+                    {[row.actor, formatTime(row.at)]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {canForget ? (
+          <div className="flex flex-col items-start gap-2">
+            <Text size="meta" tone="muted">
+              {t("library.manage")}
+            </Text>
+            <AppRemoveButton
+              cancelLabel={t("library.cancel")}
+              confirmDescription={t("library.forgetDescription")}
+              confirmLabel={t("library.forget")}
+              confirmTitle={t("library.forgetTitle")}
+              label={t("library.forget")}
+              onConfirm={onForget}
+            />
+          </div>
+        ) : null}
+      </div>
     </form>
   );
 }

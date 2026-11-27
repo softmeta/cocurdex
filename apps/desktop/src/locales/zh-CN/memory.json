@@ -11,6 +11,7 @@
     "collapse": "隐藏记忆列表",
     "content": "内容",
     "detail": "记忆详情",
+    "device": "设备",
     "empty": "还没有记忆",
     "emptyDescription": "助理了解到的关于你的事会出现在这里。",
     "entryHistory": "历史",
@@ -23,6 +24,7 @@
     "history": "记忆历史",
     "historyEmpty": "还没有历史",
     "historyEmptyDescription": "编辑、删除和恢复记录会出现在这里。",
+    "id": "ID",
     "label": "记忆",
     "list": "记忆列表",
     "manage": "管理",
@@ -50,7 +52,7 @@
     "title": "标题",
     "undated": "无日期",
     "undo": "撤销",
-    "updatedAt": "更新于 {{time}}"
+    "updated": "更新时间"
   },
   "menu": {
     "enable": "启用记忆",

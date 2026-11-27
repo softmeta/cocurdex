@@ -1213,6 +1213,7 @@ export default interface Resources {
       collapse: "Hide memory list";
       content: "Content";
       detail: "Memory details";
+      device: "Device";
       empty: "No memories yet";
       emptyDescription: "What your assistants learn about you shows up here.";
       entryHistory: "History";
@@ -1225,6 +1226,7 @@ export default interface Resources {
       history: "Memory history";
       historyEmpty: "No history yet";
       historyEmptyDescription: "Edits, deletions, and restores show up here.";
+      id: "ID";
       label: "Memory";
       list: "Memories";
       manage: "Manage";
@@ -1252,7 +1254,7 @@ export default interface Resources {
       title: "Title";
       undated: "Undated";
       undo: "Undo";
-      updatedAt: "Updated {{time}}";
+      updated: "Updated";
     };
     menu: {
       enable: "Enable memory";
