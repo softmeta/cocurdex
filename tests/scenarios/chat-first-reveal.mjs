@@ -1,7 +1,7 @@
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { clickByRole, waitForRole } from "./lib/locate.mjs";
-import { translate } from "./lib/navigate.mjs";
+import { openSidebarForm, translate } from "./lib/navigate.mjs";
 
 const SESSION_TITLE = "Draft release notes";
 const HEADING = "Acme Shop 0.4.0";
@@ -135,6 +135,7 @@ runScenario("chat-first-reveal", {
       UI_TIMEOUT_MS,
     );
     await session.reload();
+    await openSidebarForm(session, "sessions:sidebar.workspacesGroup");
     await waitForRole(
       session,
       { role: "button", name: SESSION_ROW },
