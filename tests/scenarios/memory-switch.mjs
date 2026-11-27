@@ -199,7 +199,6 @@ runScenario("memory-switch", {
     await dismissOnboarding(session);
     const memoryLabel = await translate(session, "memory:switch.label");
     const enableLabel = await translate(session, "memory:menu.enable");
-    const syncLabel = await translate(session, "memory:menu.sync");
     const settingsLabel = await translate(session, "memory:menu.settings");
     await openMemorySubmenu(session, memoryLabel);
     await session.waitUntil(
@@ -210,12 +209,12 @@ runScenario("memory-switch", {
       { label: enableLabel },
       UI_TIMEOUT_MS,
     );
-    return { memoryLabel, enableLabel, syncLabel, settingsLabel, original };
+    return { memoryLabel, enableLabel, settingsLabel, original };
   },
   steps: [
     [
       "the composer menu exposes memory as a submenu",
-      async ({ session, enableLabel, syncLabel, settingsLabel }) => {
+      async ({ session, enableLabel, settingsLabel }) => {
         const items = await queryAllByRole(session, {
           role: "menuitemcheckbox",
         });
@@ -223,11 +222,6 @@ runScenario("memory-switch", {
         check(
           names.some((name) => name.includes(enableLabel)),
           "memory enable item exists",
-          names,
-        );
-        check(
-          !names.some((name) => name.includes(syncLabel)),
-          "multi-device sync is not offered without rsrs",
           names,
         );
         const settingsItem = await queryAllByRole(session, {
@@ -295,15 +289,18 @@ runScenario("memory-switch", {
           session,
           "memory:settings.rsrs.title",
         );
-        const syncTitle = await translate(
+        const dashboardSelector = `button[aria-label="${await translate(
           session,
-          "memory:settings.cloud.title",
-        );
+          "memory:settings.cloud.openDashboard",
+        )}"]`;
         const rsrs = await readSwitch(session, rsrsTitle);
         check(rsrs?.checked === "false", "rsrs is off by default", rsrs);
         check(
-          (await readSwitch(session, syncTitle)) === null,
-          "multi-device sync is hidden without rsrs",
+          !(await session.run(
+            (selector) => Boolean(document.querySelector(selector)),
+            dashboardSelector,
+          )),
+          "the rsrs sync pointer is hidden without rsrs",
         );
 
         await session.run(
@@ -311,8 +308,8 @@ runScenario("memory-switch", {
           { selector: switchSelector(rsrsTitle) },
         );
         await session.waitUntil(
-          ({ selector }) => Boolean(document.querySelector(selector)),
-          { selector: switchSelector(syncTitle) },
+          (selector) => Boolean(document.querySelector(selector)),
+          dashboardSelector,
           UI_TIMEOUT_MS,
         );
         const settings = await daemonRequest(session, "memory.settings.get");

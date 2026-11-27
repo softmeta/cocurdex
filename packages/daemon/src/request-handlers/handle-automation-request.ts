@@ -272,18 +272,6 @@ async function handleMemoryRequest(
       return memory.doctor(request.params);
     case "memory.policy":
       return memory.policy();
-    case "memory.cloud.connect":
-      assertLocalPrincipal(context, request.method);
-      return memory.connectCloud(request.params);
-    case "memory.cloud.disconnect":
-      assertLocalPrincipal(context, request.method);
-      return memory.disconnectCloud();
-    case "memory.cloud.setSync":
-      assertLocalPrincipal(context, request.method);
-      return memory.setCloudSync(request.params.enabled);
-    case "memory.cloud.keys":
-      assertLocalPrincipal(context, request.method);
-      return memory.cloudKeys();
     case "memory.list":
       return memory.list(request.params);
     case "memory.update":

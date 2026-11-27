@@ -13,7 +13,10 @@ export const MEMORY_INSTALL_HINT =
 export const MEMORY_ENABLE_HINT =
   "Turn memory on in Settings > Memory, or run: cocurdex memory on.";
 export const MEMORY_IDENTITY_HINT =
-  "For local-only memory, run: cocurdex memory install. For multi-device sync, register or sign in from Settings > Memory > Multi-device sync, or run: cocurdex memory cloud register --user <name> (use cloud signin for an existing account).";
+  "For local-only memory, run: cocurdex memory install. Multi-device sync is managed by rsrs itself: sign in with rsrs login, then manage sync with rsrs web or the rsrs app.";
+
+export const MEMORY_SYNC_MANAGED_BY_RSRS =
+  "Multi-device sync is managed by rsrs itself. Sign in with: rsrs login. Manage sync with: rsrs web, or the rsrs app.";
 
 export const MEMORY_MISSING_EXECUTABLE_MESSAGE = `rsrs is not installed. ${MEMORY_INSTALL_HINT}`;
 export const MEMORY_DISABLED_MESSAGE = `Memory is off. ${MEMORY_ENABLE_HINT}`;
@@ -185,8 +188,6 @@ export function gateMemorySettings(
   return { ...settings, rsrs: false };
 }
 
-export type MemoryCloudMode = "register" | "signin";
-
 export interface MemoryCloudStatus {
   connected: boolean;
   user: string | null;
@@ -214,22 +215,6 @@ export const DEFAULT_MEMORY_CLOUD_STATUS: MemoryCloudStatus = {
   lastSyncAt: null,
   error: null,
 };
-
-export interface MemoryCloudConnectInput {
-  mode: MemoryCloudMode;
-  user: string;
-  password: string;
-  recoveryKey?: string | null;
-}
-
-export interface MemoryCloudConnectResult {
-  status: MemoryStatus;
-  recoveryKey: string | null;
-}
-
-export interface MemoryCloudKeys {
-  content: string;
-}
 
 export const MEMORY_USER_LIBRARY_PREFIX = "user:";
 

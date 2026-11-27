@@ -31,11 +31,7 @@ function statusNote(t: TFunction<"memory">, status: MemoryStatus | undefined) {
   return t("status.missing");
 }
 
-export function MemoryMenuItem({
-  onConnectCloud,
-}: {
-  onConnectCloud(user: string | null): void;
-}) {
+export function MemoryMenuItem() {
   const { t } = useTranslation("memory");
   const { data } = useMemoryStatus();
   const [pending, setPending] = useState(false);
@@ -44,8 +40,6 @@ export function MemoryMenuItem({
   const usesRsrs = data?.settings.rsrs === true;
   const available = usesRsrs ? data?.rsrsAvailable : data?.available;
   const note = statusNote(t, data);
-  const cloud = data?.cloud;
-  const syncEnabled = Boolean(cloud?.connected && cloud.autosync);
 
   const toggleMemory = async (next: boolean) => {
     setPending(true);
@@ -75,24 +69,6 @@ export function MemoryMenuItem({
     } finally {
       setPending(false);
       void revalidateMemory().catch(() => undefined);
-    }
-  };
-
-  const toggleSync = async (next: boolean) => {
-    if (next && !cloud?.connected) {
-      onConnectCloud(cloud?.user ?? null);
-      return;
-    }
-    setPending(true);
-    try {
-      await desktopApi.setMemoryCloudSync(next);
-      await revalidateMemory();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("switch.syncToggleFailed"),
-      );
-    } finally {
-      setPending(false);
     }
   };
 
@@ -130,23 +106,6 @@ export function MemoryMenuItem({
         >
           {t("menu.enable")}
         </DropdownMenuCheckboxItem>
-        {usesRsrs ? (
-          <DropdownMenuCheckboxItem
-            checked={syncEnabled}
-            closeOnClick={!cloud?.connected}
-            disabled={pending || installing || !available || !enabled}
-            onCheckedChange={(checked) => void toggleSync(checked === true)}
-          >
-            <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-              <span className="min-w-0 truncate">{t("menu.sync")}</span>
-              {cloud?.connected ? (
-                <Text as="span" className="shrink-0" size="meta" tone="muted">
-                  {cloud.user}
-                </Text>
-              ) : null}
-            </span>
-          </DropdownMenuCheckboxItem>
-        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => openSettings("memory")}>
           <Settings2 className="size-4 shrink-0" />
