@@ -15,15 +15,21 @@ export function createMemoryEntriesSchemaSql(): string {
       device TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT,
-      remote_id TEXT
+      deleted_at TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_memory_entries_project_updated
       ON memory_entries(project, updated_at DESC);
 
-    CREATE INDEX IF NOT EXISTS idx_memory_entries_remote
-      ON memory_entries(remote_id) WHERE remote_id IS NOT NULL;
+    CREATE TABLE IF NOT EXISTS memory_entry_links (
+      entry_id TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      remote_id TEXT NOT NULL,
+      PRIMARY KEY (entry_id, provider)
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_entry_links_remote
+      ON memory_entry_links(provider, remote_id);
 
     CREATE TABLE IF NOT EXISTS memory_entry_history (
       seq INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -596,10 +596,10 @@ export class CocurdexDaemonService {
           return this.memory.agentInstructions(true, true);
         }
         const session = await this.state.getSession(caller.sessionId);
-        const hostRsrs = session
-          ? await this.memory.hostInstructsRsrs(session.agentType)
-          : false;
-        return this.memory.agentInstructions(true, false, hostRsrs);
+        const hostNote = session
+          ? await this.memory.hostNote(session.agentType)
+          : null;
+        return this.memory.agentInstructions(true, false, hostNote);
       },
     });
     this.peerMessaging = new PeerMessagingService({
@@ -1110,7 +1110,7 @@ export class CocurdexDaemonService {
     await this.scriptRuns.cancelForRequester(sessionId);
     const session = await this.state.getSession(sessionId);
     if (session && isChatSession(session)) {
-      void this.memory.saveSession({ sessionId });
+      void this.memory.saveSession({ sessionId }, "ended");
     }
     return this.sessionCommands.run(sessionId, async () => {
       await this.stopSessionTurn(sessionId);
@@ -1723,7 +1723,7 @@ export class CocurdexDaemonService {
     if (isChatSession(session)) {
       try {
         await Promise.race([
-          this.memory.saveSession({ sessionId }),
+          this.memory.saveSession({ sessionId }, "ended"),
           new Promise<void>((resolve) => {
             const timer = setTimeout(resolve, 45_000);
             timer.unref?.();

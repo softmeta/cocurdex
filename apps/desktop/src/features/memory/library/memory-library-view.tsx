@@ -26,6 +26,7 @@ import {
 import {
   type MemoryScope,
   prefetchMemoryEntry,
+  useDeletedMemories,
   useMemoryCapabilities,
   useMemoryEntry,
   useMemoryHistory,
@@ -40,7 +41,7 @@ function errorText(error: unknown) {
 }
 
 function isLibraryMode(value: string): value is MemoryLibraryMode {
-  return value === "diary" || value === "tree" || value === "history";
+  return value === "diary" || value === "tree" || value === "deleted";
 }
 
 export function MemoryLibraryView() {
@@ -55,10 +56,10 @@ export function MemoryLibraryView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const canHistory = capabilities?.history ?? false;
   const canRestore = capabilities?.restore ?? false;
+  const canListDeleted = canHistory && canRestore;
   const library = useMemoryLibrary(scope, revision);
-  const history = useMemoryHistory(
-    null,
-    mode === "history" && canHistory,
+  const deleted = useDeletedMemories(
+    mode === "deleted" && canListDeleted,
     revision,
   );
   const entry = useMemoryEntry(selectedId, revision);
@@ -195,9 +196,9 @@ export function MemoryLibraryView() {
             <ToggleGroupItem value="tree">
               {t("library.mode.tree")}
             </ToggleGroupItem>
-            {canHistory ? (
-              <ToggleGroupItem value="history">
-                {t("library.mode.history")}
+            {canListDeleted ? (
+              <ToggleGroupItem value="deleted">
+                {t("library.mode.deleted")}
               </ToggleGroupItem>
             ) : null}
           </ToggleGroup>
@@ -206,7 +207,7 @@ export function MemoryLibraryView() {
               <MemoryLibraryList
                 canRestore={canRestore}
                 entries={entries}
-                history={history.data ?? []}
+                deleted={deleted.data ?? []}
                 mode={mode}
                 selectedId={selectedId}
                 onRestore={(id) => void restore(id)}

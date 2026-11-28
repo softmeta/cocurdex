@@ -17,6 +17,7 @@ import {
   DEFAULT_MEMORY_SETTINGS,
   type MemorySettings,
   type MessageRecord,
+  normalizeMemorySettings,
   RSRS_CLI_VERSION,
   RSRS_MIN_CLI_VERSION,
   type SessionRecord,
@@ -220,14 +221,14 @@ async function createService(
   const directory = await temp.create("cocurdex-memory-");
   const logPath = path.join(directory, "calls.log");
   const executable = await createFakeRsrs(directory, logPath, options);
-  const settings: MemorySettings = {
+  const settings = normalizeMemorySettings({
     enabled: true,
     rsrs: true,
     agent: { injectContext: true, tools: true },
     chat: { recall: true, saveTurns: true, saveOnEnd: true },
     userLibrary: options.userLibraryHome !== undefined,
     cliPath: executable,
-  };
+  });
   const state = createState(settings);
   const service = new MemoryService({
     userDataPath: directory,
@@ -285,14 +286,14 @@ async function createGlobalService(options: {
     await mkdir(path.join(dataDir, "bin"), { recursive: true });
     await copyFile(fake, path.join(dataDir, "bin", "rsrs"));
   }
-  const settings: MemorySettings = {
+  const settings = normalizeMemorySettings({
     enabled: true,
     rsrs: true,
     agent: { injectContext: true, tools: true },
     chat: { recall: true, saveTurns: true, saveOnEnd: true },
     userLibrary: false,
     cliPath: "",
-  };
+  });
   const service = new MemoryService({
     userDataPath: directory,
     defaultUserDataPath: directory,
@@ -600,6 +601,19 @@ describe("MemoryService with a fake rsrs CLI", () => {
     });
   });
 
+  it("keeps an ended session out of memory unless a model judged it worth reusing, but saves one the user asks for", async () => {
+    const { service } = await createService();
+    expect(
+      await service.saveSession({ sessionId: "chat-1" }, "ended"),
+    ).toMatchObject({ saved: false, reason: "not-salient" });
+    expect((await service.list()).items).toHaveLength(0);
+
+    expect(await service.saveSession({ sessionId: "chat-1" })).toMatchObject({
+      saved: true,
+    });
+    expect((await service.list()).items).toHaveLength(1);
+  });
+
   it("stores the session summary on its own instead of claiming a similar memory as its cause", async () => {
     const { service } = await createService();
     const earlier = await service.remember({
@@ -607,7 +621,10 @@ describe("MemoryService with a fake rsrs CLI", () => {
       content: "An earlier summary of the same chat",
       force: true,
     });
-    const result = await service.saveSession({ sessionId: "chat-1" });
+    const result = await service.saveSession({
+      sessionId: "chat-1",
+      force: true,
+    });
     expect(result.saved).toBe(true);
     expect(result.memoryId).not.toBe(earlier.id);
     expect(await service.show(result.memoryId ?? "")).toMatchObject({

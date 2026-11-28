@@ -143,6 +143,26 @@ describe("built-in memory provider", () => {
     expect(Number(await provider.revision())).toBeGreaterThan(Number(before));
   });
 
+  it("lists memories that are still deleted however much changed since", async () => {
+    const provider = createProvider();
+    const { release, theme, address } = await seed(provider);
+    await provider.forget(release);
+    await provider.forget(theme);
+    await provider.restore(theme);
+    for (const content of ["one", "two", "three"]) {
+      await provider.update({ id: address, content });
+    }
+
+    const deleted = await provider.history({
+      id: null,
+      limit: 2,
+      deleted: true,
+    });
+    expect(deleted.map((row) => [row.entryId, row.action])).toEqual([
+      [release, "delete"],
+    ]);
+  });
+
   it("imports an exported file once, keeping ids", async () => {
     const source = createProvider();
     const { release } = await seed(source);

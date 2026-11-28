@@ -81,7 +81,7 @@ export function memoryLibraryUsageLines() {
     "  cocurdex memory update <id> [--title <title>] [--content <text> | --file <path>] [--tags a,b] [--importance important|trivial] [--json]",
     "  cocurdex memory forget <id> [--json]",
     "  cocurdex memory restore <full-id> [--json]",
-    "  cocurdex memory history [<id>] [--limit <n>] [--json]",
+    "  cocurdex memory history [<id>] [--deleted] [--limit <n>] [--json]",
     "  cocurdex memory revision [--json]",
     "  cocurdex memory export <file> [--json]",
     "  cocurdex memory import <file> [--json]",
@@ -135,6 +135,7 @@ export async function handleMemoryLibraryCommand(
       requestDaemon("memory.history", {
         id: args[0] ?? stringFlag(parsed, "id") ?? null,
         limit: limitFlag(parsed, 50),
+        deleted: parsed.flags.has("deleted"),
       }),
     );
     if (parsed.flags.has("json")) {

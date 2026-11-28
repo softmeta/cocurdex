@@ -1,8 +1,6 @@
-import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { chmod, mkdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { buildChildProcessEnv, spawnCommand } from "@cocurdex/agent-adapters";
 import {
   type AcpRegistryInstalledAgent,
@@ -11,13 +9,13 @@ import {
   ReasonError,
   toAcpRegistryAgentId,
 } from "@cocurdex/shared";
+import { extractArchive, getArchiveFormat } from "../archive-extract";
 import { downloadVerified } from "../verified-download";
 import type {
   AcpRegistryBinaryTarget,
   AcpRegistryEntry,
 } from "./acp-registry-catalog";
 
-const execFileAsync = promisify(execFile);
 const DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000;
 const PREFETCH_ERROR_TAIL_LENGTH = 600;
 
@@ -62,19 +60,6 @@ export function getAcpRegistryAgentsRoot(userDataPath: string) {
   return path.join(userDataPath, "acp-agents");
 }
 
-type ArchiveFormat = "zip" | "tar" | "raw";
-
-export function getArchiveFormat(archiveUrl: string): ArchiveFormat {
-  const name = new URL(archiveUrl).pathname.toLowerCase();
-  if (name.endsWith(".zip")) {
-    return "zip";
-  }
-  if (/\.(tar|tar\.gz|tgz|tar\.bz2|tbz2|tar\.xz|txz)$/.test(name)) {
-    return "tar";
-  }
-  return "raw";
-}
-
 export function resolveInstalledCommand(directory: string, cmd: string) {
   const resolved = path.resolve(directory, cmd);
   const relative = path.relative(directory, resolved);
@@ -82,56 +67,6 @@ export function resolveInstalledCommand(directory: string, cmd: string) {
     throw new Error(`ACP Registry command escapes its install directory`);
   }
   return resolved;
-}
-
-type ExtractCommand = { command: string; args: string[] };
-
-export function listExtractCommands(
-  format: ArchiveFormat,
-  file: string,
-  directory: string,
-  platform: NodeJS.Platform = process.platform,
-  env: NodeJS.ProcessEnv = process.env,
-): ExtractCommand[] {
-  const tarArgs = ["-xf", file, "-C", directory];
-  if (platform === "win32") {
-    const systemRoot = env.SystemRoot || env.windir || "C:\\Windows";
-    return [
-      {
-        command: path.win32.join(systemRoot, "System32", "tar.exe"),
-        args: tarArgs,
-      },
-    ];
-  }
-  if (format === "zip" && platform === "linux") {
-    return [
-      { command: "unzip", args: ["-q", "-o", file, "-d", directory] },
-      { command: "bsdtar", args: tarArgs },
-      { command: "python3", args: ["-m", "zipfile", "-e", file, directory] },
-    ];
-  }
-  return [{ command: "tar", args: tarArgs }];
-}
-
-async function extract(format: ArchiveFormat, file: string, directory: string) {
-  const candidates = listExtractCommands(format, file, directory);
-  for (const [index, candidate] of candidates.entries()) {
-    try {
-      await execFileAsync(candidate.command, candidate.args, {
-        windowsHide: true,
-      });
-      return;
-    } catch (error) {
-      const missing = (error as NodeJS.ErrnoException).code === "ENOENT";
-      if (!missing || index === candidates.length - 1) {
-        throw missing
-          ? new Error(
-              `Cannot extract ${path.basename(file)}: install unzip and retry`,
-            )
-          : error;
-      }
-    }
-  }
 }
 
 async function installBinary(
@@ -153,7 +88,7 @@ async function installBinary(
       await downloadVerified(target.archive, archive, {
         sha256: target.sha256,
       });
-      await extract(format, archive, staging);
+      await extractArchive(format, archive, staging);
       await rm(archive, { force: true });
     }
     if (!(await stat(command)).isFile()) {

@@ -286,10 +286,10 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
   ),
   row(
     "memory",
-    "rsrs",
-    m("settings.rsrs.title"),
-    m("settings.rsrs.description"),
-    memory,
+    "provider",
+    m("settings.provider.title"),
+    m("settings.provider.description"),
+    m("settings.provider.groupTitle"),
   ),
   shownVia(
     row(
@@ -299,7 +299,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
       undefined,
       m("settings.cloudTitle"),
     ),
-    "memory.rsrs",
+    "memory.provider",
   ),
   shownVia(
     row(
@@ -309,7 +309,17 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
       m("settings.cliPath.description"),
       m("settings.connectionTitle"),
     ),
-    "memory.rsrs",
+    "memory.provider",
+  ),
+  shownVia(
+    row(
+      "memory",
+      "aiMemoryServer",
+      m("settings.aiMemory.server.title"),
+      m("settings.aiMemory.server.description"),
+      m("settings.connectionTitle"),
+    ),
+    "memory.provider",
   ),
   row(
     "teams",

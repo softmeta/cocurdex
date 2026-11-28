@@ -15,6 +15,7 @@ import {
   normalizeMemorySettings,
   parseMemorySettings,
   redactMemorySecrets,
+  withMemoryProvider,
 } from "@cocurdex/shared";
 import { describe, expect, it, vi } from "vitest";
 
@@ -78,6 +79,35 @@ describe("memory settings", () => {
     expect(settings.chat.saveOnEnd).toBe(false);
     expect(settings.chat.saveTurns).toBe(true);
     expect(settings.cliPath).toBe("/opt/rsrs");
+  });
+
+  it("reads the external provider from older settings and older clients", () => {
+    const stored = normalizeMemorySettings({
+      rsrs: true,
+      cliPath: "/opt/rsrs",
+    });
+    expect(stored.provider).toBe("rsrs");
+    expect(stored.providers.rsrs.cliPath).toBe("/opt/rsrs");
+
+    const aiMemory = withMemoryProvider(stored, "ai-memory");
+    expect(normalizeMemorySettings(aiMemory)).toMatchObject({
+      provider: "ai-memory",
+      rsrs: false,
+      providers: { rsrs: { cliPath: "/opt/rsrs" } },
+    });
+
+    // A client that knows only `rsrs` turns it off or on over a newer value.
+    const rsrsOn = normalizeMemorySettings(stored);
+    expect(normalizeMemorySettings({ ...rsrsOn, rsrs: false }).provider).toBe(
+      null,
+    );
+    expect(normalizeMemorySettings({ ...aiMemory, rsrs: true }).provider).toBe(
+      "rsrs",
+    );
+    expect(
+      normalizeMemorySettings({ ...rsrsOn, cliPath: "/usr/bin/rsrs" }).providers
+        .rsrs.cliPath,
+    ).toBe("/usr/bin/rsrs");
   });
 });
 

@@ -13,18 +13,19 @@ import {
   type MemorySettings,
   memoryPartitionOf,
   memoryPartitionProject,
+  normalizeMemorySettings,
   type SessionRecord,
 } from "@cocurdex/shared";
 import { describe, expect, it } from "vitest";
 
-const ENABLED: MemorySettings = {
+const ENABLED = normalizeMemorySettings({
   enabled: true,
   rsrs: true,
   agent: { injectContext: true, tools: true },
   chat: { recall: true, saveTurns: true, saveOnEnd: true },
   userLibrary: false,
   cliPath: null,
-};
+});
 
 function entry(id: string, project: string | null): MemoryEntry {
   return {

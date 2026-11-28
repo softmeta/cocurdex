@@ -2,6 +2,7 @@ import { useSetAtom } from "jotai";
 import { type MouseEvent, type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  APP_RAIL_WIDTH,
   TITLEBAR_HEIGHT,
   TITLEBAR_LEADING_RESERVE,
   TITLEBAR_TOOLBAR_MIN_WIDTH,
@@ -53,6 +54,9 @@ import { WorktreeSettingsPanel } from "./worktrees";
 const SETTINGS_HEADING_GAP = 16;
 const SETTINGS_MIN_CONTENT_WIDTH = 600;
 
+// The header floats over the scrolling content, which passes under it.
+const SETTINGS_HEADER_HEIGHT = 32;
+
 export interface SettingsScreenProps {
   activeSection: SettingsSectionId;
   appearanceSettings: AppearanceSettings;
@@ -63,7 +67,7 @@ export interface SettingsScreenProps {
   isSidebarOpen: boolean;
   sidebarWidth?: number;
   historyControls: ReactNode;
-  onBackToApp(): void;
+  rail?(besideSidebar: boolean): ReactNode;
   onAppearanceSettingsChange(settings: AppearanceSettings): void;
   onChatLayoutModeChange(mode: ChatLayoutMode): void;
   onHideFabWhenClosedChange(hide: boolean): void;
@@ -261,7 +265,7 @@ export function SettingsScreen({
   notificationSettings,
   sidebarWidth,
   historyControls,
-  onBackToApp,
+  rail,
   onAppearanceSettingsChange,
   onChatLayoutModeChange,
   onHideFabWhenClosedChange,
@@ -308,8 +312,10 @@ export function SettingsScreen({
   const [screenRef, screenWidth] = useObservedWidth<HTMLElement>();
   const [isSidebarOverlayOpen, setIsSidebarOverlayOpen] = useState(false);
   const resolvedSidebarWidth = sidebarWidth ?? 240;
+  const railWidth = rail ? APP_RAIL_WIDTH : 0;
   const canDockSidebar =
-    screenWidth >= resolvedSidebarWidth + SETTINGS_MIN_CONTENT_WIDTH;
+    screenWidth >=
+    railWidth + resolvedSidebarWidth + SETTINGS_MIN_CONTENT_WIDTH;
   const isSidebarDocked = isSidebarOpen && canDockSidebar;
   const isSidebarShown = canDockSidebar ? isSidebarOpen : isSidebarOverlayOpen;
   const toggleSidebar = () => {
@@ -347,7 +353,6 @@ export function SettingsScreen({
       activeSection={activeSection}
       clusters={sidebarClusters}
       sidebarWidth={sidebarWidth}
-      onBackToApp={onBackToApp}
       onSectionChange={handleSectionChange}
     />
   );
@@ -375,6 +380,7 @@ export function SettingsScreen({
       className="relative flex h-screen overflow-hidden bg-shell text-foreground"
       ref={screenRef}
     >
+      {rail?.(isSidebarDocked)}
       {isSidebarDocked ? (
         <ResizableSidebarSlot
           isOpen
@@ -402,73 +408,88 @@ export function SettingsScreen({
         </Sheet>
       )}
 
-      <section
-        className="min-w-0 flex-1 overflow-hidden bg-app"
-        data-window-content=""
+      <div
+        className={cn("flex min-w-0 flex-1", isSidebarDocked && "bg-sidebar")}
+        data-window-sidebar-edge={isSidebarDocked ? "" : undefined}
       >
-        <header
+        <section
           className={cn(
-            "app-drag flex h-8 min-w-0 shrink-0 items-center border-b pe-4 transition-colors",
-            isSidebarDocked && "ps-5",
-            isContentScrolled ? "border-border/60" : "border-transparent",
+            "relative min-w-0 flex-1 overflow-hidden bg-app",
+            isSidebarDocked && "rounded-s-card",
           )}
-          style={{
-            paddingInlineStart: isSidebarDocked
-              ? undefined
-              : TITLEBAR_TOOLBAR_MIN_WIDTH + SETTINGS_HEADING_GAP,
-          }}
+          data-window-content=""
         >
-          <p
-            aria-hidden
-            data-testid="settings-compact-title"
+          <header
             className={cn(
-              "truncate text-body font-semibold text-foreground opacity-0 transition-opacity",
-              isContentScrolled && "opacity-100",
+              "app-drag absolute inset-x-0 top-0 z-10 flex h-8 min-w-0 items-center pe-4",
+              isSidebarDocked && "ps-5",
             )}
+            style={{
+              paddingInlineStart: isSidebarDocked
+                ? undefined
+                : TITLEBAR_TOOLBAR_MIN_WIDTH + SETTINGS_HEADING_GAP - railWidth,
+            }}
           >
-            {sectionLabel}
-          </p>
-        </header>
-        {isFillLayout ? (
-          <div className="flex h-[calc(100vh-2rem)] min-h-0 flex-col pb-8">
             <div
+              aria-hidden
               className={cn(
-                "mx-auto flex min-h-0 w-full flex-1 flex-col px-4 pt-1 sm:px-6 lg:px-8",
-                activeSection === "licenses" && "max-w-5xl gap-6",
-                activeSection === "providers" && "max-w-6xl gap-6",
-                isConnectionSection(activeSection) && "max-w-6xl gap-6",
-                activeSection === "archived" && "max-w-3xl gap-8",
+                "pointer-events-none absolute inset-x-0 top-0 h-20 bg-linear-to-b from-chat-fade via-chat-fade/85 to-transparent opacity-0 transition-opacity",
+                isContentScrolled && "opacity-100",
+              )}
+            />
+            <p
+              aria-hidden
+              data-testid="settings-compact-title"
+              className={cn(
+                "relative truncate text-body font-semibold text-foreground opacity-0 transition-opacity",
+                isContentScrolled && "opacity-100",
               )}
             >
-              <div className="flex h-7 shrink-0 items-center">
-                {settingsHeading}
-              </div>
-              {settingsPanel}
-            </div>
-          </div>
-        ) : (
-          <div className="h-[calc(100vh-2rem)] pb-8">
-            <ScrollArea
-              className="h-full"
-              viewportProps={{
-                onScroll: (event) =>
-                  setScrolledSection(
-                    event.currentTarget.scrollTop > headingBottom()
-                      ? activeSection
-                      : null,
-                  ),
-              }}
-            >
-              <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3 px-4 pt-1 pb-10 sm:px-6 lg:px-8">
-                <div className="mb-3 flex h-7 items-center" ref={headingRef}>
+              {sectionLabel}
+            </p>
+          </header>
+          {isFillLayout ? (
+            <div className="flex h-screen min-h-0 flex-col pt-8 pb-8">
+              <div
+                className={cn(
+                  "mx-auto flex min-h-0 w-full flex-1 flex-col px-4 pt-1 sm:px-6 lg:px-8",
+                  activeSection === "licenses" && "max-w-5xl gap-6",
+                  activeSection === "providers" && "max-w-6xl gap-6",
+                  isConnectionSection(activeSection) && "max-w-6xl gap-6",
+                  activeSection === "archived" && "max-w-3xl gap-8",
+                )}
+              >
+                <div className="flex h-7 shrink-0 items-center">
                   {settingsHeading}
                 </div>
                 {settingsPanel}
               </div>
-            </ScrollArea>
-          </div>
-        )}
-      </section>
+            </div>
+          ) : (
+            <div className="h-screen pb-8">
+              <ScrollArea
+                className="h-full"
+                viewportProps={{
+                  onScroll: (event) =>
+                    setScrolledSection(
+                      event.currentTarget.scrollTop >
+                        headingBottom() - SETTINGS_HEADER_HEIGHT
+                        ? activeSection
+                        : null,
+                    ),
+                }}
+              >
+                <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3 px-4 pt-9 pb-10 sm:px-6 lg:px-8">
+                  <div className="mb-3 flex h-7 items-center" ref={headingRef}>
+                    {settingsHeading}
+                  </div>
+                  {settingsPanel}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+        </section>
+      </div>
 
       {titlebarControls}
     </main>

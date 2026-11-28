@@ -1,3 +1,5 @@
+import { writeFile } from "node:fs/promises";
+import path from "node:path";
 import { writeFakeRsrs } from "@cocurdex/test-harness/fixtures/fake-rsrs/index.mjs";
 import { openScenarioApp } from "./lib/app.mjs";
 import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
@@ -5,32 +7,41 @@ import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import {
   clickByRole,
   queryAllByRole,
+  waitForNoRole,
   waitForRole,
 } from "./lib/locate.mjs";
 import { openAssistantsTab, translate } from "./lib/navigate.mjs";
 
 const UI_TIMEOUT_MS = 30_000;
+const UNREACHABLE_AI_MEMORY = "http://127.0.0.1:9";
 const args = readScenarioArgs();
 const state = {};
 
+async function railEntry(session) {
+  return {
+    role: "button",
+    name: await translate(session, "memory:onboarding.label"),
+  };
+}
+
 async function openMemoryStatus(session) {
-  const region = await memoryRegion(session, "memory:onboarding.label");
+  const region = {
+    role: "region",
+    name: await translate(session, "memory:onboarding.label"),
+  };
   const [shown] = await queryAllByRole(session, region);
   if (shown) return region;
-  await clickByRole(
-    session,
-    {
-      role: "button",
-      name: await translate(session, "memory:onboarding.label"),
-    },
-    UI_TIMEOUT_MS,
-  );
+  await clickByRole(session, await railEntry(session), UI_TIMEOUT_MS);
   await waitForRole(session, region, UI_TIMEOUT_MS);
   return region;
 }
 
-async function memoryRegion(session, labelKey) {
-  return { role: "region", name: await translate(session, labelKey) };
+async function writeRsrsState(extra = {}) {
+  await writeFile(
+    state.statePath,
+    JSON.stringify({ revision: 0, live: [], deleted: [], log: [], ...extra }),
+    "utf8",
+  );
 }
 
 runScenario("memory-onboarding", {
@@ -38,98 +49,87 @@ runScenario("memory-onboarding", {
   setup: async ({ session, workspaceRoot }) => {
     state.original = await daemonRequest(session, "memory.settings.get");
     state.statePath = path.join(workspaceRoot, "memory-onboarding-state.json");
-    await writeFile(
-      state.statePath,
-      JSON.stringify({ revision: 0, live: [], deleted: [], log: [] }),
-      "utf8",
-    );
-    const cliPath = await writeFakeRsrs(workspaceRoot, {
+    await writeRsrsState();
+    state.cliPath = await writeFakeRsrs(workspaceRoot, {
       statePath: state.statePath,
     });
     await daemonRequest(session, "memory.settings.set", {
-      settings: { ...state.original, enabled: false, rsrs: false, cliPath },
+      settings: { ...state.original, enabled: true, rsrs: false },
     });
     return {};
   },
   steps: [
     [
-      "memory that is off shows a turn-on entry without a prompt",
+      "healthy memory keeps the rail free of a memory entry",
       async ({ session }) => {
         await openAssistantsTab(session);
-        await openMemoryStatus(session);
-        const offText = await translate(session, "memory:onboarding.state.off");
-        await session.waitUntil(
-          (text) => document.body.textContent.includes(text),
-          offText,
-          UI_TIMEOUT_MS,
-        );
-        return {};
-      },
-    ],
-    [
-      "turning memory on from the entry is ready without rsrs",
-      async ({ session }) => {
-        const row = await openMemoryStatus(session);
-        await clickByRole(session, {
-          role: "button",
-          name: await translate(session, "memory:onboarding.enable"),
-          within: row,
-        });
-        const readyText = await translate(
-          session,
-          "memory:onboarding.state.ready",
-        );
-        await session.waitUntil(
-          (text) => document.body.textContent.includes(text),
-          readyText,
-          UI_TIMEOUT_MS,
-        );
+        await waitForNoRole(session, await railEntry(session), UI_TIMEOUT_MS);
         const status = await daemonRequest(session, "memory.status", {});
         check(
-          status.settings.enabled && status.available && !status.settings.rsrs,
-          "the daemon reports memory on and available without rsrs",
-          { settings: status.settings, available: status.available },
+          status.settings.enabled && status.available && !status.provider,
+          "memory is on without an external library",
+          { settings: status.settings, provider: status.provider },
         );
         return {};
       },
     ],
     [
-      "with rsrs on, the entry points to rsrs for multi-device sync",
+      "an unreachable ai-memory shows a failed entry naming it",
       async ({ session }) => {
         const settings = await daemonRequest(session, "memory.settings.get");
         await daemonRequest(session, "memory.settings.set", {
-          settings: { ...settings, rsrs: true },
+          settings: {
+            ...settings,
+            rsrs: false,
+            provider: "ai-memory",
+            providers: {
+              ...settings.providers,
+              aiMemory: { serverUrl: UNREACHABLE_AI_MEMORY },
+            },
+          },
         });
-        await openMemoryStatus(session);
-        const hint = await translate(session, "memory:onboarding.syncHint");
-        await session.waitUntil(
-          (text) => document.body.textContent.includes(text),
-          hint,
-          UI_TIMEOUT_MS,
-        );
-        return {};
-      },
-    ],
-    [
-      "missing local identity is not shown as ready",
-      async ({ session }) => {
-        await writeFile(
-          state.statePath,
-          JSON.stringify({
-            revision: 0,
-            live: [],
-            deleted: [],
-            log: [],
-            identityMissing: true,
-          }),
-          "utf8",
-        );
-        const settings = await daemonRequest(session, "memory.settings.get");
-        await daemonRequest(session, "memory.settings.set", { settings });
         await openMemoryStatus(session);
         const label = await translate(
           session,
           "memory:onboarding.state.failed",
+          {
+            name: "ai-memory",
+          },
+        );
+        await session.waitUntil(
+          (text) => document.body.textContent.includes(text),
+          label,
+          UI_TIMEOUT_MS,
+        );
+        const status = await daemonRequest(session, "memory.status", {});
+        check(
+          status.available && status.provider?.available === false,
+          "memory stays available while ai-memory is unreachable",
+          status.provider,
+        );
+        return {};
+      },
+    ],
+    [
+      "missing rsrs identity is not shown as ready",
+      async ({ session }) => {
+        await writeRsrsState({ identityMissing: true });
+        const settings = await daemonRequest(session, "memory.settings.get");
+        await daemonRequest(session, "memory.settings.set", {
+          settings: {
+            ...settings,
+            rsrs: true,
+            provider: "rsrs",
+            cliPath: state.cliPath,
+          },
+        });
+        await openMemoryStatus(session);
+        const label = await translate(
+          session,
+          "memory:onboarding.state.failed",
+          {
+            name: "rsrs",
+          },
         );
         await session.waitUntil(
           (text) =>
@@ -168,6 +168,3 @@ runScenario("memory-onboarding", {
     return {};
   },
 });
-
-import { writeFile } from "node:fs/promises";
-import path from "node:path";

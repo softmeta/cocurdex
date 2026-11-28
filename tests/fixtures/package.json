@@ -5,7 +5,8 @@
   "exports": {
     "./database": "./database.ts",
     "./db/*": "./db/*",
-    "./temp-dirs": "./temp-dirs.ts"
+    "./temp-dirs": "./temp-dirs.ts",
+    "./fake-ai-memory": "./fake-ai-memory.ts"
   },
   "devDependencies": {
     "@types/node": "^24.19.2"

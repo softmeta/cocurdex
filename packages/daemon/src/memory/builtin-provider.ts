@@ -246,7 +246,6 @@ export class BuiltinMemoryProvider implements MemoryProvider {
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
-        remoteId: null,
       };
       const change = this.change();
       this.entries.insert(entry, change);
@@ -302,16 +301,20 @@ export class BuiltinMemoryProvider implements MemoryProvider {
   async history(input: {
     id: string | null;
     limit: number;
+    deleted?: boolean;
   }): Promise<MemoryHistoryEntry[]> {
     const id = input.id ? (this.entries.find(input.id)?.id ?? input.id) : null;
-    return this.entries.history({ id, limit: input.limit }).map((row) => ({
-      entryId: row.entryId,
-      action: row.action,
-      title: row.title,
-      excerpt: row.content?.slice(0, HISTORY_EXCERPT_LENGTH) ?? null,
-      actor: row.actor,
-      at: row.at,
-    }));
+    const deleted = input.deleted === true;
+    return this.entries
+      .history({ id, limit: input.limit, deleted })
+      .map((row) => ({
+        entryId: row.entryId,
+        action: row.action,
+        title: row.title,
+        excerpt: row.content?.slice(0, HISTORY_EXCERPT_LENGTH) ?? null,
+        actor: row.actor,
+        at: row.at,
+      }));
   }
 
   async revision() {
@@ -352,7 +355,7 @@ export class BuiltinMemoryProvider implements MemoryProvider {
           result.skipped += 1;
           continue;
         }
-        this.adopt(entry, null, null);
+        this.adopt(entry, null);
         ids.add(entry.id);
         bodies.add(entry.content);
         result.imported += 1;
@@ -362,11 +365,7 @@ export class BuiltinMemoryProvider implements MemoryProvider {
   }
 
   /** Stores an entry from elsewhere under its own id and timestamps. */
-  adopt(
-    entry: MemoryTransferEntry,
-    remoteId: string | null,
-    actor: string | null,
-  ) {
+  adopt(entry: MemoryTransferEntry, actor: string | null) {
     const now = this.nowIso();
     this.entries.insert(
       {
@@ -385,7 +384,6 @@ export class BuiltinMemoryProvider implements MemoryProvider {
         createdAt: entry.createdAt ?? entry.updatedAt ?? now,
         updatedAt: entry.updatedAt ?? entry.createdAt ?? now,
         deletedAt: null,
-        remoteId,
       },
       this.change(actor),
     );

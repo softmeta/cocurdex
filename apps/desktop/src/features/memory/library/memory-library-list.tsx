@@ -11,7 +11,7 @@ import {
 import { useScrollIntoViewWhenActive } from "@/lib/react-hooks";
 import { buildMemoryTree, groupMemoriesByDay } from "./memory-library-groups";
 
-export type MemoryLibraryMode = "diary" | "tree" | "history";
+export type MemoryLibraryMode = "diary" | "tree" | "deleted";
 
 function formatDay(day: string | null, locale: string, undated: string) {
   if (!day) return undated;
@@ -84,7 +84,7 @@ function DayHeading({ children }: { children: string }) {
 export function MemoryLibraryList({
   mode,
   entries,
-  history,
+  deleted,
   selectedId,
   canRestore,
   onSelect,
@@ -93,7 +93,7 @@ export function MemoryLibraryList({
 }: {
   mode: MemoryLibraryMode;
   entries: MemoryEntry[];
-  history: MemoryHistoryEntry[];
+  deleted: MemoryHistoryEntry[];
   selectedId: string | null;
   canRestore: boolean;
   onSelect: (id: string) => void;
@@ -101,46 +101,33 @@ export function MemoryLibraryList({
   onRestore: (id: string) => void;
 }) {
   const { t, i18n } = useTranslation("memory");
-  const actionLabels: Record<string, string> = {
-    create: t("library.action.create"),
-    update: t("library.action.update"),
-    delete: t("library.action.delete"),
-    restore: t("library.action.restore"),
-    merge: t("library.action.merge"),
-  };
-
-  if (mode === "history") {
-    if (history.length === 0) {
+  if (mode === "deleted") {
+    if (deleted.length === 0) {
       return (
         <EmptyState
           icon={<Brain />}
-          title={t("library.historyEmpty")}
-          description={t("library.historyEmptyDescription")}
+          title={t("library.deletedEmpty")}
+          description={t("library.deletedEmptyDescription")}
         />
       );
     }
     return (
-      <ul aria-label={t("library.history")} className="flex flex-col gap-0.5">
-        {history.map((row, index) => (
+      <ul aria-label={t("library.deleted")} className="flex flex-col gap-0.5">
+        {deleted.map((row) => (
           <li
             className="flex min-h-8 items-center gap-2 px-2"
             data-memory-id={row.entryId}
-            key={`${row.entryId}-${row.at ?? index}`}
+            key={row.entryId}
           >
             <div className="flex min-w-0 flex-1 flex-col">
               <Text className="truncate" size="body">
                 {row.title ?? row.entryId}
               </Text>
               <Text className="truncate" size="meta" tone="muted">
-                {[
-                  actionLabels[row.action] ?? row.action,
-                  formatTime(row.at, i18n.language),
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
+                {formatTime(row.at, i18n.language)}
               </Text>
             </div>
-            {row.action === "delete" && canRestore ? (
+            {canRestore ? (
               <Button
                 size="sm"
                 variant="ghost"

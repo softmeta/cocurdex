@@ -4,20 +4,18 @@ import { toast } from "sonner";
 import { SettingRow, SettingsGroup } from "@/components/app";
 import { Switch } from "@/components/ui";
 import { desktopApi } from "@/lib";
+import { MemoryProviderSettings } from "./memory-provider-settings";
 import {
   revalidateMemory,
   useMemorySettings,
   useMemoryStatus,
 } from "./memory-queries";
-import { MemoryRsrsSettings } from "./memory-rsrs-settings";
 
 export function MemorySettingsPanel() {
   const { t } = useTranslation("memory");
   const { data: status } = useMemoryStatus();
   const { data: settingsData } = useMemorySettings();
   const settings = settingsData ?? DEFAULT_MEMORY_SETTINGS;
-  const unsupported = status?.supported === false;
-  const usesRsrs = settings.enabled && settings.rsrs;
 
   const save = async (next: MemorySettings) => {
     try {
@@ -75,22 +73,6 @@ export function MemorySettingsPanel() {
             }
           />
         </SettingRow>
-        {status?.userLibrary.detected ? (
-          <SettingRow
-            searchId="memory.userLibrary"
-            description={t("settings.userLibrary.description")}
-            title={t("settings.userLibrary.title")}
-          >
-            <Switch
-              aria-label={t("settings.userLibrary.title")}
-              checked={settings.userLibrary}
-              disabled={!settings.enabled}
-              onCheckedChange={(userLibrary) =>
-                void save({ ...settings, userLibrary })
-              }
-            />
-          </SettingRow>
-        ) : null}
         <SettingRow
           searchId="memory.chatRecall"
           description={t("settings.chatRecall.description")}
@@ -121,28 +103,7 @@ export function MemorySettingsPanel() {
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title={t("settings.rsrsTitle")}>
-        <SettingRow
-          searchId="memory.rsrs"
-          description={
-            unsupported
-              ? t("settings.rsrs.unsupported")
-              : t("settings.rsrs.description")
-          }
-          title={t("settings.rsrs.title")}
-        >
-          <Switch
-            aria-label={t("settings.rsrs.title")}
-            checked={settings.rsrs}
-            disabled={!settings.enabled || unsupported}
-            onCheckedChange={(rsrs) => void save({ ...settings, rsrs })}
-          />
-        </SettingRow>
-      </SettingsGroup>
-
-      {usesRsrs ? (
-        <MemoryRsrsSettings save={save} settings={settings} status={status} />
-      ) : null}
+      <MemoryProviderSettings save={save} settings={settings} status={status} />
     </div>
   );
 }

@@ -24,7 +24,12 @@ import {
 } from "./memory-queries";
 
 function statusNote(t: TFunction<"memory">, status: MemoryStatus | undefined) {
-  if (!status?.settings.rsrs) return null;
+  if (status?.settings.provider === "ai-memory") {
+    return status.provider?.available === false
+      ? t("status.unreachable")
+      : null;
+  }
+  if (status?.settings.provider !== "rsrs") return null;
   if (status.installation === "installing") return t("status.installing");
   if (status.rsrsAvailable) return null;
   if (status.installation === "failed") return t("status.failed");
@@ -37,8 +42,13 @@ export function MemoryMenuItem() {
   const [pending, setPending] = useState(false);
   const enabled = data?.settings.enabled ?? true;
   const installing = data?.installation === "installing";
-  const usesRsrs = data?.settings.rsrs === true;
-  const available = usesRsrs ? data?.rsrsAvailable : data?.available;
+  const usesRsrs = data?.settings.provider === "rsrs";
+  const external = data?.provider ?? null;
+  const available = usesRsrs
+    ? data?.rsrsAvailable
+    : external
+      ? external.available
+      : data?.available;
   const note = statusNote(t, data);
 
   const toggleMemory = async (next: boolean) => {

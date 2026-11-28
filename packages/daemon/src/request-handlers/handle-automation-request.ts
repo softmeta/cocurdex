@@ -296,8 +296,10 @@ async function handleMemoryRequest(
       assertLocalPrincipal(context, request.method);
       return memory.importFrom(request.params.file);
     case "memory.rsrs.preview":
-      return memory.previewRsrsSync();
+      return memory.previewSync("rsrs");
     case "memory.rsrs.sync":
-      return memory.syncRsrs();
+      return memory.syncNow("rsrs");
+    case "memory.sync":
+      return request.params.dryRun ? memory.previewSync() : memory.syncNow();
   }
 }

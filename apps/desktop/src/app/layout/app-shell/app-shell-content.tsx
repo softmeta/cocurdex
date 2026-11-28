@@ -225,7 +225,7 @@ export function AppShellContent({
               onResizeHandleMouseDown("left", event)
             }
           >
-            <LeftSidebar showFooter />
+            <LeftSidebar />
           </ResizableSidebarSlot>
           <div
             className={cn(

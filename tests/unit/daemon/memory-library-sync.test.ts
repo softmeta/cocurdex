@@ -18,12 +18,14 @@ import { createMemoryStore } from "./helpers/memory-store";
 
 /** An external library that assigns its own ids, as rsrs does. */
 class ExternalLibrary implements Partial<MemoryProvider> {
-  readonly id = "external";
   readonly live = new Map<string, MemoryTransferEntry>();
   private created = 0;
   refuseWrites = false;
 
-  constructor(private readonly now: () => string) {}
+  constructor(
+    private readonly now: () => string,
+    readonly id = "external",
+  ) {}
 
   seed(id: string, title: string, content: string, updatedAt: string) {
     this.live.set(id, {
@@ -92,13 +94,17 @@ function createPair() {
     now,
   });
   const external = new ExternalLibrary(() => now().toISOString());
-  const sync = async () => {
-    const plan = planMemorySync(store.entries.all(), await external.snapshot());
+  const sync = async (library = external) => {
+    const plan = planMemorySync(
+      store.entries.all(),
+      await library.snapshot(),
+      store.entries.remoteIds(library.id),
+    );
     const failed = await applyMemorySync(plan, {
       builtin,
       entries: store.entries,
       transaction: store.transaction,
-      external: external as unknown as MemoryProvider,
+      external: library as unknown as MemoryProvider,
       now,
     });
     return summarizeMemorySync(plan, failed);
@@ -112,7 +118,18 @@ function createPair() {
       .sort();
   const externalTitles = () =>
     [...external.live.values()].map((entry) => entry.title).sort();
-  return { builtin, external, store, sync, save, localTitles, externalTitles };
+  const library = (id: string) =>
+    new ExternalLibrary(() => now().toISOString(), id);
+  return {
+    builtin,
+    external,
+    store,
+    sync,
+    save,
+    library,
+    localTitles,
+    externalTitles,
+  };
 }
 
 const UNCHANGED = {
@@ -193,6 +210,34 @@ describe("memory library sync", () => {
     });
     expect(await localTitles()).toEqual(["Prefers tea"]);
     expect(externalTitles()).toEqual(["Prefers tea"]);
+  });
+
+  it("fills a newly chosen library and leaves the previous one's links alone", async () => {
+    const { external, library, sync, save, localTitles } = createPair();
+    await save("Release flow", "Tag beta first");
+    await sync();
+    const second = library("second");
+    second.seed(
+      "own-1",
+      "Prefers tea",
+      "Green tea",
+      "2026-11-01T00:00:00.000Z",
+    );
+
+    expect(await sync(second)).toMatchObject({
+      builtin: { added: 1, updated: 0 },
+      external: { added: 1, updated: 0, removed: 0 },
+    });
+    expect(
+      [...second.live.values()].map((entry) => entry.title).sort(),
+    ).toEqual(["Prefers tea", "Release flow"]);
+    expect(await sync()).toMatchObject({
+      builtin: { added: 0, updated: 0 },
+      external: { added: 1, updated: 0, removed: 0 },
+    });
+    expect(external.live.size).toBe(2);
+    expect(await sync(second)).toEqual(UNCHANGED);
+    expect(await localTitles()).toEqual(["Prefers tea", "Release flow"]);
   });
 
   it("keeps a refused write for the next sync", async () => {

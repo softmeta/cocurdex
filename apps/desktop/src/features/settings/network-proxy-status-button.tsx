@@ -13,7 +13,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { AppSidebarIconButton } from "@/components/app";
+import { AppRailIconButton } from "@/components/app";
 import {
   Button,
   Popover,
@@ -218,6 +218,10 @@ export function NetworkProxyStatusButton() {
     window.addEventListener("pointermove", unlockHover, { once: true });
   }, []);
 
+  // Healthy proxy status lives in Settings; the rail shows it only when
+  // something needs the user.
+  if (!ALERT_TONES.has(tone)) return null;
+
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
@@ -226,23 +230,23 @@ export function NetworkProxyStatusButton() {
         delay={HOVER_OPEN_DELAY_MS}
         openOnHover
       >
-        <AppSidebarIconButton
+        <AppRailIconButton
           aria-label={t("network.proxy.status.label")}
-          tooltip={false}
-          onClick={handleOpenSettings}
-        >
-          <Icon className="size-3.5" />
-          {ALERT_TONES.has(tone) ? (
+          dot={
             <span
               className={cn(
-                "absolute end-1 bottom-1 size-1.5 rounded-full ring-2 ring-sidebar",
+                "absolute end-1.5 bottom-1.5 size-1.5 rounded-full ring-2 ring-sidebar",
                 statusDotClassName[tone],
               )}
             />
-          ) : null}
-        </AppSidebarIconButton>
+          }
+          tooltip={false}
+          onClick={handleOpenSettings}
+        >
+          <Icon className="size-4" />
+        </AppRailIconButton>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 rounded-card" side="top">
+      <PopoverContent align="end" className="w-72 rounded-card" side="right">
         <PopoverHeader className="flex-row items-center justify-between gap-3">
           <PopoverTitle>{t("network.proxy.status.label")}</PopoverTitle>
           <StatusBadge label={statusLabel(tone, t)} tone={tone} />

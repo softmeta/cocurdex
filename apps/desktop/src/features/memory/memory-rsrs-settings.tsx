@@ -6,6 +6,7 @@ import {
   RSRS_DASHBOARD_URL,
   RSRS_REPO_URL,
   RSRS_SITE_URL,
+  withMemoryProviderSettings,
 } from "@cocurdex/shared";
 import type { TFunction } from "i18next";
 import { ExternalLink } from "lucide-react";
@@ -230,15 +231,19 @@ export function MemoryRsrsSettings({
           title={t("settings.cliPath.title")}
         >
           <Input
-            key={settings.cliPath ?? ""}
+            key={settings.providers.rsrs.cliPath ?? ""}
             aria-label={t("settings.cliPath.title")}
             className="w-80"
-            defaultValue={settings.cliPath ?? ""}
+            defaultValue={settings.providers.rsrs.cliPath ?? ""}
             placeholder={t("settings.cliPath.placeholder")}
             onBlur={(event) => {
               const next = event.target.value.trim() || null;
-              if (next !== settings.cliPath) {
-                void save({ ...settings, cliPath: next });
+              if (next !== settings.providers.rsrs.cliPath) {
+                void save(
+                  withMemoryProviderSettings(settings, {
+                    rsrs: { cliPath: next },
+                  }),
+                );
               }
             }}
           />

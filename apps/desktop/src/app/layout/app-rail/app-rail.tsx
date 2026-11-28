@@ -22,8 +22,14 @@ import {
   IconButton,
   Separator,
 } from "@/components/ui";
-import { openSettings } from "@/features/settings";
-import { cn } from "@/lib";
+import { MemoryStatusButton } from "@/features/memory";
+import {
+  AppsEntryButton,
+  closeSettings,
+  NetworkProxyStatusButton,
+  openSettings,
+} from "@/features/settings";
+import { cn, hostHasScope } from "@/lib";
 import { APP_RAIL_WIDTH, TITLEBAR_HEIGHT } from "../app-shell/app-shell-layout";
 import { PANEL_VIEW_REGISTRY } from "../panel-view-registry";
 import { APP_VIEWS, type AppView } from "../right-panel-tab-sets";
@@ -35,6 +41,9 @@ import {
 } from "./app-rail-actions";
 import { AppRailButton } from "./app-rail-button";
 import { railPinnedAppsAtom, setRailAppPinnedAtom } from "./app-rail-store";
+import { preloadAppChunk } from "./app-view-preload";
+
+let latestRailRequest = 0;
 
 const SESSION_ITEMS: readonly {
   id: SidebarTab;
@@ -56,13 +65,31 @@ const SESSION_ITEMS: readonly {
 export function AppRail({
   besideSidebar,
   sidebarToggle,
+  settingsOpen = false,
 }: {
   besideSidebar: boolean;
   sidebarToggle: { open: boolean; onToggle(): void } | null;
+  settingsOpen?: boolean;
 }) {
   const { t } = useTranslation(["sessions", "personal", "chat", "editor"]);
-  const selection = useAtomValue(railSelectionAtom);
-  const select = useSetAtom(selectRailItemAtom);
+  const railSelection = useAtomValue(railSelectionAtom);
+  const selection = settingsOpen ? null : railSelection;
+  const selectItem = useSetAtom(selectRailItemAtom);
+  const select = (item: RailItem) => {
+    if (settingsOpen) closeSettings();
+    selectItem(item);
+  };
+  const openApp = (id: AppView) => {
+    const request = ++latestRailRequest;
+    const settle = () => {
+      if (request === latestRailRequest) select(id);
+    };
+    void preloadAppChunk(id).then(settle, settle);
+  };
+  const selectSession = (item: RailItem) => {
+    latestRailRequest += 1;
+    select(item);
+  };
   const pinnedApps = useAtomValue(railPinnedAppsAtom);
   const setPinned = useSetAtom(setRailAppPinnedAtom);
   const moreApps = APP_VIEWS.filter((app) => !pinnedApps.includes(app));
@@ -88,7 +115,7 @@ export function AppRail({
           active={selection === item.id}
           icon={item.icon}
           label={t(item.labelKey)}
-          onClick={() => select(item.id satisfies RailItem)}
+          onClick={() => selectSession(item.id satisfies RailItem)}
         />
       ))}
       <Separator className="my-1 bg-sidebar-divider data-[orientation=horizontal]:w-5" />
@@ -99,7 +126,9 @@ export function AppRail({
               active={selection === id}
               icon={PANEL_VIEW_REGISTRY[id].icon}
               label={appLabel(id)}
-              onClick={() => select(id)}
+              onClick={() => openApp(id)}
+              onFocus={() => void preloadAppChunk(id)}
+              onPointerEnter={() => void preloadAppChunk(id)}
             />
           </ContextMenuTrigger>
           <ContextMenuContent>
@@ -128,7 +157,9 @@ export function AppRail({
                 <div className="group/rail-app relative" key={id}>
                   <AppDropdownItem
                     className="pe-9"
-                    onClick={() => select(id)}
+                    onClick={() => openApp(id)}
+                    onFocus={() => void preloadAppChunk(id)}
+                    onPointerEnter={() => void preloadAppChunk(id)}
                     selected={selection === id}
                   >
                     <Icon className="size-3.5" />
@@ -151,6 +182,9 @@ export function AppRail({
         </DropdownMenu>
       ) : null}
       <div className="min-h-0 flex-1" />
+      <MemoryStatusButton />
+      {hostHasScope("host.admin") ? <NetworkProxyStatusButton /> : null}
+      <AppsEntryButton />
       {sidebarToggle ? (
         <AppRailButton
           active={false}
@@ -161,10 +195,10 @@ export function AppRail({
         />
       ) : null}
       <AppRailButton
-        active={false}
+        active={settingsOpen}
         icon={Settings}
         label={t("sessions:sidebar.settings")}
-        onClick={() => openSettings()}
+        onClick={() => (settingsOpen ? closeSettings() : openSettings())}
       />
     </nav>
   );

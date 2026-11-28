@@ -1,8 +1,10 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { ChevronDown, ChevronLeft } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { TITLEBAR_HEIGHT } from "@/app/layout/app-shell/app-shell-layout";
 import type { SettingsSectionId } from "@/app/layout/app-shell/app-shell-types";
+import { SidebarPanelHeader } from "@/app/layout/sidebar-panel-header";
 import { SidebarSearchInput } from "@/components/app";
 import {
   ScrollArea,
@@ -76,7 +78,6 @@ interface SettingsSidebarProps {
   activeSection: SettingsSectionId;
   clusters: SettingsClusterGroup[];
   sidebarWidth?: number;
-  onBackToApp(): void;
   onSectionChange(sectionId: SettingsSectionId): void;
 }
 
@@ -84,7 +85,6 @@ export function SettingsSidebar({
   activeSection,
   clusters,
   sidebarWidth,
-  onBackToApp,
   onSectionChange,
 }: SettingsSidebarProps) {
   const { t, i18n } = useTranslation("settings");
@@ -156,13 +156,10 @@ export function SettingsSidebar({
       className="flex h-full min-h-0 shrink-0 flex-col bg-sidebar text-sidebar-fg"
       style={{ width: sidebarWidth ?? 240 }}
     >
-      <div className="app-drag h-9 shrink-0" />
+      <div className="app-drag shrink-0" style={{ height: TITLEBAR_HEIGHT }} />
 
-      <div className="shrink-0 px-3 pb-2">
-        <SidebarListRow render={<button type="button" />} onClick={onBackToApp}>
-          <ChevronLeft className="size-3.5 shrink-0 rtl:-scale-x-100" />
-          <SidebarListRowLabel>{t("sidebar.backToApp")}</SidebarListRowLabel>
-        </SidebarListRow>
+      <div className="shrink-0 px-2 pb-2">
+        <SidebarPanelHeader title={t("sidebar.title")} />
       </div>
 
       <div className="shrink-0 px-3 pb-2">

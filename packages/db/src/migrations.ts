@@ -42,7 +42,7 @@ import { ensureTimelineSequence } from "./timeline-sequence";
 
 export const COCURDEX_APPLICATION_ID = 0x434f4355;
 export const FIRST_MIGRATABLE_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = 52;
+export const CURRENT_SCHEMA_VERSION = 53;
 
 interface PragmaNumberRow {
   application_id?: number;
@@ -495,6 +495,19 @@ function createMemoryEntriesTables(database: DatabaseSync): void {
   database.exec(createMemoryEntriesSchemaSql());
 }
 
+// rsrs was the only external memory library before entries could link to
+// several, so every existing link belongs to it.
+function linkMemoryEntriesPerProvider(database: DatabaseSync): void {
+  database.exec(createMemoryEntriesSchemaSql());
+  if (!hasColumn(database, "memory_entries", "remote_id")) return;
+  database.exec(`
+    INSERT OR IGNORE INTO memory_entry_links (entry_id, provider, remote_id)
+    SELECT id, 'rsrs', remote_id FROM memory_entries WHERE remote_id IS NOT NULL;
+    DROP INDEX IF EXISTS idx_memory_entries_remote;
+    ALTER TABLE memory_entries DROP COLUMN remote_id;
+  `);
+}
+
 function createRoutinesTables(database: DatabaseSync): void {
   database.exec(createRoutinesSchemaSql());
 }
@@ -745,6 +758,7 @@ const MIGRATION_STEPS = new Map<number, MigrationStep>([
   [49, addScriptRunAgentCallKeys],
   [50, addIssueViewPins],
   [51, orderNoteSiblingsByTitle],
+  [52, linkMemoryEntriesPerProvider],
 ]);
 
 function runMigrationStep(database: DatabaseSync, step: MigrationStep): void {

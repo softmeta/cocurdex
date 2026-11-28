@@ -104,13 +104,14 @@ export type AutomationRequests = {
   "memory.update": MemoryUpdateInput;
   "memory.forget": { id: string };
   "memory.restore": { id: string };
-  "memory.history": { id?: string | null; limit?: number };
+  "memory.history": { id?: string | null; limit?: number; deleted?: boolean };
   "memory.revision": undefined;
   "memory.capabilities": undefined;
   "memory.export": { file: string };
   "memory.import": { file: string };
   "memory.rsrs.preview": undefined;
   "memory.rsrs.sync": undefined;
+  "memory.sync": { dryRun?: boolean };
   "application.list": undefined;
   "application.add": AddApplicationPayload;
   "application.update": UpdateApplicationPayload;
@@ -210,6 +211,7 @@ export type AutomationResults = {
   "memory.import": MemoryImportResult;
   "memory.rsrs.preview": MemoryLibrarySyncSummary;
   "memory.rsrs.sync": MemoryLibrarySyncSummary;
+  "memory.sync": MemoryLibrarySyncSummary;
   "application.list": ApplicationConnection[];
   "application.add": ApplicationConnection;
   "application.update": ApplicationConnection;

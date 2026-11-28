@@ -76,6 +76,14 @@ export function useMemoryHistory(
   );
 }
 
+export function useDeletedMemories(enabled: boolean, revision: string | null) {
+  return useSWR(
+    enabled ? ["memory.history.deleted", revision] : null,
+    () => desktopApi.getMemoryHistory({ deleted: true, limit: HISTORY_LIMIT }),
+    SWR_OPTIONS,
+  );
+}
+
 export async function preloadMemoryLibrary() {
   const revision = await desktopApi.getMemoryRevision();
   await Promise.all([
@@ -87,8 +95,8 @@ export async function preloadMemoryLibrary() {
       await mutate("memory.capabilities", capabilities, { revalidate: false });
       if (!capabilities?.history) return;
       await mutate(
-        ["memory.history", null, revision],
-        desktopApi.getMemoryHistory({ id: null, limit: HISTORY_LIMIT }),
+        ["memory.history.deleted", revision],
+        desktopApi.getMemoryHistory({ deleted: true, limit: HISTORY_LIMIT }),
         { revalidate: false },
       );
     }),

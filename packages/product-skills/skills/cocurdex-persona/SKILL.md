@@ -43,7 +43,7 @@ cocurdex memory show <id> --json
 cocurdex memory update <id> [--title <title>] [--content <text>|--file <path>] [--tags a,b] [--importance important|trivial] --json
 cocurdex memory forget <id> --json
 cocurdex memory restore <full-id> --json
-cocurdex memory history [<id>] [--limit <n>] --json
+cocurdex memory history [<id>] [--deleted] [--limit <n>] --json
 cocurdex memory export <file> --json
 cocurdex memory import <file> --json
 ```

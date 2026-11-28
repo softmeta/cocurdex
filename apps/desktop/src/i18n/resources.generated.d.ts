@@ -1212,6 +1212,9 @@ export default interface Resources {
       cancel: "Cancel";
       collapse: "Hide memory list";
       content: "Content";
+      deleted: "Recently deleted memories";
+      deletedEmpty: "Nothing deleted";
+      deletedEmptyDescription: "Memories you or an agent delete show up here, ready to restore.";
       detail: "Memory details";
       device: "Device";
       empty: "No memories yet";
@@ -1223,16 +1226,13 @@ export default interface Resources {
       forgetFailed: "Could not delete the memory";
       forgetTitle: "Delete this memory?";
       forgotten: "Memory deleted";
-      history: "Memory history";
-      historyEmpty: "No history yet";
-      historyEmptyDescription: "Edits, deletions, and restores show up here.";
       id: "ID";
       label: "Memory";
       list: "Memories";
       manage: "Manage";
       mode: {
+        deleted: "Deleted";
         diary: "Diary";
-        history: "History";
         tree: "Tree";
       };
       off: "Memory is off";
@@ -1261,17 +1261,13 @@ export default interface Resources {
       settings: "Memory settings";
     };
     onboarding: {
-      enable: "Turn on memory";
-      failed: "rsrs could not be set up. Memory keeps working without it.";
+      failed: "{{name}} could not be reached or set up. Memory keeps working without it.";
       label: "Long-term memory";
       retry: "Retry";
       state: {
-        failed: "rsrs is not ready";
+        failed: "{{name}} is not ready";
         installing: "Setting up rsrs…";
-        off: "Memory is off";
-        ready: "Memory is on";
       };
-      syncHint: "To sync memories across devices, sign in with rsrs login and manage sync in rsrs.";
     };
     session: {
       recallFailed: "Memory recall failed this turn: {{error}}";
@@ -1291,13 +1287,27 @@ export default interface Resources {
         description: "Give agent sessions the memory_recall, memory_show, memory_remember, and memory_policy tools.";
         title: "Memory tools for agents";
       };
+      aiMemory: {
+        aboutTitle: "About ai-memory";
+        available: "ai-memory {{version}} at {{location}}";
+        preparing: "Setting up ai-memory…";
+        repo: {
+          action: "Open the ai-memory repository";
+          description: "ai-memory is open source: github.com/akitaonrails/ai-memory";
+        };
+        server: {
+          description: "Leave empty to use the ai-memory you already run or have installed; without one, Cocurdex installs ai-memory and runs it on this device. Set an address to use another server.";
+          title: "Server address";
+        };
+        unreachable: "ai-memory is not answering";
+      };
       chatRecall: {
         description: "Recall relevant memories before each chat answer.";
         title: "Recall for chat sessions";
       };
       chatSaveOnEnd: {
-        description: "Summarize a chat session when it is archived or deleted.";
-        title: "Save chat sessions on end";
+        description: "When a chat session is archived or deleted, keep a summary only if it holds a decision, lesson, or procedure worth reusing.";
+        title: "Remember chat sessions on end";
       };
       cliPath: {
         description: "Optional path to an rsrs executable to run instead of the one Cocurdex installs.";
@@ -1346,12 +1356,17 @@ export default interface Resources {
         };
       };
       linksTitle: "About Respire";
+      provider: {
+        aiMemory: "A Markdown wiki with full-text recall; uses your ai-memory, or installs it";
+        description: "Every memory stays in Cocurdex on this device. A library adds its own recall and sync and is kept in step with it; switch at any time without losing memories.";
+        groupTitle: "Memory library";
+        none: "None";
+        rsrs: "Recall by meaning and encrypted multi-device sync; installs a local model of about 1.3 GB";
+        title: "External library";
+      };
       rsrs: {
-        description: "Cocurdex keeps your memories on this device. Turn this on to also use rsrs (Respire): recall by meaning, encrypted multi-device sync, and the memories already in your rsrs library. It installs rsrs and a local model of about 1.3 GB.";
-        title: "Use rsrs";
         unsupported: "rsrs has no build for this machine yet. Memory works without it.";
       };
-      rsrsTitle: "rsrs";
       saveFailed: "Could not save memory settings";
       status: {
         available: "rsrs {{version}}";
@@ -1370,6 +1385,15 @@ export default interface Resources {
         unsupported: "rsrs has no build for this machine yet.";
         upgradeRequired: "rsrs {{installed}} on this machine is older than {{minimum}}, the oldest version Cocurdex supports. Cocurdex leaves rsrs out until you upgrade it, and memory keeps working from its own store. Cocurdex does not upgrade an rsrs it did not install.";
       };
+      sync: {
+        action: "Sync now";
+        description: "Cocurdex syncs on its own after changes and every few minutes.";
+        done: "Memory library is in sync";
+        failed: "Could not sync with the memory library";
+        partial_one: "{{count}} memory could not be synced";
+        partial_other: "{{count}} memories could not be synced";
+        title: "Sync";
+      };
       userLibrary: {
         description: "Agent sessions also recall from the rsrs memory you set up yourself (~/.rsrs), as reference only. Cocurdex never writes to it, and its own memories win when the two disagree.";
         title: "Also recall from my own rsrs";
@@ -1382,6 +1406,7 @@ export default interface Resources {
       missing: "rsrs is not installed";
       ready: "rsrs {{version}}";
       readyUnknown: "rsrs is ready";
+      unreachable: "not answering";
     };
     switch: {
       label: "Memory";
@@ -3624,13 +3649,13 @@ export default interface Resources {
       unbound: "None";
     };
     sidebar: {
-      backToApp: "Back to app";
       clearSearch: "Clear search";
       label: "Settings navigation";
       resize: "Resize settings sidebar";
       search: "Search settings";
       searchEmpty: "No matching settings";
       searchResults: "Settings search results";
+      title: "Settings";
     };
     skills: {
       actions: {

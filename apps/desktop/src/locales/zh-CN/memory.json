@@ -10,6 +10,9 @@
     "cancel": "取消",
     "collapse": "隐藏记忆列表",
     "content": "内容",
+    "deleted": "最近删除的记忆",
+    "deletedEmpty": "没有删除的记忆",
+    "deletedEmptyDescription": "你或 agent 删除的记忆会出现在这里，可以恢复。",
     "detail": "记忆详情",
     "device": "设备",
     "empty": "还没有记忆",
@@ -21,16 +24,13 @@
     "forgetFailed": "无法删除记忆",
     "forgetTitle": "删除这条记忆？",
     "forgotten": "已删除记忆",
-    "history": "记忆历史",
-    "historyEmpty": "还没有历史",
-    "historyEmptyDescription": "编辑、删除和恢复记录会出现在这里。",
     "id": "ID",
     "label": "记忆",
     "list": "记忆列表",
     "manage": "管理",
     "mode": {
+      "deleted": "最近删除",
       "diary": "日记",
-      "history": "历史",
       "tree": "树"
     },
     "off": "记忆未开启",
@@ -59,17 +59,13 @@
     "settings": "记忆设置"
   },
   "onboarding": {
-    "enable": "开启记忆",
-    "failed": "rsrs 设置失败。不使用它，记忆也能正常工作。",
+    "failed": "无法连接或设置 {{name}}。不使用它，记忆也能正常工作。",
     "label": "长期记忆",
     "retry": "重试",
     "state": {
-      "failed": "rsrs 还不可用",
-      "installing": "正在设置 rsrs…",
-      "off": "记忆未开启",
-      "ready": "记忆已开启"
-    },
-    "syncHint": "要在多台设备间同步记忆，请运行 rsrs login 登录，并在 rsrs 里管理同步。"
+      "failed": "{{name}} 未就绪",
+      "installing": "正在设置 rsrs…"
+    }
   },
   "session": {
     "recallFailed": "本轮记忆召回失败：{{error}}",
@@ -89,13 +85,27 @@
       "description": "为 agent 会话提供 memory_recall、memory_show、memory_remember、memory_policy 工具。",
       "title": "Agent 记忆工具"
     },
+    "aiMemory": {
+      "aboutTitle": "关于 ai-memory",
+      "available": "ai-memory {{version}}，地址 {{location}}",
+      "preparing": "正在准备 ai-memory…",
+      "repo": {
+        "action": "打开 ai-memory 开源地址",
+        "description": "ai-memory 已开源：github.com/akitaonrails/ai-memory"
+      },
+      "server": {
+        "description": "留空时使用你已在运行或已安装的 ai-memory；都没有时，Cocurdex 会安装 ai-memory 并在本机运行。填写地址则连接其他服务。",
+        "title": "服务地址"
+      },
+      "unreachable": "ai-memory 没有响应"
+    },
     "chatRecall": {
       "description": "每次 chat 回答前召回相关记忆。",
       "title": "Chat 会话自动召回"
     },
     "chatSaveOnEnd": {
-      "description": "会话归档或删除时，总结整段对话并写入记忆。",
-      "title": "会话结束时保存"
+      "description": "会话归档或删除时，只有包含值得复用的决定、经验或做法，才把总结写入记忆。",
+      "title": "会话结束时记住要点"
     },
     "cliPath": {
       "description": "可选的 rsrs 可执行文件路径，用来替代 Cocurdex 安装的版本。",
@@ -144,12 +154,17 @@
       }
     },
     "linksTitle": "关于 Respire",
+    "provider": {
+      "aiMemory": "Markdown 知识库，全文召回；优先使用你已有的 ai-memory，没有则自动安装",
+      "description": "所有记忆都保存在本机的 Cocurdex 里。记忆库在此之上提供自己的召回和同步，并与本机保持一致；随时切换，记忆不会丢失。",
+      "groupTitle": "记忆库",
+      "none": "无",
+      "rsrs": "按语义召回、端到端加密的多设备同步；会安装约 1.3 GB 的本地模型",
+      "title": "外部记忆库"
+    },
     "rsrs": {
-      "description": "Cocurdex 把记忆保存在本机。开启后同时使用 rsrs（Respire）：按语义召回、端到端加密的多设备同步，以及你 rsrs 库里已有的记忆。会安装 rsrs 和约 1.3 GB 的本地模型。",
-      "title": "使用 rsrs",
       "unsupported": "rsrs 还没有适配这台机器的版本。不使用它，记忆也能正常工作。"
     },
-    "rsrsTitle": "rsrs",
     "saveFailed": "无法保存记忆设置",
     "status": {
       "available": "rsrs {{version}}",
@@ -168,6 +183,15 @@
       "unsupported": "rsrs 还没有适配这台机器的版本。",
       "upgradeRequired": "本机的 rsrs {{installed}} 低于 Cocurdex 支持的最低版本 {{minimum}}。升级之前 Cocurdex 不会使用 rsrs，记忆仍由自己的存储提供；Cocurdex 不会升级不是由它安装的 rsrs。"
     },
+    "sync": {
+      "action": "立即同步",
+      "description": "有改动后以及每隔几分钟，Cocurdex 会自动同步。",
+      "done": "记忆库已同步",
+      "failed": "无法与记忆库同步",
+      "partial_one": "{{count}} 条记忆未能同步",
+      "partial_other": "{{count}} 条记忆未能同步",
+      "title": "同步"
+    },
     "userLibrary": {
       "description": "Agent 会话同时从你自己安装的 rsrs 记忆（~/.rsrs）中召回，仅作参考。Cocurdex 不会写入它；两边不一致时以 Cocurdex 的记忆为准。",
       "title": "同时召回我自己的 rsrs"
@@ -179,7 +203,8 @@
     "installing": "正在安装 rsrs…",
     "missing": "rsrs 尚未安装",
     "ready": "rsrs {{version}}",
-    "readyUnknown": "rsrs 已就绪"
+    "readyUnknown": "rsrs 已就绪",
+    "unreachable": "没有响应"
   },
   "switch": {
     "label": "记忆",

@@ -103,7 +103,7 @@ export function assistantApplicationsStep(state) {
       await clearColorScheme(session);
       await clickByRole(session, {
         role: "button",
-        name: await translate(session, "settings:sidebar.backToApp"),
+        name: await translate(session, "sessions:sidebar.settings"),
       });
       return { themes: ["light", "dark"], connections: created };
     },

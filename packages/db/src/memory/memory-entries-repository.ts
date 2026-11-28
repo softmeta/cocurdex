@@ -14,8 +14,6 @@ export interface StoredMemoryEntry {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
-  /** The id this memory has in the linked external library, once it is there. */
-  remoteId: string | null;
 }
 
 export interface MemoryEntryHistoryRecord {
@@ -61,7 +59,10 @@ export interface MemoryEntrySearchInput {
 export interface MemoryEntriesRepository {
   /** Resolves a full id, or a prefix that names exactly one entry. */
   find(idOrPrefix: string): StoredMemoryEntry | null;
-  findByRemoteId(remoteId: string): StoredMemoryEntry | null;
+  /** The entry an external library holds under `remoteId`. */
+  findByRemoteId(provider: string, remoteId: string): StoredMemoryEntry | null;
+  /** Entry id to the id the external library `provider` holds it under. */
+  remoteIds(provider: string): Map<string, string>;
   list(input: {
     project: string | null;
     since: string | null;
@@ -78,10 +79,12 @@ export interface MemoryEntriesRepository {
   ): boolean;
   softDelete(id: string, change: MemoryEntryChange): boolean;
   restore(id: string, change: MemoryEntryChange): boolean;
-  setRemoteId(id: string, remoteId: string | null): void;
+  setRemoteId(provider: string, id: string, remoteId: string | null): void;
+  /** With `deleted`, the delete event of each entry that is deleted now. */
   history(input: {
     id: string | null;
     limit: number;
+    deleted?: boolean;
   }): MemoryEntryHistoryRecord[];
   revision(): number;
 }

@@ -6,6 +6,7 @@ import { check, readScenarioArgs, runScenario } from "./lib/app-session.mjs";
 import { daemonRequest } from "./lib/daemon-rpc.mjs";
 import {
   centerOf,
+  clickByRole,
   clickPoint,
   queryAllByRole,
   waitForRole,
@@ -269,7 +270,7 @@ runScenario("memory-switch", {
       },
     ],
     [
-      "turning rsrs on in settings exposes cloud sync",
+      "choosing rsrs as the external library exposes cloud sync",
       async ({ session }) => {
         await closeMenus(session);
         await openSettingsSection(session, "memory");
@@ -285,27 +286,26 @@ runScenario("memory-switch", {
         const master = await readSwitch(session, masterLabel);
         check(master?.checked === "true", "master switch is on", master);
 
-        const rsrsTitle = await translate(
-          session,
-          "memory:settings.rsrs.title",
-        );
         const dashboardSelector = `button[aria-label="${await translate(
           session,
           "memory:settings.cloud.openDashboard",
         )}"]`;
-        const rsrs = await readSwitch(session, rsrsTitle);
-        check(rsrs?.checked === "false", "rsrs is off by default", rsrs);
         check(
           !(await session.run(
             (selector) => Boolean(document.querySelector(selector)),
             dashboardSelector,
           )),
-          "the rsrs sync pointer is hidden without rsrs",
+          "the rsrs sync pointer is hidden without an external library",
         );
 
-        await session.run(
-          ({ selector }) => document.querySelector(selector).click(),
-          { selector: switchSelector(rsrsTitle) },
+        await clickByRole(session, {
+          role: "combobox",
+          name: await translate(session, "memory:settings.provider.title"),
+        });
+        await clickByRole(
+          session,
+          { role: "option", name: /^rsrs/ },
+          UI_TIMEOUT_MS,
         );
         await session.waitUntil(
           (selector) => Boolean(document.querySelector(selector)),
@@ -313,8 +313,12 @@ runScenario("memory-switch", {
           UI_TIMEOUT_MS,
         );
         const settings = await daemonRequest(session, "memory.settings.get");
-        check(settings.rsrs === true, "daemon setting has rsrs on", settings);
-        return { master, rsrs };
+        check(
+          settings.provider === "rsrs" && settings.rsrs === true,
+          "daemon setting has rsrs chosen",
+          settings,
+        );
+        return { master };
       },
     ],
     [

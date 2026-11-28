@@ -1,7 +1,7 @@
 import { chmod, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { MemoryService } from "@cocurdex/daemon/internal/memory/service";
-import type { MemorySettings } from "@cocurdex/shared";
+import { normalizeMemorySettings } from "@cocurdex/shared";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -81,14 +81,14 @@ if (command === "--version") {
 async function createService() {
   const directory = await temp.create("cocurdex-memory-cloud-");
   const fake = await createFakeRsrs(directory);
-  const settings: MemorySettings = {
+  const settings = normalizeMemorySettings({
     enabled: true,
     rsrs: true,
     agent: { injectContext: true, tools: true },
     chat: { recall: true, saveTurns: true, saveOnEnd: true },
     userLibrary: false,
     cliPath: fake.executable,
-  };
+  });
   const values = new Map<string, string>([
     ["memory", JSON.stringify(settings)],
   ]);
