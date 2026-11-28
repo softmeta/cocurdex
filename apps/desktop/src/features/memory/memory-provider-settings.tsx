@@ -3,6 +3,7 @@ import {
   AI_MEMORY_REPO_URL,
   isMemoryProviderId,
   type MemoryProviderId,
+  type MemoryProviderStatus,
   type MemorySettings,
   type MemoryStatus,
   withMemoryProvider,
@@ -134,6 +135,36 @@ function ProviderSyncRow({ status }: { status: MemoryStatus | undefined }) {
   );
 }
 
+function AiMemoryStatusLine({
+  provider,
+}: {
+  provider: MemoryProviderStatus | null;
+}) {
+  const { t } = useTranslation("memory");
+  if (provider?.preparing) {
+    return (
+      <Text className="mt-0.5 block" size="meta" tone="muted">
+        {t("settings.aiMemory.preparing")}
+      </Text>
+    );
+  }
+  if (provider?.available) {
+    return (
+      <Text className="mt-0.5 block" size="meta" tone="muted">
+        {t("settings.aiMemory.available", {
+          version: provider.version ?? t("settings.status.unknown"),
+          location: provider.location ?? AI_MEMORY_DEFAULT_SERVER_URL,
+        })}
+      </Text>
+    );
+  }
+  return (
+    <Text className="mt-0.5 block text-destructive" size="meta">
+      {provider?.error ?? t("settings.aiMemory.unreachable")}
+    </Text>
+  );
+}
+
 function AiMemorySettings({ settings, status, save }: ProviderSettingsProps) {
   const { t } = useTranslation("memory");
   const provider =
@@ -146,17 +177,7 @@ function AiMemorySettings({ settings, status, save }: ProviderSettingsProps) {
           <Text className="block" size="body" weight="medium">
             {t("settings.status.title")}
           </Text>
-          {provider?.available ? (
-            <Text className="mt-0.5 block" size="meta" tone="muted">
-              {t("settings.aiMemory.available", {
-                version: provider.version ?? t("settings.status.unknown"),
-              })}
-            </Text>
-          ) : (
-            <Text className="mt-0.5 block text-destructive" size="meta">
-              {provider?.error ?? t("settings.aiMemory.unreachable")}
-            </Text>
-          )}
+          <AiMemoryStatusLine provider={provider} />
         </div>
         <SettingRow
           searchId="memory.aiMemoryServer"

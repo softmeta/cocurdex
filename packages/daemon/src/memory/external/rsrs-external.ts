@@ -595,6 +595,7 @@ export class RsrsExternal implements ExternalMemory {
     return {
       id: this.id,
       available: fields.available && !fields.upgradeRequired,
+      preparing: fields.installation === "installing",
       version: fields.version,
       location: fields.dataDir,
       error: fields.error,

@@ -1,4 +1,4 @@
-import { listExtractCommands } from "@cocurdex/daemon/internal/acp-registry/acp-registry-install";
+import { listExtractCommands } from "@cocurdex/daemon/internal/archive-extract";
 import { describe, expect, it } from "vitest";
 
 describe("listExtractCommands", () => {

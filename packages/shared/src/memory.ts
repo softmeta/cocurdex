@@ -343,6 +343,8 @@ export interface MemoryProviderStatus {
   id: MemoryProviderId;
   /** The library answers and can be synced with. */
   available: boolean;
+  /** Cocurdex is installing or starting the library. */
+  preparing: boolean;
   version: string | null;
   /** Where the library lives: a data folder or a server address. */
   location: string | null;

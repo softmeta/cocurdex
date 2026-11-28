@@ -242,9 +242,13 @@ export class MemoryService {
           env: process.env,
           homeDir: this.homeDir(),
         }),
+      userDataPath: this.options.userDataPath,
+      platform: this.platform,
       env: process.env,
       device: this.device,
+      startRuntime: this.options.startRuntime,
       now: () => this.now(),
+      changed: () => this.broadcast(),
     });
   }
 

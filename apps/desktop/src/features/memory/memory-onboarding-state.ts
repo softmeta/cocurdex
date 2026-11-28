@@ -19,9 +19,8 @@ function onboardingStage(
 ): MemoryOnboardingStage {
   if (!status) return "hidden";
   if (!status.settings.enabled) return working ? "installing" : "off";
-  // Memory lives in the daemon; the remaining stages follow the external
-  // library the user chose. Only rsrs is set up by Cocurdex.
   if (status.settings.provider === "ai-memory") {
+    if (status.provider?.preparing) return "installing";
     return status.provider?.available === false ? "failed" : "ready";
   }
   if (status.settings.provider !== "rsrs") return "ready";

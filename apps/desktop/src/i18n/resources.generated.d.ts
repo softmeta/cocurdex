@@ -1289,13 +1289,14 @@ export default interface Resources {
       };
       aiMemory: {
         aboutTitle: "About ai-memory";
-        available: "ai-memory {{version}}";
+        available: "ai-memory {{version}} at {{location}}";
+        preparing: "Setting up ai-memory…";
         repo: {
           action: "Open the ai-memory repository";
           description: "ai-memory is open source: github.com/akitaonrails/ai-memory";
         };
         server: {
-          description: "Where your ai-memory server listens. Start it with ai-memory serve --transport http; Cocurdex reads its token from the ai-memory data folder.";
+          description: "Leave empty to use the ai-memory you already run or have installed; without one, Cocurdex installs ai-memory and runs it on this device. Set an address to use another server.";
           title: "Server address";
         };
         unreachable: "ai-memory is not answering";
@@ -1356,7 +1357,7 @@ export default interface Resources {
       };
       linksTitle: "About Respire";
       provider: {
-        aiMemory: "Your own ai-memory server: a Markdown wiki with full-text recall";
+        aiMemory: "A Markdown wiki with full-text recall; uses your ai-memory, or installs it";
         description: "Every memory stays in Cocurdex on this device. A library adds its own recall and sync and is kept in step with it; switch at any time without losing memories.";
         groupTitle: "Memory library";
         none: "None";
