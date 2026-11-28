@@ -17,6 +17,7 @@ import {
   DEFAULT_MEMORY_SETTINGS,
   type MemorySettings,
   type MessageRecord,
+  normalizeMemorySettings,
   RSRS_CLI_VERSION,
   RSRS_MIN_CLI_VERSION,
   type SessionRecord,
@@ -220,14 +221,14 @@ async function createService(
   const directory = await temp.create("cocurdex-memory-");
   const logPath = path.join(directory, "calls.log");
   const executable = await createFakeRsrs(directory, logPath, options);
-  const settings: MemorySettings = {
+  const settings = normalizeMemorySettings({
     enabled: true,
     rsrs: true,
     agent: { injectContext: true, tools: true },
     chat: { recall: true, saveTurns: true, saveOnEnd: true },
     userLibrary: options.userLibraryHome !== undefined,
     cliPath: executable,
-  };
+  });
   const state = createState(settings);
   const service = new MemoryService({
     userDataPath: directory,
@@ -285,14 +286,14 @@ async function createGlobalService(options: {
     await mkdir(path.join(dataDir, "bin"), { recursive: true });
     await copyFile(fake, path.join(dataDir, "bin", "rsrs"));
   }
-  const settings: MemorySettings = {
+  const settings = normalizeMemorySettings({
     enabled: true,
     rsrs: true,
     agent: { injectContext: true, tools: true },
     chat: { recall: true, saveTurns: true, saveOnEnd: true },
     userLibrary: false,
     cliPath: "",
-  };
+  });
   const service = new MemoryService({
     userDataPath: directory,
     defaultUserDataPath: directory,

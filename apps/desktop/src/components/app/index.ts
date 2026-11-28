@@ -17,6 +17,10 @@ export { AppGitBranchLabel } from "./git-branch-label";
 export { AppInlineRenameInput } from "./inline-rename-input";
 export { AppPanelTab } from "./panel-tab";
 export { AppPreviewCardTooltipContent } from "./preview-card-tooltip";
+export {
+  AppRailIconButton,
+  type AppRailIconButtonProps,
+} from "./rail-icon-button";
 export { AppRemoveButton } from "./remove-button";
 export { AppSearchInput } from "./search-input";
 export {

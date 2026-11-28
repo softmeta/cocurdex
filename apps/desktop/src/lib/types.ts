@@ -79,6 +79,7 @@ import type {
   MemoryEntry,
   MemoryHistoryEntry,
   MemoryInstallResult,
+  MemoryLibrarySyncSummary,
   MemoryListInput,
   MemoryListResult,
   MemoryProviderCapabilities,
@@ -605,6 +606,7 @@ export interface ProductApi {
   showMemory(id: string): Promise<MemoryEntry | null>;
   rememberMemory(input: MemoryRememberInput): Promise<MemoryRememberResult>;
   installMemory(force?: boolean): Promise<MemoryInstallResult>;
+  syncMemory(dryRun?: boolean): Promise<MemoryLibrarySyncSummary>;
   listMemories(input: MemoryListInput): Promise<MemoryListResult>;
   updateMemory(input: MemoryUpdateInput): Promise<MemoryEntry | null>;
   forgetMemory(id: string): Promise<void>;

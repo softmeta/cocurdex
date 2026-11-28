@@ -20,7 +20,6 @@ import {
   workspacesAtom,
 } from "@/features/workspaces";
 import {
-  cn,
   desktopApi,
   markSessionSwitch,
   startSessionSwitchLongTaskObserver,
@@ -32,7 +31,6 @@ import { PersonalAgentsPanel } from "./personal-agents-panel";
 import { SessionGroupsPanel } from "./session-groups-panel";
 import { SessionListSections } from "./session-list-sections";
 import { SessionListViewMenu } from "./session-list-view-menu";
-import { SidebarFooter } from "./sidebar-footer";
 import { type SidebarTab, sidebarTabAtom } from "./sidebar-tab-store";
 import { useSidebarCreateActions } from "./use-sidebar-create-actions";
 import { useSidebarSessionView } from "./use-sidebar-session-view";
@@ -42,7 +40,6 @@ interface LeftSidebarProps {
   headerStart?: ReactNode;
   hideTitlebarSpacer?: boolean;
   onAfterNavigate?(): void;
-  showFooter?: boolean;
 }
 
 const SIDEBAR_TITLE_KEYS = {
@@ -76,7 +73,6 @@ export function LeftSidebar({
   headerStart,
   hideTitlebarSpacer,
   onAfterNavigate,
-  showFooter = false,
 }: LeftSidebarProps) {
   const { t } = useTranslation(["sessions", "chat", "personal"]);
   const workspaces = useAtomValue(workspacesAtom);
@@ -176,12 +172,7 @@ export function LeftSidebar({
         hideTitlebarSpacer={hideTitlebarSpacer}
       />
 
-      <div
-        className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ps-3",
-          !showFooter && "pb-4",
-        )}
-      >
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ps-3 pb-4">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <div className="flex shrink-0 items-center gap-0.5 pe-1.75">
             <h2 className="min-w-0 flex-1 truncate text-body font-medium text-sidebar-fg">
@@ -265,7 +256,6 @@ export function LeftSidebar({
           ) : null}
         </div>
       </div>
-      {showFooter ? <SidebarFooter activeTab={activeTab} /> : null}
       <ArchiveGroupDialog />
     </SidebarShell>
   );

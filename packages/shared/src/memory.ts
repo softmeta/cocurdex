@@ -46,18 +46,44 @@ export interface MemoryChatSettings {
   saveOnEnd: boolean;
 }
 
+export const MEMORY_PROVIDER_IDS = ["rsrs", "ai-memory"] as const;
+
+/** An external library kept in step with the built-in store. */
+export type MemoryProviderId = (typeof MEMORY_PROVIDER_IDS)[number];
+
+export function isMemoryProviderId(value: unknown): value is MemoryProviderId {
+  return MEMORY_PROVIDER_IDS.includes(value as MemoryProviderId);
+}
+
+export const AI_MEMORY_DEFAULT_SERVER_URL = "http://127.0.0.1:49374";
+export const AI_MEMORY_REPO_URL = "https://github.com/akitaonrails/ai-memory";
+
+export interface MemoryProviderSettings {
+  rsrs: { cliPath: string | null; userLibrary: boolean };
+  aiMemory: { serverUrl: string | null };
+}
+
 export interface MemorySettings {
   enabled: boolean;
-  /** Keep the rsrs library in step with the built-in store and recall through it too. */
-  rsrs: boolean;
+  /** The one external library the built-in store is kept in step with. */
+  provider: MemoryProviderId | null;
+  providers: MemoryProviderSettings;
   agent: MemoryAgentSettings;
   chat: MemoryChatSettings;
+  // `rsrs`, `userLibrary`, and `cliPath` mirror `provider` and
+  // `providers.rsrs` for clients and scripts written before providers.
+  rsrs: boolean;
   userLibrary: boolean;
   cliPath: string | null;
 }
 
 export const DEFAULT_MEMORY_SETTINGS: MemorySettings = {
   enabled: true,
+  provider: null,
+  providers: {
+    rsrs: { cliPath: null, userLibrary: true },
+    aiMemory: { serverUrl: null },
+  },
   rsrs: false,
   agent: {
     injectContext: true,
@@ -80,19 +106,70 @@ function optionalBoolean(value: unknown, fallback: boolean) {
   return typeof value === "boolean" ? value : fallback;
 }
 
+function optionalText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeServerUrl(value: unknown) {
+  const text = optionalText(value);
+  if (!text) return null;
+  try {
+    const url = new URL(text);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+// A client that predates providers changes only the mirrored fields, so
+// where they disagree with the provider fields they carry the newer choice.
+function normalizeProvider(
+  input: Record<string, unknown>,
+): MemoryProviderId | null {
+  const chosen = isMemoryProviderId(input.provider)
+    ? input.provider
+    : input.provider === null
+      ? null
+      : undefined;
+  const legacy = typeof input.rsrs === "boolean" ? input.rsrs : undefined;
+  if (chosen === undefined) return legacy ? "rsrs" : null;
+  if (legacy === undefined || legacy === (chosen === "rsrs")) return chosen;
+  return legacy ? "rsrs" : null;
+}
+
+function normalizeRsrsProvider(input: Record<string, unknown>) {
+  const providers = isRecord(input.providers) ? input.providers : {};
+  const nested = isRecord(providers.rsrs) ? providers.rsrs : {};
+  const nestedCli = "cliPath" in nested ? optionalText(nested.cliPath) : null;
+  const legacyCli =
+    "cliPath" in input ? optionalText(input.cliPath) : nestedCli;
+  const nestedLibrary = optionalBoolean(
+    nested.userLibrary,
+    DEFAULT_MEMORY_SETTINGS.providers.rsrs.userLibrary,
+  );
+  const legacyLibrary = optionalBoolean(input.userLibrary, nestedLibrary);
+  return { cliPath: legacyCli, userLibrary: legacyLibrary };
+}
+
 export function normalizeMemorySettings(input: unknown): MemorySettings {
   if (!isRecord(input)) {
     return { ...DEFAULT_MEMORY_SETTINGS };
   }
   const agent = isRecord(input.agent) ? input.agent : {};
   const chat = isRecord(input.chat) ? input.chat : {};
-  const cliPath =
-    typeof input.cliPath === "string" && input.cliPath.trim()
-      ? input.cliPath.trim()
-      : null;
+  const providers = isRecord(input.providers) ? input.providers : {};
+  const aiMemory = isRecord(providers.aiMemory) ? providers.aiMemory : {};
+  const provider = normalizeProvider(input);
+  const rsrs = normalizeRsrsProvider(input);
   return {
     enabled: optionalBoolean(input.enabled, DEFAULT_MEMORY_SETTINGS.enabled),
-    rsrs: optionalBoolean(input.rsrs, DEFAULT_MEMORY_SETTINGS.rsrs),
+    provider,
+    providers: {
+      rsrs,
+      aiMemory: { serverUrl: normalizeServerUrl(aiMemory.serverUrl) },
+    },
+    rsrs: provider === "rsrs",
     agent: {
       injectContext: optionalBoolean(
         agent.injectContext,
@@ -111,11 +188,35 @@ export function normalizeMemorySettings(input: unknown): MemorySettings {
         DEFAULT_MEMORY_SETTINGS.chat.saveOnEnd,
       ),
     },
-    userLibrary: optionalBoolean(
-      input.userLibrary,
-      DEFAULT_MEMORY_SETTINGS.userLibrary,
-    ),
-    cliPath,
+    userLibrary: rsrs.userLibrary,
+    cliPath: rsrs.cliPath,
+  };
+}
+
+/** Chooses the external library, keeping the mirrored fields in step. */
+export function withMemoryProvider(
+  settings: MemorySettings,
+  provider: MemoryProviderId | null,
+): MemorySettings {
+  return { ...settings, provider, rsrs: provider === "rsrs" };
+}
+
+export function withMemoryProviderSettings(
+  settings: MemorySettings,
+  patch: {
+    rsrs?: Partial<MemoryProviderSettings["rsrs"]>;
+    aiMemory?: Partial<MemoryProviderSettings["aiMemory"]>;
+  },
+): MemorySettings {
+  const rsrs = { ...settings.providers.rsrs, ...patch.rsrs };
+  return {
+    ...settings,
+    providers: {
+      rsrs,
+      aiMemory: { ...settings.providers.aiMemory, ...patch.aiMemory },
+    },
+    cliPath: rsrs.cliPath,
+    userLibrary: rsrs.userLibrary,
   };
 }
 
@@ -184,8 +285,10 @@ export function gateMemorySettings(
   settings: MemorySettings,
   platform: MemoryPlatform,
 ): MemorySettings {
-  if (memoryPlatformSupportsRsrs(platform) || !settings.rsrs) return settings;
-  return { ...settings, rsrs: false };
+  if (memoryPlatformSupportsRsrs(platform) || settings.provider !== "rsrs") {
+    return settings;
+  }
+  return withMemoryProvider(settings, null);
 }
 
 export interface MemoryCloudStatus {
@@ -228,16 +331,29 @@ export interface MemoryUserLibraryStatus {
   reachable: boolean;
 }
 
-/** What one sync changed on each side of the built-in store and rsrs. */
+/** What one sync changed on each side of the built-in store and the external library. */
 export interface MemoryLibrarySyncSummary {
   builtin: { added: number; updated: number };
   external: { added: number; updated: number; removed: number };
-  /** Changes rsrs refused; the next sync retries them. */
+  /** Changes the external library refused; the next sync retries them. */
   failed: number;
+}
+
+export interface MemoryProviderStatus {
+  id: MemoryProviderId;
+  /** The library answers and can be synced with. */
+  available: boolean;
+  version: string | null;
+  /** Where the library lives: a data folder or a server address. */
+  location: string | null;
+  error: string | null;
+  lastSyncAt: string | null;
 }
 
 export interface MemoryStatus {
   settings: MemorySettings;
+  /** The chosen external library, or null when memory stays built-in only. */
+  provider: MemoryProviderStatus | null;
   // The fields below from `supported` to `upgradeRequired` describe the optional
   // rsrs library; memory itself lives in the daemon and needs none of them.
   /** rsrs is turned on and its executable is present. */

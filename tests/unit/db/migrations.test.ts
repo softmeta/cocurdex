@@ -1291,6 +1291,35 @@ describe("initializeDatabase", () => {
     ]);
   });
 
+  it("moves rsrs links into per-provider links from version 52 and keeps memories", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeDatabase(database);
+    const now = "2026-11-28T00:00:00.000Z";
+    database.exec(`
+      DROP TABLE memory_entry_links;
+      ALTER TABLE memory_entries ADD COLUMN remote_id TEXT;
+      CREATE INDEX idx_memory_entries_remote
+        ON memory_entries(remote_id) WHERE remote_id IS NOT NULL;
+      INSERT INTO memory_entries (id, title, content, created_at, updated_at, remote_id) VALUES
+        ('m1', 'Release flow', 'Tag beta first', '${now}', '${now}', 'r-1'),
+        ('m2', 'Tea', 'Green tea', '${now}', '${now}', NULL);
+      PRAGMA user_version = 52;
+    `);
+
+    initializeDatabase(database);
+
+    const entries = createSqliteMemoryEntriesRepository(database);
+    expect(entries.findByRemoteId("rsrs", "r-1")?.title).toBe("Release flow");
+    expect([...entries.remoteIds("rsrs")]).toEqual([["m1", "r-1"]]);
+    expect(entries.remoteIds("ai-memory").size).toBe(0);
+    expect(
+      entries
+        .all()
+        .map((entry) => entry.id)
+        .sort(),
+    ).toEqual(["m1", "m2"]);
+  });
+
   it("orders note siblings by title from version 51 and keeps notes", () => {
     const database = new DatabaseSync(":memory:");
     initializeDatabase(database);
@@ -1433,7 +1462,6 @@ describe("initializeDatabase", () => {
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
-        remoteId: null,
       },
       { actor: null, at: now },
     );

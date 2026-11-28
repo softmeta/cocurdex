@@ -1,10 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { requestDaemon } from "@cocurdex/daemon/client";
 import {
+  isMemoryProviderId,
   MEMORY_SYNC_MANAGED_BY_RSRS,
   type MemoryImportance,
   type MemorySettings,
   ReasonError,
+  withMemoryProvider,
+  withMemoryProviderSettings,
 } from "@cocurdex/shared";
 import { withDaemon } from "./daemon-command";
 import {
@@ -64,10 +67,16 @@ async function handleRsrsCommand(args: string[], parsed: ParsedArgs) {
     const settings = await withDaemon(() =>
       requestDaemon("memory.settings.get"),
     );
+    const provider =
+      sub === "on"
+        ? "rsrs"
+        : settings.provider === "rsrs"
+          ? null
+          : settings.provider;
     printResult(
       await withDaemon(() =>
         requestDaemon("memory.settings.set", {
-          settings: { ...settings, rsrs: sub === "on" },
+          settings: withMemoryProvider(settings, provider),
         }),
       ),
       parsed,
@@ -86,6 +95,61 @@ async function handleRsrsCommand(args: string[], parsed: ParsedArgs) {
   );
 }
 
+const PROVIDER_USAGE =
+  "Usage: cocurdex memory provider [status] | use <none|rsrs|ai-memory> [--server-url <url>] | sync [--dry-run]";
+
+async function handleProviderCommand(args: string[], parsed: ParsedArgs) {
+  const [sub = "status", choice] = args;
+  if (sub === "status") {
+    const status = await withDaemon(() =>
+      requestDaemon("memory.status", { refresh: parsed.flags.has("refresh") }),
+    );
+    printResult(
+      {
+        provider: status.settings.provider,
+        providers: status.settings.providers,
+        status: status.provider,
+      },
+      parsed,
+    );
+    return;
+  }
+  if (sub === "use") {
+    const provider = choice === "none" ? null : choice;
+    if (provider !== null && !isMemoryProviderId(provider)) {
+      throw new Error(PROVIDER_USAGE);
+    }
+    const serverUrl = stringFlag(parsed, "server-url");
+    let settings = withMemoryProvider(
+      await withDaemon(() => requestDaemon("memory.settings.get")),
+      provider,
+    );
+    if (serverUrl !== undefined) {
+      settings = withMemoryProviderSettings(settings, {
+        aiMemory: { serverUrl },
+      });
+    }
+    const saved = await withDaemon(() =>
+      requestDaemon("memory.settings.set", { settings }),
+    );
+    printResult(
+      { provider: saved.provider, providers: saved.providers },
+      parsed,
+    );
+    return;
+  }
+  if (sub === "sync") {
+    printResult(
+      await withDaemon(() =>
+        requestDaemon("memory.sync", { dryRun: parsed.flags.has("dry-run") }),
+      ),
+      parsed,
+    );
+    return;
+  }
+  throw new Error(PROVIDER_USAGE);
+}
+
 export function memoryUsageLines() {
   return [
     "  cocurdex memory status [--refresh] [--json]",
@@ -95,6 +159,9 @@ export function memoryUsageLines() {
     "  cocurdex memory remember --title <title> [--content <text> | --file <path> | <text>] [--importance important|trivial] [--parent <id>] [--tags a,b] [--force] [--json]",
     ...memoryLibraryUsageLines(),
     "  cocurdex memory save-session <session-id> [--force] [--importance important|trivial] [--json]",
+    "  cocurdex memory provider [status] [--refresh] [--json]",
+    "  cocurdex memory provider use <none|rsrs|ai-memory> [--server-url <url>] [--json]",
+    "  cocurdex memory provider sync [--dry-run] [--json]",
     "  cocurdex memory rsrs [status] | on | off [--json]",
     "  cocurdex memory rsrs sync [--dry-run] [--json]",
     "  cocurdex memory install [--force] [--json]",
@@ -199,6 +266,11 @@ export async function handleMemoryCommand(
 
   if (action === "rsrs") {
     await handleRsrsCommand(args, parsed);
+    return true;
+  }
+
+  if (action === "provider") {
+    await handleProviderCommand(args, parsed);
     return true;
   }
 

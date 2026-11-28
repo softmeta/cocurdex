@@ -37,7 +37,7 @@ import type { LanguageMode } from "@/i18n/language";
 import type { WorkspaceFileEntry } from "@/lib";
 import { cn } from "@/lib";
 import { requestChatContextAtom } from "@/lib/chat-context-store";
-import { activeAppAtom, selectRailItemAtom } from "../app-rail";
+import { AppRail, activeAppAtom, selectRailItemAtom } from "../app-rail";
 import { ChatDock } from "../chat-dock";
 import { CHAT_DOCK_ACTIONS_INSET } from "../chat-dock-actions";
 import {
@@ -105,7 +105,6 @@ interface AppShellFrameProps {
   onAppearanceSettingsChange(settings: AppearanceSettings): void;
   onChatLayoutModeChange(mode: ChatLayoutMode): void;
   onHideFabWhenClosedChange(hide: boolean): void;
-  onCloseSettings(): void;
   onOpenFileFromPalette(file: WorkspaceFileEntry): void;
   onResizeHandleMouseDown(
     target: "left" | "right",
@@ -148,7 +147,6 @@ export function AppShellFrame({
   onAppearanceSettingsChange,
   onChatLayoutModeChange,
   onHideFabWhenClosedChange,
-  onCloseSettings,
   onOpenFileFromPalette,
   onResizeHandleMouseDown,
   onSearchClose,
@@ -291,6 +289,7 @@ export function AppShellFrame({
       <WorkspaceFolderDropOverlay active={isDraggingFolder} />
       <div
         aria-hidden={activeScreen !== "app"}
+        inert={activeScreen !== "app"}
         className={cn(
           "absolute inset-0",
           activeScreen === "app"
@@ -402,7 +401,13 @@ export function AppShellFrame({
             isSidebarOpen={isLeftSidebarPreferredOpen}
             sidebarWidth={leftWidth}
             historyControls={<NavigationButtons />}
-            onBackToApp={onCloseSettings}
+            rail={(besideSidebar) => (
+              <AppRail
+                besideSidebar={besideSidebar}
+                settingsOpen
+                sidebarToggle={null}
+              />
+            )}
             languageMode={languageMode}
             notificationSettings={notificationSettings}
             onAppearanceSettingsChange={onAppearanceSettingsChange}

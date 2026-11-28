@@ -100,11 +100,31 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogEntry[] = [
     tier: "write",
     storage: "daemon",
     description:
-      "Long-term memory, kept in the daemon's own store. enabled is the master switch; rsrs also uses Respire (rsrs) for recall by meaning (multi-device sync is managed in rsrs itself), which installs rsrs and a local model; agent controls automatic recall and memory tools for agent sessions; chat controls recall and saving a summary when a chat ends; userLibrary makes a development profile, which keeps a store of its own, also recall read-only from the machine's rsrs store (~/.rsrs), which the installed app already uses; cliPath optionally points at the rsrs executable.",
+      'Long-term memory, always kept in the daemon\'s own store. enabled is the master switch; provider picks at most one external memory library kept in step with that store and used for recall too: null (built-in only), "rsrs" (Respire, recall by meaning, installs rsrs and a local model; multi-device sync is managed in rsrs itself), or "ai-memory" (a running ai-memory server); switching or clearing it never loses memories. providers.rsrs.cliPath optionally points at the rsrs executable, providers.rsrs.userLibrary makes a development profile also recall read-only from the machine\'s rsrs store (~/.rsrs); providers.aiMemory.serverUrl overrides the ai-memory server address (default http://127.0.0.1:49374). agent controls automatic recall and memory tools for agent sessions; chat controls recall and saving a summary when a chat ends. rsrs, userLibrary, and cliPath are older names that mirror provider and providers.rsrs.',
     valueSchema: {
       type: "object",
       properties: {
         enabled: { type: "boolean" },
+        provider: { enum: ["rsrs", "ai-memory", null] },
+        providers: {
+          type: "object",
+          properties: {
+            rsrs: {
+              type: "object",
+              properties: {
+                cliPath: { type: ["string", "null"] },
+                userLibrary: { type: "boolean" },
+              },
+              additionalProperties: false,
+            },
+            aiMemory: {
+              type: "object",
+              properties: { serverUrl: { type: ["string", "null"] } },
+              additionalProperties: false,
+            },
+          },
+          additionalProperties: false,
+        },
         rsrs: { type: "boolean" },
         agent: {
           type: "object",

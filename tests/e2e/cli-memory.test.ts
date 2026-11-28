@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { requestDaemon } from "@cocurdex/daemon/client";
+import { startFakeAiMemory } from "@cocurdex/test-fixtures/fake-ai-memory";
 import { createTempDirs } from "@cocurdex/test-fixtures/temp-dirs";
 import { writeFakeRsrs } from "@cocurdex/test-harness/fixtures/fake-rsrs/index.mjs";
 import { spawnDaemon } from "@cocurdex/test-harness/helpers/daemon-process";
@@ -140,6 +141,78 @@ describe("cocurdex memory CLI", () => {
       expect(missing.stderr).toContain("nope");
     } finally {
       await daemon.dispose();
+    }
+  });
+
+  it("switches the external library to ai-memory and keeps it in step", async () => {
+    const aiMemory = await startFakeAiMemory();
+    const daemon = await spawnDaemon({
+      env: { AI_MEMORY_AUTH_TOKEN: aiMemory.token },
+    });
+    try {
+      const cli = async (args: string[]) => {
+        const result = await runCli([...args, "--json"], {
+          userDataPath: daemon.userDataPath,
+        });
+        expect(result.stderr).toBe("");
+        expect(result.code).toBe(0);
+        return JSON.parse(result.stdout) as unknown;
+      };
+      const own = (await cli([
+        "memory",
+        "remember",
+        "--title",
+        "Likes hiking",
+        "Long walks on weekends",
+      ])) as { id: string };
+
+      const noLibrary = await runCli(["memory", "provider", "sync"], {
+        userDataPath: daemon.userDataPath,
+      });
+      expect(noLibrary.code).not.toBe(0);
+
+      expect(
+        await cli([
+          "memory",
+          "provider",
+          "use",
+          "ai-memory",
+          "--server-url",
+          `${aiMemory.url}/`,
+        ]),
+      ).toMatchObject({
+        provider: "ai-memory",
+        providers: { aiMemory: { serverUrl: aiMemory.url } },
+      });
+      expect(await cli(["memory", "provider"])).toMatchObject({
+        provider: "ai-memory",
+        status: { id: "ai-memory", available: true, version: "3.6.4" },
+      });
+      expect(await cli(["memory", "provider", "sync"])).toMatchObject({
+        external: { added: 1 },
+        failed: 0,
+      });
+      expect([...aiMemory.pages.values()].map((page) => page.title)).toEqual([
+        "Likes hiking",
+      ]);
+      expect(await cli(["memory", "recall", "hiking"])).toMatchObject({
+        items: [{ id: own.id }],
+      });
+
+      const rsrsSync = await runCli(["memory", "rsrs", "sync"], {
+        userDataPath: daemon.userDataPath,
+      });
+      expect(rsrsSync.code).not.toBe(0);
+
+      expect(await cli(["memory", "provider", "use", "none"])).toMatchObject({
+        provider: null,
+      });
+      expect(await cli(["memory", "list"])).toMatchObject({
+        items: [{ id: own.id, title: "Likes hiking" }],
+      });
+    } finally {
+      await daemon.dispose();
+      await aiMemory.close();
     }
   });
 });

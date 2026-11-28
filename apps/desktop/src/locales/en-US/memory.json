@@ -59,17 +59,13 @@
     "settings": "Memory settings"
   },
   "onboarding": {
-    "enable": "Turn on memory",
-    "failed": "rsrs could not be set up. Memory keeps working without it.",
+    "failed": "{{name}} could not be reached or set up. Memory keeps working without it.",
     "label": "Long-term memory",
     "retry": "Retry",
     "state": {
-      "failed": "rsrs is not ready",
-      "installing": "Setting up rsrs…",
-      "off": "Memory is off",
-      "ready": "Memory is on"
-    },
-    "syncHint": "To sync memories across devices, sign in with rsrs login and manage sync in rsrs."
+      "failed": "{{name}} is not ready",
+      "installing": "Setting up rsrs…"
+    }
   },
   "session": {
     "recallFailed": "Memory recall failed this turn: {{error}}",
@@ -88,6 +84,19 @@
     "agentTools": {
       "description": "Give agent sessions the memory_recall, memory_show, memory_remember, and memory_policy tools.",
       "title": "Memory tools for agents"
+    },
+    "aiMemory": {
+      "aboutTitle": "About ai-memory",
+      "available": "ai-memory {{version}}",
+      "repo": {
+        "action": "Open the ai-memory repository",
+        "description": "ai-memory is open source: github.com/akitaonrails/ai-memory"
+      },
+      "server": {
+        "description": "Where your ai-memory server listens. Start it with ai-memory serve --transport http; Cocurdex reads its token from the ai-memory data folder.",
+        "title": "Server address"
+      },
+      "unreachable": "ai-memory is not answering"
     },
     "chatRecall": {
       "description": "Recall relevant memories before each chat answer.",
@@ -144,12 +153,17 @@
       }
     },
     "linksTitle": "About Respire",
+    "provider": {
+      "aiMemory": "Your own ai-memory server: a Markdown wiki with full-text recall",
+      "description": "Every memory stays in Cocurdex on this device. A library adds its own recall and sync and is kept in step with it; switch at any time without losing memories.",
+      "groupTitle": "Memory library",
+      "none": "None",
+      "rsrs": "Recall by meaning and encrypted multi-device sync; installs a local model of about 1.3 GB",
+      "title": "External library"
+    },
     "rsrs": {
-      "description": "Cocurdex keeps your memories on this device. Turn this on to also use rsrs (Respire): recall by meaning, encrypted multi-device sync, and the memories already in your rsrs library. It installs rsrs and a local model of about 1.3 GB.",
-      "title": "Use rsrs",
       "unsupported": "rsrs has no build for this machine yet. Memory works without it."
     },
-    "rsrsTitle": "rsrs",
     "saveFailed": "Could not save memory settings",
     "status": {
       "available": "rsrs {{version}}",
@@ -168,6 +182,15 @@
       "unsupported": "rsrs has no build for this machine yet.",
       "upgradeRequired": "rsrs {{installed}} on this machine is older than {{minimum}}, the oldest version Cocurdex supports. Cocurdex leaves rsrs out until you upgrade it, and memory keeps working from its own store. Cocurdex does not upgrade an rsrs it did not install."
     },
+    "sync": {
+      "action": "Sync now",
+      "description": "Cocurdex syncs on its own after changes and every few minutes.",
+      "done": "Memory library is in sync",
+      "failed": "Could not sync with the memory library",
+      "partial_one": "{{count}} memory could not be synced",
+      "partial_other": "{{count}} memories could not be synced",
+      "title": "Sync"
+    },
     "userLibrary": {
       "description": "Agent sessions also recall from the rsrs memory you set up yourself (~/.rsrs), as reference only. Cocurdex never writes to it, and its own memories win when the two disagree.",
       "title": "Also recall from my own rsrs"
@@ -179,7 +202,8 @@
     "installing": "Installing rsrs…",
     "missing": "rsrs is not installed",
     "ready": "rsrs {{version}}",
-    "readyUnknown": "rsrs is ready"
+    "readyUnknown": "rsrs is ready",
+    "unreachable": "not answering"
   },
   "switch": {
     "label": "Memory",

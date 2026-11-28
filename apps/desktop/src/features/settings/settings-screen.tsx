@@ -2,6 +2,7 @@ import { useSetAtom } from "jotai";
 import { type MouseEvent, type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  APP_RAIL_WIDTH,
   TITLEBAR_HEIGHT,
   TITLEBAR_LEADING_RESERVE,
   TITLEBAR_TOOLBAR_MIN_WIDTH,
@@ -66,7 +67,7 @@ export interface SettingsScreenProps {
   isSidebarOpen: boolean;
   sidebarWidth?: number;
   historyControls: ReactNode;
-  onBackToApp(): void;
+  rail?(besideSidebar: boolean): ReactNode;
   onAppearanceSettingsChange(settings: AppearanceSettings): void;
   onChatLayoutModeChange(mode: ChatLayoutMode): void;
   onHideFabWhenClosedChange(hide: boolean): void;
@@ -264,7 +265,7 @@ export function SettingsScreen({
   notificationSettings,
   sidebarWidth,
   historyControls,
-  onBackToApp,
+  rail,
   onAppearanceSettingsChange,
   onChatLayoutModeChange,
   onHideFabWhenClosedChange,
@@ -311,8 +312,10 @@ export function SettingsScreen({
   const [screenRef, screenWidth] = useObservedWidth<HTMLElement>();
   const [isSidebarOverlayOpen, setIsSidebarOverlayOpen] = useState(false);
   const resolvedSidebarWidth = sidebarWidth ?? 240;
+  const railWidth = rail ? APP_RAIL_WIDTH : 0;
   const canDockSidebar =
-    screenWidth >= resolvedSidebarWidth + SETTINGS_MIN_CONTENT_WIDTH;
+    screenWidth >=
+    railWidth + resolvedSidebarWidth + SETTINGS_MIN_CONTENT_WIDTH;
   const isSidebarDocked = isSidebarOpen && canDockSidebar;
   const isSidebarShown = canDockSidebar ? isSidebarOpen : isSidebarOverlayOpen;
   const toggleSidebar = () => {
@@ -350,7 +353,6 @@ export function SettingsScreen({
       activeSection={activeSection}
       clusters={sidebarClusters}
       sidebarWidth={sidebarWidth}
-      onBackToApp={onBackToApp}
       onSectionChange={handleSectionChange}
     />
   );
@@ -378,6 +380,7 @@ export function SettingsScreen({
       className="relative flex h-screen overflow-hidden bg-shell text-foreground"
       ref={screenRef}
     >
+      {rail?.(isSidebarDocked)}
       {isSidebarDocked ? (
         <ResizableSidebarSlot
           isOpen
@@ -424,7 +427,7 @@ export function SettingsScreen({
             style={{
               paddingInlineStart: isSidebarDocked
                 ? undefined
-                : TITLEBAR_TOOLBAR_MIN_WIDTH + SETTINGS_HEADING_GAP,
+                : TITLEBAR_TOOLBAR_MIN_WIDTH + SETTINGS_HEADING_GAP - railWidth,
             }}
           >
             <div

@@ -11,6 +11,7 @@ export {
 export { useCompletionNotifier } from "./notify";
 export { expandSettingsClusterForSectionAtom } from "./settings-cluster-store";
 export {
+  closeSettings,
   openSettings,
   registerCloseSettingsHandler,
   registerOpenSettingsHandler,

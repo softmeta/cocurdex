@@ -596,10 +596,10 @@ export class CocurdexDaemonService {
           return this.memory.agentInstructions(true, true);
         }
         const session = await this.state.getSession(caller.sessionId);
-        const hostRsrs = session
-          ? await this.memory.hostInstructsRsrs(session.agentType)
-          : false;
-        return this.memory.agentInstructions(true, false, hostRsrs);
+        const hostNote = session
+          ? await this.memory.hostNote(session.agentType)
+          : null;
+        return this.memory.agentInstructions(true, false, hostNote);
       },
     });
     this.peerMessaging = new PeerMessagingService({

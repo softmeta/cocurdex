@@ -123,6 +123,14 @@ runScenario("memory-library", {
           name: await translate(session, "memory:library.detail"),
         };
         await waitForRole(session, form, UI_TIMEOUT_MS);
+        await session.waitUntil(
+          () => {
+            const title = document.getElementById("memory-entry-title");
+            return Boolean(title) && !title.readOnly;
+          },
+          null,
+          UI_TIMEOUT_MS,
+        );
         await session.run(() => {
           window.__scenario.setInput(
             document.getElementById("memory-entry-title"),

@@ -24,7 +24,6 @@ interface EntryRow extends SqliteRow {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
-  remote_id: string | null;
 }
 
 interface HistoryRow extends SqliteRow {
@@ -56,7 +55,6 @@ function mapEntry(row: EntryRow): StoredMemoryEntry {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
-    remoteId: row.remote_id,
   };
 }
 
@@ -111,11 +109,24 @@ export function createSqliteMemoryEntriesRepository(
       return rows.length === 1 ? mapEntry(rows[0]) : null;
     },
 
-    findByRemoteId(remoteId) {
+    findByRemoteId(provider, remoteId) {
       const row = database
-        .prepare("SELECT * FROM memory_entries WHERE remote_id = ? LIMIT 1")
-        .get(remoteId) as EntryRow | undefined;
+        .prepare(
+          `SELECT memory_entries.* FROM memory_entries
+           JOIN memory_entry_links ON memory_entry_links.entry_id = memory_entries.id
+           WHERE memory_entry_links.provider = ? AND memory_entry_links.remote_id = ?`,
+        )
+        .get(provider, remoteId) as EntryRow | undefined;
       return row ? mapEntry(row) : null;
+    },
+
+    remoteIds(provider) {
+      const rows = database
+        .prepare(
+          "SELECT entry_id, remote_id FROM memory_entry_links WHERE provider = ?",
+        )
+        .all(provider) as { entry_id: string; remote_id: string }[];
+      return new Map(rows.map((row) => [row.entry_id, row.remote_id]));
     },
 
     list(input) {
@@ -198,8 +209,8 @@ export function createSqliteMemoryEntriesRepository(
           `INSERT INTO memory_entries
              (id, project, title, content, kind, importance, tags_json,
               parent_id, supersedes_json, superseded_by, see_also_json, device,
-              created_at, updated_at, deleted_at, remote_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              created_at, updated_at, deleted_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           entry.id,
@@ -217,7 +228,6 @@ export function createSqliteMemoryEntriesRepository(
           entry.createdAt,
           entry.updatedAt,
           entry.deletedAt,
-          entry.remoteId,
         );
       record(entry.id, "create", entry, change);
     },
@@ -273,10 +283,28 @@ export function createSqliteMemoryEntriesRepository(
       return true;
     },
 
-    setRemoteId(id, remoteId) {
+    setRemoteId(provider, id, remoteId) {
+      if (remoteId === null) {
+        database
+          .prepare(
+            "DELETE FROM memory_entry_links WHERE entry_id = ? AND provider = ?",
+          )
+          .run(id, provider);
+        return;
+      }
       database
-        .prepare("UPDATE memory_entries SET remote_id = ? WHERE id = ?")
-        .run(remoteId, id);
+        .prepare(
+          `DELETE FROM memory_entry_links
+           WHERE provider = ? AND remote_id = ? AND entry_id <> ?`,
+        )
+        .run(provider, remoteId, id);
+      database
+        .prepare(
+          `INSERT INTO memory_entry_links (entry_id, provider, remote_id)
+           VALUES (?, ?, ?)
+           ON CONFLICT(entry_id, provider) DO UPDATE SET remote_id = excluded.remote_id`,
+        )
+        .run(id, provider, remoteId);
     },
 
     history(input): MemoryEntryHistoryRecord[] {

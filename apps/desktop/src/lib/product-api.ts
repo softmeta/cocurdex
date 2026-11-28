@@ -277,6 +277,7 @@ export const daemonProductApi: ProductRequestApi = {
   showMemory: (id) => rpc("memory.show", { id }),
   rememberMemory: (input) => rpc("memory.remember", input),
   installMemory: (force) => rpc("memory.install", { force }),
+  syncMemory: (dryRun) => rpc("memory.sync", { dryRun }),
   listMemories: (input) => rpc("memory.list", input),
   updateMemory: (input) => rpc("memory.update", input),
   forgetMemory: async (id) => {

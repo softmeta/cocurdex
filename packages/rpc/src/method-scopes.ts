@@ -67,6 +67,7 @@ export const DAEMON_METHOD_SCOPES: Record<DaemonMethod, HostAccessScope> = {
   "memory.import": "host.admin",
   "memory.rsrs.preview": "host.admin",
   "memory.rsrs.sync": "host.admin",
+  "memory.sync": "host.admin",
   "agent.runLimits.get": "read",
   "attention.list": "read",
   "skills.pack.getStatus": "read",

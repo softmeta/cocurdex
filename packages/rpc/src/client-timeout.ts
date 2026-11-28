@@ -44,6 +44,7 @@ const METHOD_TIMEOUTS: Partial<Record<DaemonMethod, number>> = {
   "memory.update": 3 * 60_000,
   "memory.rsrs.preview": 10 * 60_000,
   "memory.rsrs.sync": 60 * 60_000,
+  "memory.sync": 60 * 60_000,
   "memory.forget": 3 * 60_000,
   "memory.restore": 3 * 60_000,
   "memory.export": 11 * 60_000,

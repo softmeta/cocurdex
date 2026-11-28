@@ -19,9 +19,12 @@ function onboardingStage(
 ): MemoryOnboardingStage {
   if (!status) return "hidden";
   if (!status.settings.enabled) return working ? "installing" : "off";
-  // Memory lives in the daemon; the remaining stages follow rsrs once the
-  // user turns it on.
-  if (!status.settings.rsrs) return "ready";
+  // Memory lives in the daemon; the remaining stages follow the external
+  // library the user chose. Only rsrs is set up by Cocurdex.
+  if (status.settings.provider === "ai-memory") {
+    return status.provider?.available === false ? "failed" : "ready";
+  }
+  if (status.settings.provider !== "rsrs") return "ready";
   if (working || status.installation === "installing") return "installing";
   if (status.rsrsAvailable) return status.error ? "failed" : "ready";
   // The daemon installs rsrs on its own once it is turned on.
@@ -46,7 +49,7 @@ export function useMemoryOnboarding() {
       if (!settings.enabled) {
         await desktopApi.setMemorySettings({ ...settings, enabled: true });
       }
-      if (settings.rsrs && !status?.rsrsAvailable) {
+      if (settings.provider === "rsrs" && !status?.rsrsAvailable) {
         const result = await desktopApi.installMemory(true);
         if (!result.installed) setFailure(result.message);
       }
@@ -61,7 +64,7 @@ export function useMemoryOnboarding() {
   return {
     stage,
     status,
-    failure: failure ?? status?.error ?? null,
+    failure: failure ?? status?.provider?.error ?? status?.error ?? null,
     enable,
   };
 }

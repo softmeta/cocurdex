@@ -306,7 +306,7 @@ runScenario("app-navigation", {
       },
     ],
     [
-      "each settings section is a stop, and Back to app leaves settings",
+      "each settings section is a stop, and the rail leaves settings",
       async ({ session, issueId }) => {
         const general = await recordStep(
           session,
@@ -330,13 +330,13 @@ runScenario("app-navigation", {
         await waitForRole(session, generalHeading, UI_TIMEOUT_MS);
         await clickByRole(session, {
           role: "button",
-          name: await translate(session, "settings:sidebar.backToApp"),
+          name: await translate(session, "sessions:sidebar.settings"),
         });
         await waitForSelector(session, `div[data-issue-id="${issueId}"]`);
-        const after = await settledHistory(session, "back to app");
+        const after = await settledHistory(session, "leave settings");
         check(
           after.index === general.index + 1 && after.length === after.index + 1,
-          "Back to app was not recorded as a new stop",
+          "leaving settings was not recorded as a new stop",
           { general, after },
         );
         return { general, after };

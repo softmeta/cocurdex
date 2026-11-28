@@ -485,7 +485,6 @@ export function AppShell() {
       notificationSettings={notificationSettings}
       chatLayoutMode={chatLayoutMode}
       hideFabWhenClosed={hideFabWhenClosed}
-      onCloseSettings={closeSettings}
       onAppearanceSettingsChange={handleAppearanceSettingsChange}
       onChatLayoutModeChange={applyChatLayoutMode}
       onHideFabWhenClosedChange={handleHideFabWhenClosedChange}

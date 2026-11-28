@@ -1,7 +1,7 @@
 import { Brain } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppSidebarIconButton } from "@/components/app";
+import { AppRailIconButton } from "@/components/app";
 import {
   Button,
   Popover,
@@ -23,18 +23,13 @@ export function MemoryStatusButton() {
   const { stage, status, failure, enable } = useMemoryOnboarding();
   const [open, setOpen] = useState(false);
 
-  if (stage === "hidden") return null;
+  if (stage !== "installing" && stage !== "failed") return null;
 
-  const stateLabel = {
-    off: t("onboarding.state.off"),
-    installing: t("onboarding.state.installing"),
-    failed: t("onboarding.state.failed"),
-    ready: t("onboarding.state.ready"),
-  }[stage];
-  const showSyncHint =
-    stage === "ready" &&
-    status?.settings.rsrs === true &&
-    status.cloud.connected !== true;
+  const name = status?.settings.provider ?? "rsrs";
+  const stateLabel =
+    stage === "installing"
+      ? t("onboarding.state.installing")
+      : t("onboarding.state.failed", { name });
 
   return (
     <Popover onOpenChange={setOpen} open={open}>
@@ -44,28 +39,27 @@ export function MemoryStatusButton() {
         delay={HOVER_OPEN_DELAY_MS}
         openOnHover
       >
-        <AppSidebarIconButton
+        <AppRailIconButton
           aria-busy={stage === "installing"}
           aria-label={t("onboarding.label")}
-          tooltip={false}
-        >
-          <Brain className="size-3.5" />
-          {stage === "ready" ? null : (
+          dot={
             <span
               className={cn(
-                "absolute end-1 bottom-1 size-1.5 rounded-full ring-2 ring-sidebar",
+                "absolute end-1.5 bottom-1.5 size-1.5 rounded-full ring-2 ring-sidebar",
                 {
                   "bg-destructive": stage === "failed",
-                  "bg-muted-foreground/40": stage === "off",
                   "animate-pulse bg-muted-foreground/40":
                     stage === "installing",
                 },
               )}
             />
-          )}
-        </AppSidebarIconButton>
+          }
+          tooltip={false}
+        >
+          <Brain className="size-4" />
+        </AppRailIconButton>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 rounded-card" side="top">
+      <PopoverContent align="end" className="w-64 rounded-card" side="right">
         <section
           aria-busy={stage === "installing"}
           aria-label={t("onboarding.label")}
@@ -80,21 +74,12 @@ export function MemoryStatusButton() {
             ) : (
               <span
                 aria-hidden="true"
-                className={cn("size-1.5 shrink-0 rounded-full", {
-                  "bg-status-success": stage === "ready",
-                  "bg-destructive": stage === "failed",
-                  "bg-muted-foreground/40": stage === "off",
-                })}
+                className="size-1.5 shrink-0 rounded-full bg-destructive"
               />
             )}
             <Text className="min-w-0 flex-1 truncate" size="meta" tone="muted">
               {stateLabel}
             </Text>
-            {stage === "off" ? (
-              <Button onClick={() => void enable()} size="sm" variant="ghost">
-                {t("onboarding.enable")}
-              </Button>
-            ) : null}
             {stage === "failed" ? (
               <Button onClick={() => void enable()} size="sm" variant="ghost">
                 {t("onboarding.retry")}
@@ -103,12 +88,7 @@ export function MemoryStatusButton() {
           </div>
           {stage === "failed" ? (
             <Text className="text-destructive" size="meta">
-              {failure ?? t("onboarding.failed")}
-            </Text>
-          ) : null}
-          {showSyncHint ? (
-            <Text size="meta" tone="muted">
-              {t("onboarding.syncHint")}
+              {failure ?? t("onboarding.failed", { name })}
             </Text>
           ) : null}
         </section>

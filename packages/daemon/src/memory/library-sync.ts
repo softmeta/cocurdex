@@ -41,6 +41,7 @@ function sameMemory(local: StoredMemoryEntry, external: MemoryTransferEntry) {
 export function planMemorySync(
   local: readonly StoredMemoryEntry[],
   external: readonly MemoryTransferEntry[],
+  remoteIds: ReadonlyMap<string, string>,
 ): MemorySyncPlan {
   const plan: MemorySyncPlan = {
     builtin: { add: [], update: [] },
@@ -48,7 +49,8 @@ export function planMemorySync(
   };
   const linked = new Map<string, StoredMemoryEntry>();
   for (const entry of local) {
-    if (entry.remoteId) linked.set(entry.remoteId, entry);
+    const remoteId = remoteIds.get(entry.id);
+    if (remoteId) linked.set(remoteId, entry);
   }
   const externalIds = new Set(external.map((entry) => entry.id));
   for (const entry of external) {
@@ -74,7 +76,8 @@ export function planMemorySync(
   }
   for (const mine of local) {
     if (mine.deletedAt) continue;
-    if (mine.remoteId && externalIds.has(mine.remoteId)) continue;
+    const remoteId = remoteIds.get(mine.id);
+    if (remoteId && externalIds.has(remoteId)) continue;
     plan.external.add.push(mine);
   }
   return plan;
@@ -122,11 +125,17 @@ function parentsFirst(entries: readonly StoredMemoryEntry[]) {
   return ordered;
 }
 
+/** What a sync needs from the external library it keeps in step. */
+export type MemorySyncLibrary = Pick<
+  MemoryProvider,
+  "id" | "remember" | "update" | "forget"
+>;
+
 export interface MemorySyncTargets {
   builtin: BuiltinMemoryProvider;
   entries: MemoryEntriesRepository;
   transaction<T>(run: () => T): T;
-  external: MemoryProvider;
+  external: MemorySyncLibrary;
   now(): Date;
 }
 
@@ -146,8 +155,8 @@ function applyToBuiltin(plan: MemorySyncPlan, targets: MemorySyncTargets) {
   const change = { actor: external.id, at: targets.now().toISOString() };
   targets.transaction(() => {
     const localIds = new Map<string, string>();
-    for (const entry of entries.all()) {
-      if (entry.remoteId) localIds.set(entry.remoteId, entry.id);
+    for (const [id, remoteId] of entries.remoteIds(external.id)) {
+      localIds.set(remoteId, id);
     }
     for (const entry of plan.builtin.add) localIds.set(entry.id, entry.id);
     const local = translator(localIds);
@@ -158,7 +167,8 @@ function applyToBuiltin(plan: MemorySyncPlan, targets: MemorySyncTargets) {
       seeAlso: local.known(entry.seeAlso),
     });
     for (const entry of plan.builtin.add) {
-      builtin.adopt({ ...entry, ...relations(entry) }, entry.id, external.id);
+      builtin.adopt({ ...entry, ...relations(entry) }, external.id);
+      entries.setRemoteId(external.id, entry.id, entry.id);
     }
     for (const { id, entry } of plan.builtin.update) {
       entries.restore(id, change);
@@ -217,27 +227,25 @@ export async function applyMemorySync(
       error: error instanceof Error ? error.message : String(error),
     });
   };
-  const remoteIds = new Map<string, string>();
-  for (const entry of entries.all()) {
-    if (entry.remoteId) remoteIds.set(entry.id, entry.remoteId);
-  }
+  const remoteIds = entries.remoteIds(external.id);
   for (const entry of plan.external.add) remoteIds.delete(entry.id);
   const remote = translator(remoteIds);
   for (const entry of parentsFirst(plan.external.add)) {
     try {
       const id = await createExternal(targets, entry, remote);
       if (!id) throw new Error("The library returned no id");
-      entries.setRemoteId(entry.id, id);
+      entries.setRemoteId(external.id, entry.id, id);
       remoteIds.set(entry.id, id);
     } catch (error) {
       refused("add", error);
     }
   }
   for (const entry of plan.external.update) {
-    if (!entry.remoteId) continue;
+    const remoteId = remoteIds.get(entry.id);
+    if (!remoteId) continue;
     try {
       await external.update({
-        id: entry.remoteId,
+        id: remoteId,
         title: entry.title,
         content: entry.content,
         tags: entry.tags,
