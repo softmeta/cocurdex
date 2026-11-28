@@ -53,6 +53,9 @@ import { WorktreeSettingsPanel } from "./worktrees";
 const SETTINGS_HEADING_GAP = 16;
 const SETTINGS_MIN_CONTENT_WIDTH = 600;
 
+// The header floats over the scrolling content, which passes under it.
+const SETTINGS_HEADER_HEIGHT = 32;
+
 export interface SettingsScreenProps {
   activeSection: SettingsSectionId;
   appearanceSettings: AppearanceSettings;
@@ -408,16 +411,15 @@ export function SettingsScreen({
       >
         <section
           className={cn(
-            "min-w-0 flex-1 overflow-hidden bg-app",
+            "relative min-w-0 flex-1 overflow-hidden bg-app",
             isSidebarDocked && "rounded-s-card",
           )}
           data-window-content=""
         >
           <header
             className={cn(
-              "app-drag flex h-8 min-w-0 shrink-0 items-center border-b pe-4 transition-colors",
+              "app-drag absolute inset-x-0 top-0 z-10 flex h-8 min-w-0 items-center pe-4",
               isSidebarDocked && "ps-5",
-              isContentScrolled ? "border-border/60" : "border-transparent",
             )}
             style={{
               paddingInlineStart: isSidebarDocked
@@ -425,11 +427,18 @@ export function SettingsScreen({
                 : TITLEBAR_TOOLBAR_MIN_WIDTH + SETTINGS_HEADING_GAP,
             }}
           >
+            <div
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute inset-x-0 top-0 h-20 bg-linear-to-b from-chat-fade via-chat-fade/85 to-transparent opacity-0 transition-opacity",
+                isContentScrolled && "opacity-100",
+              )}
+            />
             <p
               aria-hidden
               data-testid="settings-compact-title"
               className={cn(
-                "truncate text-body font-semibold text-foreground opacity-0 transition-opacity",
+                "relative truncate text-body font-semibold text-foreground opacity-0 transition-opacity",
                 isContentScrolled && "opacity-100",
               )}
             >
@@ -437,7 +446,7 @@ export function SettingsScreen({
             </p>
           </header>
           {isFillLayout ? (
-            <div className="flex h-[calc(100vh-2rem)] min-h-0 flex-col pb-8">
+            <div className="flex h-screen min-h-0 flex-col pt-8 pb-8">
               <div
                 className={cn(
                   "mx-auto flex min-h-0 w-full flex-1 flex-col px-4 pt-1 sm:px-6 lg:px-8",
@@ -454,19 +463,20 @@ export function SettingsScreen({
               </div>
             </div>
           ) : (
-            <div className="h-[calc(100vh-2rem)] pb-8">
+            <div className="h-screen pb-8">
               <ScrollArea
                 className="h-full"
                 viewportProps={{
                   onScroll: (event) =>
                     setScrolledSection(
-                      event.currentTarget.scrollTop > headingBottom()
+                      event.currentTarget.scrollTop >
+                        headingBottom() - SETTINGS_HEADER_HEIGHT
                         ? activeSection
                         : null,
                     ),
                 }}
               >
-                <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3 px-4 pt-1 pb-10 sm:px-6 lg:px-8">
+                <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3 px-4 pt-9 pb-10 sm:px-6 lg:px-8">
                   <div className="mb-3 flex h-7 items-center" ref={headingRef}>
                     {settingsHeading}
                   </div>
