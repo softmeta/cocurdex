@@ -80,9 +80,11 @@ export interface MemoryEntriesRepository {
   softDelete(id: string, change: MemoryEntryChange): boolean;
   restore(id: string, change: MemoryEntryChange): boolean;
   setRemoteId(provider: string, id: string, remoteId: string | null): void;
+  /** With `deleted`, the delete event of each entry that is deleted now. */
   history(input: {
     id: string | null;
     limit: number;
+    deleted?: boolean;
   }): MemoryEntryHistoryRecord[];
   revision(): number;
 }

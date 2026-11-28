@@ -301,16 +301,20 @@ export class BuiltinMemoryProvider implements MemoryProvider {
   async history(input: {
     id: string | null;
     limit: number;
+    deleted?: boolean;
   }): Promise<MemoryHistoryEntry[]> {
     const id = input.id ? (this.entries.find(input.id)?.id ?? input.id) : null;
-    return this.entries.history({ id, limit: input.limit }).map((row) => ({
-      entryId: row.entryId,
-      action: row.action,
-      title: row.title,
-      excerpt: row.content?.slice(0, HISTORY_EXCERPT_LENGTH) ?? null,
-      actor: row.actor,
-      at: row.at,
-    }));
+    const deleted = input.deleted === true;
+    return this.entries
+      .history({ id, limit: input.limit, deleted })
+      .map((row) => ({
+        entryId: row.entryId,
+        action: row.action,
+        title: row.title,
+        excerpt: row.content?.slice(0, HISTORY_EXCERPT_LENGTH) ?? null,
+        actor: row.actor,
+        at: row.at,
+      }));
   }
 
   async revision() {

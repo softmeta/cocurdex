@@ -788,10 +788,16 @@ export class MemoryService {
     this.changed();
   }
 
-  async history(input: { id?: string | null; limit?: number } = {}) {
+  async history(
+    input: { id?: string | null; limit?: number; deleted?: boolean } = {},
+  ) {
     const provider = await this.requireProvider();
     const limit = Math.min(500, Math.max(1, Math.floor(input.limit ?? 50)));
-    return provider.history({ id: input.id ?? null, limit });
+    return provider.history({
+      id: input.id ?? null,
+      limit,
+      deleted: input.deleted === true,
+    });
   }
 
   async revision(): Promise<string | null> {
@@ -1089,6 +1095,7 @@ export class MemoryService {
 
   async saveSession(
     input: MemorySessionSaveInput,
+    trigger: "requested" | "ended" = "requested",
   ): Promise<MemorySessionSaveResult> {
     await this.ensureInitialized();
     const settings = this.currentSettings();
@@ -1126,8 +1133,7 @@ export class MemoryService {
     }
     const transcript = buildTranscriptForSummary(messages);
     const digest = await this.summarizeSession(session, transcript);
-    const requested = input.force === true || input.importance !== undefined;
-    if (!requested && digest?.importance !== "important") {
+    if (trigger === "ended" && digest?.importance !== "important") {
       return { saved: false, memoryId: null, reason: "not-salient" };
     }
     const endedAt = this.now().toISOString();

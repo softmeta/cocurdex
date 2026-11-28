@@ -26,6 +26,7 @@ import {
 import {
   type MemoryScope,
   prefetchMemoryEntry,
+  useDeletedMemories,
   useMemoryCapabilities,
   useMemoryEntry,
   useMemoryHistory,
@@ -57,8 +58,7 @@ export function MemoryLibraryView() {
   const canRestore = capabilities?.restore ?? false;
   const canListDeleted = canHistory && canRestore;
   const library = useMemoryLibrary(scope, revision);
-  const history = useMemoryHistory(
-    null,
+  const deleted = useDeletedMemories(
     mode === "deleted" && canListDeleted,
     revision,
   );
@@ -207,7 +207,7 @@ export function MemoryLibraryView() {
               <MemoryLibraryList
                 canRestore={canRestore}
                 entries={entries}
-                history={history.data ?? []}
+                deleted={deleted.data ?? []}
                 mode={mode}
                 selectedId={selectedId}
                 onRestore={(id) => void restore(id)}

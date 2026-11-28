@@ -104,7 +104,7 @@ export type AutomationRequests = {
   "memory.update": MemoryUpdateInput;
   "memory.forget": { id: string };
   "memory.restore": { id: string };
-  "memory.history": { id?: string | null; limit?: number };
+  "memory.history": { id?: string | null; limit?: number; deleted?: boolean };
   "memory.revision": undefined;
   "memory.capabilities": undefined;
   "memory.export": { file: string };

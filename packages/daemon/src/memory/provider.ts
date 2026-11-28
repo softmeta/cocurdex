@@ -62,6 +62,7 @@ export interface MemoryProvider {
   history(input: {
     id: string | null;
     limit: number;
+    deleted?: boolean;
   }): Promise<MemoryHistoryEntry[]>;
   revision(): Promise<string | null>;
   /** Every live entry, in full. */

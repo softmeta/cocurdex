@@ -9,11 +9,7 @@ import {
   Text,
 } from "@/components/ui";
 import { useScrollIntoViewWhenActive } from "@/lib/react-hooks";
-import {
-  buildMemoryTree,
-  groupMemoriesByDay,
-  recentlyDeleted,
-} from "./memory-library-groups";
+import { buildMemoryTree, groupMemoriesByDay } from "./memory-library-groups";
 
 export type MemoryLibraryMode = "diary" | "tree" | "deleted";
 
@@ -88,7 +84,7 @@ function DayHeading({ children }: { children: string }) {
 export function MemoryLibraryList({
   mode,
   entries,
-  history,
+  deleted,
   selectedId,
   canRestore,
   onSelect,
@@ -97,7 +93,7 @@ export function MemoryLibraryList({
 }: {
   mode: MemoryLibraryMode;
   entries: MemoryEntry[];
-  history: MemoryHistoryEntry[];
+  deleted: MemoryHistoryEntry[];
   selectedId: string | null;
   canRestore: boolean;
   onSelect: (id: string) => void;
@@ -106,7 +102,6 @@ export function MemoryLibraryList({
 }) {
   const { t, i18n } = useTranslation("memory");
   if (mode === "deleted") {
-    const deleted = recentlyDeleted(history);
     if (deleted.length === 0) {
       return (
         <EmptyState

@@ -601,13 +601,17 @@ describe("MemoryService with a fake rsrs CLI", () => {
     });
   });
 
-  it("keeps an ended session out of memory unless a model judged it worth reusing", async () => {
+  it("keeps an ended session out of memory unless a model judged it worth reusing, but saves one the user asks for", async () => {
     const { service } = await createService();
-    expect(await service.saveSession({ sessionId: "chat-1" })).toMatchObject({
-      saved: false,
-      reason: "not-salient",
-    });
+    expect(
+      await service.saveSession({ sessionId: "chat-1" }, "ended"),
+    ).toMatchObject({ saved: false, reason: "not-salient" });
     expect((await service.list()).items).toHaveLength(0);
+
+    expect(await service.saveSession({ sessionId: "chat-1" })).toMatchObject({
+      saved: true,
+    });
+    expect((await service.list()).items).toHaveLength(1);
   });
 
   it("stores the session summary on its own instead of claiming a similar memory as its cause", async () => {

@@ -309,18 +309,31 @@ export function createSqliteMemoryEntriesRepository(
 
     history(input): MemoryEntryHistoryRecord[] {
       const rows = (
-        input.id === null
+        input.deleted
           ? database
               .prepare(
-                "SELECT * FROM memory_entry_history ORDER BY seq DESC LIMIT ?",
+                `SELECT h.* FROM memory_entry_history h
+                 JOIN memory_entries e ON e.id = h.entry_id
+                 WHERE e.deleted_at IS NOT NULL
+                   AND h.seq = (
+                     SELECT MAX(seq) FROM memory_entry_history
+                     WHERE entry_id = h.entry_id AND action = 'delete'
+                   )
+                 ORDER BY h.seq DESC LIMIT ?`,
               )
               .all(input.limit)
-          : database
-              .prepare(
-                `SELECT * FROM memory_entry_history
+          : input.id === null
+            ? database
+                .prepare(
+                  "SELECT * FROM memory_entry_history ORDER BY seq DESC LIMIT ?",
+                )
+                .all(input.limit)
+            : database
+                .prepare(
+                  `SELECT * FROM memory_entry_history
                  WHERE entry_id = ? ORDER BY seq DESC LIMIT ?`,
-              )
-              .all(input.id, input.limit)
+                )
+                .all(input.id, input.limit)
       ) as HistoryRow[];
       return rows.map((row) => ({
         entryId: row.entry_id,

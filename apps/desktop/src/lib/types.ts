@@ -614,6 +614,7 @@ export interface ProductApi {
   getMemoryHistory(input: {
     id?: string | null;
     limit?: number;
+    deleted?: boolean;
   }): Promise<MemoryHistoryEntry[]>;
   getMemoryRevision(): Promise<string | null>;
   getMemoryCapabilities(): Promise<MemoryProviderCapabilities | null>;

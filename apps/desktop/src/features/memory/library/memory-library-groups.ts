@@ -1,4 +1,4 @@
-import type { MemoryEntry, MemoryHistoryEntry } from "@cocurdex/shared";
+import type { MemoryEntry } from "@cocurdex/shared";
 
 export interface MemoryDayGroup {
   day: string | null;
@@ -74,16 +74,4 @@ export function filterMemories(entries: MemoryEntry[], query: string) {
       text.toLocaleLowerCase().includes(needle),
     ),
   );
-}
-
-/** Entries whose latest change, newest first in `history`, is a delete. */
-export function recentlyDeleted(history: readonly MemoryHistoryEntry[]) {
-  const seen = new Set<string>();
-  const deleted: MemoryHistoryEntry[] = [];
-  for (const row of history) {
-    if (seen.has(row.entryId)) continue;
-    seen.add(row.entryId);
-    if (row.action === "delete") deleted.push(row);
-  }
-  return deleted;
 }

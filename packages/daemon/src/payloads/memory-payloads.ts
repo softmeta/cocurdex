@@ -39,7 +39,11 @@ export const memoryPayloadSchemas: PayloadSchemas = {
     z.object({ id: idSchema }),
   ),
   "memory.history": exact<Payload<"memory.history">>()(
-    z.object({ id: idSchema.nullish(), limit: limitSchema }),
+    z.object({
+      id: idSchema.nullish(),
+      limit: limitSchema,
+      deleted: z.boolean().optional(),
+    }),
   ),
   "memory.export": exact<Payload<"memory.export">>()(
     z.object({ file: filesystemPathSchema }),

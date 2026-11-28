@@ -49,14 +49,21 @@ export function buildTranscriptForSummary(
   if (pendingUser) {
     turns.push({ user: pendingUser, assistant: "" });
   }
-  const selected = turns.slice(-maxTurns);
-  const text = selected
+  const blocks = turns
+    .slice(-maxTurns)
     .map(
       (turn, index) =>
         `Turn ${index + 1}\nUser: ${compactText(turn.user, 1_200)}\nAssistant: ${compactText(turn.assistant, 1_600)}`,
-    )
-    .join("\n\n");
-  return text.slice(0, maxChars);
+    );
+  const kept: string[] = [];
+  let length = 0;
+  for (const block of blocks.reverse()) {
+    const next = length + block.length + (kept.length > 0 ? 2 : 0);
+    if (next > maxChars && kept.length > 0) break;
+    kept.unshift(block);
+    length = next;
+  }
+  return kept.join("\n\n").slice(-maxChars);
 }
 
 export function buildSessionDigestFallback(input: {
