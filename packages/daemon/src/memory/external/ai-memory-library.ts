@@ -90,7 +90,7 @@ export function aiMemoryDataDir(input: {
     return path.win32.join(local, "ai-memory");
   }
   if (input.platform === "darwin") {
-    return path.join(
+    return path.posix.join(
       input.homeDir,
       "Library",
       "Application Support",
@@ -98,10 +98,10 @@ export function aiMemoryDataDir(input: {
     );
   }
   const xdg = input.env.XDG_DATA_HOME?.trim();
-  return path.join(
-    xdg && path.isAbsolute(xdg)
+  return path.posix.join(
+    xdg && path.posix.isAbsolute(xdg)
       ? xdg
-      : path.join(input.homeDir, ".local", "share"),
+      : path.posix.join(input.homeDir, ".local", "share"),
     "ai-memory",
   );
 }
