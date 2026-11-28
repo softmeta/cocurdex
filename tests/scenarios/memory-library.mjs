@@ -206,25 +206,36 @@ runScenario("memory-library", {
       },
     ],
     [
-      "the history mode shows the change log",
+      "a deleted memory is listed under recently deleted and restores from there",
       async ({ session }) => {
+        await daemonRequest(session, "memory.forget", { id: state.ids.tea });
         await clickByRole(session, {
           role: "button",
-          name: await translate(session, "memory:library.mode.history"),
+          name: await translate(session, "memory:library.mode.deleted"),
           within: await library(session),
         });
-        const history = {
+        const deleted = {
           role: "list",
-          name: await translate(session, "memory:library.history"),
+          name: await translate(session, "memory:library.deleted"),
         };
-        await waitForRole(session, history, UI_TIMEOUT_MS);
+        await waitForRole(session, deleted, UI_TIMEOUT_MS);
+        await clickByRole(
+          session,
+          {
+            role: "button",
+            name: await translate(session, "memory:library.restore"),
+            within: deleted,
+          },
+          UI_TIMEOUT_MS,
+        );
+        await waitForNoRole(session, deleted, UI_TIMEOUT_MS);
         const log = await daemonRequest(session, "memory.history", {
           id: state.ids.tea,
         });
         const actions = log.map((row) => row.action).join(",");
         check(
-          actions === "restore,delete,update,create",
-          "the store logged create, update, delete, restore",
+          actions === "restore,delete,restore,delete,update,create",
+          "the store logged create, update, delete, restore twice",
           actions,
         );
         return {};

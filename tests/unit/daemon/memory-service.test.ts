@@ -600,6 +600,15 @@ describe("MemoryService with a fake rsrs CLI", () => {
     });
   });
 
+  it("keeps an ended session out of memory unless a model judged it worth reusing", async () => {
+    const { service } = await createService();
+    expect(await service.saveSession({ sessionId: "chat-1" })).toMatchObject({
+      saved: false,
+      reason: "not-salient",
+    });
+    expect((await service.list()).items).toHaveLength(0);
+  });
+
   it("stores the session summary on its own instead of claiming a similar memory as its cause", async () => {
     const { service } = await createService();
     const earlier = await service.remember({
@@ -607,7 +616,10 @@ describe("MemoryService with a fake rsrs CLI", () => {
       content: "An earlier summary of the same chat",
       force: true,
     });
-    const result = await service.saveSession({ sessionId: "chat-1" });
+    const result = await service.saveSession({
+      sessionId: "chat-1",
+      force: true,
+    });
     expect(result.saved).toBe(true);
     expect(result.memoryId).not.toBe(earlier.id);
     expect(await service.show(result.memoryId ?? "")).toMatchObject({

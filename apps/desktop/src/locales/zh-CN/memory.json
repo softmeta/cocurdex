@@ -10,6 +10,9 @@
     "cancel": "取消",
     "collapse": "隐藏记忆列表",
     "content": "内容",
+    "deleted": "最近删除的记忆",
+    "deletedEmpty": "没有删除的记忆",
+    "deletedEmptyDescription": "你或 agent 删除的记忆会出现在这里，可以恢复。",
     "detail": "记忆详情",
     "device": "设备",
     "empty": "还没有记忆",
@@ -21,16 +24,13 @@
     "forgetFailed": "无法删除记忆",
     "forgetTitle": "删除这条记忆？",
     "forgotten": "已删除记忆",
-    "history": "记忆历史",
-    "historyEmpty": "还没有历史",
-    "historyEmptyDescription": "编辑、删除和恢复记录会出现在这里。",
     "id": "ID",
     "label": "记忆",
     "list": "记忆列表",
     "manage": "管理",
     "mode": {
+      "deleted": "最近删除",
       "diary": "日记",
-      "history": "历史",
       "tree": "树"
     },
     "off": "记忆未开启",
@@ -94,8 +94,8 @@
       "title": "Chat 会话自动召回"
     },
     "chatSaveOnEnd": {
-      "description": "会话归档或删除时，总结整段对话并写入记忆。",
-      "title": "会话结束时保存"
+      "description": "会话归档或删除时，只有包含值得复用的决定、经验或做法，才把总结写入记忆。",
+      "title": "会话结束时记住要点"
     },
     "cliPath": {
       "description": "可选的 rsrs 可执行文件路径，用来替代 Cocurdex 安装的版本。",

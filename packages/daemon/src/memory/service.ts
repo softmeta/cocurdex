@@ -1668,6 +1668,10 @@ export class MemoryService {
     }
     const transcript = buildTranscriptForSummary(messages);
     const digest = await this.summarizeSession(session, transcript);
+    const requested = input.force === true || input.importance !== undefined;
+    if (!requested && digest?.importance !== "important") {
+      return { saved: false, memoryId: null, reason: "not-salient" };
+    }
     const endedAt = this.now().toISOString();
     const startedAt = session.createdAt ? Date.parse(session.createdAt) : NaN;
     const durationSeconds = Number.isFinite(startedAt)

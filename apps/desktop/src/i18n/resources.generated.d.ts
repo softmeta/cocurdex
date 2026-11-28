@@ -1212,6 +1212,9 @@ export default interface Resources {
       cancel: "Cancel";
       collapse: "Hide memory list";
       content: "Content";
+      deleted: "Recently deleted memories";
+      deletedEmpty: "Nothing deleted";
+      deletedEmptyDescription: "Memories you or an agent delete show up here, ready to restore.";
       detail: "Memory details";
       device: "Device";
       empty: "No memories yet";
@@ -1223,16 +1226,13 @@ export default interface Resources {
       forgetFailed: "Could not delete the memory";
       forgetTitle: "Delete this memory?";
       forgotten: "Memory deleted";
-      history: "Memory history";
-      historyEmpty: "No history yet";
-      historyEmptyDescription: "Edits, deletions, and restores show up here.";
       id: "ID";
       label: "Memory";
       list: "Memories";
       manage: "Manage";
       mode: {
+        deleted: "Deleted";
         diary: "Diary";
-        history: "History";
         tree: "Tree";
       };
       off: "Memory is off";
@@ -1296,8 +1296,8 @@ export default interface Resources {
         title: "Recall for chat sessions";
       };
       chatSaveOnEnd: {
-        description: "Summarize a chat session when it is archived or deleted.";
-        title: "Save chat sessions on end";
+        description: "When a chat session is archived or deleted, keep a summary only if it holds a decision, lesson, or procedure worth reusing.";
+        title: "Remember chat sessions on end";
       };
       cliPath: {
         description: "Optional path to an rsrs executable to run instead of the one Cocurdex installs.";
